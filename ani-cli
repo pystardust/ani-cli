@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# dependencies: sed curl
+# dependencies: sed curl mpv
 
 prog="ani-cli"
 
@@ -101,8 +101,9 @@ menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 count=1
 while read anime_id; do
-	[ $((count % 2)) -eq 0 ] && 
-		menu_format_string=$menu_format_string_c1 || 
+	# alternating colors for menu
+	[ $((count % 2)) -eq 0 ] &&
+		menu_format_string=$menu_format_string_c1 ||
 		menu_format_string=$menu_format_string_c2
 
 	printf "$menu_format_string" "$count" "$anime_id"
@@ -111,12 +112,15 @@ done <<EOF
 $search_results
 EOF
 
+# User input
 printf "$c_blue%s$c_green" "Enter number: "
 read choice
 printf "$c_reset"
 
+# Check if input is a number
 [ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
 
+# Select respective anime_id
 count=1
 while read anime_id; do
 	if [ $count -eq $choice ]; then
@@ -156,6 +160,7 @@ while :; do
 
 	case $video_url in
 		*streamtape*)
+			# If direct download not available then scrape streamtape.com
 			BROWSER=${BROWSER:-firefox}
 			printf "scraping streamtape.com\n"
 			video_url=$(curl -s "$video_url" | sed -n -E '
@@ -172,11 +177,11 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-	printf "${c_blue}Enter choice:${c_green} " 
-	read choice 
+	printf "${c_blue}Enter choice:${c_green} "
+	read choice
 	printf "$c_reset"
 	case $choice in
-		n) 
+		n)
 			ep_choice=$((ep_choice+1))
 			;;
 		p)
