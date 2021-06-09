@@ -1,6 +1,6 @@
 # ani-cli
 
-A cli to browser and watch anime.
+A cli to browse and watch anime.
 
 This tool scrapes the site [gogoanime](https://gogoanime.vc).
 
