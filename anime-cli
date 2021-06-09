@@ -1,0 +1,177 @@
+#!/bin/sh
+
+# dependencies: sed curl
+
+prog="ani-cli"
+
+help_text () {
+	while IFS= read line; do
+		printf "%s\n" "$line"
+	done <<-EOF
+	USAGE: $prog <query>
+	EOF
+}
+
+
+die () {
+	printf "%s\n" "$*" >&1
+	exit 1
+}
+
+search_anime () {
+	# get anime name along with its id
+	search=$1
+	titlepattern='<a href="/category/'
+
+	curl -s "https://gogoanime.vc//search.html" \
+		-G \
+		-d "keyword=$search" |
+	sed -n -E '
+        #<a href="/category/one-punch-man" title="One Punch Man">
+		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
+		'
+}
+
+search_eps () {
+	# get available episodes for anime_id
+	anime_id=$1
+
+	curl -s "https://gogoanime.vc/category/$anime_id" |
+	sed -n -E '
+		/^[[:space:]]*<a href="#" class="active" ep_start/{
+		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+		q
+		}
+		'
+}
+
+get_links () {
+	# get the download page url
+	anime_id=$1
+	ep_no=$2
+
+	dpage_url=$(
+	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
+	sed -n -E '
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
+		q
+		}')
+
+	curl -s "$dpage_url" |
+	sed -n -E '
+		/^[[:space:]]*href="([^"]*\.mp4)".*/{
+		s/^[[:space:]]*href="([^"]*\.mp4)".*/\1/p
+		q
+		}
+		'
+}
+
+#####################
+## Anime selection ##
+#####################
+
+case $1 in
+	-h|--help)
+		help_text
+		exit 0
+		;;
+esac
+
+[ -z "$*" ] && { help_text ; die "Search query not provided";  }
+
+query="$*"
+search_results=$(search_anime "$query")
+
+[ -z "$search_results" ] && die "No search results found"
+
+# Creating menu
+
+count=1
+while read anime_id; do
+	printf "[%d] %s\n" "$count" "$anime_id"
+	count=$((count+1))
+done <<EOF
+$search_results
+EOF
+
+printf "%s" "Enter number: "
+read choice
+
+[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
+
+count=1
+while read anime_id; do
+	if [ $count -eq $choice ]; then
+		selection_id=$anime_id
+		break
+	fi
+	count=$((count+1))
+done <<EOF
+$search_results
+EOF
+
+[ -z "$selection_id" ] && die "Invalid number entered"
+
+##################
+## Ep selection ##
+##################
+read last_ep_number <<EOF
+$(search_eps "$selection_id")
+EOF
+
+printf "Choose episode [1-$last_ep_number]: "
+read ep_choice
+
+[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
+
+
+while :; do
+
+	if [ $ep_choice -lt 1 ] || [ $ep_choice -gt $last_ep_number ]; then
+		die "Episode out of range"
+	fi
+
+	printf "Getting data for episode %d\n" $ep_choice
+
+	video_url=$(get_links "$selection_id" "$ep_choice")
+
+	case $video_url in
+		*stream*)
+			BROWSER=${BROWSER:-firefox}
+			printf "Downloadable mp4 not found, stream on browser?[y/N] "
+			read choice
+			case $choice in
+				[yY]) setsid -f $BROWSER "$video_url" >/dev/null 2>&1
+					;;
+				*)
+					exit 0
+					;;
+			esac
+			;;
+		*)
+			setsid -f mpv "$video_url" >/dev/null 2>&1
+			;;
+	esac
+
+	printf "\nCurrently playing %s episode %d/%d\n" "$selection_id" $ep_choice $last_ep_number
+	printf "[n] next episode\n"
+	printf "[p] previous episode\n"
+	printf "[q] exit\n"
+	printf "Enter choice: " 
+	read choice 
+	case $choice in
+		n) 
+			ep_choice=$((ep_choice+1))
+			;;
+		p)
+			ep_choice=$((ep_choice-1))
+			;;
+		q)
+			exit 0;;
+		*)
+			die "invalid choice"
+			;;
+	esac
+done
+
