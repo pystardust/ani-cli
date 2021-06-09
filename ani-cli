@@ -137,22 +137,18 @@ while :; do
 	video_url=$(get_links "$selection_id" "$ep_choice")
 
 	case $video_url in
-		*stream*)
+		*streamtape*)
 			BROWSER=${BROWSER:-firefox}
-			printf "Downloadable mp4 not found, stream on browser?[y/N] "
-			read choice
-			case $choice in
-				[yY]) setsid -f $BROWSER "$video_url" >/dev/null 2>&1
-					;;
-				*)
-					exit 0
-					;;
-			esac
-			;;
-		*)
-			setsid -f mpv "$video_url" >/dev/null 2>&1
-			;;
+			printf "scraping streamtape.com\n"
+			video_url=$(curl -s "$video_url" | sed -n -E '
+				/^<script>document/{
+				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
+				q
+				}
+			');;
 	esac
+
+	setsid -f mpv "$video_url" >/dev/null 2>&1
 
 	printf "\nCurrently playing %s episode %d/%d\n" "$selection_id" $ep_choice $last_ep_number
 	printf "[n] next episode\n"
