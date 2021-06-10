@@ -12,11 +12,14 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
+
 help_text () {
 	while IFS= read line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
+	 -h     show this help text
+	 -d     download episode
 	EOF
 }
 
@@ -79,12 +82,21 @@ get_links () {
 ## Anime selection ##
 #####################
 
-case $1 in
-	-h|--help)
-		help_text
-		exit 0
-		;;
-esac
+is_download=0
+
+while getopts 'hd' OPT; do
+	case $OPT in
+		h)
+			help_text
+			exit 0
+			;;
+		d)
+			is_download=1
+			;;
+	esac
+done
+
+shift $((OPTIND - 1))
 
 [ -z "$*" ] && { help_text ; die "Search query not provided";  }
 
@@ -171,7 +183,17 @@ while :; do
 			');;
 	esac
 
-	setsid -f mpv "$video_url" >/dev/null 2>&1
+	if [ $is_download -eq 0 ]; then
+		setsid -f mpv "$video_url" >/dev/null 2>&1
+	else
+		printf "Downloading episode $ep_choice ...\n"
+		printf "%s\n" "$video_url"
+		{
+			curl -L -# "$video_url" -o "${anime_id}-${ep_choice}.mp4" &&
+				printf "\n${c_green}Downloaded episode: %s${c_reset}\n" "$ep_choice" ||
+				printf "\n${c_red}Download failed episode: %s${c_reset}\n" "$ep_choice"
+		}
+	fi
 
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $ep_choice $last_ep_number
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
@@ -188,10 +210,9 @@ while :; do
 			ep_choice=$((ep_choice-1))
 			;;
 		q)
-			exit 0;;
+			break;;
 		*)
 			die "invalid choice"
 			;;
 	esac
 done
-
