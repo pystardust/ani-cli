@@ -32,7 +32,7 @@ die () {
 search_anime () {
 	# get anime name along with its id
 
-    # If no argument is passed use dmenu prompt
+    # If no argument is passed, use dmenu prompt
     if [ -z "$1" ]; then
         search="$(printf "" | dmenu -p "Enter anime: " -i)"
 
