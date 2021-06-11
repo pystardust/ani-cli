@@ -31,7 +31,18 @@ die () {
 
 search_anime () {
 	# get anime name along with its id
-	search=$1
+
+    # If no argument is passed use dmenu prompt
+    if [ -z "$1" ]; then
+        search="$(printf "" | dmenu -p "Enter anime: " -i)"
+
+        # If no anime was entered, then exit
+        [ -z "$search" ] && exit 1
+
+    else
+        search="$1"
+    fi
+
 	titlepattern='<a href="/category/'
 
 	curl -s "https://gogoanime.vc//search.html" \
@@ -98,7 +109,7 @@ done
 
 shift $((OPTIND - 1))
 
-[ -z "$*" ] && { help_text ; die "Search query not provided";  }
+# [ -z "$*" ] && { help_text ; die "Search query not provided";  }
 
 query="$*"
 search_results=$(search_anime "$query")
