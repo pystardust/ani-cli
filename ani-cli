@@ -2,6 +2,11 @@
 
 # dependencies: sed curl mpv
 
+# Check if necessary programs are installed
+for prog in sed curl mpv; do
+    [ ! "$(which "$prog")" ] && printf "Please install $prog!" && exit 1
+done
+
 prog="ani-cli"
 
 c_red="\033[1;31m"
