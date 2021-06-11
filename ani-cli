@@ -78,6 +78,16 @@ get_links () {
 		'
 }
 
+dep_ch () {
+	for dep; do
+		if ! command -v "$dep" >/dev/null ; then
+			die "Program \"$dep\" not found. Please install it."
+		fi
+	done
+}
+
+dep_ch "mpv" "curl" "sed"
+
 #####################
 ## Anime selection ##
 #####################
