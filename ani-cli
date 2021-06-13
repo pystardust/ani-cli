@@ -1,6 +1,8 @@
 #!/bin/sh
 
-# dependencies: sed curl mpv
+# dependencies: sed curl mpv/vlc
+# player used to play videos ( needs to be able to play urls )
+player_fn="mpv"
 
 prog="ani-cli"
 
@@ -86,14 +88,14 @@ dep_ch () {
 	done
 }
 
-dep_ch "mpv" "curl" "sed"
+############
+# Start Up #
+############
 
-#####################
-## Anime selection ##
-#####################
+dep_ch "$player_fn" "curl" "sed"
 
+# option parsing
 is_download=0
-
 while getopts 'hd' OPT; do
 	case $OPT in
 		h)
@@ -105,12 +107,20 @@ while getopts 'hd' OPT; do
 			;;
 	esac
 done
-
 shift $((OPTIND - 1))
 
-[ -z "$*" ] && { help_text ; die "Search query not provided";  }
+# get query
+if [ -z "$*" ]; then
+	printf "Search Anime: "
+	read -r query
+else
+	query=$*
+fi
 
-query="$*"
+#####################
+## Anime selection ##
+#####################
+
 search_results=$(search_anime "$query")
 
 [ -z "$search_results" ] && die "No search results found"
@@ -163,22 +173,35 @@ read last_ep_number <<EOF
 $(search_eps "$selection_id")
 EOF
 
+[ $is_download -eq 1 ] &&
+	printf "Range of episodes can be specified: start_number end_number\n"
+
 printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-read ep_choice
+read ep_choice_start ep_choice_end
 printf "$c_reset"
 
-[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
+{ # checking input
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+	episodes=$ep_choice_start
 
+	if [ -n "$ep_choice_end" ]; then
+		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
+		# create list of episodes to download/watch
+		episodes=$(seq $ep_choice_start $ep_choice_end)
+	fi
+}
 
-while :; do
+open_episode () {
+	anime_id=$1
+	episode=$2
 
-	if [ $ep_choice -lt 1 ] || [ $ep_choice -gt $last_ep_number ]; then
+	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		die "Episode out of range"
 	fi
 
-	printf "Getting data for episode %d\n" $ep_choice
+	printf "Getting data for episode %d\n" $episode
 
-	video_url=$(get_links "$selection_id" "$ep_choice")
+	video_url=$(get_links "$anime_id" "$episode")
 
 	case $video_url in
 		*streamtape*)
@@ -194,16 +217,28 @@ while :; do
 	esac
 
 	if [ $is_download -eq 0 ]; then
-		setsid -f mpv "$video_url" >/dev/null 2>&1
+		setsid -f $player_fn "$video_url" >/dev/null 2>&1
 	else
-		printf "Downloading episode $ep_choice ...\n"
+		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		{
-			curl -L -# "$video_url" -o "${anime_id}-${ep_choice}.mp4" &&
-				printf "\n${c_green}Downloaded episode: %s${c_reset}\n" "$ep_choice" ||
-				printf "\n${c_red}Download failed episode: %s${c_reset}\n" "$ep_choice"
+			curl -L -# "$video_url" -o "${anime_id}-${episode}.mp4" &&
+				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
 	fi
+}
+
+
+while :; do
+
+	# to donwload/view many episodes at a time
+	for ep in $episodes
+	do
+		open_episode "$selection_id" "$ep"
+	done
+	# set episodes to the last episode and continue with menu
+	episodes=${ep_choice_end:-$ep_choice_start}
 
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $ep_choice $last_ep_number
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
@@ -214,10 +249,10 @@ while :; do
 	printf "$c_reset"
 	case $choice in
 		n)
-			ep_choice=$((ep_choice+1))
+			episodes=$((episodes + 1))
 			;;
 		p)
-			ep_choice=$((ep_choice-1))
+			episodes=$((episodes - 1))
 			;;
 		q)
 			break;;
