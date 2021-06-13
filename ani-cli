@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# dependencies: sed curl mpv/vlc
-# player used to play videos ( needs to be able to play urls )
+# dependencies: sed curl video_player
+# video_player ( needs to be able to play urls )
 player_fn="mpv"
 
 prog="ani-cli"
@@ -229,18 +229,18 @@ open_episode () {
 	fi
 }
 
+for ep in $episodes
+do
+	open_episode "$selection_id" "$ep"
+done
+episode=${ep_choice_end:-$ep_choice_start}
 
 while :; do
 
 	# to donwload/view many episodes at a time
-	for ep in $episodes
-	do
-		open_episode "$selection_id" "$ep"
-	done
-	# set episodes to the last episode and continue with menu
-	episodes=${ep_choice_end:-$ep_choice_start}
+	# set episodes to the last episode and continue with menu, only the first time
 
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $ep_choice $last_ep_number
+	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
@@ -249,10 +249,10 @@ while :; do
 	printf "$c_reset"
 	case $choice in
 		n)
-			episodes=$((episodes + 1))
+			episode=$((episode + 1))
 			;;
 		p)
-			episodes=$((episodes - 1))
+			episode=$((episode - 1))
 			;;
 		q)
 			break;;
@@ -260,4 +260,6 @@ while :; do
 			die "invalid choice"
 			;;
 	esac
+
+	open_episode "$selection_id" "$episode"
 done
