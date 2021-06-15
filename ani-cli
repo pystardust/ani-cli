@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# dependencies: sed curl jq video_player
+# dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 
@@ -94,7 +94,7 @@ dep_ch () {
 # Start Up #
 ############
 
-dep_ch "$player_fn" "curl" "sed" "jq"
+dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
@@ -125,7 +125,7 @@ shift $((OPTIND - 1))
     fi
 
 # create history file
-[ -f $logfile ] || printf "{}" > $logfile
+[ -f $logfile ] || printf "" > $logfile
 
 #####################
 ## Anime selection ##
@@ -134,7 +134,7 @@ shift $((OPTIND - 1))
 if [ $resume_watching -eq 0 ]; then
     search_results=$(search_anime "$query")
 else
-    search_results=$(jq -r 'keys[]' $logfile)
+    search_results=$(cut -f1 $logfile)
 fi
 
 [ -z "$search_results" ] && die "No search results found"
@@ -195,7 +195,7 @@ if [ $resume_watching -eq 0 ]; then
     read ep_choice_start ep_choice_end
     printf "$c_reset"
 else
-    ep_choice_start=$(jq ".\"${selection_id}\"" $logfile)
+    ep_choice_start=$(awk "/${selection_id}/ { print \$2 }" $logfile)
 fi
 
 { # checking input
@@ -236,8 +236,13 @@ open_episode () {
 
 	if [ $is_download -eq 0 ]; then
         # write anime and episode number
-        jq ".\"${selection_id}\" = $((ep+1))" $logfile > "${logfile}.new" \
-            && mv "${logfile}.new" $logfile
+		if $(grep -w "${selection_id}" $logfile >/dev/null); then
+			awk -F'\t' "
+				BEGIN {OFS=\"\\t\"}; NR != $choice; NR == $choice { \$2=$((episode+1));print }
+			" $logfile > "${logfile}.new" && mv "${logfile}.new" $logfile
+		else
+			printf "%s\t%d\n" "$selection_id" $((episode+1)) >> $logfile
+		fi
 
 		setsid -f $player_fn "$video_url" >/dev/null 2>&1
 	else
