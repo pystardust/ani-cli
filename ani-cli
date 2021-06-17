@@ -5,6 +5,8 @@
 player_fn="mpv"
 
 prog="ani-cli"
+hisdir="$HOME/.local/share/ani-cli"
+hisfile="$hisdir/watched-history"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -13,7 +15,6 @@ c_blue="\033[1;34m"
 c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
-
 
 help_text () {
 	while IFS= read line; do
@@ -88,11 +89,24 @@ dep_ch () {
 	done
 }
 
+is_old_series () {
+    if [ -s "$hisfile" ]; then
+        old=$(sed -n -e "/$selection_id/p" "$hisfile")
+    fi
+    if [ -n "$old" ]; then
+        is_old=1
+    else
+        is_old=0
+    fi
+}
+
 ############
 # Start Up #
 ############
 
 dep_ch "$player_fn" "curl" "sed"
+mkdir -p "$hisdir"
+[ ! -s "$hisfile" ] && printf "" > $hisfile
 
 # option parsing
 is_download=0
@@ -176,9 +190,15 @@ EOF
 [ $is_download -eq 1 ] &&
 	printf "Range of episodes can be specified: start_number end_number\n"
 
-printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-read ep_choice_start ep_choice_end
-printf "$c_reset"
+is_old_series
+if [ "$is_old" -eq 1 ]; then
+    ep_choice_start=$(sed -n -e "s/$selection_id\ //p" "$hisfile")
+    echo $ep_choice
+else 
+    printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+    read ep_choice_start ep_choice_end
+    printf "$c_reset"
+fi
 
 { # checking input
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
@@ -227,6 +247,7 @@ open_episode () {
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
 	fi
+
 }
 
 for ep in $episodes
@@ -234,6 +255,11 @@ do
 	open_episode "$selection_id" "$ep"
 done
 episode=${ep_choice_end:-$ep_choice_start}
+
+if [ "$is_old" -eq 0 ]; then
+    printf "%s %s\n" "$selection_id" "$episode" >> $hisfile
+    is_old=1
+fi
 
 while :; do
 
@@ -249,10 +275,16 @@ while :; do
 	printf "$c_reset"
 	case $choice in
 		n)
-			episode=$((episode + 1))
+            next_episode=$((episode+1))
+            sed -i -e "s/$selection_id\ $episode/$selection_id\ $next_episode/" \
+                $hisfile 
+			episode=$next_episode
 			;;
 		p)
-			episode=$((episode - 1))
+            next_episode=$((episode-1))
+            sed -i -e "s/$selection_id\ $episode/$selection_id\ $next_episode/" \
+                $hisfile 
+			episode=$next_episode
 			;;
 		q)
 			break;;
