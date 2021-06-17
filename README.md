@@ -26,4 +26,5 @@ This would open/download episodes 1 2 3 4 5 6
 
 * curl
 * sed
+* grep
 * mpv
