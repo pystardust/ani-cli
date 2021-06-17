@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# dependencies: sed curl video_player
+# dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 
@@ -104,7 +104,7 @@ is_old_series () {
 # Start Up #
 ############
 
-dep_ch "$player_fn" "curl" "sed"
+dep_ch "$player_fn" "curl" "sed" "grep"
 mkdir -p "$hisdir"
 [ ! -s "$hisfile" ] && printf "" > $hisfile
 
