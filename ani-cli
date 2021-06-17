@@ -23,6 +23,7 @@ help_text () {
 	USAGE: $prog <query>
 	 -h     show this help text
 	 -d     download episode
+     -H     view history
 	EOF
 }
 
@@ -106,11 +107,12 @@ is_old_series () {
 
 dep_ch "$player_fn" "curl" "sed" "grep"
 mkdir -p "$hisdir"
-[ ! -s "$hisfile" ] && printf "" > $hisfile
+[ ! -s "$hisfile" ] && :> "$hisfile"
 
 # option parsing
+is_view_history=0
 is_download=0
-while getopts 'hd' OPT; do
+while getopts 'hdH' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -119,15 +121,18 @@ while getopts 'hd' OPT; do
 		d)
 			is_download=1
 			;;
+        H)
+            is_view_history=1
+            ;;
 	esac
 done
 shift $((OPTIND - 1))
 
 # get query
-if [ -z "$*" ]; then
+if [ -z "$*" -a "$is_view_history" -eq 0 ]; then
 	printf "Search Anime: "
 	read -r query
-else
+elif [ -n "$*" -a "$is_view_history" -eq 0 ]; then
 	query=$*
 fi
 
@@ -135,7 +140,11 @@ fi
 ## Anime selection ##
 #####################
 
-search_results=$(search_anime "$query")
+if [ "$is_view_history" -eq 0 ]; then
+    search_results=$(search_anime "$query")
+else
+    search_results=$(cat "$hisfile")
+fi
 
 [ -z "$search_results" ] && die "No search results found"
 
@@ -166,12 +175,16 @@ printf "$c_reset"
 # Check if input is a number
 [ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
 
+
 # Select respective anime_id
 count=1
 while read anime_id; do
-	if [ $count -eq $choice ]; then
+	if [ "$count" -eq "$choice" -a "$is_view_history" -eq 0 ]; then
 		selection_id=$anime_id
 		break
+	elif [ "$count" -eq "$choice" -a "$is_view_history" -eq 1 ]; then
+        selection_id=$(sed -n -e "$choice s/\ [[:digit:]][[:digit:]]*//p" "$hisfile")
+        break
 	fi
 	count=$((count+1))
 done <<EOF
@@ -193,7 +206,6 @@ EOF
 is_old_series
 if [ "$is_old" -eq 1 ]; then
     ep_choice_start=$(sed -n -e "s/$selection_id\ //p" "$hisfile")
-    echo $ep_choice
 else 
     printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
     read ep_choice_start ep_choice_end
@@ -256,7 +268,7 @@ do
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
-[ "$is_old" -eq 0 ] && printf "%s %s\n" "$selection_id" "$episode" >> $hisfile
+[ "$is_old" -eq 0 ] && printf "%s %s\n" "$selection_id" "$episode" >> "$hisfile"
 
 while :; do
 
@@ -274,13 +286,13 @@ while :; do
 		n)
             next_episode=$((episode+1))
             sed -i -e "s/$selection_id\ $episode/$selection_id\ $next_episode/" \
-                $hisfile 
+                "$hisfile" 
 			episode=$next_episode
 			;;
 		p)
             next_episode=$((episode-1))
             sed -i -e "s/$selection_id\ $episode/$selection_id\ $next_episode/" \
-                $hisfile 
+                "$hisfile" 
 			episode=$next_episode
 			;;
 		q)

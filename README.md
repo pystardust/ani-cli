@@ -13,6 +13,9 @@ This tool scrapes the site [gogoanime](https://gogoanime.vc).
 	# download anime
 	ani-cli -d <query>
 
+	# chose from history 
+	ani-cli -H <query>
+
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
 	Choose episode [1-13]: 1 6
