@@ -91,7 +91,7 @@ dep_ch () {
 
 is_old_series () {
     if [ -s "$hisfile" ]; then
-        old=$(sed -n -e "/$selection_id/p" "$hisfile")
+        old=$(grep -F -e "$selection_id" "$hisfile")
     fi
     if [ -n "$old" ]; then
         is_old=1
@@ -256,10 +256,7 @@ do
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
-if [ "$is_old" -eq 0 ]; then
-    printf "%s %s\n" "$selection_id" "$episode" >> $hisfile
-    is_old=1
-fi
+[ "$is_old" -eq 0 ] && printf "%s %s\n" "$selection_id" "$episode" >> $hisfile
 
 while :; do
 
