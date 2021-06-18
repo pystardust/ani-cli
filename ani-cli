@@ -1,10 +1,11 @@
 #!/bin/sh
 
-# dependencies: sed curl video_player
+# dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 
 prog="ani-cli"
+logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -22,6 +23,7 @@ help_text () {
 	USAGE: $prog <query>
 	 -h     show this help text
 	 -d     download episode
+	 -H     continue where you left off
 	EOF
 }
 
@@ -92,11 +94,12 @@ dep_ch () {
 # Start Up #
 ############
 
-dep_ch "$player_fn" "curl" "sed"
+dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
-while getopts 'hd' OPT; do
+resume_watching=0
+while getopts 'hdH' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -105,23 +108,34 @@ while getopts 'hd' OPT; do
 		d)
 			is_download=1
 			;;
+		H)
+			resume_watching=1
+			;;
 	esac
 done
 shift $((OPTIND - 1))
 
 # get query
-if [ -z "$*" ]; then
-	printf "Search Anime: "
-	read -r query
-else
-	query=$*
-fi
+[ $resume_watching -eq 0 ] &&
+    if [ -z "$*" ]; then
+        printf "Search Anime: "
+        read -r query
+    else
+        query=$*
+    fi
+
+# create history file
+[ -f $logfile ] || printf "" > $logfile
 
 #####################
 ## Anime selection ##
 #####################
 
-search_results=$(search_anime "$query")
+if [ $resume_watching -eq 0 ]; then
+    search_results=$(search_anime "$query")
+else
+    search_results=$(sed -n -E 's/\t[0-9]*//p' $logfile)
+fi
 
 [ -z "$search_results" ] && die "No search results found"
 
@@ -173,12 +187,16 @@ read last_ep_number <<EOF
 $(search_eps "$selection_id")
 EOF
 
-[ $is_download -eq 1 ] &&
-	printf "Range of episodes can be specified: start_number end_number\n"
+if [ $resume_watching -eq 0 ]; then
+    [ $is_download -eq 1 ] &&
+        printf "Range of episodes can be specified: start_number end_number\n"
 
-printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-read ep_choice_start ep_choice_end
-printf "$c_reset"
+    printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+    read ep_choice_start ep_choice_end
+    printf "$c_reset"
+else
+	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" $logfile)
+fi
 
 { # checking input
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
@@ -190,6 +208,10 @@ printf "$c_reset"
 		episodes=$(seq $ep_choice_start $ep_choice_end)
 	fi
 }
+
+# add anime to history file
+grep -q -w "${selection_id}" $logfile ||
+	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> $logfile
 
 open_episode () {
 	anime_id=$1
@@ -217,6 +239,11 @@ open_episode () {
 	esac
 
 	if [ $is_download -eq 0 ]; then
+        # write anime and episode number
+		sed -E "
+			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
+		" $logfile > "${logfile}.new" && mv "${logfile}.new" $logfile
+
 		setsid -f $player_fn "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
