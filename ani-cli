@@ -209,6 +209,10 @@ fi
 	fi
 }
 
+# add anime to history file
+grep -q -w "${selection_id}" $logfile ||
+	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> $logfile
+
 open_episode () {
 	anime_id=$1
 	episode=$2
@@ -236,13 +240,9 @@ open_episode () {
 
 	if [ $is_download -eq 0 ]; then
         # write anime and episode number
-		if $(grep -w "${selection_id}" $logfile >/dev/null); then
-			sed -E "
-				s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
-			" $logfile > "${logfile}.new" && mv "${logfile}.new" $logfile
-		else
-			printf "%s\t%d\n" "$selection_id" $((episode+1)) >> $logfile
-		fi
+		sed -E "
+			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
+		" $logfile > "${logfile}.new" && mv "${logfile}.new" $logfile
 
 		setsid -f $player_fn "$video_url" >/dev/null 2>&1
 	else
