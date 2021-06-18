@@ -21,9 +21,9 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
-	 -h     show this help text
-	 -d     download episode
-	 -H     continue where you left off
+	 -h	 show this help text
+	 -d	 download episode
+	 -H	 continue where you left off
 	EOF
 }
 
@@ -31,6 +31,10 @@ help_text () {
 die () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 	exit 1
+}
+
+err () {
+	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
 search_anime () {
@@ -42,7 +46,6 @@ search_anime () {
 		-G \
 		-d "keyword=$search" |
 	sed -n -E '
-        #<a href="/category/one-punch-man" title="One Punch Man">
 		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
 		'
 }
@@ -90,135 +93,92 @@ dep_ch () {
 	done
 }
 
-############
-# Start Up #
-############
-
-dep_ch "$player_fn" "curl" "sed" "grep"
-
-# option parsing
-is_download=0
-resume_watching=0
-while getopts 'hdH' OPT; do
-	case $OPT in
-		h)
-			help_text
-			exit 0
-			;;
-		d)
-			is_download=1
-			;;
-		H)
-			resume_watching=1
-			;;
-	esac
-done
-shift $((OPTIND - 1))
-
 # get query
-[ $resume_watching -eq 0 ] &&
-    if [ -z "$*" ]; then
-        printf "Search Anime: "
-        read -r query
-    else
-        query=$*
-    fi
+get_search_query () {
+	if [ -z "$*" ]; then
+		printf "Search Anime: "
+		read -r query
+	else
+		query=$*
+	fi
+}
 
 # create history file
-[ -f $logfile ] || printf "" > $logfile
+[ -f "$logfile" ] || : > "$logfile"
 
 #####################
 ## Anime selection ##
 #####################
 
-if [ $resume_watching -eq 0 ]; then
-    search_results=$(search_anime "$query")
-else
-    search_results=$(sed -n -E 's/\t[0-9]*//p' $logfile)
-fi
+anime_selection () {
+	search_results=$*
+	menu_format_string='[%d] %s\n'
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
-[ -z "$search_results" ] && die "No search results found"
+	count=1
+	while read anime_id; do
+		# alternating colors for menu
+		[ $((count % 2)) -eq 0 ] &&
+			menu_format_string=$menu_format_string_c1 ||
+			menu_format_string=$menu_format_string_c2
 
-# Creating menu
+		printf "$menu_format_string" "$count" "$anime_id"
+		count=$((count+1))
+	done <<-EOF
+	$search_results
+	EOF
 
-menu_format_string='[%d] %s\n'
-menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+	# User input
+	printf "$c_blue%s$c_green" "Enter number: "
+	read choice
+	printf "$c_reset"
 
-count=1
-while read anime_id; do
-	# alternating colors for menu
-	[ $((count % 2)) -eq 0 ] &&
-		menu_format_string=$menu_format_string_c1 ||
-		menu_format_string=$menu_format_string_c2
+	# Check if input is a number
+	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
 
-	printf "$menu_format_string" "$count" "$anime_id"
-	count=$((count+1))
-done <<EOF
-$search_results
-EOF
+	# Select respective anime_id
+	count=1
+	while read anime_id; do
+		if [ $count -eq $choice ]; then
+			selection_id=$anime_id
+			break
+		fi
+		count=$((count+1))
+	done <<-EOF
+	$search_results
+	EOF
 
-# User input
-printf "$c_blue%s$c_green" "Enter number: "
-read choice
-printf "$c_reset"
+	[ -z "$selection_id" ] && die "Invalid number entered"
 
-# Check if input is a number
-[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
-
-# Select respective anime_id
-count=1
-while read anime_id; do
-	if [ $count -eq $choice ]; then
-		selection_id=$anime_id
-		break
-	fi
-	count=$((count+1))
-done <<EOF
-$search_results
-EOF
-
-[ -z "$selection_id" ] && die "Invalid number entered"
+	read last_ep_number <<-EOF
+	$(search_eps "$selection_id")
+	EOF
+}
 
 ##################
 ## Ep selection ##
 ##################
-read last_ep_number <<EOF
-$(search_eps "$selection_id")
-EOF
 
-if [ $resume_watching -eq 0 ]; then
-    [ $is_download -eq 1 ] &&
-        printf "Range of episodes can be specified: start_number end_number\n"
+episode_selection () {
+	[ $is_download -eq 1 ] &&
+		printf "Range of episodes can be specified: start_number end_number\n"
 
-    printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-    read ep_choice_start ep_choice_end
-    printf "$c_reset"
-else
-	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" $logfile)
-fi
+	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+	read ep_choice_start ep_choice_end
+	printf "$c_reset"
 
-{ # checking input
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
-	episodes=$ep_choice_start
-
-	if [ -n "$ep_choice_end" ]; then
-		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
-		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
-	fi
 }
-
-# add anime to history file
-grep -q -w "${selection_id}" $logfile ||
-	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> $logfile
 
 open_episode () {
 	anime_id=$1
 	episode=$2
 
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
-		die "Episode out of range"
+		err "Episode out of range"
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read episode
+		printf "$c_reset"
 	fi
 
 	printf "Getting data for episode %d\n" $episode
@@ -239,15 +199,17 @@ open_episode () {
 	esac
 
 	if [ $is_download -eq 0 ]; then
-        # write anime and episode number
+		# write anime and episode number
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
-		" $logfile > "${logfile}.new" && mv "${logfile}.new" $logfile
+		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
 		setsid -f $player_fn "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
+		# add 0 padding to the episode name
+		episode=$(printf "%03d" $episode)
 		{
 			curl -L -# "$video_url" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
@@ -256,6 +218,67 @@ open_episode () {
 	fi
 }
 
+############
+# Start Up #
+############
+
+dep_ch "$player_fn" "curl" "sed" "grep"
+
+# option parsing
+is_download=0
+scrape=query
+while getopts 'hdH' OPT; do
+	case $OPT in
+		h)
+			help_text
+			exit 0
+			;;
+		d)
+			is_download=1
+			;;
+		H)
+			scrape=history
+			;;
+	esac
+done
+shift $((OPTIND - 1))
+
+########
+# main #
+########
+
+case $scrape in
+	query)
+		get_search_query "$*"
+		search_results=$(search_anime "$query")
+		[ -z "$search_results" ] && die "No search results found"
+		anime_selection "$search_results"
+		episode_selection
+		;;
+	history)
+		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		[ -z "$search_results" ] && die "History is empty"
+		anime_selection "$search_results"
+		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
+esac
+
+
+{ # checking input
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+	episodes=$ep_choice_start
+
+	if [ -n "$ep_choice_end" ]; then
+		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
+		# create list of episodes to download/watch
+		episodes=$(seq $ep_choice_start $ep_choice_end)
+	fi
+}
+
+# add anime to history file
+grep -q -w "${selection_id}" "$logfile" ||
+	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+
 for ep in $episodes
 do
 	open_episode "$selection_id" "$ep"
@@ -263,10 +286,6 @@ done
 episode=${ep_choice_end:-$ep_choice_start}
 
 while :; do
-
-	# to donwload/view many episodes at a time
-	# set episodes to the last episode and continue with menu, only the first time
-
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
