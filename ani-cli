@@ -23,7 +23,7 @@ help_text () {
 	USAGE: $prog <query>
 	 -h     show this help text
 	 -d     download episode
-	 -H     watch where you left off
+	 -H     continue where you left off
 	EOF
 }
 
