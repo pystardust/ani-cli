@@ -222,7 +222,8 @@ open_episode () {
 # Start Up #
 ############
 
-trap "echo -e '$c_reset'" INT HUP
+# to clear the colors when exited using SIGINT
+trap "printf '$c_reset'" INT HUP
 
 dep_ch "$player_fn" "curl" "sed" "grep"
 
