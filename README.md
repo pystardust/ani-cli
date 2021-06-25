@@ -1,3 +1,5 @@
+## **NOT WORKING**: https://gogoanime.vc, has added a captcha to block bots
+
 # ani-cli
 
 A cli to browse and watch anime.
