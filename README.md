@@ -1,4 +1,6 @@
-## **NOT WORKING**: https://gogoanime.vc, has added a captcha to block bots
+## **OLD SCRIPT NOT WORKING**: https://gogoanime.vc, has added a captcha to block bots
+
+## work in progress, scraping 9anim.vip
 
 # ani-cli
 
@@ -12,21 +14,8 @@ This tool scrapes the site [gogoanime](https://gogoanime.vc).
 	# watch anime
 	ani-cli <query>
 
-	# download anime
-	ani-cli -d <query>
-
-	# resume watching anime
-	ani-cli -H
-
-Multiple episodes can be viewed/downloaded by giving the episode range like so
-
-	Choose episode [1-13]: 1 6
-
-This would open/download episodes 1 2 3 4 5 6
-
 ## Dependencies
 
-* grep
 * curl
-* sed
 * mpv
+* youtube-dl
