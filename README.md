@@ -19,11 +19,13 @@ This tool scrapes the site 9anim.vip
 pkg install git curl mpv 
 ```
 
+
 * Run this command to install youtube-dl on Termux:
 ```
 termux-setup-storage ; curl -s -L https://raw.githubusercontent.com/shukryshuk/androidydl/master/youtubedl.sh | bash
 ```
 `termux-setup-storage` asks for storage permissions so that Termux can access the shared storage in your device. 
+
 
 * Use the `git clone` command to clone this repository on your device
 ```
