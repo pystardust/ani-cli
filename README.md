@@ -14,7 +14,7 @@ This tool scrapes the site 9anim.vip
 
 ### Setup in termux
 
-* Open Termux and run:
+* Open Termux and run this command to install git, curl, and mpv:
 ```
 pkg install git curl mpv 
 ```
@@ -31,6 +31,8 @@ git clone https://github.com/nasseef20/ani-cli-android.git
 ```
 
 ## Usage
+
+Run this command on Termux everytime you want to use it:
 
 ```
 cd ani-cli
