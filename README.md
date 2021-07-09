@@ -27,7 +27,7 @@ termux-setup-storage ; curl -s -L https://raw.githubusercontent.com/shukryshuk/a
 
 * Use the `git clone` command to clone this repository on your device
 ```
-git clone https://github.com/nasseef20/ani-cli.git
+git clone https://github.com/nasseef20/ani-cli-android.git
 ```
 
 ## Usage
