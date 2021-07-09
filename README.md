@@ -14,9 +14,9 @@ This tool scrapes the site 9anim.vip
 
 ### Setup in termux
 
-* Open Termux and run this command to install git, curl, and mpv:
+* Open Termux and run this command to install git and curl:
 ```
-pkg install git curl mpv 
+pkg install git curl  
 ```
 
 
@@ -46,8 +46,8 @@ cd ani-cli
 ## Dependencies
 
 * curl
-* mpv
 * youtube-dl
+(The 'mpv' package is not needed for this)
 
 
 
