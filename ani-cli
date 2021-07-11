@@ -117,7 +117,7 @@ play_ep () {
 	done<<-!
 	$html
 	!
-	mpv "$url"
+	mpv "$url" || xdg-open "$url"
 }
 
 case $selected_anime_url in
