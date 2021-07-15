@@ -98,9 +98,11 @@ play_ep () {
 	)
 	flag=0
 	while read line; do
-		if [[ $line == *"yare"* ]]; then
-                	line=$(sed '/yare/d' <<< $line)
-        	fi
+		case $line in
+			*'yare'*)
+					continue
+					;;
+		esac
 		case $line in
 			'<td>'*)
 				if [ $flag -eq 0 ]; then
