@@ -100,19 +100,8 @@ play_ep () {
 	while read line; do
 		case $line in
 			*'yare'*)
-				subbedlink=$line
-				subbedlink=$(printf "%s\n" "$subbedlink" | sed -n '0,/href=/{/href=/p;}' | sed 's/<a href="//g' | sed 's/"><\/i> Download<\/a>//g')
-				curl -sSf "$subbedlink" > /dev/null 2>&1
-				case ${?} in
-					'0')
-						line=$(printf "%s\n" "$line" | sed '/yare/d')				
-						;;
-					*)
-						echo "Subbed episode link is down, going for the Dubbed episode. Please try again later for the subbed episode"
-						;;
-				esac		
+				line=$(printf "%s\n" "$line" | sed '/yare/d')
 				;;
-		esac
 		esac
 		case $line in
 			'<td>'*)
