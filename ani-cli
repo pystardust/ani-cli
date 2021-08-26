@@ -68,18 +68,20 @@ get_links () {
 	anime_id=$1
 	ep_no=$2
 
+	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	dpage_url=$(
 	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
 	sed -n -E '
-		/^[[:space:]]*<li class="dowloads">/{
-		s/.*href="([^"]*)".*/\1/p
+		/^[[:space:]]*<a href="#" rel="100"/{
+		s/.*data-video="([^"]*)".*/https:\1/p
 		q
-		}')
+		}'
+	)
 
 	curl -s "$dpage_url" |
 	sed -n -E '
-		/^[[:space:]]*href="([^"]*\.mp4)".*/{
-		s/^[[:space:]]*href="([^"]*\.mp4)".*/\1/p
+		/^[[:space:]]*sources:/{
+		s/.*(https[^'\'']*).*/\1/p
 		q
 		}
 		'
@@ -311,7 +313,7 @@ while :; do
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
 
-		q) 
+		q)
 			break;;
 
 		*)
