@@ -39,7 +39,7 @@ err () {
 
 search_anime () {
 	# get anime name along with its id
-	search=$1
+	search=$(printf '%s' "$1" | tr ' ' '-' )
 	titlepattern='<a href="/category/'
 
 	curl -s "https://gogoanime.vc//search.html" \
@@ -206,14 +206,15 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn "$video_url" >/dev/null 2>&1
+		setsid -f $player_fn --http-header-fields='Referer: https://streamani.io/' "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
+			curl -L -# -C - "$video_url" -G -e 'https://streamani.io/' \
+				-o "${anime_id}-${episode}.mp4" "$video_url" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
