@@ -206,7 +206,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields='Referer: https://streamani.io/' "$video_url" >/dev/null 2>&1
+		setsid -f $player_fn --http-header-fields='Referer: https://goload.one/' "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
