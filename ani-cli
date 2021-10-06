@@ -63,22 +63,23 @@ search_eps () {
 		'
 }
 
-get_links () {
+get_embedded_video_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	dpage_url=$(
 	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
 		q
 		}'
-	)
+}
 
-	curl -s "$dpage_url" |
+get_links () {
+	embedded_video_url="$1"
+	curl -s "$embedded_video_url" |
 	sed -n -E '
 		/^[[:space:]]*sources:/{
 		s/.*(https[^'\'']*).*/\1/p
@@ -176,6 +177,8 @@ open_episode () {
 	anime_id=$1
 	episode=$2
 
+	# Cool effect way of clearing screen
+	printf '\x1B[2J\x1B[1;1H'
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
@@ -185,7 +188,8 @@ open_episode () {
 
 	printf "Getting data for episode %d\n" $episode
 
-	video_url=$(get_links "$anime_id" "$episode")
+	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
+	video_url=$(get_links "$embedded_video_url")
 
 	case $video_url in
 		*streamtape*)
@@ -206,7 +210,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields='Referer: https://streamani.io/' "$video_url" >/dev/null 2>&1
+		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
