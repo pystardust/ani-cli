@@ -177,7 +177,7 @@ open_episode () {
 	anime_id=$1
 	episode=$2
 
-	# Cool effect way of clearing screen
+	# Cool way of clearing screen
 	printf '\x1B[2J\x1B[1;1H'
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
