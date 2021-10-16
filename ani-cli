@@ -24,6 +24,7 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
+	 -q	 set video quality
 	EOF
 }
 
