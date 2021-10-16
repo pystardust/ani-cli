@@ -9,6 +9,18 @@ A cli to browse and watch anime.
 This tool scrapes the site [gogoanime](https://gogoanime.vc).
 
 
+## Download
+```bash
+git clone https://github.com/pystardust/ani-cli.git
+```
+
+## Install
+```bash
+cd ani-cli
+chmod +x ani-cli
+sudo make
+```
+
 ## Usage
 
 	# watch anime
@@ -17,8 +29,13 @@ This tool scrapes the site [gogoanime](https://gogoanime.vc).
 	# download anime
 	ani-cli -d <query>
 
-	# resume watching anime
-	ani-cli -H
+	# resume watching animeall: install
+
+install:
+	cp ani-cli /usr/bin
+
+uninstall:
+	rm -rf /usr/bin/ani-cli
 
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
