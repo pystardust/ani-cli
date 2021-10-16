@@ -29,13 +29,8 @@ sudo make
 	# download anime
 	ani-cli -d <query>
 
-	# resume watching animeall: install
-
-install:
-	cp ani-cli /usr/bin
-
-uninstall:
-	rm -rf /usr/bin/ani-cli
+	# resume watching anime
+	ani-cli -H
 
 Multiple episodes can be viewed/downloaded by giving the episode range like so
 
