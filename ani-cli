@@ -23,6 +23,7 @@ help_text () {
 	USAGE: $prog <query>
 	 -h	 show this help text
 	 -d	 download episode
+	 -i	 turns off interactive mode
 	 -H	 continue where you left off
 	EOF
 }
@@ -103,6 +104,11 @@ get_search_query () {
 		read -r query
 	else
 		query=$*
+	fi
+	if [ ! "$(expr "$query" : "https://gogoanime\..*")" = 0 ]; then
+		query_is_url=1
+	else
+		query_is_url=0
 	fi
 }
 
@@ -236,8 +242,9 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
+interactive=1
 scrape=query
-while getopts 'hdH' OPT; do
+while getopts 'hdiH' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -245,6 +252,9 @@ while getopts 'hdH' OPT; do
 			;;
 		d)
 			is_download=1
+			;;
+		i)
+			interactive=0
 			;;
 		H)
 			scrape=history
@@ -260,10 +270,22 @@ shift $((OPTIND - 1))
 case $scrape in
 	query)
 		get_search_query "$*"
-		search_results=$(search_anime "$query")
-		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		episode_selection
+		if [ "$query_is_url" -eq 1 ]; then
+			if [ "$(expr "$query" : "https://gogoanime\..*category.*")" = 0 ]
+			then
+				selection_id=$(printf "$query" | sed 's/https:\/\/gogoanime\...\/\(.*\)-episode.*/\1/g')
+				ep_choice_start=$(printf "$query" | sed 's/https:\/\/gogoanime\..*episode-//g')
+				ep_choice_end=$(printf "$query" | sed 's/https:\/\/gogoanime\..*episode-//g')
+			else
+				selection_id=$(printf "$query" | sed 's/https:\/\/gogoanime\..*\/category\(.*\)/\1/g')
+				episode_selection
+			fi
+		else
+			search_results=$(search_anime "$query")
+			[ -z "$search_results" ] && die "No search results found"
+			anime_selection "$search_results"
+			episode_selection
+		fi
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
@@ -295,41 +317,44 @@ do
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
-while :; do
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-	printf "${c_blue}Enter choice:${c_green} "
-	read choice
-	printf "$c_reset"
-	case $choice in
-		n)
-			episode=$((episode + 1))
-			;;
-		p)
-			episode=$((episode - 1))
-			;;
-
-		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
-			printf "$c_reset"
-			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-			;;
-
-		r)
-			episode=$((episode))
-			;;
-
-		q)
-			break;;
-
-		*)
-			die "invalid choice"
-			;;
-	esac
-
-	open_episode "$selection_id" "$episode"
-done
+if [ $interactive -eq 1 ]
+then
+	while :; do
+		printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
+		printf "${c_blue}Enter choice:${c_green} "
+		read choice
+		printf "$c_reset"
+		case $choice in
+			n)
+				episode=$((episode + 1))
+				;;
+			p)
+				episode=$((episode - 1))
+				;;
+	
+			s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+				read episode
+				printf "$c_reset"
+				[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+				;;
+	
+			r)
+				episode=$((episode))
+				;;
+	
+			q)
+				break;;
+	
+			*)
+				die "invalid choice"
+				;;
+		esac
+	
+		open_episode "$selection_id" "$episode"
+	done
+fi
