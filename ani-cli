@@ -79,7 +79,6 @@ get_embedded_video_link() {
 }
 
 get_video_quality() {
-	# If quailty is -1 get the highest quailty available
 	embedded_video_url=$1
 	video_url=$2
 
@@ -95,7 +94,6 @@ get_video_quality() {
 			;;
 
 		*)
-			# is current quality available
 			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
 			video_quality="$quality"
             if  [ -z "$is_quality_avail" ]; then
