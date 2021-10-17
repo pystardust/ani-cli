@@ -341,7 +341,12 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-	read choice
+
+	stty_original="$(stty -g)"
+	stty cbreak
+	choice="$(dd bs=1 count=1 2> /dev/null)"
+	stty "${stty_original}"
+
 	printf "$c_reset"
 	case $choice in
 		n)
