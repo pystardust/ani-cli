@@ -80,23 +80,33 @@ get_embedded_video_link() {
 
 get_video_quality() {
 	# If quailty is -1 get the highest quailty available
-	video_file="$1"
-	if [ $quality -eq -1 ]; then
-		printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p' | tail -n 1
-	else
-		# is current quality available
-		is_quality_avail=$(printf '%s' "$video_file" | sed -n -E "s/.*NAME=\"($quality\p)\"/\1/p")
-		video_quality="$quality"
+	embedded_video_url=$1
+	video_url=$2
 
-		if [ -z "$is_quality_avail" ]; then
-			printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+	video_file=$(curl -s --referer "$embedded_video_url" "$video_url")
+	available_qualities=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p')
+	case $quality in
+		best)
+			printf '%s' "$available_qualities" | tail -n 1
+			;;
 
-			quality=-1
-			video_quality=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p' | tail -n 1)
-		fi
+		worst)
+			printf '%s' "$available_qualities" | head -n 1
+			;;
 
-		printf '%s' "$video_quality"
-	fi
+		*)
+			# is current quality available
+			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
+			video_quality="$quality"
+            if  [ -z "$is_quality_avail" ]; then
+				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+				quality=best
+				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
+			fi
+			printf '%s' "$video_quality"
+			;;
+	esac
+
 }
 
 get_links () {
@@ -109,8 +119,7 @@ get_links () {
 		}
 		')
 
-	video_file=$(curl -s --referer "$embedded_video_url" "$video_url")
-	video_quality=$(get_video_quality "$video_file")
+	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
 
 	# Replace the video with highest quality video
 	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
@@ -264,7 +273,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
-quality=-1
+quality=best
 scrape=query
 while getopts 'hdHq:' OPT; do
 	case $OPT in
@@ -304,8 +313,6 @@ case $scrape in
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 esac
-
-[ "$quality" -eq "$quality" ] 2>/dev/null || die "Invalid number entered"
 
 { # checking input
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
