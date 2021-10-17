@@ -6,7 +6,7 @@
 
 A cli to browse and watch anime.
 
-This tool scrapes the site [gogoanime](https://gogoanime.vc).
+This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 
 ## Download
