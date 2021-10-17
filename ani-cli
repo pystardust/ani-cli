@@ -96,7 +96,7 @@ get_video_quality() {
 		*)
 			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
 			video_quality="$quality"
-            if  [ -z "$is_quality_avail" ]; then
+			if [ -z "$is_quality_avail" ]; then
 				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
 				quality=best
 				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
