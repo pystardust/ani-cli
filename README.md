@@ -18,8 +18,10 @@ Windows version : git clone https://github.com/GMAGD/ani-cli
 
 ## Install
 1- Make Sure you have git bash to run this on windows [GitBash](https://git-scm.com/downloads).
-2- Install Vlc [vlc](https://www.videolan.org/)
-3- Add vlc to Windows Env PATH :  example : C:\Program Files\VideoLAN\VLC
+
+2- Install Vlc [vlc](https://www.videolan.org/).
+
+3- Add vlc to Windows Env PATH :  example : C:\Program Files\VideoLAN\VLC.
 
 4- Open git bash and do the following commands : 
 
