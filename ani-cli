@@ -105,7 +105,7 @@ get_search_query () {
 	else
 		query=$*
 	fi
-	if [ ! "$(expr "$query" : "https://gogoanime\..*")" = 0 ]; then
+	if printf '%s' "$query" | grep -q "https://gogoanime\.."; then
 		query_is_url=1
 	else
 		query_is_url=0
