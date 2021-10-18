@@ -26,7 +26,7 @@ git clone https://github.com/pystardust/ani-cli.git
 ```bash
 cd ani-cli
 git checkout windows-vlc
-chmod +x ani-cli
+chmod +x ani-cli-win
 sudo make
 ```
 
