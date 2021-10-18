@@ -164,13 +164,16 @@ anime_selection () {
 ##################
 
 episode_selection () {
-	[ $is_download -eq 1 ] &&
-		printf "Range of episodes can be specified: start_number end_number\n"
+	ep_choice_start="1"
+	if [$last_ep_number -eq 1] 
+	then
+		[ $is_download -eq 1 ] &&
+			printf "Range of episodes can be specified: start_number end_number\n"
 
-	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-	read ep_choice_start ep_choice_end
-	printf "$c_reset"
-
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read ep_choice_start ep_choice_end
+		printf "$c_reset"
+	fi
 }
 
 open_episode () {
