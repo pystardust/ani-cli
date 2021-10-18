@@ -1,4 +1,4 @@
-# ani-cli
+# ani-cli-win
 
 > Script working again :), thanks to fork by
 > [Dink4n](https://github.com/Dink4n/ani-cli) for the alternative approach to
@@ -11,10 +11,18 @@ This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 ## Download
 ```bash
-git clone https://github.com/pystardust/ani-cli.git
+linux version : git clone https://github.com/pystardust/ani-cli.git
+
+Windows version : git clone https://github.com/GMAGD/ani-cli
 ```
 
 ## Install
+1- Make Sure you have git bash to run this on windows [GitBash](https://git-scm.com/downloads).
+2- Install Vlc [vlc](https://www.videolan.org/)
+3- Add vlc to Windows Env PATH :  example : C:\Program Files\VideoLAN\VLC
+
+4- Open git bash and do the following commands : 
+
 ```bash
 cd ani-cli
 chmod +x ani-cli
@@ -55,4 +63,4 @@ This would open/download episodes 1 2 3 4 5 6
 * grep
 * curl
 * sed
-* mpv
+* vlc
