@@ -11,9 +11,7 @@ This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 ## Download
 ```bash
-linux version : git clone https://github.com/pystardust/ani-cli.git
-
-Windows version : git clone https://github.com/GMAGD/ani-cli
+git clone https://github.com/pystardust/ani-cli.git
 ```
 
 ## Install
@@ -27,6 +25,7 @@ Windows version : git clone https://github.com/GMAGD/ani-cli
 
 ```bash
 cd ani-cli
+git checkout windows-vlc
 chmod +x ani-cli
 sudo make
 ```
