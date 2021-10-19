@@ -24,6 +24,7 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
+	 -q	 set video quality (best/worst/360/480/720/..)
 	EOF
 }
 
@@ -42,7 +43,7 @@ search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	titlepattern='<a href="/category/'
 
-	curl -s "https://gogoanime.vc//search.html" \
+	curl -s "https://gogoanime.pe//search.html" \
 		-G \
 		-d "keyword=$search" |
 	sed -n -E '
@@ -54,7 +55,7 @@ search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
 
-	curl -s "https://gogoanime.vc/category/$anime_id" |
+	curl -s "https://gogoanime.pe/category/$anime_id" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
 		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
@@ -69,7 +70,7 @@ get_embedded_video_link() {
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	curl -s "https://gogoanime.vc/$anime_id-episode-$ep_no" |
+	curl -s "https://gogoanime.pe/$anime_id-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
@@ -77,15 +78,49 @@ get_embedded_video_link() {
 		}'
 }
 
+get_video_quality() {
+	embedded_video_url=$1
+	video_url=$2
+
+	video_file=$(curl -s --referer "$embedded_video_url" "$video_url")
+	available_qualities=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p')
+	case $quality in
+		best)
+			printf '%s' "$available_qualities" | tail -n 1
+			;;
+
+		worst)
+			printf '%s' "$available_qualities" | head -n 1
+			;;
+
+		*)
+			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
+			video_quality="$quality"
+			if [ -z "$is_quality_avail" ]; then
+				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+				quality=best
+				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
+			fi
+			printf '%s' "$video_quality"
+			;;
+	esac
+
+}
+
 get_links () {
 	embedded_video_url="$1"
-	curl -s "$embedded_video_url" |
+	video_url=$(curl -s "$embedded_video_url" |
 	sed -n -E '
 		/^[[:space:]]*sources:/{
 		s/.*(https[^'\'']*).*/\1/p
 		q
 		}
-		'
+		')
+
+	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
+
+	# Replace the video with highest quality video
+	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
 }
 
 dep_ch () {
@@ -177,8 +212,8 @@ open_episode () {
 	anime_id=$1
 	episode=$2
 
-	# Cool effect way of clearing screen
-	printf '\x1B[2J\x1B[1;1H'
+	# Cool way of clearing screen
+	tput reset
 	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
 		err "Episode out of range"
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
@@ -236,8 +271,9 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
+quality=best
 scrape=query
-while getopts 'hdH' OPT; do
+while getopts 'hdHq:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -248,6 +284,9 @@ while getopts 'hdH' OPT; do
 			;;
 		H)
 			scrape=history
+			;;
+		q)
+			quality=$OPTARG
 			;;
 	esac
 done
@@ -272,7 +311,6 @@ case $scrape in
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 esac
-
 
 { # checking input
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
