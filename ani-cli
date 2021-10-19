@@ -264,8 +264,8 @@ loop_choice() {
 				;;
 	
 			q)
-				break;;
-	
+				exit 0 
+				;;
 			*)
 				die "invalid choice"
 				;;
