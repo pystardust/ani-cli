@@ -106,12 +106,6 @@ dep_ch () {
 	done
 }
 
-has_dmenu () {
-	if ! command -v "dmenu" >/dev/null ; then
-		die "Program \"dmenu\" not found. Please install it."
-	fi
-}
-
 # get query
 get_search_query () {
 	if [ -z "$*" ]; then
@@ -370,7 +364,7 @@ while getopts 'hdHD' OPT; do
 			scrape=history
 			;;
 		D)	
-			has_dmenu
+			dep_ch dmenu
 			is_dmenu=1
 			;;
 	esac
