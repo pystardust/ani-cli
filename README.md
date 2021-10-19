@@ -26,23 +26,23 @@ git clone https://github.com/pystardust/ani-cli.git
 ```bash
 cd ani-cli
 git checkout windows-vlc
-chmod +x ani-cli
-sudo make
+chmod +x ani-cli-win
+cp ani-cli-win %SystemSystem%
 ```
 
 ## Usage
 
 	# watch anime
-	ani-cli <query>
+	ani-cli-win <query>
 
 	# download anime
-	ani-cli -d <query>
+	ani-cli-win -d <query>
 
 	# resume watching anime
-	ani-cli -H
+	ani-cli-win -H
 
 	# set video quality
-	ani-cli -q 360
+	ani-cli-win -q 360
 
 By default `ani-cli` would try to get the best video quality available  
 You can give specific qualities like `360/480/720/..`
