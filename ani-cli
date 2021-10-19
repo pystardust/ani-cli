@@ -165,7 +165,7 @@ anime_selection () {
 
 episode_selection () {
 	ep_choice_start="1"
-	if [$last_ep_number -eq 1] 
+	if [ $last_ep_number -gt 1 ] 
 	then
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
