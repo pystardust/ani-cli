@@ -1,7 +1,12 @@
+PREFIX := /usr/local
+
 all: install
 
 install:
-	cp ani-cli /usr/bin
+	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
+	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
 
 uninstall:
-	rm -rf /usr/bin/ani-cli
+	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+
+.PHONY: all install uninstall
