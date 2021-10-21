@@ -11,17 +11,17 @@ This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 ## Download
 ```bash
-git clone https://github.com/pystardust/ani-cli.git
+git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 ```
 
 ## Install
 1- Make Sure you have git bash to run this on windows [GitBash](https://git-scm.com/downloads).
 
-2- Install Vlc [vlc](https://www.videolan.org/).
+2- Install [vlc](https://www.videolan.org/).
 
-3- Add vlc to Windows Env PATH :  example : C:\Program Files\VideoLAN\VLC.
+3- Add vlc to Windows Env PATH like so: ``C:\Program Files\VideoLAN\VLC.``
 
-4- Open git bash and do the following commands : 
+4- Open git bash and do the following commands: 
 
 ```bash
 cd ani-cli
