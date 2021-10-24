@@ -24,9 +24,9 @@ git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 4- Open git bash and do the following commands: 
 
 ```bash
-cd ani-cli-win
+cd ani-cli
 git checkout windows-vlc
-chmod +x ani-cli
+chmod +x ani-cli-win
 sudo make
 ```
 
