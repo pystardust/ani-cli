@@ -23,16 +23,16 @@ sudo make
 
 ## Usage
 
-  # watch anime
+  ### watch anime
   ``ani-cli <query>``
 
-  # download anime
+  ### download anime
   ``ani-cli -d <query>``
 
-  # resume watching anime
+  ### resume watching anime
   ``ani-cli -H``
 
-  # set video quality
+  ### set video quality
   ``ani-cli -q 360``
 
 By default `ani-cli` would try to get the best video quality available  
