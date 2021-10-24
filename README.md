@@ -56,6 +56,6 @@ This would open/download episodes 1 2 3 4 5 6
 * sed
 * mpv
 
-### Misc
+## Misc
 
 - Windows instructions can be found in this branch https://github.com/pystardust/ani-cli/tree/windows-vlc
