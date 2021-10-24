@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mkdir $USERPROFILE/.cache 2> /dev/null
+cp ani-cli-win $WINDIR/system32/ani-cli

@@ -21,13 +21,16 @@ git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 
 3- Add vlc to Windows Env PATH like so: ``C:\Program Files\VideoLAN\VLC.``
 
-4- Open git bash and do the following commands: 
+4- Open git bash by right-clicking and choosing "Run as administrator"
+
+5- do the following commands : 
+
 
 ```bash
 cd ani-cli
 git checkout windows-vlc
 chmod +x ani-cli-win
-sudo make
+./install
 ```
 
 ## Usage

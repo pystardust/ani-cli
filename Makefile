@@ -1,7 +1,8 @@
 all: install
 
 install:
-	cp ani-cli-win %windir%/system32/
+	mkdir $USERPROFILE/.cache 2> /dev/null
+	cp ani-cli-win $WINDIR/system32/ani-cli
 
 uninstall:
-	rm -rf %windir%/system32/ani-cli-win
+	rm -rf $WINDIR/system32/ani-cli
