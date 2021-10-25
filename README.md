@@ -2,7 +2,7 @@
 
 > Script working again :), thanks to the fork by
 > [Dink4n](https://github.com/Dink4n/ani-cli) for the alternative approach to
-> by pass the captcha on [gogoanime](https://gogoanime.vc)
+> bypass the captcha on [gogoanime](https://gogoanime.vc)
 
 A cli to browse and watch anime.
 
