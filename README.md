@@ -32,6 +32,9 @@ sudo make
   ### resume watching anime
   ``ani-cli -H``
 
+  ### delete watching list animes
+  ``ani-cli -D``
+
   ### set video quality
   ``ani-cli -q 360``
 
