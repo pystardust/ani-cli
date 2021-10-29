@@ -250,13 +250,14 @@ open_episode () {
 
 		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
 	else
+		mkdir -p $download_dir
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
 			curl -L -# -C - "$video_url" -G -e 'https://streamani.io/' \
-				-o "${anime_id}-${episode}.mp4" "$video_url" >/dev/null 2>&1 &&
+				-o "$download_dir/${anime_id}-${episode}.mp4" "$video_url" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
@@ -276,7 +277,8 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHq:' OPT; do
+download_dir="."
+while getopts 'hdHq:p:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -284,6 +286,10 @@ while getopts 'hdHq:' OPT; do
 			;;
 		d)
 			is_download=1
+			;;
+		p)
+			is_download=1
+			download_dir=$OPTARG
 			;;
 		H)
 			scrape=history
