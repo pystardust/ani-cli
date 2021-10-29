@@ -24,7 +24,7 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
-	 -D	 delete watching list animes
+	 -D	 delete anime from history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	EOF
 }
@@ -144,6 +144,52 @@ get_search_query () {
 
 # create history file
 [ -f "$logfile" ] || : > "$logfile"
+
+# get history file anime list 
+get_history_list() {
+	# Cool way of clearing screen
+	tput reset
+
+	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	[ -z "$search_results" ] && die "History is empty"
+
+	search_results=$*
+	menu_format_string='[%d] %s\n'
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+
+	count=1
+	while read -r line;
+	do
+		# alternating colors for menu
+		[ $((count % 2)) -eq 0 ] &&
+			menu_format_string=$menu_format_string_c1 ||
+			menu_format_string=$menu_format_string_c2
+
+		printf "$menu_format_string" "$count" "$(printf "$line" | sed 's/\t/ /g')"
+		count=$((count+1))
+	done < $logfile
+
+	delete_anime_history
+}
+
+delete_anime_history() {
+	original_lines_from_logfile=$(wc -l < "$logfile")
+
+	printf "\nAnime to delete from history: "
+	read -r anime_to_delete
+
+	printf "\n"
+	[ "$anime_to_delete" -eq "$anime_to_delete" ] 2>/dev/null || die "Invalid number entered"
+
+	$(sed -i "${anime_to_delete}d" "$logfile")
+
+	if [ $original_lines_from_logfile -eq $(wc -l < "$logfile") ]; then
+		die "Invalid number entered"
+	fi
+
+	printf "The anime was deleted successfully from history."
+}
 
 #####################
 ## Anime selection ##
@@ -319,8 +365,8 @@ case $scrape in
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 	delete)
-		$(> $logfile)
-		die "Watching list content was removed."
+		get_history_list
+		exit 0
 		;;
 esac
 
