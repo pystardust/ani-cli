@@ -211,6 +211,29 @@ episode_selection () {
 	fi
 }
 
+check_input() {
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+	episodes=$ep_choice_start
+	if [ -n "$ep_choice_end" ]; then
+		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
+		# create list of episodes to download/watch
+		episodes=$(seq $ep_choice_start $ep_choice_end)
+	fi
+}
+
+append_history () {
+	grep -q -w "${selection_id}" "$logfile" ||
+		printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+}
+
+open_selection() {
+	for ep in $episodes
+	do
+		open_episode "$selection_id" "$ep"
+	done
+	episode=${ep_choice_end:-$ep_choice_start}
+}
+
 open_episode () {
 	anime_id=$1
 	episode=$2
@@ -315,26 +338,9 @@ case $scrape in
 		;;
 esac
 
-{ # checking input
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
-	episodes=$ep_choice_start
-
-	if [ -n "$ep_choice_end" ]; then
-		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
-		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
-	fi
-}
-
-# add anime to history file
-grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
-
-for ep in $episodes
-do
-	open_episode "$selection_id" "$ep"
-done
-episode=${ep_choice_end:-$ep_choice_start}
+check_input
+append_history
+open_selection
 
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
@@ -380,24 +386,9 @@ while :; do
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
 			episode_selection
-			{ # checking input
-				[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
-				episodes=$ep_choice_start
-
-				if [ -n "$ep_choice_end" ]; then
-					[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
-					# create list of episodes to download/watch
-					episodes=$(seq $ep_choice_start $ep_choice_end)
-				fi
-			}
-			grep -q -w "${selection_id}" "$logfile" ||
-				printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
-			for ep in $episodes
-			do
-				open_episode "$selection_id" "$ep"
-			done
-			episode=${ep_choice_end:-$ep_choice_start}
-
+			check_input
+			append_history
+			open_selection
 			;;
 
 		q)
