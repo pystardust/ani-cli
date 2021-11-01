@@ -356,19 +356,23 @@ while :; do
 	case $choice in
 		n)
 			episode=$((episode + 1))
+			open_episode "$selection_id" "$episode"
 			;;
 		p)
 			episode=$((episode - 1))
+			open_episode "$selection_id" "$episode"
 			;;
 
 		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 			read episode
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+			open_episode "$selection_id" "$episode"
 			;;
 
 		r)
 			episode=$((episode))
+			open_episode "$selection_id" "$episode"
 			;;
 		a)
 			get_search_query ""
@@ -376,8 +380,24 @@ while :; do
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
 			episode_selection
+			{ # checking input
+				[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+				episodes=$ep_choice_start
+
+				if [ -n "$ep_choice_end" ]; then
+					[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
+					# create list of episodes to download/watch
+					episodes=$(seq $ep_choice_start $ep_choice_end)
+				fi
+			}
 			grep -q -w "${selection_id}" "$logfile" ||
 				printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+			for ep in $episodes
+			do
+				open_episode "$selection_id" "$ep"
+			done
+			episode=${ep_choice_end:-$ep_choice_start}
+
 			;;
 
 		q)
@@ -388,5 +408,5 @@ while :; do
 			;;
 	esac
 
-	open_episode "$selection_id" "$episode"
+
 done
