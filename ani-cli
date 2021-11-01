@@ -371,11 +371,14 @@ while :; do
 			episode=$((episode))
 			;;
 		a)
-			get_search_query "$*"
+			get_search_query ""
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
-			episode_selection;;
+			episode_selection
+			grep -q -w "${selection_id}" "$logfile" ||
+				printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+			;;
 
 		q)
 			break;;
