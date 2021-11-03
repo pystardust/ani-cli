@@ -214,6 +214,7 @@ episode_selection () {
 open_episode () {
 	anime_id=$1
 	episode=$2
+	episode_start_time=$3
 
 	# Cool way of clearing screen
 	tput reset
@@ -248,7 +249,12 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+		#In order for playback history to be recorded MPV needs to be used
+		if [ $player_fn == "mpv" ]; then
+			setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" "--input-ipc-server=/tmp/mpvsocket" "--start=+$episode_start_time" >/dev/null 2>&1
+		else
+			setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+		fi
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
@@ -270,7 +276,10 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep"
+dep_ch "$player_fn" "curl" "sed" "grep" "socat" "jq"
+
+#I don't really know where else to declare this variable, move it to somewhere better
+ep_choice_start_time=0
 
 # option parsing
 is_download=0
@@ -308,10 +317,13 @@ case $scrape in
 		episode_selection
 		;;
 	history)
-		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		search_results=$(sed 's/\t[0-9]*//g' "$logfile")
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "$search_results"
-		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		#ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		episodeInfoArray=($(grep -i "$selection_id" "$logfile"))
+		ep_choice_start=${episodeInfoArray[1]}
+		ep_choice_start_time=${episodeInfoArray[2]}
 		;;
 esac
 
@@ -328,11 +340,12 @@ esac
 
 # add anime to history file
 grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+	printf "%s\t%d\t%d\n" "$selection_id" $((episode+1)) "0" >> "$logfile"
 
 for ep in $episodes
 do
-	open_episode "$selection_id" "$ep"
+	open_episode "$selection_id" "$ep" "$ep_choice_start_time"
+	ep_choice_start_time=0
 done
 episode=${ep_choice_end:-$ep_choice_start}
 
@@ -350,6 +363,19 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
+
+	#Start a background process that checks for playback progress and writes it
+	if [ $player_fn == "mpv" ]; then
+		while true
+		do
+			sleep 10s
+			POSITION=$(echo '{ "command": ["get_property_string", "time-pos"] }' | socat - /tmp/mpvsocket 2>/dev/null | jq .data | tr '"' ' ' | cut -d'.' -f 1)
+			if [ ${#POSITION} -lt 1 ]; then break; fi
+			historyFileLine=$(printf "%s\t%d\t%d\n" "$selection_id" "$episode" "$POSITION") 2>/dev/null
+			sed -i "/$selection_id/ c \\$historyFileLine" "$logfile"
+		done &
+	fi
+
 	read choice
 	printf "$c_reset"
 	case $choice in
@@ -371,6 +397,9 @@ while :; do
 			;;
 
 		q)
+			#first kill the background process checking for playback progress then break
+			jobtokill=$(jobs -l | grep "Running" | grep -o "[[:digit:]]\{3,10\}")
+			if [ ${#jobtokill} -gt 1 ]; then kill $jobtokill >/dev/null; fi
 			break;;
 
 		*)
@@ -378,5 +407,5 @@ while :; do
 			;;
 	esac
 
-	open_episode "$selection_id" "$episode"
+	open_episode "$selection_id" "$episode" "$0"
 done
