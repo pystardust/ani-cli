@@ -331,10 +331,10 @@ case $scrape in
 		search_results=$(sed 's/\t[0-9]*//g' "$logfile")
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "$search_results"
-		#ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		episodeInfoArray=($(grep -i "$selection_id" "$logfile"))
 		ep_choice_start=${episodeInfoArray[1]}
 		ep_choice_start_time=${episodeInfoArray[2]}
+		if [ ${#ep_choice_start_time} -lt 1 ]; then ep_choice_start_time=0; fi #Redundancy for the old history file format
 		;;
 esac
 
@@ -351,7 +351,7 @@ esac
 
 # add anime to history file
 grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\t%d\n" "$selection_id" $((episode+1)) "0" >> "$logfile"
+	printf "%s\t%d\t%d\n" "$selection_id" $((episode+1)) 0 >> "$logfile"
 
 for ep in $episodes
 do
@@ -381,8 +381,15 @@ while :; do
 		do
 			sleep 10s
 			POSITION=$(echo '{ "command": ["get_property_string", "time-pos"] }' | socat - /tmp/mpvsocket 2>/dev/null | jq .data | tr '"' ' ' | cut -d'.' -f 1)
+			REMAINING=$(echo '{ "command": ["get_property_string", "time-remaining"] }' | socat - /tmp/mpvsocket 2>/dev/null | jq .data | tr '"' ' ' | cut -d'.' -f 1)
+			printf "$POSITION - $REMAINING\n"
 			if [ ${#POSITION} -lt 1 ]; then break; fi
-			historyFileLine=$(printf "%s\t%d\t%d\n" "$selection_id" "$episode" "$POSITION") 2>/dev/null
+			if [ $REMAINING -lt 15 ];
+				#If there are less than 15 sec left in episode switch location to start of next episode to prevent issues when resuming playback from -H
+				then historyFileLine=$(printf "%s\t%d\t%d\n" "$selection_id" "$((episode+1))" 0) 2>/dev/null
+				else historyFileLine=$(printf "%s\t%d\t%d\n" "$selection_id" "$episode" "$POSITION") 2>/dev/null
+			fi
+			
 			sed -i "/$selection_id/ c \\$historyFileLine" "$logfile"
 		done &
 	fi
