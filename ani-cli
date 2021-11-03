@@ -126,7 +126,15 @@ get_links () {
 dep_ch () {
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
-			die "Program \"$dep\" not found. Please install it."
+			die "Program \"$dep\" not found. Please install it.\n"
+		fi
+	done
+}
+
+optional_dep_ch () {
+	for optional_dep; do
+		if ! command -v "$optional_dep" >/dev/null ; then
+			printf "Optional program \"$optional_dep\" not found. It is recommended to install it.\n"
 		fi
 	done
 }
@@ -253,6 +261,7 @@ open_episode () {
 		if [ $player_fn == "mpv" ]; then
 			setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" "--input-ipc-server=/tmp/mpvsocket" "--start=+$episode_start_time" >/dev/null 2>&1
 		else
+			record_playback_history=false
 			setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
 		fi
 	else
@@ -276,10 +285,12 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep" "socat" "jq"
+dep_ch "$player_fn" "curl" "sed" "grep"
+optional_dep_ch "socat" "jq"
 
-#I don't really know where else to declare this variable, move it to somewhere better
+#I don't really know where else to declare these variable, move it to somewhere better
 ep_choice_start_time=0
+record_playback_history=true
 
 # option parsing
 is_download=0
@@ -365,7 +376,7 @@ while :; do
 	printf "${c_blue}Enter choice:${c_green} "
 
 	#Start a background process that checks for playback progress and writes it
-	if [ $player_fn == "mpv" ]; then
+	if [ $record_playback_history = true ]; then
 		while true
 		do
 			sleep 10s
