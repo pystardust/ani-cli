@@ -65,6 +65,10 @@ This would open/download episodes 1 2 3 4 5 6
 * socat
 * jq
 
+### Optional Dependencies
+* socat
+* jq
+
 ## Misc
 
 - Windows instructions can be found in this branch https://github.com/pystardust/ani-cli/tree/windows-vlc
