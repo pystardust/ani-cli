@@ -24,6 +24,7 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
+	 -D	 delete anime from history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	EOF
 }
@@ -277,7 +278,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHq:' OPT; do
+while getopts 'hdHDq:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -288,6 +289,11 @@ while getopts 'hdHq:' OPT; do
 			;;
 		H)
 			scrape=history
+			;;
+
+		D)
+			: > "$logfile"
+			exit 0
 			;;
 		q)
 			quality=$OPTARG
