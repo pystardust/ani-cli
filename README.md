@@ -32,6 +32,7 @@ sudo make
   ### resume watching anime
   ``ani-cli -H``
 
+If you have the optional dependencies installed and you are using MPV, playback will resume from where you stopped in the episode. However if you do not have them installed or if you are not using MPV this option will just play the next episode.
   ### delete anime from history
   ``ani-cli -D``
 
@@ -59,6 +60,8 @@ This would open/download episodes 1 2 3 4 5 6
 * sed
 * mpv
 * ffmpeg
+
+### Optional Dependencies
 * socat
 * jq
 
