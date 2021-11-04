@@ -27,6 +27,7 @@ help_text () {
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	 --dub  play the dub version if present
+	 -k 	 on keypress navigation (previous/next/replay/quit episode)
 	EOF
 }
 
@@ -280,8 +281,14 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHDq:-:' OPT; do
+navigation_type=0
+# navigation_type 0 - confirm selection by pressing enter
+# navigation_type 1 - no enter confirmation for selections
+while getopts 'khdHDq:-:' OPT; do
 	case $OPT in
+		k)
+			navigation_type=1
+			;;
 		h)
 			help_text
 			exit 0
@@ -367,10 +374,21 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
 
-	stty_original="$(stty -g)"
-	stty cbreak
-	choice="$(dd bs=1 count=1 2> /dev/null)"
-	stty "${stty_original}"
+	case "${navigation_type}" in
+		0)
+			read choice
+			;;
+		1)
+			stty_original="$(stty -g)"
+			stty cbreak
+			choice="$(dd bs=1 count=1 2> /dev/null)"
+			stty "${stty_original}"
+			;;
+		*)
+			die "navigation_type is invalid"
+			;;
+
+	esac
 
 	printf "$c_reset"
 	case $choice in
