@@ -24,8 +24,9 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
-	 -D	 delete anime from history
+	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
+	 --dub  play the dub version if present
 	EOF
 }
 
@@ -71,7 +72,8 @@ get_embedded_video_link() {
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	curl -s "https://gogoanime.pe/$anime_id-episode-$ep_no" |
+	# dub prefix takes the value "-dub" when dub is needed else is empty
+	curl -s "https://gogoanime.pe/$anime_id${dub_prefix}-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
@@ -278,7 +280,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHDq:' OPT; do
+while getopts 'hdHDq:-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -297,6 +299,13 @@ while getopts 'hdHDq:' OPT; do
 			;;
 		q)
 			quality=$OPTARG
+			;;
+		-)
+			case $OPTARG in
+				dub)
+					dub_prefix="-dub"
+					;;
+			esac
 			;;
 	esac
 done
