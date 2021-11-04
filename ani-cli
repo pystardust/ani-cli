@@ -24,7 +24,9 @@ help_text () {
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
+	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
+	 --dub  play the dub version if present
 	EOF
 }
 
@@ -70,7 +72,8 @@ get_embedded_video_link() {
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	curl -s "https://gogoanime.pe/$anime_id-episode-$ep_no" |
+	# dub prefix takes the value "-dub" when dub is needed else is empty
+	curl -s "https://gogoanime.pe/$anime_id${dub_prefix}-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
@@ -199,13 +202,16 @@ anime_selection () {
 ##################
 
 episode_selection () {
-	[ $is_download -eq 1 ] &&
-		printf "Range of episodes can be specified: start_number end_number\n"
+	ep_choice_start="1"
+	if [ $last_ep_number -gt 1 ] 
+	then
+		[ $is_download -eq 1 ] &&
+			printf "Range of episodes can be specified: start_number end_number\n"
 
-	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-	read ep_choice_start ep_choice_end
-	printf "$c_reset"
-
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read ep_choice_start ep_choice_end
+		printf "$c_reset"
+	fi
 }
 
 open_episode () {
@@ -214,12 +220,13 @@ open_episode () {
 
 	# Cool way of clearing screen
 	tput reset
-	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
+	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
+	do
 		err "Episode out of range"
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read episode
 		printf "$c_reset"
-	fi
+	done
 
 	printf "Getting data for episode %d\n" $episode
 
@@ -252,8 +259,8 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -C - "$video_url" -G -e 'https://streamani.io/' \
-				-o "${anime_id}-${episode}.mp4" "$video_url" >/dev/null 2>&1 &&
+			ffmpeg -headers "Referer: $embedded_video_url" -i "$video_url" \
+				-c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
@@ -273,7 +280,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHq:' OPT; do
+while getopts 'hdHDq:-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -285,8 +292,20 @@ while getopts 'hdHq:' OPT; do
 		H)
 			scrape=history
 			;;
+
+		D)
+			: > "$logfile"
+			exit 0
+			;;
 		q)
 			quality=$OPTARG
+			;;
+		-)
+			case $OPTARG in
+				dub)
+					dub_prefix="-dub"
+					;;
+			esac
 			;;
 	esac
 done
@@ -335,9 +354,15 @@ episode=${ep_choice_end:-$ep_choice_start}
 
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	if [ "$episode" -ne "$last_ep_number" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+	fi
+	if [ "$episode" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+	fi
+	if [ "$last_ep_number" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
