@@ -423,5 +423,5 @@ while :; do
 			;;
 	esac
 
-	open_episode "$selection_id" "$episode" "$0"
+	open_episode "$selection_id" "$episode" "0"
 done
