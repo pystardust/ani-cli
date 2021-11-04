@@ -199,13 +199,16 @@ anime_selection () {
 ##################
 
 episode_selection () {
-	[ $is_download -eq 1 ] &&
-		printf "Range of episodes can be specified: start_number end_number\n"
+	ep_choice_start="1"
+	if [ $last_ep_number -gt 1 ] 
+	then
+		[ $is_download -eq 1 ] &&
+			printf "Range of episodes can be specified: start_number end_number\n"
 
-	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-	read ep_choice_start ep_choice_end
-	printf "$c_reset"
-
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		read ep_choice_start ep_choice_end
+		printf "$c_reset"
+	fi
 }
 
 open_episode () {
@@ -214,12 +217,13 @@ open_episode () {
 
 	# Cool way of clearing screen
 	tput reset
-	if [ $episode -lt 1 ] || [ $episode -gt $last_ep_number ]; then
+	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
+	do
 		err "Episode out of range"
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read episode
 		printf "$c_reset"
-	fi
+	done
 
 	printf "Getting data for episode %d\n" $episode
 
@@ -335,9 +339,15 @@ episode=${ep_choice_end:-$ep_choice_start}
 
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	if [ "$episode" -ne "$last_ep_number" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+	fi
+	if [ "$episode" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+	fi
+	if [ "$last_ep_number" -ne "1" ]; then
+		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
