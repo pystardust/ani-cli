@@ -34,6 +34,9 @@ sudo make
 
 	# set video quality
 	ani-cli -q 360
+    
+    #set dub function
+    ani-cli --dub
 
 By default `ani-cli` would try to get the best video quality available  
 You can give specific qualities like `360/480/720/..`
