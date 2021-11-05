@@ -32,6 +32,9 @@ sudo make
   ### resume watching anime
   ``ani-cli -H``
 
+  ### delete anime from history
+  ``ani-cli -D``
+
   ### set video quality
   ``ani-cli -q 360``
 
@@ -55,6 +58,7 @@ This would open/download episodes 1 2 3 4 5 6
 * curl
 * sed
 * mpv
+* ffmpeg
 
 ## Misc
 
