@@ -361,26 +361,20 @@ while :; do
 	printf "$c_reset"
 	case $choice in
 		n)
-			episode=$((episode + 1))
-			open_episode "$selection_id" "$episode"
-			;;
+			episode=$((episode + 1));;
 		p)
-			episode=$((episode - 1))
-			open_episode "$selection_id" "$episode"
-			;;
+			episode=$((episode - 1));;
 
 		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 			read episode
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
-			open_episode "$selection_id" "$episode"
 			;;
 
 		r)
-			episode=$((episode))
-			open_episode "$selection_id" "$episode"
-			;;
+			episode=$((episode));;
 		a)
+			tput reset
 			get_search_query ""
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
@@ -389,6 +383,7 @@ while :; do
 			check_input
 			append_history
 			open_selection
+			continue
 			;;
 
 		q)
@@ -398,6 +393,6 @@ while :; do
 			die "invalid choice"
 			;;
 	esac
-
+	open_episode "$selection_id" "$episode"
 
 done
