@@ -377,9 +377,11 @@ while :; do
 	printf "$c_reset"
 	case $choice in
 		n)
-			episode=$((episode + 1));;
+			episode=$((episode + 1))
+			;;
 		p)
-			episode=$((episode - 1));;
+			episode=$((episode - 1))
+			;;
 
 		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 			read episode
@@ -388,7 +390,8 @@ while :; do
 			;;
 
 		r)
-			episode=$((episode));;
+			episode=$((episode))
+			;;
 		a)
 			tput reset
 			get_search_query ""
@@ -409,6 +412,6 @@ while :; do
 			die "invalid choice"
 			;;
 	esac
-	open_episode "$selection_id" "$episode"
 
+	open_episode "$selection_id" "$episode"
 done
