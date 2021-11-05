@@ -35,7 +35,7 @@ sudo make
 	# set video quality
 	ani-cli -q 360
     
-    #set dub function
+    #set dubbed video if any on that anime
     ani-cli --dub
 
 By default `ani-cli` would try to get the best video quality available  
