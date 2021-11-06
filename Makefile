@@ -1,7 +1,13 @@
+PREFIX := /usr/local
+
 all: install
 
 install:
-	cp ani-cli /usr/bin
-	npm install --global ffmpeg-progressbar-cli
+	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
+  npm install --global ffmpeg-progressbar-cli
+	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
+
 uninstall:
-	rm -rf /usr/bin/ani-cli
+	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+
+.PHONY: all install uninstall

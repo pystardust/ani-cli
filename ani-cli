@@ -283,9 +283,10 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
+
 			ffmpeg-bar -stats -headers "Referer: $embedded_video_url" -i "$video_url" \
 				-c copy "${anime_id}-${episode}.mkv"  &&
-				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+        printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
 	fi
