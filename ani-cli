@@ -6,6 +6,7 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+base_url="https://gogoanime.cm"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -45,7 +46,7 @@ search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	titlepattern='<a href="/category/'
 
-	curl -s "https://gogoanime.pe//search.html" \
+	curl -s "$base_url//search.html" \
 		-G \
 		-d "keyword=$search" |
 	sed -n -E '
@@ -57,7 +58,7 @@ search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
 
-	curl -s "https://gogoanime.pe/category/$anime_id" |
+	curl -s "$base_url/category/$anime_id" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
 		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
@@ -73,7 +74,7 @@ get_embedded_video_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	curl -s "https://gogoanime.pe/$anime_id${dub_prefix}-episode-$ep_no" |
+	curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
@@ -214,6 +215,29 @@ episode_selection () {
 	fi
 }
 
+check_input() {
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+	episodes=$ep_choice_start
+	if [ -n "$ep_choice_end" ]; then
+		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
+		# create list of episodes to download/watch
+		episodes=$(seq $ep_choice_start $ep_choice_end)
+	fi
+}
+
+append_history () {
+	grep -q -w "${selection_id}" "$logfile" ||
+		printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
+}
+
+open_selection() {
+	for ep in $episodes
+	do
+		open_episode "$selection_id" "$ep"
+	done
+	episode=${ep_choice_end:-$ep_choice_start}
+}
+
 open_episode () {
 	anime_id=$1
 	episode=$2
@@ -259,8 +283,8 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -headers "Referer: $embedded_video_url" -i "$video_url" \
-				-c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			ffmpeg-bar -stats -headers "Referer: $embedded_video_url" -i "$video_url" \
+				-c copy "${anime_id}-${episode}.mkv"  &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
@@ -331,26 +355,9 @@ case $scrape in
 		;;
 esac
 
-{ # checking input
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
-	episodes=$ep_choice_start
-
-	if [ -n "$ep_choice_end" ]; then
-		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
-		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
-	fi
-}
-
-# add anime to history file
-grep -q -w "${selection_id}" "$logfile" ||
-	printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
-
-for ep in $episodes
-do
-	open_episode "$selection_id" "$ep"
-done
-episode=${ep_choice_end:-$ep_choice_start}
+check_input
+append_history
+open_selection
 
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
@@ -364,6 +371,7 @@ while :; do
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
 	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_cyan%s$c_reset\n" "a" "search for another anime"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
 	read choice
@@ -384,6 +392,18 @@ while :; do
 
 		r)
 			episode=$((episode))
+			;;
+		a)
+			tput reset
+			get_search_query ""
+			search_results=$(search_anime "$query")
+			[ -z "$search_results" ] && die "No search results found"
+			anime_selection "$search_results"
+			episode_selection
+			check_input
+			append_history
+			open_selection
+			continue
 			;;
 
 		q)
