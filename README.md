@@ -32,18 +32,11 @@ sudo make
   ### resume watching anime
   ``ani-cli -H``
 
-	# set video quality
-	ani-cli -q 360
-    
-    #set dubbed video if any on that anime
-    ani-cli --dub
-=======
   ### delete anime from history
   ``ani-cli -D``
 
   ### set video quality
   ``ani-cli -q 360``
-
 
 By default `ani-cli` would try to get the best video quality available  
 You can give specific qualities like `360/480/720/..`
