@@ -6,6 +6,7 @@ player_fn="vlc"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+base_url="https://gogoanime.cm"
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -43,7 +44,7 @@ search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	titlepattern='<a href="/category/'
 
-	curl -4 -s "https://gogoanime.pe//search.html" \
+	curl -4 -s "$base_url//search.html" \
 		-G \
 		-d "keyword=$search" |
 	sed -n -E '
@@ -55,7 +56,7 @@ search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
 
-	curl -4 -s "https://gogoanime.pe/category/$anime_id" |
+	curl -4 -s "$base_url/category/$anime_id" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
 		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
@@ -70,7 +71,7 @@ get_embedded_video_link() {
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	curl -4 -s "https://gogoanime.pe/$anime_id-episode-$ep_no" |
+	curl -4 -s "$base_url/$anime_id-episode-$ep_no" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
