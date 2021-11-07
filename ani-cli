@@ -3,6 +3,8 @@
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
+# run_script ( script that launch video player )
+run_script="setsid -f"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -28,6 +30,7 @@ help_text () {
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	 --dub  play the dub version if present
+	 -r run_script 	a script to run video player through
 	EOF
 }
 
@@ -276,7 +279,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+		$run_script $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
@@ -304,7 +307,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHDq:-:' OPT; do
+while getopts 'hdHDq:-:r:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -330,6 +333,9 @@ while getopts 'hdHDq:-:' OPT; do
 					dub_prefix="-dub"
 					;;
 			esac
+			;;
+		r)
+			run_script=$OPTARG
 			;;
 	esac
 done
