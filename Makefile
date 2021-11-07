@@ -5,7 +5,7 @@ all: install
 install:
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
-	npm install --global ffmpeg-progressbar-cli
+	pip install --user ffpb
 uninstall:
 	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
 
