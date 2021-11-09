@@ -127,6 +127,20 @@ get_links () {
 	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
 }
 
+check_for_update () {
+	git fetch 
+	UPSTREAM=${1:-'@{u}'}
+	LOCAL=$(git rev-parse @)
+	REMOTE=$(git rev-parse "$UPSTREAM")
+	BASE=$(git merge-base @ "$UPSTREAM")
+
+	UPDATE_MESSAGE="UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
+
+	if [ $LOCAL != $REMOTE ]; then
+    echo $UPDATE_MESSAGE
+	fi
+}
+
 dep_ch () {
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
@@ -298,7 +312,9 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep"
+check_for_update
+
+dep_ch "$player_fn" "curl" "sed" "grep" "git"
 
 # option parsing
 is_download=0
