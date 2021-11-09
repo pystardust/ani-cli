@@ -311,9 +311,10 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-check_for_update
 
 dep_ch "$player_fn" "curl" "sed" "grep" "git"
+
+check_for_update
 
 # option parsing
 is_download=0
