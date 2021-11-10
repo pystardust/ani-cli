@@ -22,6 +22,7 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
+	-uuu go away
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
