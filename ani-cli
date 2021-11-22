@@ -120,7 +120,8 @@ get_links () {
 		q
 		}
 		')
-
+	tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
+	[ -z "$tmp_url" ] || video_url="$tmp_url"
 	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
 
 	# Replace the video with highest quality video
