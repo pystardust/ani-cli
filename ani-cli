@@ -22,12 +22,13 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
+	 -n	 show recent anime
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
-	 --dub  play the dub version if present
+	 --dub	 play the dub version if present
 	EOF
 }
 
@@ -39,6 +40,18 @@ die () {
 
 err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
+}
+
+search_new () {
+	# get anime name along with its id
+
+	curl -s "$base_url" |
+	sed -n -E '
+		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
+		' |
+	sed -n -E '
+		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
+		'
 }
 
 search_anime () {
@@ -304,8 +317,11 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHDq:-:' OPT; do
+while getopts 'nhdHDq:-:' OPT; do
 	case $OPT in
+		n)
+			scrape=new
+			;;
 		h)
 			help_text
 			exit 0
@@ -352,6 +368,12 @@ case $scrape in
 		[ -z "$search_results" ] && die "History is empty"
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
+	new)
+		search_results=$(search_new)
+		# echo "$search_results"
+		anime_selection "$search_results"
+		episode_selection
 		;;
 esac
 
