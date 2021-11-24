@@ -22,14 +22,14 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
-	 -u  shows anime from history with unwatched episodes
-	 -n  show recent anime
+	 -u	 shows anime from history with unwatched episodes
+	 -n	 show recent anime
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
-	 --dub  play the dub version if present
+	 --dub	 play the dub version if present
 	EOF
 }
 
