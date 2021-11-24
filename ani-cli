@@ -22,13 +22,14 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
-	 -n	 show recent anime
+	 -u  shows anime from history with unwatched episodes
+	 -n  show recent anime
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
-	 --dub	 play the dub version if present
+	 --dub  play the dub version if present
 	EOF
 }
 
@@ -211,6 +212,24 @@ anime_selection () {
 	EOF
 }
 
+search_for_unwatched () {
+	search_results=$*
+
+	unwatched_anime=""
+	while read anime_id; do
+		current_ep_number="$(search_eps "$anime_id")"
+		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
+		if [ "$current_ep_number" -ge "$history_ep_number" ]
+		then
+			unwatched_anime="$unwatched_anime$anime_id\n"
+		fi
+	done <<-EOF
+	$search_results
+	EOF
+	[ -z $unwatched_anime ] && die "No unwatched episodes"
+	printf "%s""$unwatched_anime"
+}
+
 ##################
 ## Ep selection ##
 ##################
@@ -317,8 +336,11 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 is_download=0
 quality=best
 scrape=query
-while getopts 'nhdHDq:-:' OPT; do
+while getopts 'nuhdHDq:-:' OPT; do
 	case $OPT in
+		u)
+			scrape=history_new
+			;;
 		n)
 			scrape=new
 			;;
@@ -374,6 +396,13 @@ case $scrape in
 		# echo "$search_results"
 		anime_selection "$search_results"
 		episode_selection
+		;;
+	history_new)
+		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		[ -z "$search_results" ] && die "History is empty"
+		search_results=$(search_for_unwatched "$search_results")
+		anime_selection "$search_results"
+		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 esac
 
