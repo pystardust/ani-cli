@@ -1,3 +1,5 @@
+# Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
+ORIGINAL_DIR=0
 #!/bin/sh
 
 # dependencies: grep sed curl video_player
@@ -129,15 +131,20 @@ get_links () {
 }
 
 check_for_update () {
-	git fetch 
+	# ORIGINAL_DIR will be 0 if Makefile has not been executed
+	# i.e. the user will likely be executing script from ani-cli directory
+	if [ $ORIGINAL_DIR != 0 ]
+	then
+		git -C $ORIGINAL_DIR fetch 
+	else
+		git fetch
+	fi
 	UPSTREAM=${1:-'@{u}'}
 	LOCAL=$(git rev-parse @)
 	REMOTE=$(git rev-parse "$UPSTREAM")
 
-	UPDATE_MESSAGE="UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
-
 	if [ $LOCAL != $REMOTE ]; then
-    echo $UPDATE_MESSAGE
+		printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
 	fi
 }
 
