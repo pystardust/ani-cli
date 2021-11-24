@@ -1,5 +1,5 @@
-# Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
-ORIGINAL_DIR=/home/duncan/Apps/ani-cli2-fork
+#Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
+ORIGINAL_DIR=0
 #!/bin/sh
 
 # dependencies: grep sed curl video_player
@@ -24,7 +24,6 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
-	-uuu go away
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
