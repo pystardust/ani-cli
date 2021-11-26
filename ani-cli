@@ -243,6 +243,11 @@ episode_selection () {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read ep_choice_start ep_choice_end
+		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+		then
+			half_ep=1
+			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+		fi
 		printf "$c_reset"
 	fi
 }
@@ -284,9 +289,21 @@ open_episode () {
 		printf "$c_reset"
 	done
 
-	printf "Getting data for episode %d\n" $episode
+	if [ $half_ep -eq 1 ]
+	then
+		temp_ep=$episode
+		episode=$episode"-5"
+	fi
 
+	printf "Getting data for episode %s\n" $episode
+	
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
+	if [ $half_ep -eq 1 ]
+	then
+		episode=$temp_ep
+		half_ep=0
+	fi
+	
 	video_url=$(get_links "$embedded_video_url")
 
 	case $video_url in
@@ -334,6 +351,7 @@ dep_ch "$player_fn" "curl" "sed" "grep"
 
 # option parsing
 is_download=0
+half_ep=0
 quality=best
 scrape=query
 while getopts 'nuhdHDq:-:' OPT; do
@@ -437,6 +455,11 @@ while :; do
 
 		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 			read episode
+			if [ "$(echo "$episode" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+			then
+				half_ep=1
+				episode=$(echo "$episode" | awk '{ printf substr($0, 2) }')
+			fi
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
