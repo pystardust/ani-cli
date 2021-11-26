@@ -241,7 +241,7 @@ episode_selection () {
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
 
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green\nadd 'h' on beginning for episodes like '6.5' -> 'h6': " $last_ep_number
 		read ep_choice_start ep_choice_end
 		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
 		then
@@ -303,7 +303,7 @@ open_episode () {
 		episode=$temp_ep
 		half_ep=0
 	fi
-	
+
 	video_url=$(get_links "$embedded_video_url")
 
 	case $video_url in
