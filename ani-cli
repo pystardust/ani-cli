@@ -120,7 +120,8 @@ get_links () {
 		q
 		}
 		')
-
+	tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
+	[ -z "$tmp_url" ] || video_url="$tmp_url"
 	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
 
 	# Replace the video with highest quality video
@@ -371,7 +372,8 @@ while :; do
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
 	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_cyan%s$c_reset\n" "a" "search for another anime"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
 	read choice
@@ -400,6 +402,17 @@ while :; do
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
 			episode_selection
+			check_input
+			append_history
+			open_selection
+			continue
+			;;
+		h)
+			tput reset
+			search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+			[ -z "$search_results" ] && die "History is empty"
+			anime_selection "$search_results"
+			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
 			append_history
 			open_selection
