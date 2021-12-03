@@ -2,7 +2,7 @@
 
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
-player_fn="mpv"
+player_fn="vlc"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
