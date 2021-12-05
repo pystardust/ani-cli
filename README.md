@@ -1,12 +1,10 @@
 # ani-cli
 
-> Script working again :), thanks to the fork by
-> [Dink4n](https://github.com/Dink4n/ani-cli) for the alternative approach to
-> by pass the captcha on [gogoanime](https://gogoanime.vc)
+A cli to browse and watch anime from multiple sources.
 
-A cli to browse and watch anime.
-
-This tool scrapes the site [gogoanime](https://gogoanime.pe).
+This tool supports the following sites
+- [gogoanime](https://gogoanime.pe)
+- [tenshi](https://tenshi.moe/)
 
 ## Download
 
@@ -59,7 +57,12 @@ This would open/download episodes 1 2 3 4 5 6
 * sed
 * mpv
 * ffmpeg
+* jq
 
 ## Misc
 
 - Windows instructions can be found in this branch https://github.com/pystardust/ani-cli/tree/windows-vlc
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
