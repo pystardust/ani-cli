@@ -18,12 +18,12 @@ c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
 menu_format_string='[%d] %s\n'
-menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+menu_format_string_c1="${c_blue}[$c_cyan%d$c_blue] $c_reset%s\n"
+menu_format_string_c2="${c_blue}[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 
 help_text () {
-	while IFS= read line; do
+	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
@@ -59,7 +59,7 @@ source_selection() {
 	source_names=$(printf '%s' "$sources" | jq --raw-output '.name')
 
 	count=1
-	while read source_name; do
+	while read -r source_name; do
 		# alternating colors for menu
 		[ $((count % 2)) -eq 0 ] &&
 			menu_format_string=$menu_format_string_c1 ||
@@ -73,7 +73,7 @@ source_selection() {
 
 	# user input
 	printf "$c_blue%s$c_green" "Enter number: "
-	read choice
+	read -r choice
 	printf "$c_reset"
 
 	# check if input is a number and greater than 0
@@ -113,7 +113,7 @@ anime_selection () {
 	anime_names=$(printf '%s' "$search_results" | jq --raw-output '.name')
 
 	count=1
-	while read anime_name; do
+	while read -r anime_name; do
 		# alternating colors for menu
 		[ $((count % 2)) -eq 0 ] &&
 			menu_format_string=$menu_format_string_c1 ||
@@ -127,7 +127,7 @@ anime_selection () {
 
 	# User input
 	printf "$c_blue%s$c_green" "Enter number: "
-	read choice
+	read -r choice
 	printf "$c_reset"
 
 	# check if input is a number and greater than 0
@@ -151,13 +151,13 @@ anime_selection () {
 
 episode_selection() {
 	ep_choice_start="1"
-	if [ $last_ep_number -gt 1 ] 
+	if [ "$last_ep_number" -gt 1 ] 
 	then
-		[ $is_download -eq 1 ] &&
+		[ "$is_download" -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
 
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read ep_choice_start ep_choice_end
+		printf "${c_blue}Choose episode ${c_cyan}[1-%d]$c_reset:$c_green " "$last_ep_number"
+		read -r ep_choice_start ep_choice_end
 		printf "$c_reset"
 	fi
 }
@@ -168,7 +168,7 @@ check_input() {
 	if [ -n "$ep_choice_end" ]; then
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
+		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
 	fi
 }
 
@@ -195,24 +195,24 @@ open_episode () {
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
 	do
 		err "Episode out of range"
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read episode
+		printf "${c_blue}Choose episode ${c_cyan}[1-%d]$c_reset:$c_green " "$last_ep_number"
+		read -r episode
 		printf "$c_reset"
 	done
 
-	printf "Getting data for episode %d\n" $episode
+	printf "Getting data for episode %d\n" "$episode"
 
 	video_content=$(get_video_url "$anime_id" "$episode")
 
-	if [ $is_download -eq 0 ]; then
+	if [ "$is_download" -eq 0 ]; then
 		# update episode number
 		sed -E '
-			s|(\b'$source_name'\b.*\b'$anime_id'\b.*\bnext_ep\b\": )[^}]*|\1'$((episode+1))'|
+			s|(\b'"$source_name"'\b.*\b'"$anime_id"'\b.*\bnext_ep\b\": )[^}]*|\1'$((episode+1))'|
 		' "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
 		play_video "$video_content"
 	else
-		printf "Downloading episode $episode ...\n"
+		printf "Downloading episode %d ...\n" "$episode"
 		download_video "$video_content"
 	fi
 }
@@ -331,7 +331,7 @@ gogoanime() {
 		video_url=$(printf '%s' "$1" | jq --raw-output '.video_url')
 		
 		printf "%s\n" "$video_url"
-		episode=$(printf "%03d" $episode)
+		episode=$(printf "%03d" "$episode")
 		{
 			ffmpeg -headers "Referer: $embed_url" -i "$video_url" \
 				-c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
@@ -407,7 +407,7 @@ tenshi() {
 		video_url=$(printf '%s' "$1" | jq --raw-output '.video_url')
 		
 		printf "%s\n" "$video_url"
-		episode=$(printf "%03d" $episode)
+		episode=$(printf "%03d" "$episode")
 		{
 			ffmpeg -headers "Referer: $embed_url" -i "$video_url" \
 				-c copy "${anime_name}-${episode}.mkv" >/dev/null 2>&1 &&
@@ -476,8 +476,8 @@ case $scrape in
 		episode_selection
 		;;
 	history)
-		[ -z "$search_results" ] && die "History is empty"
 		search_results=$(jq --raw-input --raw-output 'fromjson? | . | select(.source == "'"$source_name"'")' "$logfile")
+		[ -z "$search_results" ] && die "History is empty for $source_name"
 		anime_selection "$search_results"
 		ep_choice_start=$(jq --raw-input --raw-output 'fromjson? | . | select(.source == "'"$source_name"'" and .id == "'"$anime_id"'") | .next_ep' "$logfile")
 		;;
@@ -488,22 +488,22 @@ append_history
 open_selection
 
 while :; do
-	printf "\n${c_green}Currently playing ${c_cyan}%s ${c_green}episode ${c_cyan}%d/%d\n" "$anime_name" $episode $last_ep_number
+	printf "\n${c_green}Currently playing ${c_cyan}%s ${c_green}episode ${c_cyan}%d/%d\n" "$anime_name" "$episode" "$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+		printf "${c_blue}[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
 	if [ "$episode" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+		printf "${c_blue}[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
 	fi
 	if [ "$last_ep_number" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+		printf "${c_blue}[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
 	fi
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
+	printf "${c_blue}[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
+	printf "${c_blue}[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+	printf "${c_blue}[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
+	printf "${c_blue}[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-	read choice
+	read -r choice
 	printf "$c_reset"
 	case $choice in
 		n)
@@ -513,8 +513,8 @@ while :; do
 			episode=$((episode - 1))
 			;;
 
-		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
+		s)	printf "${c_blue}Choose episode ${c_cyan}[1-%d]$c_reset:$c_green " "$last_ep_number"
+			read -r episode
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
