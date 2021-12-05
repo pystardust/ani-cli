@@ -28,6 +28,7 @@ help_text () {
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	 --dub  play the dub version if present
+	 -v  use VLC as the media player
 	EOF
 }
 
@@ -205,7 +206,7 @@ anime_selection () {
 
 episode_selection () {
 	ep_choice_start="1"
-	if [ $last_ep_number -gt 1 ] 
+	if [ $last_ep_number -gt 1 ]
 	then
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
@@ -277,7 +278,15 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+		case $player_fn in
+
+			"mpv")
+				setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+				;;
+			"vlc")
+				setsid -f $player_fn --http-referrer="$embedded_video_url" --adaptive-use-access "$video_url" >/dev/null 2>&1
+				;;
+		esac
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
@@ -299,13 +308,11 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep"
-
 # option parsing
 is_download=0
 quality=best
 scrape=query
-while getopts 'hdHDq:-:' OPT; do
+while getopts 'hdHDq:-:v' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -332,8 +339,13 @@ while getopts 'hdHDq:-:' OPT; do
 					;;
 			esac
 			;;
+		v)
+			player_fn="vlc"
+			;;
 	esac
 done
+
+dep_ch "$player_fn" "curl" "sed" "grep"
 shift $((OPTIND - 1))
 
 ########
