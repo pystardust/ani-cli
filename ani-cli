@@ -132,6 +132,7 @@ get_links () {
 
 dep_ch () {
 	for dep; do
+		[ "$dep" = "$player_fn" ] && [ "$is_download" -eq 1 ] && continue
 		if ! command -v "$dep" >/dev/null ; then
 			die "Program \"$dep\" not found. Please install it."
 		fi
