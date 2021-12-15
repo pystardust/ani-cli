@@ -41,6 +41,10 @@ err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
+resolve_baseurl () {
+	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $base_url
+}
+
 search_anime () {
 	# get anime name along with its id
 	search=$(printf '%s' "$1" | tr ' ' '-' )
@@ -339,6 +343,8 @@ shift $((OPTIND - 1))
 ########
 # main #
 ########
+
+base_url=$(resolve_baseurl $base_url)
 
 case $scrape in
 	query)
