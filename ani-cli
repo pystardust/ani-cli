@@ -30,6 +30,7 @@ help_text () {
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
 	 --dub	 play the dub version if present
+	 -v  use VLC as the media player
 	EOF
 }
 
@@ -134,7 +135,8 @@ get_links () {
 		q
 		}
 		')
-
+	tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
+	[ -z "$tmp_url" ] || video_url="$tmp_url"
 	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
 
 	# Replace the video with highest quality video
@@ -236,7 +238,7 @@ search_for_unwatched () {
 
 episode_selection () {
 	ep_choice_start="1"
-	if [ $last_ep_number -gt 1 ] 
+	if [ $last_ep_number -gt 1 ]
 	then
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
@@ -325,7 +327,15 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+		case $player_fn in
+
+			"mpv")
+				setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
+				;;
+			"vlc")
+				setsid -f $player_fn --http-referrer="$embedded_video_url" --adaptive-use-access "$video_url" >/dev/null 2>&1
+				;;
+		esac
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
@@ -347,14 +357,13 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap "printf '$c_reset'" INT HUP
 
-dep_ch "$player_fn" "curl" "sed" "grep"
-
 # option parsing
 is_download=0
 half_ep=0
 quality=best
 scrape=query
-while getopts 'nuhdHDq:-:' OPT; do
+
+while getopts 'nuhdHDq:-:v' OPT; do
 	case $OPT in
 		u)
 			scrape=history_new
@@ -387,8 +396,13 @@ while getopts 'nuhdHDq:-:' OPT; do
 					;;
 			esac
 			;;
+		v)
+			player_fn="vlc"
+			;;
 	esac
 done
+
+dep_ch "$player_fn" "curl" "sed" "grep"
 shift $((OPTIND - 1))
 
 ########
@@ -440,7 +454,8 @@ while :; do
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
 	fi
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_cyan%s$c_reset\n" "a" "search for another anime"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
+	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
 	read choice
@@ -474,6 +489,17 @@ while :; do
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
 			episode_selection
+			check_input
+			append_history
+			open_selection
+			continue
+			;;
+		h)
+			tput reset
+			search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+			[ -z "$search_results" ] && die "History is empty"
+			anime_selection "$search_results"
+			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
 			append_history
 			open_selection
