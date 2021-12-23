@@ -6,7 +6,7 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-base_url="https://www1.gogoanime.cm"
+base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -40,10 +40,6 @@ die () {
 
 err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
-}
-
-resolve_baseurl () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $base_url
 }
 
 search_anime () {
@@ -355,8 +351,6 @@ shift $((OPTIND - 1))
 ########
 # main #
 ########
-
-base_url=$(resolve_baseurl $base_url)
 
 case $scrape in
 	query)
