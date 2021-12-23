@@ -42,6 +42,7 @@ err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
+
 search_anime () {
 	# get anime name along with its id
 	search=$(printf '%s' "$1" | tr ' ' '-' )
@@ -351,6 +352,7 @@ shift $((OPTIND - 1))
 ########
 # main #
 ########
+
 
 case $scrape in
 	query)
