@@ -42,8 +42,8 @@ err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
-resolve_baseurl () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $base_url
+resolve_url () {
+	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
 }
 
 search_anime () {
@@ -356,7 +356,7 @@ shift $((OPTIND - 1))
 # main #
 ########
 
-base_url=$(resolve_baseurl $base_url)
+base_url=$(resolve_url "$base_url")
 
 case $scrape in
 	query)
