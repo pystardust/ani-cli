@@ -244,7 +244,7 @@ open_selection() {
 open_episode () {
 	anime_id=$1
 	episode=$2
-
+	
 	# Cool way of clearing screen
 	tput reset
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
@@ -258,20 +258,11 @@ open_episode () {
 	printf "Getting data for episode %d\n" $episode
 
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	video_url=$(get_links "$embedded_video_url")
-
-	case $video_url in
-		*streamtape*)
-			# If direct download not available then scrape streamtape.com
-			BROWSER=${BROWSER:-firefox}
-			printf "scraping streamtape.com\n"
-			video_url=$(curl -s "$video_url" | sed -n -E '
-				/^<script>document/{
-				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
-				q
-				}
-			');;
-	esac
+	
+	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?(=&)")
+	video_url="https://gogoplay1.com/download?${episode_id}"
+	
+	play_link=$(lynx -dump -hiddenlinks=listonly $video_url | grep -Eo https:\/\/vidstreamingcdn.com\/.*\/.*\/.*p.* | tail -n 1)
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -282,11 +273,9 @@ open_episode () {
 		case $player_fn in
 
 			"mpv")
-				setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
-				;;
+				setsid -f $player_fn $play_link;;
 			"vlc")
-				setsid -f $player_fn --http-referrer="$embedded_video_url" --adaptive-use-access "$video_url" >/dev/null 2>&1
-				;;
+				setsid -f $player_fn $play_link;;
 		esac
 	else
 		printf "Downloading episode $episode ...\n"
@@ -294,8 +283,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -headers "Referer: $embedded_video_url" -i "$video_url" \
-				-c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
 		}
