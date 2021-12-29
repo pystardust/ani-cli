@@ -2,13 +2,8 @@
 
 > Thank you @RaynardGerraldo for fixing the crippling issue 221
 > 
-> Headline is now [Issue 202](https://github.com/pystardust/ani-cli/issues/202)
-> 
-> This makes some series not work while others do.
-> 
-> It is the next big task after 209 is merged.
-> 
-> Take a look and tell us if you want to start working on a solution
+> [Issue 202](https://github.com/pystardust/ani-cli/issues/202) causes some series to work but not others
+> Input welcome
 
 A cli to browse and watch anime.
 
