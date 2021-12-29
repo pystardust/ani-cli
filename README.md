@@ -3,6 +3,7 @@
 > Thank you @RaynardGerraldo for fixing the crippling issue 221
 > 
 > [Issue 202](https://github.com/pystardust/ani-cli/issues/202) causes some series to work but not others
+> 
 > Input welcome
 
 A cli to browse and watch anime.
