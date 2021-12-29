@@ -1,11 +1,15 @@
 # ani-cli
 
 > Use the version from [PR 209](https://github.com/RaynardGerraldo/ani-cli) for now. 
-> The PR is planned to be merged this week.
 > 
+> The PR is planned to be merged this week.
+
 > Another crippling issue is [Issue 202](https://github.com/pystardust/ani-cli/issues/202)
+> 
 > This makes some series not work while others do.
+> 
 > It is the next big task after 209 is merged.
+> 
 > Take a look and tell us if you want to start working on a solution, please mention it on the issue.
 
 A cli to browse and watch anime.
