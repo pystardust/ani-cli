@@ -262,7 +262,7 @@ open_episode () {
 	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?(=&)")
 	video_url="https://gogoplay1.com/download?${episode_id}"
 	
-	play_link=$(wget -qO- $video_url | grep -Eo "(http|https):\/\/vidstreamingcdn.com.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
+	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/vidstreamingcdn.com.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -280,7 +280,12 @@ open_episode () {
 					echo "${c_green}\nVideo played"
 				fi;;
 			"vlc")
-				setsid -f $player_fn $play_link;;
+				error=$(setsid -f $player_fn $play_link 2>&1)
+				if echo $error | grep -o -E "\[ffmpeg] https:.* '.*'"; then
+					echo "${c_red}\nCannot reach servers!"
+				else
+					echo "${c_green}\nVideo played"
+				fi;;
 		esac
 	else
 		printf "Downloading episode $episode ...\n"
