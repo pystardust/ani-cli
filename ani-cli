@@ -6,7 +6,7 @@ player_fn="mpv"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-base_url="https://www1.gogoanime.cm"
+base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -42,9 +42,6 @@ err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
-resolve_url () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
-}
 
 search_anime () {
 	# get anime name along with its id
@@ -247,7 +244,7 @@ open_selection() {
 open_episode () {
 	anime_id=$1
 	episode=$2
-
+	error=
 	# Cool way of clearing screen
 	tput reset
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
@@ -261,20 +258,11 @@ open_episode () {
 	printf "Getting data for episode %d\n" $episode
 
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	video_url=$(get_links "$embedded_video_url")
-
-	case $video_url in
-		*streamtape*)
-			# If direct download not available then scrape streamtape.com
-			BROWSER=${BROWSER:-firefox}
-			printf "scraping streamtape.com\n"
-			video_url=$(curl -s "$video_url" | sed -n -E '
-				/^<script>document/{
-				s/^[^"]*"([^"]*)" \+ '\''([^'\'']*).*/https:\1\2\&dl=1/p
-				q
-				}
-			');;
-	esac
+	
+	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?(=&)")
+	video_url="https://gogoplay1.com/download?${episode_id}"
+	
+	play_link=$(wget -qO- $video_url | grep -Eo "(http|https):\/\/vidstreamingcdn.com.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -285,11 +273,14 @@ open_episode () {
 		case $player_fn in
 
 			"mpv")
-				setsid -f $player_fn --http-header-fields="Referer: $embedded_video_url" "$video_url" >/dev/null 2>&1
-				;;
+				error=$(setsid -f $player_fn $play_link 2>&1)
+				if echo $error | grep -o -E "\[ffmpeg] https:.* '.*'"; then
+					echo "${c_red}\nCannot reach servers!"
+				else
+					echo "${c_green}\nVideo played"
+				fi;;
 			"vlc")
-				setsid -f $player_fn --http-referrer="$embedded_video_url" --adaptive-use-access "$video_url" >/dev/null 2>&1
-				;;
+				setsid -f $player_fn $play_link;;
 		esac
 	else
 		printf "Downloading episode $episode ...\n"
@@ -297,10 +288,9 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -headers "Referer: $embedded_video_url" -i "$video_url" \
-				-c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-				printf "${c_red}Download failed episode: %s${c_reset}\n" "$episode"
+				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
 	fi
 }
@@ -356,7 +346,6 @@ shift $((OPTIND - 1))
 # main #
 ########
 
-base_url=$(resolve_url "$base_url")
 
 case $scrape in
 	query)
@@ -379,7 +368,7 @@ append_history
 open_selection
 
 while :; do
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+	printf "\n${c_green}Played %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
