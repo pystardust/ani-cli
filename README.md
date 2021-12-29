@@ -10,7 +10,7 @@
 > 
 > It is the next big task after 209 is merged.
 > 
-> Take a look and tell us if you want to start working on a solution, please mention it on the issue.
+> Take a look and tell us if you want to start working on a solution
 
 A cli to browse and watch anime.
 
