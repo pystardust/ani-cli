@@ -1,10 +1,8 @@
 # ani-cli
 
-> Use the version from [PR 209](https://github.com/RaynardGerraldo/ani-cli) for now. 
+> Thank you @RaynardGerraldo for fixing the crippling issue 221
 > 
-> The PR is planned to be merged this week.
-
-> Another crippling issue is [Issue 202](https://github.com/pystardust/ani-cli/issues/202)
+> Headline is now [Issue 202](https://github.com/pystardust/ani-cli/issues/202)
 > 
 > This makes some series not work while others do.
 > 
