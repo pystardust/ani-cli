@@ -26,16 +26,24 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     Choose episode [1-13]: 1 6
     This would choose episodes 1 2 3 4 5 6
   ```
+
+## Dependencies
+
+### Essential
+```
+grep
+curl
+sed
+ffmpeg
+```
+
+### Optional
+```
+mpv - The default video player (recommended)
+vlc - An alternative video player
+```
   
 ## Install
-### Dependencies
-```
-Essential: grep curl sed ffmpeg
-Optional:
-mpv - The default video player
-vlc - An alternative video player
-to be continued
-```
 
 ### Linux
 ```sh
