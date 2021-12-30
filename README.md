@@ -3,14 +3,12 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
 [![Maintainer](https://img.shields.io/badge/maintainer-ura43-blue)](https://github.com/ura43)
-
-
-A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
-
-## Status
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
 ![Mac](https://img.shields.io/badge/os-mac-yellow)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
+
+A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
+
 > Thank you @RaynardGerraldo for fixing the crippling issues 221 and 202
 
 ## Usage
