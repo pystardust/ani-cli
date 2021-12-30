@@ -3,6 +3,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
 [![Maintainer](https://img.shields.io/badge/maintainer-ura43-blue)](https://github.com/ura43)
+[![Maintainer](https://img.shields.io/badge/maintainer-RayGL-blue)](https://github.com/RaynardGerraldo)
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
 ![Mac](https://img.shields.io/badge/os-mac-yellow)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
