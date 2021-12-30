@@ -1,16 +1,17 @@
 <p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc= beautiful, documented and portable.&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p> 
-
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 ## Status
-
-> Script currently broken on mac, working on linux
+> Only experimental Mac and Windows support currently.
+> 
+> Mac issues: #2(solved by PR 137) #123
 > 
 > Thank you @RaynardGerraldo for fixing the crippling issues 221 and 202
 
 ## Usage
   ```
-  ani-cli (OPTION) (query)
+  Watch anime
+    ani-cli (OPTION) (query)
 
   Options
     -h show helptext
@@ -27,33 +28,39 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
   ```
   
 ## Install
-
 ### Dependencies
-
-* grep
-* curl
-* sed
-* mpv
-* ffmpeg
+```
+Essential: grep curl sed ffmpeg
+Optional:
+mpv - The default video player
+vlc - An alternative video player
+to be continued
+```
 
 ### Linux
-
 ```sh
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
 sudo make
 ```
+
 ### Mac
-*tba*
+```sh
+brew install util-linux
+git clone https://github.com/pystardust/ani-cli.git
+cd ani-cli
+sudo make
+```
 
 ### Windows
-*tba*
-
-### Other
-*tba*
-
-
-
-## Misc
-
-- Windows instructions can be found in this branch https://github.com/pystardust/ani-cli/tree/windows-vlc
+* Download and install [gitbash](https://git-scm.com/downloads)
+* Download and install vlc (mpv needs further testing)
+* Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
+* Open git bash by right-clicking and choosing "Run as administrator"
+* Run the following commands
+```sh
+git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
+cd ani-cli
+chmod +x ani-cli-win
+./install
+```
