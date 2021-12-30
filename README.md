@@ -75,3 +75,7 @@ cd ani-cli
 chmod +x ani-cli-win
 ./install
 ```
+
+## Disclaimer
+
+The disclaimer of this project can be found [here.](./disclaimer.md)
