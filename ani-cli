@@ -345,8 +345,9 @@ while getopts 'hdHDq:-:v' OPT; do
 	esac
 done
 
-dep_ch "$player_fn" "curl" "sed" "grep"
 shift $((OPTIND - 1))
+
+dep_ch "$player_fn" "curl" "sed" "grep"
 
 ########
 # main #
