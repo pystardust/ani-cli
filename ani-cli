@@ -244,7 +244,6 @@ open_selection() {
 open_episode () {
 	anime_id=$1
 	episode=$2
-	error=
 	# Cool way of clearing screen
 	tput reset
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
@@ -259,10 +258,12 @@ open_episode () {
 
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
 	
-	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?(=&)")
+	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
 	video_url="https://gogoplay1.com/download?${episode_id}"
 	
-	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/vidstreamingcdn.com.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
+	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
+		
+	status_code=$(curl -s -I $play_link | head -n 1|cut -d ' ' -f2)
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -273,17 +274,18 @@ open_episode () {
 		case $player_fn in
 
 			"mpv")
-				error=$(setsid -f $player_fn $play_link 2>&1)
-				if echo $error | grep -o -E "\[ffmpeg] https:.* '.*'"; then
+				if echo "$status_code" | grep -vE "^2.*"; then
 					echo "${c_red}\nCannot reach servers!"
 				else
+					setsid -f $player_fn $play_link > /dev/null 2>&1
 					echo "${c_green}\nVideo played"
 				fi;;
 			"vlc")
-				error=$(setsid -f $player_fn $play_link 2>&1)
-				if echo $error | grep -o -E "\[ffmpeg] https:.* '.*'"; then
+				
+				if echo "$status_code" | grep -vE "^2.*"; then	
 					echo "${c_red}\nCannot reach servers!"
 				else
+					setsid -f $player_fn $play_link > /dev/null 2>&1
 					echo "${c_green}\nVideo played"
 				fi;;
 		esac
