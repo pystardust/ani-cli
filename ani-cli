@@ -254,18 +254,18 @@ open_episode () {
 
 			"mpv")
 				if echo "$status_code" | grep -vE "^2.*"; then
-					echo "${c_red}\nCannot reach servers!"
+					printf "${c_red}\nCannot reach servers!"
 				else
 					setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
-					echo "${c_green}\nVideo playing"
+					printf "${c_green}\nVideo playing"
 				fi;;
 			"vlc")
 				
 				if echo "$status_code" | grep -vE "^2.*"; then	
-					echo "${c_red}\nCannot reach servers!"
+					printf "${c_red}\nCannot reach servers!"
 				else
 					setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
-					echo "${c_green}\nVideo playing"
+					printf "${c_green}\nVideo playing"
 				fi;;
 		esac
 	else
