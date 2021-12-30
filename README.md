@@ -1,4 +1,12 @@
 <p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc= beautiful, documented and portable.&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p> 
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
+[![Maintainer](https://img.shields.io/badge/maintainer-ura43-blue)](https://github.com/ura43)
+![Linux](https://img.shields.io/badge/os-linux-brightgreen)
+![Mac](https://img.shields.io/badge/os-mac-yellow)
+![Windows](https://img.shields.io/badge/os-windows-yellow)
+
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 ## Status
