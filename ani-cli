@@ -84,55 +84,38 @@ get_embedded_video_link() {
 		}'
 }
 
-get_video_quality() {
-	embedded_video_url=$1
-	video_url=$2
-
-	video_file=$(curl -s --referer "$embedded_video_url" "$video_url")
-	available_qualities=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p')
-	case $quality in
-		best)
-			printf '%s' "$available_qualities" | tail -n 1
-			;;
-
-		worst)
-			printf '%s' "$available_qualities" | head -n 1
-			;;
-
-		*)
-			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
-			video_quality="$quality"
-			if [ -z "$is_quality_avail" ]; then
-				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
-				quality=best
-				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
-			fi
-			printf '%s' "$video_quality"
-			;;
-	esac
-
-}
 
 get_links () {
-	embedded_video_url="$1"
-	video_url=$(curl -s "$embedded_video_url" |
-	sed -n -E '
-		/^[[:space:]]*sources:/{
-		s/.*(https[^'\'']*).*/\1/p
-		q
-		}
-		')
-	tmp_url=$(printf '%s' "$video_url" | sed -n -E 's/(.*)\.([0-9]+\.[0-9]+)\.[0-9]+\.m3u8/\1.\2.m3u8/p')
-	[ -z "$tmp_url" ] || video_url="$tmp_url"
-	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
+	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
+	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
+	video_url="https://gogoplay1.com/download?${episode_id}"
+}
 
-	# Replace the video with highest quality video
-	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
+
+get_video_quality() {
+	
+	get_links
+	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
+	case $quality in
+		best)
+			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
+		worst)
+			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
+        	*)
+  	             	play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
+                	if [ -z "$play_link" ]; then
+                		printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+                		quality=best
+                		play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+                	fi
+                	printf '%s' "$play_link"
+                	;;
+	esac
+	
 }
 
 dep_ch () {
 	for dep; do
-		[ "$dep" = "$player_fn" ] && [ "$is_download" -eq 1 ] && continue
 		if ! command -v "$dep" >/dev/null ; then
 			die "Program \"$dep\" not found. Please install it."
 		fi
@@ -256,15 +239,10 @@ open_episode () {
 	done
 
 	printf "Getting data for episode %d\n" $episode
-
-	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	
-	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
-	video_url="https://gogoplay1.com/download?${episode_id}"
-	
-	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
 		
-	status_code=$(curl -s -I $play_link | head -n 1|cut -d ' ' -f2)
+	
+	get_video_quality
+	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -278,16 +256,16 @@ open_episode () {
 				if echo "$status_code" | grep -vE "^2.*"; then
 					echo "${c_red}\nCannot reach servers!"
 				else
-					setsid -f $player_fn $play_link > /dev/null 2>&1
-					echo "${c_green}\nVideo played"
+					setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
+					echo "${c_green}\nVideo playing"
 				fi;;
 			"vlc")
 				
 				if echo "$status_code" | grep -vE "^2.*"; then	
 					echo "${c_red}\nCannot reach servers!"
 				else
-					setsid -f $player_fn $play_link > /dev/null 2>&1
-					echo "${c_green}\nVideo played"
+					setsid -f $player_fn get_video_quality "$play_link" > /dev/null 2>&1
+					echo "${c_green}\nVideo playing"
 				fi;;
 		esac
 	else
@@ -333,6 +311,7 @@ while getopts 'hdHDq:-:v' OPT; do
 			;;
 		q)
 			quality=$OPTARG
+			echo $quality
 			;;
 		-)
 			case $OPTARG in
@@ -347,9 +326,8 @@ while getopts 'hdHDq:-:v' OPT; do
 	esac
 done
 
-shift $((OPTIND - 1))
-
 dep_ch "$player_fn" "curl" "sed" "grep"
+shift $((OPTIND - 1))
 
 ########
 # main #
@@ -377,7 +355,7 @@ append_history
 open_selection
 
 while :; do
-	printf "\n${c_green}Played %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
@@ -435,7 +413,7 @@ while :; do
 			continue
 			;;
 
-		q)
+		q)	
 			break;;
 
 		*)
