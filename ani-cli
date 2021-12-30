@@ -261,7 +261,7 @@ open_episode () {
 	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
 	video_url="https://gogoplay1.com/download?${episode_id}"
 	
-	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/vidstreamingcdn.com.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
+	play_link=$(curl -s $video_url | grep -Eo "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -u | sed 's/amp;//' | tail -n 1)
 		
 	status_code=$(curl -s -I $play_link | head -n 1|cut -d ' ' -f2)
 
