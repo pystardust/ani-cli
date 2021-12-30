@@ -98,11 +98,9 @@ get_video_quality() {
 	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
 		best)
-			play_link=$(echo "$video_quality" | sort -V | tail -n 1)
-			echo $play_link;;
+			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
 		worst)
-			play_link=$(echo "$video_quality" | sort -V | head -n 1)
-			echo $play_link;;
+			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
         	*)
   	             	play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
                 	if [ -z "$play_link" ]; then
