@@ -1,8 +1,10 @@
 # ani-cli
 
-> Script working again :), thanks to the fork by
-> [Dink4n](https://github.com/Dink4n/ani-cli) for the alternative approach to
-> by pass the captcha on [gogoanime](https://gogoanime.vc)
+> Thank you @RaynardGerraldo for fixing the crippling issue 221
+> 
+> [Issue 202](https://github.com/pystardust/ani-cli/issues/202) causes some series to work but not others
+> 
+> Input welcome
 
 A cli to browse and watch anime.
 
