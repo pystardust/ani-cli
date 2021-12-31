@@ -24,13 +24,17 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
+	 -u	 shows anime from history with unwatched episodes
+	 -n	 show recent anime
 	 -h	 show this help text
 	 -d	 download episode
 	 -H	 continue where you left off
 	 -D	 delete history
 	 -q	 set video quality (best/worst/360/480/720/..)
-	 --dub  play the dub version if present
+	 --dub	 play the dub version if present
 	 -v  use VLC as the media player
+
+	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
 }
 
@@ -44,6 +48,21 @@ err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
+search_new () {
+	# get anime name along with its id
+
+	curl -s "$base_url" |
+	sed -n -E '
+		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
+		' |
+	sed -n -E '
+		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
+		'
+}
+
+resolve_url () {
+	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
+}
 
 search_anime () {
 	# get anime name along with its id
@@ -201,6 +220,24 @@ anime_selection () {
 	EOF
 }
 
+search_for_unwatched () {
+	search_results=$*
+
+	unwatched_anime=""
+	while read anime_id; do
+		current_ep_number="$(search_eps "$anime_id")"
+		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
+		if [ "$current_ep_number" -ge "$history_ep_number" ]
+		then
+			unwatched_anime="$unwatched_anime$anime_id\n"
+		fi
+	done <<-EOF
+	$search_results
+	EOF
+	[ -z $unwatched_anime ] && die "No unwatched episodes"
+	printf "%s""$unwatched_anime"
+}
+
 ##################
 ## Ep selection ##
 ##################
@@ -212,8 +249,13 @@ episode_selection () {
 		[ $is_download -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
 
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " $last_ep_number
 		read ep_choice_start ep_choice_end
+		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+		then
+			half_ep=1
+			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+		fi
 		printf "$c_reset"
 	fi
 }
@@ -254,11 +296,22 @@ open_episode () {
 		printf "$c_reset"
 	done
 
-	printf "Getting data for episode %d\n" $episode
-		
+	if [ $half_ep -eq 1 ]
+	then
+		temp_ep=$episode
+		episode=$episode"-5"
+	fi
+
+	printf "Getting data for episode %s\n" $episode
 	
 	get_video_quality
 	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
+
+	if [ $half_ep -eq 1 ]
+	then
+		episode=$temp_ep
+		half_ep=0
+	fi	
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number
@@ -306,10 +359,18 @@ trap "printf '$c_reset'" INT HUP
 
 # option parsing
 is_download=0
+half_ep=0
 quality=best
 scrape=query
-while getopts 'hdHDq:-:v' OPT; do
+
+while getopts 'nuhdHDq:-:v' OPT; do
 	case $OPT in
+		u)
+			scrape=history_new
+			;;
+		n)
+			scrape=new
+			;;
 		h)
 			help_text
 			exit 0
@@ -365,6 +426,19 @@ case $scrape in
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
+	new)
+		search_results=$(search_new)
+		# echo "$search_results"
+		anime_selection "$search_results"
+		episode_selection
+		;;
+	history_new)
+		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+		[ -z "$search_results" ] && die "History is empty"
+		search_results=$(search_for_unwatched "$search_results")
+		anime_selection "$search_results"
+		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+		;;
 esac
 
 check_input
@@ -399,6 +473,11 @@ while :; do
 
 		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 			read episode
+			if [ "$(echo "$episode" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+			then
+				half_ep=1
+				episode=$(echo "$episode" | awk '{ printf substr($0, 2) }')
+			fi
 			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
