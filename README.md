@@ -50,16 +50,8 @@ vlc - An alternative video player
   
 ## Install
 
-### Linux
+### Linux / Mac
 ```sh
-git clone https://github.com/pystardust/ani-cli.git
-cd ani-cli
-sudo make
-```
-
-### Mac
-```sh
-brew install util-linux
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
 sudo make
