@@ -14,6 +14,9 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 > Thank you @Cartmanishere for fixing an age old mac bug
 > 
 > Thank you @dunkanjake1 for adding update checking
+> 
+> Thank you @drabart for adding new episode checking + ep 6.5 bugfix
+
 
 ## Usage
   ```
@@ -21,6 +24,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     ani-cli (OPTION) (query)
 
   Options
+    -u shows anime from history with unwatched episodes
+	-n show recent anime
     -h show helptext
     -d download episode
     -H continue where you left off
@@ -28,6 +33,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -q set video quality (**best**/worst/360/480/720/1080)
     --dub play the dub version if present
     -v use VLC as the media player
+  
+  Add 'h' on beginning for episodes like '6.5' -> 'h6'
   
   Multiple episodes can be chosen given a range
     Choose episode [1-13]: 1 6
