@@ -108,7 +108,6 @@ get_video_quality() {
                 		quality=best
                 		play_link=$(echo "$video_quality" | sort -V | tail -n 1)
                 	fi
-                	printf '%s' "$play_link"
                 	;;
 	esac
 	
@@ -256,7 +255,7 @@ open_episode () {
 				if echo "$status_code" | grep -vE "^2.*"; then
 					printf "${c_red}\nCannot reach servers!"
 				else
-					nohup $player_fn get_video_quality "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					printf "${c_green}\nVideo playing"
 				fi;;
 			"vlc")
@@ -264,7 +263,7 @@ open_episode () {
 				if echo "$status_code" | grep -vE "^2.*"; then	
 					printf "${c_red}\nCannot reach servers!"
 				else
-					nohup $player_fn get_video_quality "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					printf "${c_green}\nVideo playing"
 				fi;;
 		esac
@@ -311,7 +310,6 @@ while getopts 'hdHDq:-:v' OPT; do
 			;;
 		q)
 			quality=$OPTARG
-			echo $quality
 			;;
 		-)
 			case $OPTARG in
