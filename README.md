@@ -16,6 +16,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 > Thank you @dunkanjake1 for adding update checking
 > 
 > Thank you @drabart for adding new episode checking + ep 6.5 bugfix
+> 
+> Thank you @Lukasz825700516 for enabling on key navigation
 
 
 ## Usage
@@ -31,6 +33,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -H continue where you left off
     -D delete history
     -q set video quality (**best**/worst/360/480/720/1080)
+    -k on keypress navigation (while interactive)
     --dub play the dub version if present
     -v use VLC as the media player
   
