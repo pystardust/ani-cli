@@ -12,6 +12,7 @@
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 > Thank you @Cartmanishere for fixing an age old mac bug
+> Thank you @dunkanjake1 for adding update checking
 
 ## Usage
   ```
