@@ -1,6 +1,6 @@
-#Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
-ORIGINAL_DIR=0
 #!/bin/sh
+ORIGINAL_DIR=0
+#Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
 
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
