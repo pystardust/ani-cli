@@ -1,3 +1,5 @@
+#Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
+ORIGINAL_DIR=0
 #!/bin/sh
 
 # dependencies: grep sed curl video_player
@@ -111,6 +113,21 @@ get_video_quality() {
                 	;;
 	esac
 	
+}
+
+check_for_update () {
+	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
+	if [ $ORIGINAL_DIR != 0 ]
+	then
+		git -C $ORIGINAL_DIR fetch 
+		UPSTREAM=${1:-'@{u}'}
+		LOCAL=$(git -C $ORIGINAL_DIR rev-parse @)
+		REMOTE=$(git -C $ORIGINAL_DIR rev-parse "$UPSTREAM")
+
+		if [ $LOCAL != $REMOTE ]; then
+			printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
+		fi
+	fi
 }
 
 dep_ch () {
@@ -324,8 +341,10 @@ while getopts 'hdHDq:-:v' OPT; do
 	esac
 done
 
-dep_ch "$player_fn" "curl" "sed" "grep"
+dep_ch "$player_fn" "curl" "sed" "grep" "git"
+check_for_update
 shift $((OPTIND - 1))
+
 
 ########
 # main #

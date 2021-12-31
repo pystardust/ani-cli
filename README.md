@@ -40,6 +40,7 @@ grep
 curl
 sed
 ffmpeg
+git
 ```
 
 ### Optional
