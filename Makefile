@@ -5,13 +5,13 @@ PREFIX := /usr/local
 CURRENT_DIR := $(shell pwd)
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
-	SED_FLAGS := "-i ''"
-	LN_FLAGS := "-s"
-	LN_SRC := "$(CURRENT_DIR)/ani-cli"
+	SED_FLAGS := -i ''
+	LN_FLAGS := -s
+	LN_SRC := $(CURRENT_DIR)/ani-cli
 else ifeq ($(UNAME), Linux)
-	SED_FLAGS := "-i"
-	LN_FLAGS := "-sr"
-	LN_SRC := "ani-cli"
+	SED_FLAGS := -i
+	LN_FLAGS := -sr
+	LN_SRC := ani-cli
 endif
 
 all: install
