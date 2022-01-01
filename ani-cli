@@ -350,7 +350,7 @@ open_episode () {
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
-			"iina")
+			*)
 				if echo "$status_code" | grep -vE "^2.*"; then	
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
