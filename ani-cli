@@ -1,5 +1,5 @@
 #!/bin/sh
-ORIGINAL_DIR=0
+ORIGINAL_DIR="/Users/Tennyson/ani-cli"
 #Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
 
 # dependencies: grep sed curl video_player
@@ -337,17 +337,25 @@ open_episode () {
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn "$play_link" > /dev/null 2>&1
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
 			"vlc")
-				
 				if echo "$status_code" | grep -vE "^2.*"; then	
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn "$play_link" > /dev/null 2>&1
+					printf "${c_green}\nVideo playing"
+					mv "${logfile}.new" "$logfile"
+				fi;;
+			"iina")
+				if echo "$status_code" | grep -vE "^2.*"; then	
+					printf "${c_red}\nCannot reach servers!"
+					rm "${logfile}.new"
+				else
+					nohup $player_fn "$play_link" > /dev/null 2>&1
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
