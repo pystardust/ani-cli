@@ -34,7 +34,7 @@ help_text () {
 	 -k  on keypress navigation (previous/next/replay/quit episode)
 	 --dub	 play the dub version if present
 	 -v  use VLC as the media player
-   
+
 	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
 }
@@ -59,10 +59,6 @@ search_new () {
 	sed -n -E '
 		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
 		'
-}
-
-resolve_url () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
 }
 
 search_anime () {
@@ -99,7 +95,7 @@ get_embedded_video_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
 	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
-	
+
 	if [ "$req_link" ]; then
 		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
 		sed -n -E '
@@ -114,7 +110,7 @@ get_embedded_video_link() {
 		s/.*data-video="([^"]*)".*/https:\1/p
 		q
 		}'
-	fi	
+	fi
 }
 
 get_links () {
@@ -125,7 +121,7 @@ get_links () {
 
 
 get_video_quality() {
-	
+
 	get_links
 	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
@@ -142,14 +138,14 @@ get_video_quality() {
                 	fi
                 	;;
 	esac
-	
+
 }
 
 check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
 	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C "$ORIGINAL_DIR" fetch 
+		git -C "$ORIGINAL_DIR" fetch
 		UPSTREAM=${1:-'@{u}'}
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
@@ -314,7 +310,7 @@ open_episode () {
 	fi
 
 	printf "Getting data for episode %s\n" $episode
-	
+
 	get_video_quality
 	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
 
@@ -322,7 +318,7 @@ open_episode () {
 	then
 		episode=$temp_ep
 		half_ep=0
-	fi	
+	fi
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number and save to temporary history
@@ -342,8 +338,8 @@ open_episode () {
 					mv "${logfile}.new" "$logfile"
 				fi;;
 			"vlc")
-				
-				if echo "$status_code" | grep -vE "^2.*"; then	
+
+				if echo "$status_code" | grep -vE "^2.*"; then
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
@@ -552,7 +548,7 @@ while :; do
 			continue
 			;;
 
-		q)	
+		q)
 			break;;
 
 		*)
