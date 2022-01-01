@@ -1,5 +1,5 @@
 #!/bin/sh
-ORIGINAL_DIR="/Users/Tennyson/ani-cli"
+ORIGINAL_DIR=0
 #Used to track where .git directory is. Variable must be on line 2. Makefile writes to this line.
 
 # dependencies: grep sed curl video_player
