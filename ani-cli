@@ -339,7 +339,7 @@ open_episode () {
 				fi;;
 		esac
 	else
-		mkdir -p $download_dir
+		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
