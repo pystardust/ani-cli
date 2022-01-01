@@ -155,7 +155,7 @@ check_for_update () {
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
 
 		if [ $LOCAL != $REMOTE ]; then
-			printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
+			printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo rm -rf /usr/local/bin/ani-cli\nsudo make\n----------\n"
 		fi
 	fi
 }
