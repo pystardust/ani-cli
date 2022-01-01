@@ -6,7 +6,7 @@ CURRENT_DIR := $(shell pwd)
 UNAME := $(shell uname)
 ifeq ($(UNAME), Darwin)
 	SED_FLAGS := -i ''
-else ifeq ($(UNAME), Linux)
+else
 	SED_FLAGS := -i
 endif
 
