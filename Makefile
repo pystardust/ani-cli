@@ -4,6 +4,7 @@ PREFIX := /usr/local
 # The install directory contains a .git file, which is used on startup to determine if an update is available
 CURRENT_DIR := $(shell pwd)
 
+#install by default
 all: install
 
 install:
@@ -16,6 +17,6 @@ install:
 
 uninstall:
 	# removes symlink in /usr/local/bin/ani-cli
-	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+	unlink $(DESTDIR)$(PREFIX)/bin/ani-cli
 
 .PHONY: all install uninstall
