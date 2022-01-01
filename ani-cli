@@ -356,10 +356,11 @@ open_episode () {
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
+		printf "%s\n" "$play_link"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -i "$play_link" -c copy "$download_dir/${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			aria2c "$play_link" --dir=$download_dir -o "${anime_id}-${episode}.mkv" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
