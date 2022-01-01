@@ -1,0 +1,19 @@
+name: ani-cli
+version: 0.1.0
+
+authors:
+  - ani-cli Contributors
+
+targets:
+  ani-cli:
+    main: src/ani-cli.cr
+  libgogo:
+    main: src/libgogo.cr
+
+dependencies:
+  http_proxy:
+    github: mamantoha/http_proxy
+
+crystal: 1.2.2
+
+license: GPLv3

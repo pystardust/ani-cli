@@ -4,15 +4,16 @@ PREFIX := /usr/local
 # The install directory contains a .git file, which is used on startup to determine if an update is available
 CURRENT_DIR := '$(shell pwd)'
 
-all: install
+all: compile install run
+
+compile:
+	crystal src/ani-cli.cr -o ./bin/ani-cli
 
 install:
-	# writes ORIGINAL_DIR variable to first line of ani-cli file
-	sed -i '2s}.*}ORIGINAL_DIR=$(CURRENT_DIR)}' ./ani-cli
-	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
-	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
+	chmod +x ./bin/ani-cli
+	mv ./bin/ani-cli /usr/bin
 
-uninstall:
-	$(RM) $(DESTDIR)$(PREFIX)/bin/ani-cli
+run:
+	ani-cli
 
-.PHONY: all install uninstall
+.PHONY: all compile install run
