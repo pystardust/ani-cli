@@ -121,22 +121,21 @@ get_links () {
 
 
 get_video_quality() {
-
 	get_links
-	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
+	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
 		best)
 			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
 		worst)
 			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
-        	*)
-  	             	play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
-                	if [ -z "$play_link" ]; then
-                		printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
-                		quality=best
-                		play_link=$(echo "$video_quality" | sort -V | tail -n 1)
-                	fi
-                	;;
+		*)
+			play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
+			if [ -z "$play_link" ]; then
+				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+				quality=best
+				play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+			fi
+			;;
 	esac
 
 }
@@ -326,28 +325,22 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		case $player_fn in
-
-			"mpv")
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
+		if $(printf "$status_code" | grep -vE "^2.*"); then
+			printf "${c_red}\nCannot reach servers!"
+			rm "${logfile}.new"
+		else
+			case $player_fn in
+				"mpv")
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-			"vlc")
-
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
+					;;
+				"vlc")
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-		esac
+					;;
+			esac
+
+			printf "${c_green}\nVideo playing"
+			mv "${logfile}.new" "$logfile"
+		fi
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
