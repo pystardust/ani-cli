@@ -137,12 +137,12 @@ get_video_quality() {
 
 check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
-	if [ $ORIGINAL_DIR != 0 ]
+	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C $ORIGINAL_DIR fetch 
+		git -C "$ORIGINAL_DIR" fetch 
 		UPSTREAM=${1:-'@{u}'}
-		LOCAL=$(git -C $ORIGINAL_DIR rev-parse @)
-		REMOTE=$(git -C $ORIGINAL_DIR rev-parse "$UPSTREAM")
+		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
+		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
 
 		if [ $LOCAL != $REMOTE ]; then
 			printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
