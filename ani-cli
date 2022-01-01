@@ -117,7 +117,7 @@ get_links () {
 get_video_quality() {
 	
 	get_links
-	video_quality=$(curl -s get_links "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
+	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
 		best)
 			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
@@ -306,7 +306,7 @@ open_episode () {
 	printf "Getting data for episode %s\n" $episode
 	
 	get_video_quality
-	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
+	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d ' ' -f2)
 
 	if [ $half_ep -eq 1 ]
 	then
