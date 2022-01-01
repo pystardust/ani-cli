@@ -315,27 +315,31 @@ open_episode () {
 	fi	
 
 	if [ $is_download -eq 0 ]; then
-		# write anime and episode number
+		# write anime and episode number and save to temporary history
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
-		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
+		" "$logfile" > "${logfile}.new"
 
 		case $player_fn in
 
 			"mpv")
 				if echo "$status_code" | grep -vE "^2.*"; then
 					printf "${c_red}\nCannot reach servers!"
+					rm "${logfile}.new"
 				else
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					printf "${c_green}\nVideo playing"
+					mv "${logfile}.new" "$logfile"
 				fi;;
 			"vlc")
 				
 				if echo "$status_code" | grep -vE "^2.*"; then	
 					printf "${c_red}\nCannot reach servers!"
+					rm "${logfile}.new"
 				else
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					printf "${c_green}\nVideo playing"
+					mv "${logfile}.new" "$logfile"
 				fi;;
 		esac
 	else
