@@ -2,7 +2,7 @@ PREFIX := /usr/local
 
 # Specify path of install directory
 # The install directory contains a .git file, which is used on startup to determine if an update is available
-CURRENT_DIR := '$(shell pwd)'
+CURRENT_DIR := $(shell pwd)
 
 all: install
 
