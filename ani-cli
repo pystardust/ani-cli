@@ -339,12 +339,13 @@ open_episode () {
 				fi;;
 		esac
 	else
+		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -i "$play_link" -c copy "${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			ffmpeg -i "$play_link" -c copy "$download_dir/${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -363,11 +364,12 @@ is_download=0
 half_ep=0
 quality=best
 scrape=query
+download_dir="."
 navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'knuhdHDq:-:v' OPT; do
+while getopts 'knuhdHDq:p:-:v' OPT; do
 	case $OPT in
 		u)
 			scrape=history_new
@@ -381,6 +383,10 @@ while getopts 'knuhdHDq:-:v' OPT; do
 			;;
 		d)
 			is_download=1
+			;;
+		p)
+			is_download=1
+			download_dir=$OPTARG
 			;;
 		H)
 			scrape=history
