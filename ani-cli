@@ -144,7 +144,7 @@ check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
 	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C "$ORIGINAL_DIR" fetch
+		git -C "$ORIGINAL_DIR" fetch >/dev/null 2>&1
 		UPSTREAM=${1:-'@{u}'}
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
