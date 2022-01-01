@@ -98,14 +98,24 @@ get_embedded_video_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
-	sed -n -E '
+	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
+	
+	if [ "$req_link" ]; then
+		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
+		sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
 		q
 		}'
+	else
+		curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" |
+		sed -n -E '
+		/^[[:space:]]*<a href="#" rel="100"/{
+		s/.*data-video="([^"]*)".*/https:\1/p
+		q
+		}'
+	fi	
 }
-
 
 get_links () {
 	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
