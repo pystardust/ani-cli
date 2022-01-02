@@ -34,6 +34,7 @@ help_text () {
 	 -k  on keypress navigation (previous/next/replay/quit episode)
 	 --dub	 play the dub version if present
 	 -v  use VLC as the media player
+	 -o  use media player of your own choice : ani-cli -o <media-player>
    
 	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
@@ -391,7 +392,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'knuhdHDq:p:-:v' OPT; do
+while getopts 'knuhdHDqo:p:-:v' OPT; do
 	case $OPT in
 		u)
 			scrape=history_new
@@ -413,7 +414,6 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 		H)
 			scrape=history
 			;;
-
 		D)
 			: > "$logfile"
 			exit 0
@@ -421,9 +421,12 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 		q)
 			quality=$OPTARG
 			;;
-    k)
+		k)
 			navigation_type=1
-      ;;
+			;;
+		o)
+			player_fn=$OPTARG
+			;;
 		-)
 			case $OPTARG in
 				dub)
