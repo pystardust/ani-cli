@@ -33,7 +33,7 @@ help_text () {
 	 -q	 set video quality (best/worst/360/480/720/..)
 	 -k  on keypress navigation (previous/next/replay/quit episode)
 	 --dub	 play the dub version if present
-	 -v  use VLC as the media player
+	 --player=<PLAYER> use <PLAYER> as the media player
    
 	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
@@ -337,7 +337,7 @@ open_episode () {
 
 		case $player_fn in
 
-			"mpv")
+			"mpv" | "celluloid")
 				if echo "$status_code" | grep -vE "^2.*"; then
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
@@ -364,6 +364,9 @@ open_episode () {
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
+			*)
+				echo "The player $player_fn is not supported!"
+				exit 1
 		esac
 	else
 		mkdir -p "$download_dir"
@@ -426,18 +429,18 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 		q)
 			quality=$OPTARG
 			;;
-    k)
+		k)
 			navigation_type=1
-      ;;
+			;;
 		-)
 			case $OPTARG in
 				dub)
 					dub_prefix="-dub"
 					;;
+				player=*)
+					player_fn=$(cut -d "=" -f2 <<< $OPTARG)
+                        		;;
 			esac
-			;;
-		v)
-			player_fn="vlc"
 			;;
 	esac
 done
