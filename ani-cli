@@ -301,7 +301,12 @@ open_episode () {
 	tput reset
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
 	do
-		err "Episode out of range"
+
+		if [ $last_ep_number -eq 0 ]; then
+			die "Episodes not released yet!" 
+		else	
+			err "Episode out of range"
+		fi
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read episode
 		printf "$c_reset"
