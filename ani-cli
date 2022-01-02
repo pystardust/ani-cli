@@ -258,10 +258,10 @@ episode_selection () {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " $last_ep_number
 		read ep_choice_start ep_choice_end
-		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
 		fi
 		printf "$c_reset"
 	fi
@@ -312,7 +312,7 @@ open_episode () {
 	printf "Getting data for episode %s\n" $episode
 
 	get_video_quality
-	status_code=$(curl -s -I get_video_quality "$play_link" | head -n 1|cut -d ' ' -f2)
+	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d' ' -f2)
 
 	if [ $half_ep -eq 1 ]
 	then
