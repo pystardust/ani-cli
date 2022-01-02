@@ -330,6 +330,7 @@ open_episode () {
 			printf "${c_red}\nCannot reach servers!"
 			rm "${logfile}.new"
 		else
+			kill $PID >/dev/null 2>&1
 			case $player_fn in
 				"mpv")
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
@@ -338,6 +339,7 @@ open_episode () {
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					;;
 			esac
+			PID="$!"
 
 			printf "${c_green}\nVideo playing"
 			mv "${logfile}.new" "$logfile"
