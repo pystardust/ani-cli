@@ -338,7 +338,7 @@ open_episode () {
 					rm "${logfile}.new"
 				else
                                         if ps "$PID" &> /dev/null; then
-						kill "$PID"
+					        kill "$PID"
 					fi
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					PID="$!"
@@ -352,7 +352,7 @@ open_episode () {
 					rm "${logfile}.new"
 				else
                                         if ps "$PID" &> /dev/null; then
-                                            pkill "$PID"
+                                                kill "$PID"
                                         fi
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					PID="$!"
