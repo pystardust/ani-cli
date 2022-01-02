@@ -337,10 +337,11 @@ open_episode () {
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
-                                        if pgrep mpv; then
-                                            pkill mpv
-                                        fi
+                                        if ps "$PID" &> /dev/null; then
+						kill "$PID"
+					fi
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					PID="$!"
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
@@ -350,10 +351,11 @@ open_episode () {
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
-                                        if pgrep vlc; then
-                                            pkill vlc
+                                        if ps "$PID" &> /dev/null; then
+                                            pkill "$PID"
                                         fi
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					PID="$!"
 					printf "${c_green}\nVideo playing"
 					mv "${logfile}.new" "$logfile"
 				fi;;
