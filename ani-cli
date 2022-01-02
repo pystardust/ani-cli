@@ -34,7 +34,7 @@ help_text () {
 	 -k  on keypress navigation (previous/next/replay/quit episode)
 	 --dub	 play the dub version if present
 	 -v  use VLC as the media player
-   
+
 	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
 }
@@ -99,7 +99,7 @@ get_embedded_video_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
 	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
-	
+
 	if [ "$req_link" ]; then
 		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
 		sed -n -E '
@@ -114,7 +114,7 @@ get_embedded_video_link() {
 		s/.*data-video="([^"]*)".*/https:\1/p
 		q
 		}'
-	fi	
+	fi
 }
 
 get_links () {
@@ -125,7 +125,7 @@ get_links () {
 
 
 get_video_quality() {
-	
+
 	get_links
 	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
@@ -142,14 +142,14 @@ get_video_quality() {
                 	fi
                 	;;
 	esac
-	
+
 }
 
 check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
 	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C "$ORIGINAL_DIR" fetch 
+		git -C "$ORIGINAL_DIR" fetch
 		UPSTREAM=${1:-'@{u}'}
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
@@ -303,8 +303,8 @@ open_episode () {
 	do
 
 		if [ $last_ep_number -eq 0 ]; then
-			die "Episodes not released yet!" 
-		else	
+			die "Episodes not released yet!"
+		else
 			err "Episode out of range"
 		fi
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
@@ -319,7 +319,7 @@ open_episode () {
 	fi
 
 	printf "Getting data for episode %s\n" $episode
-	
+
 	get_video_quality
 	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d ' ' -f2)
 
@@ -327,7 +327,7 @@ open_episode () {
 	then
 		episode=$temp_ep
 		half_ep=0
-	fi	
+	fi
 
 	if [ $is_download -eq 0 ]; then
 		# write anime and episode number and save to temporary history
@@ -351,8 +351,8 @@ open_episode () {
 					mv "${logfile}.new" "$logfile"
 				fi;;
 			"vlc")
-				
-				if echo "$status_code" | grep -vE "^2.*"; then	
+
+				if echo "$status_code" | grep -vE "^2.*"; then
 					printf "${c_red}\nCannot reach servers!"
 					rm "${logfile}.new"
 				else
@@ -368,11 +368,11 @@ open_episode () {
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$video_url"
+		printf "%s\n" "$play_link"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -i "$play_link" -c copy "$download_dir/${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -565,7 +565,7 @@ while :; do
 			continue
 			;;
 
-		q)	
+		q)
 			break;;
 
 		*)
