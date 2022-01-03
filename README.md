@@ -12,7 +12,8 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-> Thank you @drabart for the ep 6.5 bugfix
+> After adding way to many features last week, we will begin to slim ani-cli down again this week.
+> The bloated-ani-cli branch is perfect for those that may disagree with that choice.
 
 ## Usage
   ```
