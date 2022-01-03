@@ -39,17 +39,7 @@ sudo make
 ```
 
 ### Windows
-* Download and install [gitbash](https://git-scm.com/downloads)
-* Download and install vlc (mpv needs further testing)
-* Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
-* Open git bash by right-clicking and choosing "Run as administrator"
-* Run the following commands
-```sh
-git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
-cd ani-cli
-chmod +x ani-cli-win
-./install
-```
+Crystal doesn't support Windows at this point in time, sorry
 
 ## Disclaimer
 
