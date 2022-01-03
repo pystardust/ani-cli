@@ -420,10 +420,16 @@ while getopts 'hdDHknp:q:uv-:' OPT; do
 	esac
 done
 
-dep_ch "$player_fn" "curl" "sed" "grep" "git"
+# check for main dependencies
+dep_ch "curl" "sed" "grep" "git"
+
+# check for optional dependencies
+if [ $is_download -eq 0 ]; then
+	dep_ch "$player_fn"
+fi
+
 check_for_update
 shift $((OPTIND - 1))
-
 
 ########
 # main #
