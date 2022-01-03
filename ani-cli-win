@@ -6,7 +6,7 @@ player_fn="vlc"
 
 prog="ani-cli"
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-base_url="https://www1.gogoanime.cm"
+base_url=$(curl -4 -s -L -o /dev/null -w "%{url_effective}\n" "https://www.gogoanime.cm")
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -65,7 +65,7 @@ search_eps () {
 		'
 }
 
-get_embedded_video_link() {
+get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
@@ -73,55 +73,43 @@ get_embedded_video_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	curl -4 -s "$base_url/$anime_id-episode-$ep_no" |
 	sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
 		q
 		}'
 }
 
 get_video_quality() {
-	embedded_video_url=$1
-	video_url=$2
+	dpage_url=$1
 
-	video_file=$(curl -4 -s --referer "$embedded_video_url" "$video_url")
-	available_qualities=$(printf '%s' "$video_file" | sed -n -E 's/.*NAME="([^p]*)p"/\1/p')
+	video_links=$(curl -4 -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
 	case $quality in
 		best)
-			printf '%s' "$available_qualities" | tail -n 1
+			video_link=$(printf '%s' "$video_links" | tail -n 1)
 			;;
 
 		worst)
-			printf '%s' "$available_qualities" | head -n 1
+			video_link=$(printf '%s' "$video_links" | head -n 1)
 			;;
 
 		*)
-			is_quality_avail=$(printf '%s' "$available_qualities" | grep "$quality")
-			video_quality="$quality"
-			if [ -z "$is_quality_avail" ]; then
+			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
+			if [ -z "$video_link" ]; then
 				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
 				quality=best
-				video_quality=$(printf '%s' "$available_qualities" | tail -n 1)
+				video_link=$(printf '%s' "$video_links" | tail -n 1)
 			fi
-			printf '%s' "$video_quality"
 			;;
 	esac
 
+	printf '%s' "$video_link"
 }
 
 get_links () {
-	embedded_video_url="$1"
-	video_url=$(curl -4 -s "$embedded_video_url" |
-	sed -n -E '
-		/^[[:space:]]*sources:/{
-		s/.*(https[^'\'']*).*/\1/p
-		q
-		}
-		')
+	dpage_url="$1"
+	video_url=$(get_video_quality "$dpage_url")
 
-	video_quality=$(get_video_quality "$embedded_video_url" "$video_url")
-
-	# Replace the video with highest quality video
-	printf '%s' "$video_url" | sed -n -E "s/(.*)\.m3u8/\1.$video_quality.m3u8/p"
+	printf '%s' "$video_url"
 }
 
 dep_ch () {
@@ -224,8 +212,8 @@ open_episode () {
 
 	printf "Getting data for episode %d\n" $episode
 
-	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	video_url=$(get_links "$embedded_video_url")
+	dpage_link=$(get_dpage_link "$anime_id" "$episode")
+	video_url=$(get_links "$dpage_link")
 
 	case $video_url in
 		*streamtape*)
@@ -246,7 +234,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		$player_fn --http-referrer="$embedded_video_url" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access  >/dev/null 2>&1
+		$player_fn "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access  >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
