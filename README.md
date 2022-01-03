@@ -5,20 +5,15 @@
 [![Maintainer](https://img.shields.io/badge/maintainer-ura43-blue)](https://github.com/ura43)
 [![Maintainer](https://img.shields.io/badge/maintainer-RayGL-blue)](https://github.com/RaynardGerraldo)
 [![Maintainer](https://img.shields.io/badge/maintainer-Dink4n-blue)](https://github.com/Dink4n)
+[![Maintainer](https://img.shields.io/badge/maintainer-CoolnsX-blue)](https://github.com/CoolnsX)
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
 ![Mac](https://img.shields.io/badge/os-mac-yellow)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-> Thank you @Cartmanishere for fixing an age old mac bug
-> 
-> Thank you @dunkanjake1 for adding update checking
-> 
-> Thank you @drabart for adding new episode checking + ep 6.5 bugfix
-> 
-> Thank you @Lukasz825700516 for enabling on key navigation
-
+> After adding way to many features last week, we will begin to slim ani-cli down again this week.
+> The bloated-ani-cli branch is perfect for those that may disagree with that choice.
 
 ## Usage
   ```

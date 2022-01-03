@@ -35,6 +35,7 @@ help_text () {
 	 -u	 shows anime from history with unwatched episodes
 	 -v	 use VLC as the media player
 	 --dub	 play the dub version if present
+	 -v  use VLC as the media player
 
 	add 'h' on beginning for episodes like '6.5' -> 'h6'
 	EOF
@@ -297,7 +298,12 @@ open_episode () {
 	tput reset
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
 	do
-		err "Episode out of range"
+
+		if [ $last_ep_number -eq 0 ]; then
+			die "Episodes not released yet!"
+		else
+			err "Episode out of range"
+		fi
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
 		read episode
 		printf "$c_reset"
@@ -339,7 +345,7 @@ open_episode () {
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
 					;;
 			esac
-			PID="$!"
+			PID=$!
 
 			printf "${c_green}\nVideo playing"
 			mv "${logfile}.new" "$logfile"
@@ -347,11 +353,11 @@ open_episode () {
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$video_url"
+		printf "%s\n" "$play_link"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			ffmpeg -i "$play_link" -c copy "$download_dir/${anime_id}-${episode}.mkv" >/dev/null 2>&1 &&
+			curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -363,7 +369,7 @@ open_episode () {
 ############
 
 # to clear the colors when exited using SIGINT
-trap "printf '$c_reset'" INT HUP
+trap "printf '$c_reset'; exit 1" INT HUP
 
 # option parsing
 is_download=0
