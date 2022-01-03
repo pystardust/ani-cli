@@ -7,7 +7,7 @@ CURRENT_DIR := '$(shell pwd)'
 all: compile install run
 
 compile:
-	crystal src/ani-cli.cr -o ./bin/ani-cli
+	shards build --release --production --verbose -p -t
 
 install:
 	chmod +x ./bin/ani-cli

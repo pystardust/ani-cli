@@ -11,8 +11,16 @@ targets:
     main: src/libgogo.cr
 
 dependencies:
-  http_proxy:
-    github: mamantoha/http_proxy
+  term-prompt:
+    github: crystal-term/prompt
+  clim:
+    github: at-grandpa/clim
+    version: 0.17.1
+  term-screen:
+    github: crystal-term/screen
+# HTTP proxy lib, not currently being used
+#  http_proxy:
+#    github: mamantoha/http_proxy
 
 crystal: 1.2.2
 

@@ -1,0 +1,30 @@
+version: 2.0
+shards:
+  clim:
+    git: https://github.com/at-grandpa/clim.git
+    version: 0.17.1
+
+  cor:
+    git: https://github.com/watzon/cor.git
+    version: 0.1.0+git.commit.9c9e51ac6168f3bd4fdc51d679b65de09ef76cac
+
+  http_proxy:
+    git: https://github.com/mamantoha/http_proxy.git
+    version: 0.8.0
+
+  term-cursor:
+    git: https://github.com/crystal-term/cursor.git
+    version: 0.1.0+git.commit.8805d5f686d153db92cf2ce3333433f8ed3708d0
+
+  term-prompt:
+    git: https://github.com/crystal-term/prompt.git
+    version: 0.1.0+git.commit.bf2b17f885a6c660aea0dda62b0b9da4343ab295
+
+  term-reader:
+    git: https://github.com/crystal-term/reader.git
+    version: 0.1.0+git.commit.e174733435c96c745bee31ac5c5d4def3ccf4285
+
+  term-screen:
+    git: https://github.com/crystal-term/screen.git
+    version: 0.1.0+git.commit.dcea3456160d3a00d5be874aaa5946362ea9bbaf
+
