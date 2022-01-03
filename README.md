@@ -30,6 +30,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -k on keypress navigation (previous/next/replay/quit episode)
     --dub play the dub version if present
     -v use VLC as the media player
+    -o  use media player of your own choice : ani-cli -o <media-player>
   
   Add 'h' on beginning for episodes like '6.5' -> 'h6'
   
