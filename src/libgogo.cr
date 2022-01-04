@@ -53,7 +53,7 @@ module Libgogo
     data =
       HTTPCli.get("#{BASE_URL}/category/#{id}").body.to_s                                         # Fetch the series' page
         .match(/<a href="#" class="active" ep_start = '(\d{1,2})' ep_end = '(\d{1,5})'/).not_nil! # Pull out the episode range
-    return data[1].to_i...data[2].to_i                                                            # Return as Range
+      return (data[1].to_i + 1)...(data[2].to_i + 1)                                              # Return as Range
   end
 
   def self.get_video_url(ep_id : String, resolution : Int32 = 1080)
