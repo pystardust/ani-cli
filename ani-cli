@@ -353,7 +353,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
+			aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir=$download_dir -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -428,6 +428,12 @@ dep_ch "curl" "sed" "grep" "git"
 # check for optional dependencies
 if [ $is_download -eq 0 ]; then
 	dep_ch "$player_fn"
+else
+    if ! command -v aria2c > /dev/null ; then
+	echo "command aria2c not found. Please install it"
+	echo "To install aria2c, Type <your_package_manager> aria2"
+	exit 1
+    fi
 fi
 
 check_for_update
