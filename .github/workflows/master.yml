@@ -1,6 +1,6 @@
 on:
   push:
-  pull_requests:
+  pull_request:
 
 name: 'QA'
 
