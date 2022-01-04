@@ -17,26 +17,27 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Usage
   ```
-  Watch anime
-    ani-cli (OPTION) (query)
-
-  Options
+    ani-cli [-kv] [--dub] [-q <quality>] [-d] [<query>]
+    ani-cli [-kv] [--dub] [-q <quality>] -u | -n | -H
+    ani-cli -h | -D
+  Options:
     -u shows anime from history with unwatched episodes
-	-n show recent anime
+    -n show recent anime
     -h show helptext
     -d download episode
-    -H continue where you left off
+    -H continue with next unwatched episode from history of watched series
     -D delete history
-    -q set video quality (**best**/worst/360/480/720/1080)
+    -q set video quality (**best**|worst|360|480|720|1080)
     -k on keypress navigation (previous/next/replay/quit episode)
     --dub play the dub version if present
     -v use VLC as the media player
-  
-  Add 'h' on beginning for episodes like '6.5' -> 'h6'
-  
-  Multiple episodes can be chosen given a range
-    Choose episode [1-13]: 1 6
-    This would choose episodes 1 2 3 4 5 6
+
+  Episode selection:
+    Add 'h' on beginning for episodes like '6.5' -> 'h6'
+
+    Multiple episodes can be chosen given a range
+      Choose episode [1-13]: 1 6
+      This would choose episodes 1 2 3 4 5 6
   ```
 
 ## Dependencies
