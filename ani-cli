@@ -66,7 +66,6 @@ search_new () {
 search_anime () {
 	# get anime name along with its id
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	titlepattern='<a href="/category/'
 
 	curl -s "$base_url//search.html" \
 		-G \
@@ -365,7 +364,7 @@ open_episode () {
 ############
 
 # to clear the colors when exited using SIGINT
-trap "printf '$c_reset'; exit 1" INT HUP
+trap 'printf "$c_reset"; exit 1' INT HUP
 
 # option parsing
 is_download=0
@@ -418,6 +417,10 @@ while getopts 'hdDHknp:q:uv-:' OPT; do
 					dub_prefix="-dub"
 					;;
 			esac
+			;;
+		*)
+			help_text
+			exit 1
 			;;
 	esac
 done
