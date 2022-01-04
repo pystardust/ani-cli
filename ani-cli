@@ -89,57 +89,58 @@ search_eps () {
 		'
 }
 
-get_embedded_video_link() {
+get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
+	anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
 
-	if [ "$(printf '%s' "$req_link" | grep -o "404")" ]; then
-		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
-		sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
-	else
-		printf '%s' "$req_link" |
-		sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
+	if [ -n "$(printf '%s' "$anime_page" | grep -o "404")" ]; then
+		anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no")
 	fi
-}
 
-get_links () {
-	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
-	video_url="https://gogoplay1.com/download?${episode_id}"
+	printf '%s' "$anime_page" |
+	sed -n -E '
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
+		q
+		}'
 }
-
 
 get_video_quality() {
-	get_links
-	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
+	dpage_url=$1
+
+	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
 	case $quality in
 		best)
-			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
+			video_link=$(printf '%s' "$video_links" | tail -n 1)
+			;;
+
 		worst)
-			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
+			video_link=$(printf '%s' "$video_links" | head -n 1)
+			;;
+
 		*)
-			play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
-			if [ -z "$play_link" ]; then
-				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
+			if [ -z "$video_link" ]; then
+				err "Current video quality is not available (defaulting to highest quality)"
 				quality=best
-				play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+				video_link=$(printf '%s' "$video_links" | tail -n 1)
 			fi
 			;;
 	esac
 
+	printf '%s' "$video_link"
+}
+
+get_links () {
+	dpage_url="$1"
+	video_url=$(get_video_quality "$dpage_url")
+
+	curl -s -L -o /dev/null -w "%{url_effective}\n" "$video_url"
 }
 
 check_for_update () {
@@ -317,8 +318,10 @@ open_episode () {
 
 	printf "Getting data for episode %s\n" $episode
 
-	get_video_quality
-	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d' ' -f2)
+	dpage_link=$(get_dpage_link "$anime_id" "$episode")
+	video_url=$(get_links "$dpage_link")
+
+	status_code=$(curl -s -I --referer "$dpage_link" "$video_url" | head -n 1|cut -d' ' -f2)
 
 	if [ $half_ep -eq 1 ]
 	then
@@ -339,10 +342,10 @@ open_episode () {
 			kill $PID >/dev/null 2>&1
 			case $player_fn in
 				"mpv")
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
 					;;
 				"vlc")
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
+					nohup $player_fn --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
 					;;
 			esac
 			PID=$!
@@ -353,11 +356,11 @@ open_episode () {
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$play_link"
+		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+			curl -L -# -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
