@@ -140,7 +140,7 @@ get_links () {
 	dpage_url="$1"
 	video_url=$(get_video_quality "$dpage_url")
 
-	curl -s -L -o /dev/null -w "%{url_effective}\n" "$video_url"
+	printf '%s' "$video_url"
 }
 
 check_for_update () {
@@ -321,8 +321,6 @@ open_episode () {
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_links "$dpage_link")
 
-	status_code=$(curl -s -I --referer "$dpage_link" "$video_url" | head -n 1|cut -d' ' -f2)
-
 	if [ $half_ep -eq 1 ]
 	then
 		episode=$temp_ep
@@ -335,24 +333,19 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		if printf "$status_code" | grep -vE "^2.*"; then
-			printf "${c_red}\nCannot reach servers!"
-			rm "${logfile}.new"
-		else
-			kill $PID >/dev/null 2>&1
-			case $player_fn in
-				"mpv")
-					nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
-					;;
-				"vlc")
-					nohup $player_fn --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
-					;;
-			esac
-			PID=$!
+		kill $PID >/dev/null 2>&1
+		case $player_fn in
+			"mpv")
+				nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+				;;
+			"vlc")
+				nohup $player_fn --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
+				;;
+		esac
+		PID=$!
 
-			printf "${c_green}\nVideo playing"
-			mv "${logfile}.new" "$logfile"
-		fi
+		printf "${c_green}\nVideo playing"
+		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
@@ -360,7 +353,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
+			curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
