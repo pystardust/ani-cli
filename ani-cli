@@ -6,7 +6,7 @@ ORIGINAL_DIR=0
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
 
-prog="ani-cli"
+prog=$0
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
@@ -23,19 +23,26 @@ help_text () {
 	while IFS= read line; do
 		printf "%s\n" "$line"
 	done <<-EOF
-	USAGE: $prog <query>
-	 -u	 shows anime from history with unwatched episodes
-	 -n	 show recent anime
-	 -h	 show this help text
-	 -d	 download episode
-	 -H	 continue where you left off
-	 -D	 delete history
-	 -q	 set video quality (best/worst/360/480/720/..)
-	 -k  on keypress navigation (previous/next/replay/quit episode)
-	 --dub	 play the dub version if present
-	 -v  use VLC as the media player
-
-	add 'h' on beginning for episodes like '6.5' -> 'h6'
+	Usage:
+	  $prog [-kv] [--dub] [-q <quality>] [-d] [<query>]
+	  $prog [-kv] [--dub] [-q <quality>] -u | -n | -H
+	  $prog -h | -D
+	Options:
+	  -u shows anime from history with unwatched episodes
+	  -n show recent anime
+	  -h show helptext
+	  -d download episode
+	  -H continue with next unwatched episode from history of watched series
+	  -D delete history
+	  -q set video quality (best|worst|360|480|720|1080)
+	  -k on keypress navigation (previous/next/replay/quit episode)
+	  --dub play the dub version if present
+	  -v use VLC as the media player
+	Episode selection:
+	  Add 'h' on beginning for episodes like '6.5' -> 'h6'
+	  Multiple episodes can be chosen given a range
+	    Choose episode [1-13]: 1 6
+	    This would choose episodes 1 2 3 4 5 6
 	EOF
 }
 
