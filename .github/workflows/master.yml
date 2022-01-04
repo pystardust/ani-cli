@@ -12,4 +12,4 @@ jobs:
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       env:
-        SHELLCHECK_OPTS: -s sh -e 1087 2059
+        SHELLCHECK_OPTS: -s sh -e 1087 -e 2059
