@@ -20,7 +20,7 @@ c_reset="\033[0m"
 
 
 help_text () {
-	while IFS= read line; do
+	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
@@ -151,7 +151,7 @@ check_for_update () {
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
 
-		if [ $LOCAL != $REMOTE ]; then
+		if [ "$LOCAL" != "$REMOTE" ]; then
 			printf "UPDATE AVAILABLE\nPlease run the following commands in your ani-cli directory to update\n----------\ngit pull\nsudo make\n----------\n"
 		fi
 	fi
@@ -189,7 +189,7 @@ anime_selection () {
 	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 	count=1
-	while read anime_id; do
+	while read -r anime_id; do
 		# alternating colors for menu
 		[ $((count % 2)) -eq 0 ] &&
 			menu_format_string=$menu_format_string_c1 ||
@@ -203,7 +203,7 @@ anime_selection () {
 
 	# User input
 	printf "$c_blue%s$c_green" "Enter number: "
-	read choice
+	read -r choice
 	printf "$c_reset"
 
 	# Check if input is a number
@@ -211,7 +211,7 @@ anime_selection () {
 
 	# Select respective anime_id
 	count=1
-	while read anime_id; do
+	while read -r anime_id; do
 		if [ $count -eq $choice ]; then
 			selection_id=$anime_id
 			break
@@ -223,7 +223,7 @@ anime_selection () {
 
 	[ -z "$selection_id" ] && die "Invalid number entered"
 
-	read last_ep_number <<-EOF
+	read -r last_ep_number <<-EOF
 	$(search_eps "$selection_id")
 	EOF
 }
@@ -232,7 +232,7 @@ search_for_unwatched () {
 	search_results=$*
 
 	unwatched_anime=""
-	while read anime_id; do
+	while read -r anime_id; do
 		current_ep_number="$(search_eps "$anime_id")"
 		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
 		if [ "$current_ep_number" -ge "$history_ep_number" ]
@@ -242,7 +242,7 @@ search_for_unwatched () {
 	done <<-EOF
 	$search_results
 	EOF
-	[ -z $unwatched_anime ] && die "No unwatched episodes"
+	[ -z "$unwatched_anime" ] && die "No unwatched episodes"
 	printf "%s""$unwatched_anime"
 }
 
@@ -252,13 +252,13 @@ search_for_unwatched () {
 
 episode_selection () {
 	ep_choice_start="1"
-	if [ $last_ep_number -gt 1 ]
+	if [ "$last_ep_number" -gt 1 ]
 	then
-		[ $is_download -eq 1 ] &&
+		[ "$is_download" -eq 1 ] &&
 			printf "Range of episodes can be specified: start_number end_number\n"
 
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " $last_ep_number
-		read ep_choice_start ep_choice_end
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " "$last_ep_number"
+		read -r ep_choice_start ep_choice_end
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
@@ -299,13 +299,13 @@ open_episode () {
 	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
 	do
 
-		if [ $last_ep_number -eq 0 ]; then
+		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
 		else
 			err "Episode out of range"
 		fi
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-		read episode
+		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+		read -r episode
 		printf "$c_reset"
 	done
 
@@ -315,7 +315,7 @@ open_episode () {
 		episode=$episode"-5"
 	fi
 
-	printf "Getting data for episode %s\n" $episode
+	printf "Getting data for episode %s\n" "$episode"
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_links "$dpage_link")
@@ -326,13 +326,13 @@ open_episode () {
 		half_ep=0
 	fi
 
-	if [ $is_download -eq 0 ]; then
+	if [ "$is_download" -eq 0 ]; then
 		# write anime and episode number and save to temporary history
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		kill $PID >/dev/null 2>&1
+		kill "$PID" >/dev/null 2>&1
 		case $player_fn in
 			"mpv")
 				nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
@@ -350,7 +350,7 @@ open_episode () {
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
-		episode=$(printf "%03d" $episode)
+		episode=$(printf "%03d" "$episode")
 		{
 			curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
@@ -493,7 +493,7 @@ while :; do
 
 	case "${navigation_type}" in
 		0)
-			read choice
+			read -r choice
 			;;
 		1)
 			stty_original="$(stty -g)"
@@ -516,8 +516,8 @@ while :; do
 			episode=$((episode - 1))
 			;;
 
-		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " $last_ep_number
-			read episode
+		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+			read -r episode
 			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]
 			then
 				half_ep=1
