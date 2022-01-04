@@ -212,7 +212,7 @@ anime_selection () {
 	# Select respective anime_id
 	count=1
 	while read -r anime_id; do
-		if [ $count -eq $choice ]; then
+		if [ $count -eq "$choice" ]; then
 			selection_id=$anime_id
 			break
 		fi
@@ -274,7 +274,7 @@ check_input() {
 	if [ -n "$ep_choice_end" ]; then
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
-		episodes=$(seq $ep_choice_start $ep_choice_end)
+		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
 	fi
 }
 
@@ -475,7 +475,7 @@ append_history
 open_selection
 
 while :; do
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" $episode $last_ep_number
+	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" "$episode" "$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
