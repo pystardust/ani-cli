@@ -12,8 +12,7 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-> After adding way to many features last week, we will begin to slim ani-cli down again this week.
-> The bloated-ani-cli branch is perfect for those that may disagree with that choice.
+> Please participate in the discussion on the scope of the project: [#273](https://github.com/pystardust/ani-cli/discussions/273)
 
 ## Usage
   ```
