@@ -47,7 +47,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 grep
 curl
 sed
-ffmpeg
+aria2
 git
 ```
 
