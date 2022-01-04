@@ -10,7 +10,7 @@
 ![Mac](https://img.shields.io/badge/os-mac-yellow)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
-A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
+A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.cm).
 
 > After adding way to many features last week, we will begin to slim ani-cli down again this week.
 > The bloated-ani-cli branch is perfect for those that may disagree with that choice.
