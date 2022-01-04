@@ -24,14 +24,16 @@ help_text () {
 		printf "%s\n" "$line"
 	done <<-EOF
 	USAGE: $prog <query>
-	 -u	 shows anime from history with unwatched episodes
-	 -n	 show recent anime
 	 -h	 show this help text
 	 -d	 download episode
-	 -H	 continue where you left off
 	 -D	 delete history
+	 -H	 continue where you left off
+	 -k	 on keypress navigation (previous/next/replay/quit episode)
+	 -n	 show recent anime
+	 -p	 path to download directory
 	 -q	 set video quality (best/worst/360/480/720/..)
-	 -k  on keypress navigation (previous/next/replay/quit episode)
+	 -u	 shows anime from history with unwatched episodes
+	 -v	 use VLC as the media player
 	 --dub	 play the dub version if present
 	 -v  use VLC as the media player
 
@@ -59,10 +61,6 @@ search_new () {
 	sed -n -E '
 		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
 		'
-}
-
-resolve_url () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
 }
 
 search_anime () {
@@ -98,9 +96,9 @@ get_embedded_video_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
+	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
 
-	if [ "$req_link" ]; then
+	if [ "$(printf '%s' "$req_link" | grep -o "404")" ]; then
 		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
 		sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
@@ -108,7 +106,7 @@ get_embedded_video_link() {
 		q
 		}'
 	else
-		curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" |
+		printf '%s' "$req_link" |
 		sed -n -E '
 		/^[[:space:]]*<a href="#" rel="100"/{
 		s/.*data-video="([^"]*)".*/https:\1/p
@@ -125,7 +123,6 @@ get_links () {
 
 
 get_video_quality() {
-
 	get_links
 	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
 	case $quality in
@@ -133,14 +130,14 @@ get_video_quality() {
 			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
 		worst)
 			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
-        	*)
-  	             	play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
-                	if [ -z "$play_link" ]; then
-                		printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
-                		quality=best
-                		play_link=$(echo "$video_quality" | sort -V | tail -n 1)
-                	fi
-                	;;
+		*)
+			play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
+			if [ -z "$play_link" ]; then
+				printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
+				quality=best
+				play_link=$(echo "$video_quality" | sort -V | tail -n 1)
+			fi
+			;;
 	esac
 
 }
@@ -149,7 +146,7 @@ check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
 	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C "$ORIGINAL_DIR" fetch
+		git -C "$ORIGINAL_DIR" fetch >/dev/null 2>&1
 		UPSTREAM=${1:-'@{u}'}
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
@@ -262,10 +259,10 @@ episode_selection () {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " $last_ep_number
 		read ep_choice_start ep_choice_end
-		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
 		fi
 		printf "$c_reset"
 	fi
@@ -321,7 +318,7 @@ open_episode () {
 	printf "Getting data for episode %s\n" $episode
 
 	get_video_quality
-	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d ' ' -f2)
+	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d' ' -f2)
 
 	if [ $half_ep -eq 1 ]
 	then
@@ -335,36 +332,24 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		case $player_fn in
-
-			"mpv")
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-                                        if ps "$PID" &> /dev/null; then
-					        kill "$PID"
-					fi
+		if printf "$status_code" | grep -vE "^2.*"; then
+			printf "${c_red}\nCannot reach servers!"
+			rm "${logfile}.new"
+		else
+			kill $PID >/dev/null 2>&1
+			case $player_fn in
+				"mpv")
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					PID="$!"
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-			"vlc")
-
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-                                        if ps "$PID" &> /dev/null; then
-                                                kill "$PID"
-                                        fi
+					;;
+				"vlc")
 					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					PID="$!"
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-		esac
+					;;
+			esac
+			PID=$!
+
+			printf "${c_green}\nVideo playing"
+			mv "${logfile}.new" "$logfile"
+		fi
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
@@ -396,14 +381,8 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'knuhdHDq:p:-:v' OPT; do
+while getopts 'hdDHknp:q:uv-:' OPT; do
 	case $OPT in
-		u)
-			scrape=history_new
-			;;
-		n)
-			scrape=new
-			;;
 		h)
 			help_text
 			exit 0
@@ -411,24 +390,32 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 		d)
 			is_download=1
 			;;
-		p)
-			is_download=1
-			download_dir=$OPTARG
-			;;
-		H)
-			scrape=history
-			;;
-
 		D)
 			: > "$logfile"
 			exit 0
 			;;
+		H)
+			scrape=history
+			;;
+		k)
+			navigation_type=1
+			;;
+		n)
+			scrape=new
+			;;
+		p)
+			is_download=1
+			download_dir=$OPTARG
+			;;
 		q)
 			quality=$OPTARG
 			;;
-    k)
-			navigation_type=1
-      ;;
+		u)
+			scrape=history_new
+			;;
+		v)
+			player_fn="vlc"
+			;;
 		-)
 			case $OPTARG in
 				dub)
@@ -436,16 +423,19 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 					;;
 			esac
 			;;
-		v)
-			player_fn="vlc"
-			;;
 	esac
 done
 
-dep_ch "$player_fn" "curl" "sed" "grep" "git"
+# check for main dependencies
+dep_ch "curl" "sed" "grep" "git"
+
+# check for optional dependencies
+if [ $is_download -eq 0 ]; then
+	dep_ch "$player_fn"
+fi
+
 check_for_update
 shift $((OPTIND - 1))
-
 
 ########
 # main #
