@@ -70,10 +70,6 @@ search_new () {
 		'
 }
 
-resolve_url () {
-	curl --silent --location --head --output /dev/null --write-out '%{url_effective}' -- $1
-}
-
 search_anime () {
 	# get anime name along with its id
 	search=$(printf '%s' "$1" | tr ' ' '-' )
@@ -100,65 +96,65 @@ search_eps () {
 		'
 }
 
-get_embedded_video_link() {
+get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	req_link=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" | grep -o "404")
+	anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
 
-	if [ "$req_link" ]; then
-		curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no" |
-		sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
-	else
-		curl -s "$base_url/$anime_id${dub_prefix}-$ep_no" |
-		sed -n -E '
-		/^[[:space:]]*<a href="#" rel="100"/{
-		s/.*data-video="([^"]*)".*/https:\1/p
-		q
-		}'
+	if [ -n "$(printf '%s' "$anime_page" | grep -o "404")" ]; then
+		anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no")
 	fi
+
+	printf '%s' "$anime_page" |
+	sed -n -E '
+		/^[[:space:]]*<li class="dowloads">/{
+		s/.*href="([^"]*)".*/\1/p
+		q
+		}'
+}
+
+get_video_quality() {
+	dpage_url=$1
+
+	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
+	case $quality in
+		best)
+			video_link=$(printf '%s' "$video_links" | tail -n 1)
+			;;
+
+		worst)
+			video_link=$(printf '%s' "$video_links" | head -n 1)
+			;;
+
+		*)
+			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
+			if [ -z "$video_link" ]; then
+				err "Current video quality is not available (defaulting to highest quality)"
+				quality=best
+				video_link=$(printf '%s' "$video_links" | tail -n 1)
+			fi
+			;;
+	esac
+
+	printf '%s' "$video_link"
 }
 
 get_links () {
-	embedded_video_url=$(get_embedded_video_link "$anime_id" "$episode")
-	episode_id=$(echo "$embedded_video_url" | grep -oE "id.+?&")
-	video_url="https://gogoplay1.com/download?${episode_id}"
-}
+	dpage_url="$1"
+	video_url=$(get_video_quality "$dpage_url")
 
-
-get_video_quality() {
-
-	get_links
-	video_quality=$(curl -s "$video_url" | grep -oE "(http|https):\/\/.*com\/cdn.*expiry=[0-9]*"| sort -V | sed 's/amp;//')
-	case $quality in
-		best)
-			play_link=$(echo "$video_quality" | sort -V | tail -n 1);;
-		worst)
-			play_link=$(echo "$video_quality" | sort -V | head -n 1);;
-        	*)
-  	             	play_link=$(echo "$video_quality" | grep -oE "(http|https):\/\/.*com\/cdn.*"${quality}".*expiry=[0-9]*")
-                	if [ -z "$play_link" ]; then
-                		printf "$c_red%s$c_reset\n" "Current video quality is not available (defaulting to highest quality)" >&2
-                		quality=best
-                		play_link=$(echo "$video_quality" | sort -V | tail -n 1)
-                	fi
-                	;;
-	esac
-
+	printf '%s' "$video_url"
 }
 
 check_for_update () {
 	# ORIGINAL_DIR will only be 0 if Makefile has not been executed
 	if [ "$ORIGINAL_DIR" != 0 ]
 	then
-		git -C "$ORIGINAL_DIR" fetch
+		git -C "$ORIGINAL_DIR" fetch >/dev/null 2>&1
 		UPSTREAM=${1:-'@{u}'}
 		LOCAL=$(git -C "$ORIGINAL_DIR" rev-parse @)
 		REMOTE=$(git -C "$ORIGINAL_DIR" rev-parse "$UPSTREAM")
@@ -271,10 +267,10 @@ episode_selection () {
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " $last_ep_number
 		read ep_choice_start ep_choice_end
-		if [ "$(echo "$ep_choice_start" | awk '{ printf substr($0, 1, 1) }')" = "h" ]
+		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | awk '{ printf substr($0, 2) }')
+			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
 		fi
 		printf "$c_reset"
 	fi
@@ -329,8 +325,8 @@ open_episode () {
 
 	printf "Getting data for episode %s\n" $episode
 
-	get_video_quality
-	status_code=$(curl -s -I "$play_link" | head -n 1|cut -d ' ' -f2)
+	dpage_link=$(get_dpage_link "$anime_id" "$episode")
+	video_url=$(get_links "$dpage_link")
 
 	if [ $half_ep -eq 1 ]
 	then
@@ -344,44 +340,27 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
+		kill $PID >/dev/null 2>&1
 		case $player_fn in
-
 			"mpv")
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-                                        if ps "$PID" &> /dev/null; then
-					        kill "$PID"
-					fi
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					PID="$!"
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
+				nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+				;;
 			"vlc")
-
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-                                        if ps "$PID" &> /dev/null; then
-                                                kill "$PID"
-                                        fi
-					nohup $player_fn "$play_link" > /dev/null 2>&1 &
-					PID="$!"
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
+				nohup $player_fn --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
+				;;
 		esac
+		PID=$!
+
+		printf "${c_green}\nVideo playing"
+		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$play_link"
+		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" $episode)
 		{
-			curl -L -# -C - "$play_link" -o "${anime_id}-${episode}.mp4" &&
+			curl -L -# -e "$dpage_link" -C - "$video_url" -o "${anime_id}-${episode}.mp4" &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -405,14 +384,8 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'knuhdHDq:p:-:v' OPT; do
+while getopts 'hdDHknp:q:uv-:' OPT; do
 	case $OPT in
-		u)
-			scrape=history_new
-			;;
-		n)
-			scrape=new
-			;;
 		h)
 			help_text
 			exit 0
@@ -420,24 +393,32 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 		d)
 			is_download=1
 			;;
-		p)
-			is_download=1
-			download_dir=$OPTARG
-			;;
-		H)
-			scrape=history
-			;;
-
 		D)
 			: > "$logfile"
 			exit 0
 			;;
+		H)
+			scrape=history
+			;;
+		k)
+			navigation_type=1
+			;;
+		n)
+			scrape=new
+			;;
+		p)
+			is_download=1
+			download_dir=$OPTARG
+			;;
 		q)
 			quality=$OPTARG
 			;;
-    k)
-			navigation_type=1
-      ;;
+		u)
+			scrape=history_new
+			;;
+		v)
+			player_fn="vlc"
+			;;
 		-)
 			case $OPTARG in
 				dub)
@@ -445,16 +426,19 @@ while getopts 'knuhdHDq:p:-:v' OPT; do
 					;;
 			esac
 			;;
-		v)
-			player_fn="vlc"
-			;;
 	esac
 done
 
-dep_ch "$player_fn" "curl" "sed" "grep" "git"
+# check for main dependencies
+dep_ch "curl" "sed" "grep" "git"
+
+# check for optional dependencies
+if [ $is_download -eq 0 ]; then
+	dep_ch "$player_fn"
+fi
+
 check_for_update
 shift $((OPTIND - 1))
-
 
 ########
 # main #
