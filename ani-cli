@@ -195,7 +195,7 @@ anime_selection () {
 	# Select respective anime_id
 	count=1
 	while read -r anime_id; do
-		if [ $count -eq "$choice" ]; then
+		if [ "$count" -eq "$choice" ]; then
 			selection_id=$anime_id
 			break
 		fi
@@ -292,7 +292,7 @@ open_episode () {
 		printf "$c_reset"
 	done
 
-	if [ $half_ep -eq 1 ]
+	if [ "$half_ep" -eq 1 ]
 	then
 		temp_ep=$episode
 		episode=$episode"-5"
@@ -303,7 +303,7 @@ open_episode () {
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_links "$dpage_link")
 
-	if [ $half_ep -eq 1 ]
+	if [ "$half_ep" -eq 1 ]
 	then
 		episode=$temp_ep
 		half_ep=0
@@ -318,11 +318,13 @@ open_episode () {
 		kill "$PID" >/dev/null 2>&1
 		case $player_fn in
 			"mpv")
-				nohup $player_fn --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$player_fn" --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 			"vlc")
-				nohup $player_fn --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
+				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
 				;;
+			*)
+				die "Unsupported player"
 		esac
 		PID=$!
 
@@ -399,6 +401,10 @@ while getopts 'hdDHknp:q:uv-:' OPT; do
 				dub)
 					dub_prefix="-dub"
 					;;
+				*)
+					help_text
+					exit 1
+					;;
 			esac
 			;;
 		*)
@@ -412,7 +418,7 @@ done
 dep_ch "curl" "sed" "grep" "git"
 
 # check for optional dependencies
-if [ $is_download -eq 0 ]; then
+if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
 fi
 
@@ -450,6 +456,8 @@ case $scrape in
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
+	*)
+		die "Unexpected Scrape type"
 esac
 
 check_input
