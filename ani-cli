@@ -95,7 +95,7 @@ get_dpage_link() {
 	# dub prefix takes the value "-dub" when dub is needed else is empty
 	anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
 
-	if [ -n "$(printf '%s' "$anime_page" | grep -o "404")" ]; then
+	if printf '%s' "$anime_page" | grep -q "404" ; then
 		anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no")
 	fi
 
