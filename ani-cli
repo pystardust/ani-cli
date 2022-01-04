@@ -332,7 +332,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		if $(printf "$status_code" | grep -vE "^2.*"); then
+		if printf "$status_code" | grep -vE "^2.*"; then
 			printf "${c_red}\nCannot reach servers!"
 			rm "${logfile}.new"
 		else
