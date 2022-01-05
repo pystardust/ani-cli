@@ -34,7 +34,7 @@ help_text () {
 	  -p download episode to specified directory
 	  -H continue with next unwatched episode from history of watched series
 	  -D delete history
-	  -q set video quality (best|worst|360|480|720|1080)
+	  -q set video quality (high|normal|low) (default:normal)
 	  -k on keypress navigation (previous/next/replay/quit episode)
 	  --dub play the dub version if present
 	  -v use VLC as the media player
@@ -115,34 +115,27 @@ get_dpage_link() {
 }
 
 get_video_quality() {
-	dpage_url=$1
+	dpage_url="$1"
 
-	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*href="([^"]*)" download>Download.*/\1/p' | sed 's/amp;//')
-	case $quality in
-		best)
-			video_link=$(printf '%s' "$video_links" | tail -n 1)
-			;;
-
-		worst)
-			video_link=$(printf '%s' "$video_links" | head -n 1)
-			;;
-
-		*)
-			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p")
-			if [ -z "$video_link" ]; then
-				err "Current video quality is not available (defaulting to highest quality)"
-				quality=best
-				video_link=$(printf '%s' "$video_links" | tail -n 1)
-			fi
-			;;
-	esac
-
+	video_links=$(curl -s "$sb_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
+	
+	m=${quality:0:1}
+	i=$(printf "$video_links" | cut -d\' -f2)
+	h=$(printf "$video_links" | cut -d\' -f6)
+	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	if [ -z "$video_link" ]; then 
+	    err "$quality quality doesn't exist, falling back to normal quality"
+	    video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	fi
 	printf '%s' "$video_link"
 }
 
 get_links () {
 	dpage_url="$1"
-	video_url=$(get_video_quality "$dpage_url")
+	sb_url=$(curl -s "$dpage_url" |
+	    sed -n -E 's/^[[:space:]]*href="([^"]*)".*/\1/p' | grep -oE ".*sbplay.*")
+
+	video_url=$(get_video_quality "$sb_url")
 
 	printf '%s' "$video_url"
 }
@@ -321,6 +314,7 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
+		printf "%s\n" "$video_url"
 
 		kill "$PID" >/dev/null 2>&1
 		case $player_fn in
@@ -361,7 +355,7 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 # option parsing
 is_download=0
 half_ep=0
-quality=best
+quality=normal
 scrape=query
 download_dir="."
 navigation_type=0
