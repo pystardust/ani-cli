@@ -30,6 +30,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -k on keypress navigation (previous/next/replay/quit episode)
     --dub play the dub version if present
     -v use VLC as the media player
+    -U fetch update from github
 
   Episode selection:
     Add 'h' on beginning for episodes like '6.5' -> 'h6'
@@ -54,8 +55,10 @@ git
 ```
 mpv - The default video player (recommended)
 vlc - An alternative video player
+diff
+patch
 ```
-  
+
 ## Install
 
 ### Linux / Mac
