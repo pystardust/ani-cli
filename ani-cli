@@ -59,11 +59,11 @@ err () {
 
 update_script () {
 	# get the newest version of this script from github and replace it
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u $0 -)"
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		printf "$c_green%s$c_reset\n" "Script is up to date :)"
 	else
-		printf '%s\n' "$update" | patch $0 -
+		printf '%s\n' "$update" | patch "$0" -
 		printf "$c_green%s$c_reset\n" "Script has been updated"
 	fi
 }
