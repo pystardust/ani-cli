@@ -18,7 +18,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
   ```
     ani-cli [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
     ani-cli [-kv] [--dub] [-q <quality>] -u | -n | -H
-    ani-cli -h | -D
+    ani-cli -h | -D | -U
   Options:
     -u shows anime from history with unwatched episodes
     -n show recent anime
@@ -47,16 +47,15 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 grep
 curl
 sed
-aria2
-git
 ```
 
 ### Optional
 ```
 mpv - The default video player (recommended)
+aria2 - For downloading (recommended)
 vlc - An alternative video player
-diff
-patch
+diff - Update checking
+patch - Update checking
 ```
 
 ## Install
