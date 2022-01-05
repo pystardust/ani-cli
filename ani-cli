@@ -319,10 +319,10 @@ open_episode () {
 		kill "$PID" >/dev/null 2>&1
 		case $player_fn in
 			"mpv")
-				nohup "$player_fn" --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$player_fn" "$video_url" > /dev/null 2>&1 &
 				;;
 			"vlc")
-				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access > /dev/null 2>&1 &
+				nohup "$player_fn" "$video_url" > /dev/null 2>&1 &
 				;;
 			*)
 				die "Unsupported player"
@@ -338,7 +338,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-			aria2c -x 16 -s 16 --referer "$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+			aria2c -x 16 -s 16 "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
