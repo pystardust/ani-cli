@@ -119,7 +119,7 @@ get_video_quality() {
 
 	video_links=$(curl -s "$sb_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
 	
-	m=${quality:0:1}
+	m="${quality:0:1}"
 	i=$(printf "$video_links" | cut -d\' -f2)
 	h=$(printf "$video_links" | cut -d\' -f6)
 	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
