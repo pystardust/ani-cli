@@ -38,6 +38,7 @@ help_text () {
 	  -k on keypress navigation (previous/next/replay/quit episode)
 	  --dub play the dub version if present
 	  -v use VLC as the media player
+	  -U fetch update from github
 	Episode selection:
 	  Add 'h' on beginning for episodes like '6.5' -> 'h6'
 	  Multiple episodes can be chosen given a range
@@ -54,6 +55,17 @@ die () {
 
 err () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
+}
+
+update_script () {
+	# get the newest version of this script from github and replace it
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u $0 -)"
+	if [ -z "$update" ]; then
+		printf "$c_green%s$c_reset\n" "Script is up to date :)"
+	else
+		printf '%s\n' "$update" | patch $0 -
+		printf "$c_green%s$c_reset\n" "Script has been updated"
+	fi
 }
 
 search_new () {
@@ -368,7 +380,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknp:q:uv-:' OPT; do
+while getopts 'hdDHknp:q:uvU-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -402,6 +414,10 @@ while getopts 'hdDHknp:q:uv-:' OPT; do
 			;;
 		v)
 			player_fn="vlc"
+			;;
+		U)
+			update_script
+			exit 0
 			;;
 		-)
 			case $OPTARG in
