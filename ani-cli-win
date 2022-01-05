@@ -234,7 +234,7 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new" && mv "${logfile}.new" "$logfile"
 
-		$player_fn "$video_url" --http-user-agent="Mozilla/5.0" --adaptive-use-access  >/dev/null 2>&1
+		$player_fn "$video_url" "vlc://quit" --http-referrer="$dpage_link"  --http-user-agent="Mozilla/5.0" --adaptive-use-access  >/dev/null 2>&1
 	else
 		printf "Downloading episode $episode ...\n"
 		printf "%s\n" "$video_url"
