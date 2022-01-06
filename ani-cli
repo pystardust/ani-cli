@@ -129,7 +129,7 @@ get_dpage_link() {
 get_video_quality() {
 	dpage_url="$1"
 
-	video_links=$(curl -s "$sb_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
+	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
 	
 	m=$(printf "$quality" | cut -c1)
 	i=$(printf "$video_links" | cut -d\' -f2)
