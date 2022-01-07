@@ -119,37 +119,22 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-	sed -n -E '
-		/^[[:space:]]*<li class="dowloads">/{
-		s/.*href="([^"]*)".*/\1/p
-		q
-		}'
+	    sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d/ -f5
 }
 
 get_video_quality() {
 	dpage_url="$1"
 
-	video_links=$(curl -s "$sb_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
+	video_links=$(curl -s "https://sbplay2.com/d/$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
 	
 	m=$(printf "$quality" | cut -c1)
-	i=$(printf "$video_links" | cut -d\' -f2)
 	h=$(printf "$video_links" | cut -d\' -f6)
-	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
 	if [ -z "$video_link" ]; then 
 	    err "$quality quality doesn't exist, falling back to normal quality"
-	    video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$i&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
+	    video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
 	fi
 	printf '%s' "$video_link"
-}
-
-get_links () {
-	dpage_url="$1"
-	sb_url=$(curl -s "$dpage_url" |
-	    sed -n -E 's/^[[:space:]]*href="([^"]*)".*/\1/p' | grep -oE ".*sbplay.*")
-
-	video_url=$(get_video_quality "$sb_url")
-
-	printf '%s' "$video_url"
 }
 
 dep_ch () {
@@ -313,7 +298,7 @@ open_episode () {
 	printf "Getting data for episode %s\n" "$episode"
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	video_url=$(get_links "$dpage_link")
+	video_url=$(get_video_quality "$dpage_link")
 	referer_link="https://sbplay2.com"
 
 	if [ "$half_ep" -eq 1 ]
