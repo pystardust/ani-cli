@@ -119,17 +119,13 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-	sed -n -E '
-		/^[[:space:]]*<li class="dowloads">/{
-		s/.*href="([^"]*)".*/\1/p
-		q
-		}'
+	    sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d\/ -f5
 }
 
 get_video_quality() {
 	dpage_url="$1"
 
-	video_links=$(curl -s "$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
+	video_links=$(curl -s "https://sbplay2.com/d/$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
 	
 	m=$(printf "$quality" | cut -c1)
 	i=$(printf "$video_links" | cut -d\' -f2)
@@ -144,10 +140,8 @@ get_video_quality() {
 
 get_links () {
 	dpage_url="$1"
-	sb_url=$(curl -s "$dpage_url" |
-	    sed -n -E 's/^[[:space:]]*href="([^"]*)".*/\1/p' | grep -oE ".*sbplay.*")
 
-	video_url=$(get_video_quality "$sb_url")
+	video_url=$(get_video_quality "$dpage_url")
 
 	printf '%s' "$video_url"
 }
