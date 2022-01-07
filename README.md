@@ -12,7 +12,9 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-> Please participate in the discussion on the scope of the project: [#273](https://github.com/pystardust/ani-cli/discussions/273)
+> Currently not working reliably.
+> 
+> Please give your input on the pinned issue #312 if you're getting the "normal quality doesn't exist" error
 
 ## Usage
   ```
@@ -45,8 +47,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ### Essential
 ```
 grep
-curl
 sed
+curl
 ```
 
 ### Optional
