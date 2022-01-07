@@ -119,7 +119,7 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-	    sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d\/ -f5
+	    sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d/ -f5
 }
 
 get_video_quality() {
