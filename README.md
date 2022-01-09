@@ -16,8 +16,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 > 
 > Please give your input on the pinned issue #312 if you're getting the "normal quality doesn't exist" error
 
-Also check out [animdl](https://github.com/justfoolingaround/animdl)
-
 ## Usage
   ```
     ani-cli [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
