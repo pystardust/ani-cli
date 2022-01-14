@@ -32,7 +32,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -d download episode
     -H continue with next unwatched episode from history of watched series
     -D delete history
-    -q set video quality (high|normal|low) (default:normal)
+    -q set video quality (best|worst|360|480|720|1080)
     -k on keypress navigation (previous/next/replay/quit episode)
     --dub play the dub version if present
     -v use VLC as the media player

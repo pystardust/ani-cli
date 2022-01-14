@@ -34,7 +34,7 @@ help_text () {
 	  -p download episode to specified directory
 	  -H continue with next unwatched episode from history of watched series
 	  -D delete history
-	  -q set video quality (high|normal|low) (default:normal)
+	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
 	  --dub play the dub version if present
 	  -v use VLC as the media player
@@ -119,21 +119,46 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-	    sed -n -E 's/.*rel="13" data-video="([^"]*)".*/\1/p' | cut -d/ -f5
+	    sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
+	    sed 's/^/https:/g'
+}
+
+decrypt_link() {
+    ajax_url='https://gogoplay.io/encrypt-ajax.php'
+
+    #get the id from the url
+    video_id=$(printf "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+    
+    #construct ajax parameters
+    secret_key='3235373436353338353932393338333936373634363632383739383333323838'
+    iv='34323036393133333738303038313335'
+    ajax=$(printf "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
+    
+    #send the request to the ajax url
+    curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | tr '"' '\n' | sed -n -E 's/.*cdn.*/\0/p' | sed 's/\\//g' 
 }
 
 get_video_quality() {
 	dpage_url="$1"
+	video_links=$(decrypt_link "$dpage_url")
+	case $quality in
+		best)
+			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			;;
 
-	video_links=$(curl -s "https://sbplay2.com/d/$dpage_url" | sed -n -E 's/.*a href="#" onclick="download_video([^"]*)".*/\1/p' | head -1)
-	
-	m=$(printf "$quality" | cut -c1)
-	h=$(printf "$video_links" | cut -d\' -f6)
-	video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=$m&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
-	if [ -z "$video_link" ]; then 
-	    err "$quality quality doesn't exist, falling back to normal quality"
-	    video_link=$(curl -s "https://sbplay2.com/dl?op=download_orig&id=$dpage_url&mode=n&hash=$h" | sed -n -E 's/<a href="([^"]*.mp4)".*/\1/p')
-	fi
+		worst)
+			video_link=$(printf '%s' "$video_links" | head -n 1)
+			;;
+
+		*)
+			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p" | head -n 1)
+			if [ -z "$video_link" ]; then
+				err "Current video quality is not available (defaulting to best quality)"
+				quality=best
+				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			fi
+			;;
+	esac
 	printf '%s' "$video_link"
 }
 
@@ -299,8 +324,9 @@ open_episode () {
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
-	referer_link="https://sbplay2.com"
 
+	printf "%s\n" "$dpage_link"
+	printf "%s\n" "$video_url"
 	if [ "$half_ep" -eq 1 ]
 	then
 		episode=$temp_ep
@@ -312,7 +338,6 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
-		printf "%s\n" "$video_url"
 
 		kill "$PID" >/dev/null 2>&1
 
@@ -323,10 +348,10 @@ open_episode () {
 
 		case $player_fn in
 			"mpv")
-				nohup "$player_fn" --http-header-fields="Referer:$referer_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$player_fn" --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 			"vlc")
-				nohup "$player_fn" --http-referrer="$referer_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 			*)
 				die "Unsupported player"
@@ -338,11 +363,12 @@ open_episode () {
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
-		printf "%s\n" "$video_url"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-			aria2c -x 16 -s 16 --referer="$referer_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
+			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+			aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -359,7 +385,7 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 # option parsing
 is_download=0
 half_ep=0
-quality=normal
+quality=best
 scrape=query
 download_dir="."
 navigation_type=0
