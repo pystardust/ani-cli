@@ -18,7 +18,7 @@
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 
-> Join our Discord :)
+> First 100 to join the discord get a special role ;)
 
 ## Usage
   ```
