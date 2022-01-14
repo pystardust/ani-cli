@@ -315,6 +315,12 @@ open_episode () {
 		printf "%s\n" "$video_url"
 
 		kill "$PID" >/dev/null 2>&1
+
+		if [ -z "$video_url" ]
+		then
+			die "Video URL not found"
+		fi
+
 		case $player_fn in
 			"mpv")
 				nohup "$player_fn" --http-header-fields="Referer:$referer_link" "$video_url" > /dev/null 2>&1 &
