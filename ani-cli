@@ -450,7 +450,7 @@ while getopts 'hdDHknp:q:uvU-:' OPT; do
 done
 
 # check for main dependencies
-dep_ch "curl" "sed" "grep" "git"
+dep_ch "curl" "sed" "grep" "git" "jq"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
