@@ -10,6 +10,11 @@
 ![Mac](https://img.shields.io/badge/os-mac-yellow)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
+<p align="center">
+<a href="https://discord.gg/wCDZgQ5sV2">
+<img src="https://invidget.switchblade.xyz/wCDZgQ5sV2">
+</a></p>
+
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 
