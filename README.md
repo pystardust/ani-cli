@@ -18,11 +18,7 @@
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
 
-> Searching for a maintainer of the windows branch
-> 
-> Currently not working reliably.
-> 
-> Please give your input on the pinned issue #312 if you're getting the "normal quality doesn't exist" error
+> Join our Discord :)
 
 ## Usage
   ```
