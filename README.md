@@ -53,6 +53,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 grep
 sed
 curl
+openssl
 jq
 ```
 
