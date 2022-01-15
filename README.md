@@ -11,14 +11,12 @@
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
 <p align="center">
-<a href="https://discord.gg/wCDZgQ5sV2">
-<img src="https://invidget.switchblade.xyz/wCDZgQ5sV2">
+<a href="https://discord.gg/aqu7GpqVmR">
+<img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
 </a></p>
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-
-> First 100 to join the discord get a special role ;)
 
 ## Usage
   ```
