@@ -135,7 +135,7 @@ decrypt_link() {
     ajax=$(printf "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
     
     #send the request to the ajax url
-    curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | tr '"' '\n' | sed -n -E 's/.*cdn.*/\0/p' | sed 's/\\//g' 
+    curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
 }
 
 get_video_quality() {
@@ -450,7 +450,7 @@ while getopts 'hdDHknp:q:uvU-:' OPT; do
 done
 
 # check for main dependencies
-dep_ch "curl" "sed" "grep" "git"
+dep_ch "curl" "sed" "grep" "git" "jq"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
