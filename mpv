@@ -1,0 +1,2 @@
+#!/data/data/com.termux/files/usr/bin/sh
+am start --user 0 -a android.intent.action.VIEW -d "$2" -e "http-header-fields" "$1" -n is.xyz.mpv/.MPVActivity
