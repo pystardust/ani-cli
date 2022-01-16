@@ -1,7 +1,7 @@
 # How to contribute
 
 ## Support
-If you need help getting ani-cli to work, please join our discord.
+If you need help getting ani-cli to work, please use the support channel in our [discord](https://discord.gg/aqu7GpqVmR)
 
 ## Issues
 An issue template is in the works, tldr:
@@ -13,8 +13,15 @@ An issue template is in the works, tldr:
 - What is the output?
 
 ## Testing
-Here I will list some anime to test our parsing with.
-Automation ideas welcome (discord)
+Our parsing was broken in the past and it will break in the future
+
+To spot breakage early, test with the following anime:
+- The safe bet: `One Piece`
+- Episode 5.5: `arifureta shokugyou de sekai saiku`
+- Unicode: `Saenai Heroine no Sodatekata ♭`
+- Unreleased: `boku-no-hero-academia-the-movie-3`
+
+Test automation ideas welcome
 
 ## Pull Requests
 - Appease the linter
@@ -23,7 +30,8 @@ Automation ideas welcome (discord)
 - Adjust the Readme accordingly
 - Try using shell builtins over external commands
 
-## How elsw can I help?
-- Join the discord
-- Star the Repo
+## How else can I help?
+- Join the [discord](https://discord.gg/aqu7GpqVmR)
+- Vote on polls there
+- Star the repo
 - Follow the maintainers
