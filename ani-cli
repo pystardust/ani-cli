@@ -336,36 +336,36 @@ open_episode () {
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 
-		case $player_fn in
-
-			"mpv")
-				if echo "$status_code" | grep -vE "^2.*"; then
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-					nohup $player_fn "$play_link" > /dev/null 2>&1
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-			"vlc")
-				if echo "$status_code" | grep -vE "^2.*"; then	
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-					nohup $player_fn "$play_link" > /dev/null 2>&1
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-			*)
-				if echo "$status_code" | grep -vE "^2.*"; then	
-					printf "${c_red}\nCannot reach servers!"
-					rm "${logfile}.new"
-				else
-					nohup $player_fn "$play_link" > /dev/null 2>&1
-					printf "${c_green}\nVideo playing"
-					mv "${logfile}.new" "$logfile"
-				fi;;
-		esac
+		# case $player_fn in
+		# 	"mpv")
+		# 		if echo "$status_code" | grep -vE "^2.*"; then
+		# 			printf "${c_red}\nCannot reach servers!"
+		# 			rm "${logfile}.new"
+		# 		else
+		# 			nohup $player_fn "$play_link" > /dev/null 2>&1
+		# 			printf "${c_green}\nVideo playing"
+		# 			mv "${logfile}.new" "$logfile"
+		# 		fi;;
+		# 	"vlc")
+		# 		if echo "$status_code" | grep -vE "^2.*"; then	
+		# 			printf "${c_red}\nCannot reach servers!"
+		# 			rm "${logfile}.new"
+		# 		else
+		# 			nohup $player_fn "$play_link" > /dev/null 2>&1
+		# 			printf "${c_green}\nVideo playing"
+		# 			mv "${logfile}.new" "$logfile"
+		# 		fi;;
+		# 	*)
+		# 		if echo "$status_code" | grep -vE "^2.*"; then	
+		# 			printf "${c_red}\nCannot reach servers!"
+		# 			rm "${logfile}.new"
+		# 		else
+		# 			nohup $player_fn "$play_link" > /dev/null 2>&1
+		# 			printf "${c_green}\nVideo playing"
+		# 			mv "${logfile}.new" "$logfile"
+		# 		fi;;
+		# esac
+		nohup $player_fn "$play_link" > /dev/null 2>&1
 	else
 		mkdir -p "$download_dir"
 		printf "Downloading episode $episode ...\n"
