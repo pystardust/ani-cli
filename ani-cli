@@ -36,6 +36,7 @@ help_text () {
 	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
+	  -o use media player of your own choice : ani-cli -o <media-player>
 	  --dub play the dub version if present
 	  -v use VLC as the media player
 	  -U fetch update from github
@@ -347,14 +348,12 @@ open_episode () {
 		fi
 
 		case $player_fn in
-			"mpv")
-				nohup "$player_fn" --http-header-fields="Referer: $dpage_link" "$video_url" > /dev/null 2>&1 &
-				;;
 			"vlc")
-				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 				;;
 			*)
-				die "Unsupported player"
+				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+				;;
 		esac
 		PID=$!
 
@@ -392,7 +391,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknp:q:uvU-:' OPT; do
+while getopts 'hdDHknpo:q:uvU-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -417,6 +416,9 @@ while getopts 'hdDHknp:q:uvU-:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
+			;;
+		o)
+			player_fn=$OPTARG
 			;;
 		q)
 			quality=$OPTARG
