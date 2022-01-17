@@ -1,10 +1,5 @@
 #!/bin/sh
 
-# dependencies: grep sed curl video_player
-# video_player ( needs to be able to play urls )
-player_fn="mpv"
-
-prog=$0
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
@@ -16,26 +11,25 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
-
 help_text () {
 	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
   
 	Usage:
-	  $prog [-kv] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $prog [-kv] [-q <quality>] -u | -n | -H
-	  $prog -h | -D
+	  $0 [-kv] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $0 [-kv] [-q <quality>] -u | -n | -H
+	  $0 -h | -D | -U
 	Options:
-	  -u shows anime from history with unwatched episodes
+	  -u shows anime with unwatched episodes from history
 	  -n show recent anime
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
-	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
 	  -v use VLC as the media player
+	  -D delete history
 	  -U fetch update from github
 	Episode selection:
 	  Add 'h' on beginning for episodes like '6.5' -> 'h6'
@@ -381,6 +375,7 @@ open_episode () {
 trap 'printf "$c_reset"; exit 1' INT HUP
 
 # option parsing
+player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 half_ep=0
 quality=best
