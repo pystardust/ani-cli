@@ -23,8 +23,8 @@ help_text () {
 	done <<-EOF
   
 	Usage:
-	  $prog [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $prog [-kv] [--dub] [-q <quality>] -u | -n | -H
+	  $prog [-kv] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $prog [-kv] [-q <quality>] -u | -n | -H
 	  $prog -h | -D
 	Options:
 	  -u shows anime from history with unwatched episodes
@@ -35,7 +35,6 @@ help_text () {
 	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
-	  --dub play the dub version if present
 	  -v use VLC as the media player
 	  -U fetch update from github
 	Episode selection:
@@ -111,10 +110,10 @@ get_dpage_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
+	anime_page=$(curl -s "$base_url/$anime_id-$ep_no")
 
 	if printf '%s' "$anime_page" | grep -q "404" ; then
-		anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no")
+		anime_page=$(curl -s "$base_url/$anime_id-episode-$ep_no")
 	fi
 
 	printf '%s' "$anime_page" |
@@ -391,7 +390,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDknp:q:uvU-:' OPT; do
+while getopts 'hdDknp:q:uvU:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -426,17 +425,6 @@ while getopts 'hdDknp:q:uvU-:' OPT; do
 		U)
 			update_script
 			exit 0
-			;;
-		-)
-			case $OPTARG in
-				dub)
-					dub_prefix="-dub"
-					;;
-				*)
-					help_text
-					exit 1
-					;;
-			esac
 			;;
 		*)
 			help_text
