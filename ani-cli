@@ -32,7 +32,6 @@ help_text () {
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
-	  -H continue with next unwatched episode from history of watched series
 	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
@@ -392,7 +391,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknp:q:uvU-:' OPT; do
+while getopts 'hdDknp:q:uvU-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -404,9 +403,6 @@ while getopts 'hdDHknp:q:uvU-:' OPT; do
 		D)
 			: > "$logfile"
 			exit 0
-			;;
-		H)
-			scrape=history
 			;;
 		k)
 			navigation_type=1
@@ -422,7 +418,7 @@ while getopts 'hdDHknp:q:uvU-:' OPT; do
 			quality=$OPTARG
 			;;
 		u)
-			scrape=history_new
+			scrape=history
 			;;
 		v)
 			player_fn="vlc"
@@ -478,19 +474,13 @@ case $scrape in
 		anime_selection "$search_results"
 		episode_selection
 		;;
-	history)
-		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-		[ -z "$search_results" ] && die "History is empty"
-		anime_selection "$search_results"
-		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-		;;
 	new)
 		search_results=$(search_new)
 		# echo "$search_results"
 		anime_selection "$search_results"
 		episode_selection
 		;;
-	history_new)
+	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 		[ -z "$search_results" ] && die "History is empty"
 		search_results=$(search_for_unwatched "$search_results")
