@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# version umber
+VERSION="1.0.0"
+
+
 # dependencies: grep sed curl video_player
 # video_player ( needs to be able to play urls )
 player_fn="mpv"
@@ -25,7 +29,8 @@ help_text () {
 	Usage:
 	  $prog [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $prog [-kv] [--dub] [-q <quality>] -u | -n | -H
-	  $prog -h | -D
+	  $prog -h | -D | -U | -V
+
 	Options:
 	  -u shows anime from history with unwatched episodes
 	  -n show recent anime
@@ -40,12 +45,18 @@ help_text () {
 	  --dub play the dub version if present
 	  -v use VLC as the media player
 	  -U fetch update from github
+	  -V print version number and exit
+
 	Episode selection:
 	  Add 'h' on beginning for episodes like '6.5' -> 'h6'
 	  Multiple episodes can be chosen given a range
 	    Choose episode [1-13]: 1 6
 	    This would choose episodes 1 2 3 4 5 6
 	EOF
+}
+
+version_text () {
+    printf "$c_blue%s$c_reset%s\n" "Version: " "$VERSION"  >&2
 }
 
 
@@ -391,7 +402,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknpo:q:uvU-:' OPT; do
+while getopts 'hdDHknpo:q:uvUV-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -431,6 +442,10 @@ while getopts 'hdDHknpo:q:uvU-:' OPT; do
 			;;
 		U)
 			update_script
+			exit 0
+			;;
+		V)
+			version_text
 			exit 0
 			;;
 		-)
