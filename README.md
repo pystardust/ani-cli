@@ -22,7 +22,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
   ```
     ani-cli [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
     ani-cli [-kv] [--dub] [-q <quality>] -u | -n | -H
-    ani-cli -h | -D | -U
+    ani-cli -h | -D | -U | -V
+
   Options:
     -u shows anime from history with unwatched episodes
     -n show recent anime
@@ -35,6 +36,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     --dub play the dub version if present
     -v use VLC as the media player
     -U fetch update from github
+    -V print version number and exit
 
   Episode selection:
     Add 'h' on beginning for episodes like '6.5' -> 'h6'
