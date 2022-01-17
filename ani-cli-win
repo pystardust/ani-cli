@@ -89,6 +89,7 @@ decrypt_link() {
 
     #send the request to the ajax url
     curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" \
+    		| jq '.' \
 		| tr '"' '\n' \
 		| sed -n -E 's/.*cdn.*/\0/p' \
 		| sed 's/\\//g' \
@@ -229,9 +230,7 @@ open_episode () {
 	printf "Getting data for episode %d\n" $episode
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	# printf "%s\n" "$dpage_link"
 	video_url=$(get_links "$dpage_link")
-	# printf "%s\n" "$video_url"
 
 	case $video_url in
 		*streamtape*)
