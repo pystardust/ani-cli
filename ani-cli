@@ -27,8 +27,8 @@ help_text () {
 	done <<-EOF
   
 	Usage:
-	  $prog [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $prog [-kv] [--dub] [-q <quality>] -u | -n | -H
+	  $prog [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $prog [-kvi] [--dub] [-q <quality>] -u | -n | -H
 	  $prog -h | -D | -U | -V
 
 	Options:
@@ -41,7 +41,7 @@ help_text () {
 	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -k on keypress navigation (previous/next/replay/quit episode)
-	  -o use media player of your own choice : ani-cli -o <media-player>
+	  -i use iina as the media player
 	  --dub play the dub version if present
 	  -v use VLC as the media player
 	  -U fetch update from github
@@ -402,7 +402,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknpo:q:uvUV-:' OPT; do
+while getopts 'hdDHknpi:q:uvUV-:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -428,8 +428,8 @@ while getopts 'hdDHknpo:q:uvUV-:' OPT; do
 			is_download=1
 			download_dir=$OPTARG
 			;;
-		o)
-			player_fn=$OPTARG
+		i)
+			player_fn="iina"
 			;;
 		q)
 			quality=$OPTARG
