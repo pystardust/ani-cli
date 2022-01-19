@@ -185,7 +185,7 @@ dep_ch () {
 # get query
 get_search_query () {
 	if [ -z "$*" ]; then
-		printf "Search Anime: "
+		printf "$c_cyan%s" "Search Anime: "
 		read -r query
 	else
 		query=$*
@@ -202,8 +202,8 @@ get_search_query () {
 anime_selection () {
 	search_results=$*
 	menu_format_string='[%d] %s\n'
-	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_blue%s$c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_magenta%s$c_reset\n"
 
 	count=1
 	while read -r anime_id; do
@@ -313,7 +313,7 @@ open_episode () {
 	episode=$2
 	# Cool way of clearing screen
 	tput reset
-	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ]
+	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
 	do
 
 		if [ "$last_ep_number" -eq 0 ]; then
