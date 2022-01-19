@@ -70,6 +70,16 @@ patch - Update checking
 
 ## Install
 
+### Termux
+*Download and install [mpv for android](https://play.google.com/store/apps/details?id=is.xyz.mpv)
+```sh
+apt update
+apt install git make ncurses-utils openssl-tool jq -y
+git clone https://github.com/John-Russel/ani-cli.git
+cd ani-cli
+make
+```
+
 ### Linux / Mac
 ```sh
 git clone https://github.com/pystardust/ani-cli.git
