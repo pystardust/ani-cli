@@ -59,6 +59,7 @@ jq
 ```
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
+iina - An alternative video player for the Mac
 vlc - An alternative video player
 diff - Update checking
 patch - Update checking
