@@ -75,7 +75,7 @@ apt update
 apt install git make ncurses-utils openssl-tool jq -y
 git clone https://github.com/John-Russel/ani-cli.git
 cd ani-cli
-make install-termux-mpv
+make
 ```
 
 ### Linux / Mac
