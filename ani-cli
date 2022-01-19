@@ -185,7 +185,7 @@ dep_ch () {
 # get query
 get_search_query () {
 	if [ -z "$*" ]; then
-		printf "$c_blue%s$c_green" "Search Anime: "
+		printf "Search Anime: "
 		read -r query
 	else
 		query=$*
@@ -202,8 +202,8 @@ get_search_query () {
 anime_selection () {
 	search_results=$*
 	menu_format_string='[%d] %s\n'
-	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_blue%s$c_reset%s\n"
-	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_magenta%s$c_reset\n"
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
 
 	count=1
 	while read -r anime_id; do
