@@ -393,7 +393,7 @@ navigation_type=0
 # navigation_type 0 - confirm selection by pressing enter
 # navigation_type 1 - no enter confirmation for selections
 
-while getopts 'kviq:dp:hDUV:' OPT; do
+while getopts 'kviq:dp:unhDUV:' OPT; do
 	case $OPT in
 		h)
 			help_text
