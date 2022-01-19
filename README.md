@@ -23,7 +23,7 @@ git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 
 4- Open git bash by right-clicking and choosing "Run as administrator"
 
-5- do the following commands : 
+5- do the following commands :
 
 
 ```bash
@@ -68,3 +68,4 @@ This would open/download episodes 1 2 3 4 5 6
 * curl
 * sed
 * vlc
+* jq
