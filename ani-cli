@@ -25,7 +25,7 @@ help_text () {
 	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
-  
+
 	Usage:
 	  $prog [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $prog [-kvi] [--dub] [-q <quality>] -u | -n | -H
@@ -140,12 +140,12 @@ decrypt_link() {
 
     #get the id from the url
     video_id=$(printf "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
-    
+
     #construct ajax parameters
     secret_key='3235373436353338353932393338333936373634363632383739383333323838'
     iv='34323036393133333738303038313335'
     ajax=$(printf "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
-    
+
     #send the request to the ajax url
     curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
 }
@@ -185,7 +185,7 @@ dep_ch () {
 # get query
 get_search_query () {
 	if [ -z "$*" ]; then
-		printf "Search Anime: "
+		printf "$c_blue%s$c_green" "Search Anime: "
 		read -r query
 	else
 		query=$*
@@ -202,8 +202,8 @@ get_search_query () {
 anime_selection () {
 	search_results=$*
 	menu_format_string='[%d] %s\n'
-	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_reset%s\n"
-	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_yellow%s$c_reset\n"
+	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_blue%s$c_reset%s\n"
+	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_magenta%s$c_reset\n"
 
 	count=1
 	while read -r anime_id; do
