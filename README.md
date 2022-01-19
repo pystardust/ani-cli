@@ -20,8 +20,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Usage
   ```
-    ani-cli [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-kv] [--dub] [-q <quality>] -u | -n | -H
+    ani-cli [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-kvi] [--dub] [-q <quality>] -u | -n | -H
     ani-cli -h | -D | -U | -V
 
   Options:
@@ -33,6 +33,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     -D delete history
     -q set video quality (best|worst|360|480|720|1080)
     -k on keypress navigation (previous/next/replay/quit episode)
+    -i use iina as the media player
     --dub play the dub version if present
     -v use VLC as the media player
     -U fetch update from github
@@ -61,6 +62,7 @@ jq
 ```
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
+iina - An alternative video player for the Mac
 vlc - An alternative video player
 diff - Update checking
 patch - Update checking
