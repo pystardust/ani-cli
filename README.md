@@ -7,7 +7,7 @@
 [![Maintainer](https://img.shields.io/badge/maintainer-Dink4n-blue)](https://github.com/Dink4n)
 [![Maintainer](https://img.shields.io/badge/maintainer-CoolnsX-blue)](https://github.com/CoolnsX)
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
-![Mac](https://img.shields.io/badge/os-mac-yellow)
+![Mac](https://img.shields.io/badge/os-mac-brightgreen)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
 <p align="center">
@@ -20,22 +20,18 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Usage
   ```
-    ani-cli [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-kvi] [--dub] [-q <quality>] -u | -n | -H
+    ani-cli [-vi] [-q <quality>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-vi] [-q <quality>] -c | -n
     ani-cli -h | -D | -U | -V
-
   Options:
-    -u shows anime from history with unwatched episodes
-    -n show recent anime
+    -c continue watching anime from history
+    -n show new anime
     -h show helptext
     -d download episode
-    -H continue with next unwatched episode from history of watched series
-    -D delete history
     -q set video quality (best|worst|360|480|720|1080)
-    -k on keypress navigation (previous/next/replay/quit episode)
     -i use iina as the media player
-    --dub play the dub version if present
     -v use VLC as the media player
+    -D delete history
     -U fetch update from github
     -V print version number and exit
 

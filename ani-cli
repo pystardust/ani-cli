@@ -3,12 +3,6 @@
 # version umber
 VERSION="1.0.0"
 
-
-# dependencies: grep sed curl video_player
-# video_player ( needs to be able to play urls )
-player_fn="mpv"
-
-prog=$0
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
@@ -20,30 +14,25 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
-
 help_text () {
 	while IFS= read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 
 	Usage:
-	  $prog [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $prog [-kvi] [--dub] [-q <quality>] -u | -n | -H
-	  $prog -h | -D | -U | -V
-
+	  $0 [-vi] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $0 [-vi] [-q <quality>] -c | -n
+	  $0 -h | -D | -U | -V
 	Options:
-	  -u shows anime from history with unwatched episodes
-	  -n show recent anime
+	  -c continue watching anime from history
+	  -n show new anime
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
-	  -H continue with next unwatched episode from history of watched series
-	  -D delete history
 	  -q set video quality (best|worst|360|480|720|1080)
-	  -k on keypress navigation (previous/next/replay/quit episode)
 	  -i use iina as the media player
-	  --dub play the dub version if present
 	  -v use VLC as the media player
+	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
 
@@ -124,10 +113,10 @@ get_dpage_link() {
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-$ep_no")
+	anime_page=$(curl -s "$base_url/$anime_id-$ep_no")
 
 	if printf '%s' "$anime_page" | grep -q "404" ; then
-		anime_page=$(curl -s "$base_url/$anime_id${dub_prefix}-episode-$ep_no")
+		anime_page=$(curl -s "$base_url/$anime_id-episode-$ep_no")
 	fi
 
 	printf '%s' "$anime_page" |
@@ -393,16 +382,14 @@ open_episode () {
 trap 'printf "$c_reset"; exit 1' INT HUP
 
 # option parsing
+player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 half_ep=0
 quality=best
 scrape=query
 download_dir="."
-navigation_type=0
-# navigation_type 0 - confirm selection by pressing enter
-# navigation_type 1 - no enter confirmation for selections
 
-while getopts 'hdDHknpiq:uvUV-:' OPT; do
+while getopts 'viq:dp:cnhDUV:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -414,12 +401,6 @@ while getopts 'hdDHknpiq:uvUV-:' OPT; do
 		D)
 			: > "$logfile"
 			exit 0
-			;;
-		H)
-			scrape=history
-			;;
-		k)
-			navigation_type=1
 			;;
 		n)
 			scrape=new
@@ -434,8 +415,8 @@ while getopts 'hdDHknpiq:uvUV-:' OPT; do
 		q)
 			quality=$OPTARG
 			;;
-		u)
-			scrape=history_new
+		c)
+			scrape=history
 			;;
 		v)
 			player_fn="vlc"
@@ -447,17 +428,6 @@ while getopts 'hdDHknpiq:uvUV-:' OPT; do
 		V)
 			version_text
 			exit 0
-			;;
-		-)
-			case $OPTARG in
-				dub)
-					dub_prefix="-dub"
-					;;
-				*)
-					help_text
-					exit 1
-					;;
-			esac
 			;;
 		*)
 			help_text
@@ -495,19 +465,13 @@ case $scrape in
 		anime_selection "$search_results"
 		episode_selection
 		;;
-	history)
-		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-		[ -z "$search_results" ] && die "History is empty"
-		anime_selection "$search_results"
-		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-		;;
 	new)
 		search_results=$(search_new)
 		# echo "$search_results"
 		anime_selection "$search_results"
 		episode_selection
 		;;
-	history_new)
+	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 		[ -z "$search_results" ] && die "History is empty"
 		search_results=$(search_for_unwatched "$search_results")
@@ -538,23 +502,8 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-
-	case "${navigation_type}" in
-		0)
-			read -r choice
-			;;
-		1)
-			stty_original="$(stty -g)"
-			stty cbreak
-			choice="$(dd bs=1 count=1 2> /dev/null)"
-			stty "${stty_original}"
-			;;
-		*)
-			die "navigation_type is invalid"
-			;;
-
-	esac
-
+	
+	read -r choice
 	printf "$c_reset"
 	case $choice in
 		n)

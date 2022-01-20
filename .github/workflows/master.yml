@@ -12,5 +12,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
+      with:
+        version: v0.7.2
       env:
-        SHELLCHECK_OPTS: -s sh -e 1087 -e 2059 -o all -e 2250 -e 2312
+        SHELLCHECK_OPTS: -s sh -e 1087 -e 2059 -o all -e 2250
