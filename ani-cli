@@ -25,7 +25,7 @@ help_text () {
 	  $0 -h | -D | -U | -V
 	  
 	Options:
-	  -c continue watching anime from historye
+	  -c continue watching anime from history
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
