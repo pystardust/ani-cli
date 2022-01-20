@@ -19,6 +19,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 
 ## Usage
+
   ```
     ani-cli [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
     ani-cli [-v | -i] [-q <quality>] -c
@@ -45,6 +46,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Dependencies
 
 ### Essential
+
 ```
 grep
 sed
@@ -54,6 +56,7 @@ jq
 ```
 
 ### Optional
+
 ```
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
@@ -66,6 +69,7 @@ patch - Update checking
 ## Install
 
 ### Linux / Mac
+
 ```sh
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
@@ -73,11 +77,13 @@ sudo make
 ```
 
 ### Windows
+
 * Download and install [gitbash](https://git-scm.com/downloads)
 * Download and install vlc (mpv needs further testing)
 * Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
 * Open git bash by right-clicking and choosing "Run as administrator"
 * Run the following commands
+
 ```sh
 git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 cd ani-cli
