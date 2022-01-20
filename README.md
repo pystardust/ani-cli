@@ -1,4 +1,4 @@
-<p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=new and improved&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p> 
+<p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=new and improved&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p>
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
@@ -17,10 +17,9 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-
 ## Usage
 
-  ```
+  ```text
     ani-cli [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
     ani-cli [-v | -i] [-q <quality>] -c
     ani-cli -h | -D | -U | -V
@@ -47,7 +46,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ### Essential
 
-```
+```text
 grep
 sed
 curl
@@ -57,7 +56,7 @@ jq
 
 ### Optional
 
-```
+```text
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
 iina - An alternative video player for the Mac
