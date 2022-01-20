@@ -20,12 +20,12 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-vi] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $0 [-vi] [-q <quality>] -c | -n
+	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
+	  
 	Options:
-	  -c continue watching anime from history
-	  -n show new anime
+	  -c continue watching anime from historye
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
@@ -67,18 +67,6 @@ update_script () {
 		printf '%s\n' "$update" | patch "$0" -
 		printf "$c_green%s$c_reset\n" "Script has been updated"
 	fi
-}
-
-search_new () {
-	# get anime name along with its id
-
-	curl -s "$base_url" |
-	sed -n -E '
-		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
-		' |
-	sed -n -E '
-		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
-		'
 }
 
 search_anime () {
@@ -389,7 +377,7 @@ quality=best
 scrape=query
 download_dir="."
 
-while getopts 'viq:dp:cnhDUV:' OPT; do
+while getopts 'viq:dp:chDUV:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -401,9 +389,6 @@ while getopts 'viq:dp:cnhDUV:' OPT; do
 		D)
 			: > "$logfile"
 			exit 0
-			;;
-		n)
-			scrape=new
 			;;
 		p)
 			is_download=1
@@ -462,12 +447,6 @@ case $scrape in
 		get_search_query "$*"
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
-		anime_selection "$search_results"
-		episode_selection
-		;;
-	new)
-		search_results=$(search_new)
-		# echo "$search_results"
 		anime_selection "$search_results"
 		episode_selection
 		;;
