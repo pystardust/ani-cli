@@ -21,11 +21,11 @@ help_text () {
 
 	Usage:
 	  $0 [-vi] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $0 [-vi] [-q <quality>] -u | -n
+	  $0 [-vi] [-q <quality>] -c | -n
 	  $0 -h | -D | -U | -V
 	Options:
-	  -u shows anime with unwatched episodes from history
-	  -n show recent anime
+	  -c continue watching anime from your history
+	  -n show new anime
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
@@ -389,7 +389,7 @@ quality=best
 scrape=query
 download_dir="."
 
-while getopts 'viq:dp:unhDUV:' OPT; do
+while getopts 'viq:dp:cnhDUV:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -415,7 +415,7 @@ while getopts 'viq:dp:unhDUV:' OPT; do
 		q)
 			quality=$OPTARG
 			;;
-		u)
+		c)
 			scrape=history
 			;;
 		v)
