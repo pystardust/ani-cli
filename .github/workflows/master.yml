@@ -33,4 +33,4 @@ jobs:
     - name: Lint Readme
       uses: avto-dev/markdown-lint@v1
       with:
-        args: '*.md'
+        args: 'README.md'
