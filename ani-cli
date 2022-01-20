@@ -24,7 +24,7 @@ help_text () {
 	  $0 [-vi] [-q <quality>] -c | -n
 	  $0 -h | -D | -U | -V
 	Options:
-	  -c continue watching anime from your history
+	  -c continue watching anime from history
 	  -n show new anime
 	  -h show helptext
 	  -d download episode
