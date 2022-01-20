@@ -23,14 +23,3 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - uses: gaurav-nelson/github-action-markdown-link-check@v1
-
-  lint-changelog:
-    name: Markdown
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v2
-    - name: Lint Readme
-      uses: avto-dev/markdown-lint@v1
-      with:
-        args: 'README.md'
