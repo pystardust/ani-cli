@@ -21,11 +21,11 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Usage
   ```
     ani-cli [-vi] [-q <quality>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-vi] [-q <quality>] -c | -n
+    ani-cli [-vi] [-q <quality>] -c
     ani-cli -h | -D | -U | -V
+    
   Options:
     -c continue watching anime from history
-    -n show new anime
     -h show helptext
     -d download episode
     -q set video quality (best|worst|360|480|720|1080)
