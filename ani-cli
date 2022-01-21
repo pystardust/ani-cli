@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# version umber
+# version number
 VERSION="1.1.0"
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -23,7 +23,7 @@ help_text () {
 	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
-	  
+
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
@@ -481,7 +481,7 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-	
+
 	read -r choice
 	printf "$c_reset"
 	case $choice in
