@@ -106,4 +106,4 @@ chmod +x ani-cli-win
 
 ## Disclaimer
 
-The disclaimer of this project can be found [here.](./disclaimer.md)
+The disclaimer of this project can be found [here](./disclaimer.md)
