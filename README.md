@@ -76,7 +76,7 @@ cd ani-cli
 sudo make
 ```
 
-### Android (termux)
+### Android (Termux)
 
 ```sh
 apt update
