@@ -76,6 +76,16 @@ cd ani-cli
 sudo make
 ```
 
+### Android (Termux)
+
+```sh
+apt update
+apt install git make ncurses-utils openssl-tool jq -y
+git clone -b android-termux https://github.com/pystardust/ani-cli.git
+cd ani-cli
+make
+```
+
 ### Windows
 
 * Download and install [gitbash](https://git-scm.com/downloads)
