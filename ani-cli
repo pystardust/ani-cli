@@ -14,6 +14,11 @@ c_magenta="\033[1;35m"
 c_cyan="\033[1;36m"
 c_reset="\033[0m"
 
+
+#######################
+# Auxiliary functions #
+#######################
+
 help_text () {
 	while IFS= read -r line; do
 		printf "%s\n" "$line"
@@ -69,8 +74,22 @@ update_script () {
 	fi
 }
 
+dep_ch () {
+	# checks if programs are present 
+	for dep; do
+		if ! command -v "$dep" >/dev/null ; then
+			die "Program \"$dep\" not found. Please install it."
+		fi
+	done
+}
+
+
+#############
+# Searching #
+#############
+
 search_anime () {
-	# get anime name along with its id
+	# get anime name along with its id for search term
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 
 	curl -s "$base_url//search.html" \
@@ -93,6 +112,40 @@ search_eps () {
 		}
 		'
 }
+
+
+get_search_query () {
+	if [ -z "$*" ]; then
+		printf "$c_cyan%s" "Search Anime: "
+		read -r query
+	else
+		query=$*
+	fi
+}
+
+search_for_unwatched () {	
+	# compares history with gogoanime, only shows unfinished anime
+	search_results=$*
+
+	unwatched_anime=""
+	while read -r anime_id; do
+		current_ep_number="$(search_eps "$anime_id")"
+		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
+		if [ "$current_ep_number" -ge "$history_ep_number" ]
+		then
+			unwatched_anime="$unwatched_anime$anime_id\n"
+		fi
+	done <<-EOF
+	$search_results
+	EOF
+	[ -z "$unwatched_anime" ] && die "No unwatched episodes"
+	printf "%s""$unwatched_anime"
+}
+
+
+##################
+# URL processing #
+##################
 
 get_dpage_link() {
 	# get the download page url
@@ -128,6 +181,7 @@ decrypt_link() {
 }
 
 get_video_quality() {
+	# chooses the link for the set quality
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
 	case $quality in
@@ -151,32 +205,13 @@ get_video_quality() {
 	printf '%s' "$video_link"
 }
 
-dep_ch () {
-	for dep; do
-		if ! command -v "$dep" >/dev/null ; then
-			die "Program \"$dep\" not found. Please install it."
-		fi
-	done
-}
 
-# get query
-get_search_query () {
-	if [ -z "$*" ]; then
-		printf "$c_cyan%s" "Search Anime: "
-		read -r query
-	else
-		query=$*
-	fi
-}
-
-# create history file
-[ -f "$logfile" ] || : > "$logfile"
-
-#####################
-## Anime selection ##
-#####################
+#################
+# Input parsing #
+#################
 
 anime_selection () {
+	# user input for selecting anime
 	search_results=$*
 	menu_format_string='[%d] %s\n'
 	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_blue%s$c_reset%s\n"
@@ -222,29 +257,8 @@ anime_selection () {
 	EOF
 }
 
-search_for_unwatched () {
-	search_results=$*
-
-	unwatched_anime=""
-	while read -r anime_id; do
-		current_ep_number="$(search_eps "$anime_id")"
-		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
-		if [ "$current_ep_number" -ge "$history_ep_number" ]
-		then
-			unwatched_anime="$unwatched_anime$anime_id\n"
-		fi
-	done <<-EOF
-	$search_results
-	EOF
-	[ -z "$unwatched_anime" ] && die "No unwatched episodes"
-	printf "%s""$unwatched_anime"
-}
-
-##################
-## Ep selection ##
-##################
-
 episode_selection () {
+	# user input for selecting episodes of a series
 	ep_choice_start="1"
 	if [ "$last_ep_number" -gt 1 ]
 	then
@@ -263,6 +277,7 @@ episode_selection () {
 }
 
 check_input() {
+	# checks if input is in range
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
@@ -272,12 +287,18 @@ check_input() {
 	fi
 }
 
+
+##################
+# Video Playback #
+##################
+
 append_history () {
 	grep -q -w "${selection_id}" "$logfile" ||
 		printf "%s\t%d\n" "$selection_id" $((episode+1)) >> "$logfile"
 }
 
 open_selection() {
+	# opens selected episodes one-by-one
 	for ep in $episodes
 	do
 		open_episode "$selection_id" "$ep"
@@ -369,7 +390,10 @@ open_episode () {
 # to clear the colors when exited using SIGINT
 trap 'printf "$c_reset"; exit 1' INT HUP
 
-# option parsing
+# create history file if none found
+[ -f "$logfile" ] || : > "$logfile"
+
+# default options
 player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 half_ep=0
@@ -377,6 +401,7 @@ quality=best
 scrape=query
 download_dir="."
 
+# option parsing
 while getopts 'viq:dp:chDUV:' OPT; do
 	case $OPT in
 		h)
@@ -438,7 +463,7 @@ fi
 shift $((OPTIND - 1))
 
 ########
-# main #
+# Loop #
 ########
 
 
