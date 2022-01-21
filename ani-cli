@@ -1,23 +1,11 @@
 #!/bin/sh
 
-<<<<<<< HEAD
 # version number
 VERSION="1.1.0"
-=======
-# version umber
-VERSION="1.0.0"
-
-
-# dependencies: grep sed curl video_player 
-# optional dependency: aria2c (for)
-# video_player ( needs to be able to play urls )
-player_fn="mpv"
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
-# printf color codes
 c_red="\033[1;31m"
 c_green="\033[1;32m"
 c_yellow="\033[1;33m"
@@ -37,15 +25,9 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-<<<<<<< HEAD
 	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
-=======
-	  $prog [-kv] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-	  $prog [-kv] [--dub] [-q <quality>] -u | -n | -H
-	  $prog -h | -D | -U | -V
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 
 	Options:
 	  -c continue watching anime from history
@@ -93,38 +75,12 @@ update_script () {
 }
 
 dep_ch () {
-<<<<<<< HEAD
 	# checks if programs are present 
-=======
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
 			die "Program \"$dep\" not found. Please install it."
 		fi
 	done
-<<<<<<< HEAD
-=======
-}
-
-# create history file
-[ -f "$logfile" ] || : > "$logfile"
-
-
-#############
-# Searching #
-#############
-
-search_new () {
-	# get recent anime name along with its id
-
-	curl -s "$base_url" |
-	sed -n -E '
-		s_^[[:space:]]*<a href="/([^"/.]*)" title="([^"]*)".*_\1_p
-		' |
-	sed -n -E '
-		s_^[[:space:]]*([^"]*)-episode-[0-9]{1,100}*_\1_p
-		'
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 }
 
 
@@ -133,11 +89,7 @@ search_new () {
 #############
 
 search_anime () {
-<<<<<<< HEAD
 	# get anime name along with its id for search term
-=======
-	# get anime name along with its id for a search term
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 
 	curl -s "$base_url//search.html" \
@@ -161,7 +113,6 @@ search_eps () {
 		'
 }
 
-<<<<<<< HEAD
 
 get_search_query () {
 	if [ -z "$*" ]; then
@@ -174,9 +125,6 @@ get_search_query () {
 
 search_for_unwatched () {	
 	# compares history with gogoanime, only shows unfinished anime
-=======
-search_for_unwatched () {
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 	search_results=$*
 
 	unwatched_anime=""
@@ -262,19 +210,6 @@ get_video_quality() {
 # Input parsing #
 #################
 
-<<<<<<< HEAD
-=======
-get_search_query () {
-	#allows the input of a querry in runtime (if none in argv)
-	if [ -z "$*" ]; then
-		printf "Search Anime: "
-		read -r query
-	else
-		query=$*
-	fi
-}
-
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 anime_selection () {
 	# user input for selecting anime
 	search_results=$*
@@ -448,7 +383,6 @@ open_episode () {
 	fi
 }
 
-
 ############
 # Start Up #
 ############
@@ -467,12 +401,8 @@ quality=best
 scrape=query
 download_dir="."
 
-<<<<<<< HEAD
 # option parsing
 while getopts 'viq:dp:chDUV:' OPT; do
-=======
-while getopts 'hdDHknp:q:uvUV-:' OPT;
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 	case $OPT in
 		h)
 			help_text
@@ -508,20 +438,6 @@ while getopts 'hdDHknp:q:uvUV-:' OPT;
 		V)
 			version_text
 			exit 0
-<<<<<<< HEAD
-=======
-			;;
-		-)
-			case $OPTARG in
-				dub)
-					dub_prefix="-dub"
-					;;
-				*)
-					help_text
-					exit 1
-					;;
-			esac
->>>>>>> 43efd8109a2d35be3c67e062ddf0928ad33e2281
 			;;
 		*)
 			help_text
@@ -546,10 +462,10 @@ fi
 
 shift $((OPTIND - 1))
 
-
 ########
 # Loop #
 ########
+
 
 case $scrape in
 	query)
