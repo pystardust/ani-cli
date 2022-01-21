@@ -1,4 +1,4 @@
-<p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=new and improved&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p> 
+<p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=new%20and%20improved&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p>
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
@@ -7,7 +7,7 @@
 [![Maintainer](https://img.shields.io/badge/maintainer-Dink4n-blue)](https://github.com/Dink4n)
 [![Maintainer](https://img.shields.io/badge/maintainer-CoolnsX-blue)](https://github.com/CoolnsX)
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
-![Mac](https://img.shields.io/badge/os-mac-yellow)
+![Mac](https://img.shields.io/badge/os-mac-brightgreen)
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 
 <p align="center">
@@ -17,25 +17,21 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
-
 ## Usage
-  ```
-    ani-cli [-kvi] [--dub] [-q <quality>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-kvi] [--dub] [-q <quality>] -u | -n | -H
-    ani-cli -h | -D | -U | -V
 
+  ```text
+    ani-cli [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-v | -i] [-q <quality>] -c
+    ani-cli -h | -D | -U | -V
+    
   Options:
-    -u shows anime from history with unwatched episodes
-    -n show recent anime
+    -c continue watching anime from history
     -h show helptext
     -d download episode
-    -H continue with next unwatched episode from history of watched series
-    -D delete history
     -q set video quality (best|worst|360|480|720|1080)
-    -k on keypress navigation (previous/next/replay/quit episode)
     -i use iina as the media player
-    --dub play the dub version if present
     -v use VLC as the media player
+    -D delete history
     -U fetch update from github
     -V print version number and exit
 
@@ -50,7 +46,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Dependencies
 
 ### Essential
-```
+
+```text
 grep
 sed
 curl
@@ -59,7 +56,8 @@ jq
 ```
 
 ### Optional
-```
+
+```text
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
 iina - An alternative video player for the Mac
@@ -78,26 +76,6 @@ apt install git make ncurses-utils openssl-tool jq -y
 git clone https://github.com/John-Russel/ani-cli.git
 cd ani-cli
 make
-```
-
-### Linux / Mac
-```sh
-git clone https://github.com/pystardust/ani-cli.git
-cd ani-cli
-sudo make
-```
-
-### Windows
-* Download and install [gitbash](https://git-scm.com/downloads)
-* Download and install vlc (mpv needs further testing)
-* Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
-* Open git bash by right-clicking and choosing "Run as administrator"
-* Run the following commands
-```sh
-git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
-cd ani-cli
-chmod +x ani-cli-win
-./install
 ```
 
 ## Disclaimer
