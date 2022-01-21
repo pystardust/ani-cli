@@ -91,6 +91,9 @@ chmod +x ani-cli-win
 ./install
 ```
 
+### Android (termux)
+Instructions to install ani-cli on android can be found in the [android-termux branch](https://github.com/pystardust/ani-cli/tree/android-termux).
+
 ## Disclaimer
 
 The disclaimer of this project can be found [here.](./disclaimer.md)
