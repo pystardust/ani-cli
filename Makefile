@@ -17,5 +17,5 @@ install:
 uninstall:
 	rm -rf $(TERMUX_BIN)/ani-cli
 	rm -rf $(TERMUX_BIN)/mpv
-	
+
 .PHONY: all install uninstall
