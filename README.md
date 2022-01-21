@@ -76,6 +76,16 @@ cd ani-cli
 sudo make
 ```
 
+### Android (termux)
+
+```sh
+apt update
+apt install git make ncurses-utils openssl-tool jq -y
+git clone -b android-termux https://github.com/pystardust/ani-cli.git
+cd ani-cli
+make
+```
+
 ### Windows
 
 * Download and install [gitbash](https://git-scm.com/downloads)
@@ -89,16 +99,6 @@ git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
 cd ani-cli
 chmod +x ani-cli-win
 ./install
-```
-
-### Android (termux)
-
-```sh
-apt update
-apt install git make ncurses-utils openssl-tool jq -y
-git clone -b android-termux https://github.com/pystardust/ani-cli.git
-cd ani-cli
-make
 ```
 
 ## Disclaimer
