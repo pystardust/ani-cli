@@ -456,6 +456,8 @@ dep_ch "curl" "sed" "grep" "git" "jq" "openssl"
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
+else
+	dep_ch "aria2c"	
 fi
 
 shift $((OPTIND - 1))
