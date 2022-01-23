@@ -456,6 +456,7 @@ dep_ch "curl" "sed" "grep" "git" "jq" "openssl"
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
+fi
 
 shift $((OPTIND - 1))
 # gogoanime likes to change domains but keep the olds as redirects
@@ -563,3 +564,4 @@ while :; do
 
 	open_episode "$selection_id" "$episode"
 done
+
