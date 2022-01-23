@@ -1,10 +1,9 @@
 #!/bin/sh
 
 # version number
-VERSION="1.1.0"
+VERSION="1.1.2"
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -69,8 +68,8 @@ update_script () {
 	if [ -z "$update" ]; then
 		printf "$c_green%s$c_reset\n" "Script is up to date :)"
 	else
-		printf '%s\n' "$update" | patch "$0" -
-		printf "$c_green%s$c_reset\n" "Script has been updated"
+		printf '%s\n' "$update" | patch "$0" - && printf "$c_green%s$c_reset\n" "Script has been updated" ||
+            printf "$c_red%s$c_reset\n" "Can't update for some reason!"
 	fi
 }
 
@@ -357,7 +356,7 @@ open_episode () {
 		fi
 
 		case $player_fn in
-			"vlc")
+			vlc)
 				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 				;;
 			*)
@@ -401,8 +400,8 @@ quality=best
 scrape=query
 download_dir="."
 
-# option parsing
-while getopts 'viq:dp:chDUV:' OPT; do
+
+while getopts 'viq:dp:chDUV' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -467,6 +466,7 @@ shift $((OPTIND - 1))
 ########
 
 
+base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
 		get_search_query "$*"
