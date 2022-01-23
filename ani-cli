@@ -335,7 +335,7 @@ open_episode () {
 		fi
 
 		case $player_fn in
-			"vlc")
+			vlc)
 				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 				;;
 			*)
