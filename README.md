@@ -1,6 +1,5 @@
 <p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=pystardust%20is%20back&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p>
 
-
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
 [![Maintainer](https://img.shields.io/badge/maintainer-pystardust-blue)](https://github.com/pystardust)
@@ -72,8 +71,15 @@ patch - Update checking
 
 ## Install
 
-### Termux
-* Download and install [mpv for android](https://play.google.com/store/apps/details?id=is.xyz.mpv)
+### Linux / Mac
+
+```sh
+git clone https://github.com/pystardust/ani-cli.git
+cd ani-cli
+sudo make
+```
+
+### Android (Termux)
 
 ```sh
 apt update
@@ -81,6 +87,21 @@ apt install git make ncurses-utils openssl-tool jq -y
 git clone -b android-termux https://github.com/pystardust/ani-cli.git
 cd ani-cli
 make
+```
+
+### Windows
+
+* Download and install [gitbash](https://git-scm.com/downloads)
+* Download and install vlc (mpv needs further testing)
+* Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
+* Open git bash by right-clicking and choosing "Run as administrator"
+* Run the following commands
+
+```sh
+git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
+cd ani-cli
+chmod +x ani-cli-win
+./install
 ```
 
 ## Disclaimer
