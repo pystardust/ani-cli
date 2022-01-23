@@ -461,11 +461,6 @@ fi
 
 shift $((OPTIND - 1))
 
-########
-# Loop #
-########
-
-
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
@@ -489,6 +484,11 @@ esac
 check_input
 append_history
 open_selection
+
+
+########
+# Loop #
+########
 
 while :; do
 	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" "$episode" "$last_ep_number"
