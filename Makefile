@@ -1,9 +1,10 @@
 all: install
 
 ifeq($(OS), Windows_NT)
-Platform := "Windows"
+	Platform := "Windows"
 else
-        Platform = $(shell uname -o)
+	SHELL = /bin/sh
+        Platform = $(SHELL uname -o)
 endif
 
 install:
