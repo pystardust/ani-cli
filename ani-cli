@@ -52,7 +52,6 @@ version_text () {
     printf "$c_blue%s$c_reset%s\n" "Version: " "$VERSION"  >&2
 }
 
-
 die () {
 	printf "$c_red%s$c_reset\n" "$*" >&2
 	exit 1
@@ -77,7 +76,12 @@ dep_ch () {
 	# checks if programs are present 
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
-			die "Program \"$dep\" not found. Please install it."
+			err "Program \"$dep\" not found. Please install it."
+			#aria2c is in the package aria2
+			if [ "$dep" == "aria2c" ]; then
+				echo "To install aria2c, Type <your_package_manager> aria2"
+			fi
+			exit 1
 		fi
 	done
 }
@@ -114,6 +118,7 @@ search_eps () {
 
 
 get_search_query () {
+	# promp user for a search term
 	if [ -z "$*" ]; then
 		printf "$c_cyan%s" "Search Anime: "
 		read -r query
@@ -451,16 +456,9 @@ dep_ch "curl" "sed" "grep" "git" "jq" "openssl"
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
-else
-    if ! command -v aria2c > /dev/null ; then
-	echo "command aria2c not found. Please install it"
-	echo "To install aria2c, Type <your_package_manager> aria2"
-	exit 1
-    fi
-fi
 
 shift $((OPTIND - 1))
-
+# gogoanime likes to change domains but keep the olds as redirects
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
