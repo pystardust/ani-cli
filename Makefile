@@ -1,19 +1,18 @@
 all: install
 
-ifeq($(OS), Windows_NT)
+ifeq ($(OS), Windows_NT)
 	Platform := "Windows"
 else
-	SHELL = /bin/sh
-        Platform = $(SHELL uname -o)
+        Platform = $(uname -o)
 endif
 
 install:
-	ifeq($(Platform), GNU/Linux)
+	ifeq ($(Platform), GNU/Linux)
 		PREFIX := /usr/local
 		cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 		chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
 	endif
-	ifeq($(Platform), Darwin)
+	ifeq ($(Platform), Darwin)
 		PREFIX := /usr/local
 		cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 		chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
@@ -32,11 +31,11 @@ install:
 	endif
 
 uninstall:
-	ifeq($(Platform), GNU/Linux)
+	ifeq ($(Platform), GNU/Linux)
 		PREFIX := /usr/local
 		rm -rf $(DESTDIR)$(PREFIX)/bin/ani-cli
 	endif
-	ifeq($(Platform), Darwin)
+	ifeq ($(Platform), Darwin)
 		PREFIX := /usr/local
 		rm -rf $(DESTDIR)$(PREFIX)/bin/ani-cli
 	endif
