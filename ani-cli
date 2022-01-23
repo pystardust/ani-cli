@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.1.0"
+VERSION="1.1.1"
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
@@ -336,7 +336,7 @@ open_episode () {
 		fi
 
 		case $player_fn in
-			"vlc")
+			vlc)
 				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 				;;
 			*)
