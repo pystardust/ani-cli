@@ -3,6 +3,7 @@
 # version number
 VERSION="1.1.1"
 
+
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
@@ -23,7 +24,7 @@ help_text () {
 	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
-
+	  
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
