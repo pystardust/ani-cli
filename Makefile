@@ -1,30 +1,25 @@
-##########
-# master #
-##########
-PREFIX := /usr/local
-
 #install by default
 all: install
 
+##########
+# master #
+##########
 install:
+	PREFIX := /usr/local
 	# copies ani-cli file to /usr/local/bin/ani-cli, which should be in path
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	# marks ani-cli executable
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
 
 uninstall:
+	PREFIX := /usr/local
 	rm -rf $(DESTDIR)$(PREFIX)/bin/ani-cli
-
-.PHONY: all install uninstall
 
 ##################
 # andriod-termux #
 ##################
-TERMUX_BIN := /data/data/com.termux/files/usr/bin
-#install by default
-all: install
-
 install:
+	TERMUX_BIN := /data/data/com.termux/files/usr/bin
 	# copies ani-cli file to /data/data/com.termux/usr/bin/ani-cli, which should be in path
 	cp ani-cli $(TERMUX_BIN)/ani-cli
 	# marks ani-cli executable
@@ -37,10 +32,10 @@ install:
 	mkdir -p $(HOME)/.cache
 
 uninstall:
+	TERMUX_BIN := /data/data/com.termux/files/usr/bin
 	rm -rf $(TERMUX_BIN)/ani-cli
 	rm -rf $(TERMUX_BIN)/mpv
 
-.PHONY: all install uninstall
 
 ###############
 # windows-vlc #
@@ -53,3 +48,5 @@ install:
 
 uninstall:
 	rm -rf $WINDIR/system32/ani-cli
+
+.PHONY: all install uninstall
