@@ -217,15 +217,14 @@ inf () {
 prompt () {
         # prompts the user with message in $1 and saves the input to the variables in $2 and $3 
         printf "$c_blue%s: $c_reset" "$1"
-        local input1="" input2=""
-        var1="$2" var2="$3"
+        input1="" input2=""
         read -r input1 input2
         # indirectly assigning the input to the variable in $2 and in $3 if present
         if [ -z "$3" ]; then
-                printf -v "$var1" "%s" "$input1"
+                eval "$2=\$input1"
         else
-                printf -v "$var1" "%s" "$input1"
-                printf -v "$var2" "%s" "$input2"
+                eval "$2=\$input1"
+                eval "$3=\$input2"
         fi
 }
 
