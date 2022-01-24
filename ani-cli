@@ -279,7 +279,7 @@ episode_selection () {
 	if [ "$last_ep_number" -gt 1 ]
 	then
 		[ "$is_download" -eq 1 ] &&
-			printf "Range of episodes can be specified: start_number end_number\n"
+			inf "Range of episodes can be specified: start_number end_number"
 
 		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " "$last_ep_number"
 		read -r ep_choice_start ep_choice_end
@@ -346,13 +346,13 @@ open_episode () {
 		episode=$episode"-5"
 	fi
 
-	printf "Getting data for episode %s\n" "$episode"
+	inf "Getting data for episode $episode"
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
 
-	printf "%s\n" "$dpage_link"
-	printf "%s\n" "$video_url"
+	inf "$dpage_link"
+	inf "$video_url"
 	if [ "$half_ep" -eq 1 ]
 	then
 		episode=$temp_ep
@@ -504,7 +504,7 @@ open_selection
 ########
 
 while :; do
-	printf "\n${c_green}Currently playing %s episode ${c_cyan}%d/%d\n" "$selection_id" "$episode" "$last_ep_number"
+	inf "\nCurrently playing $selection_id episode $episode/$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
