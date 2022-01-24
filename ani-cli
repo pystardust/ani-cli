@@ -125,7 +125,9 @@ search_for_unwatched () {
 		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
 		if [ "$current_ep_number" -ge "$history_ep_number" ]
 		then
-			unwatched_anime="$unwatched_anime$anime_id\n"
+			# breaks down with \n because of the display functions
+			unwatched_anime="$unwatched_anime$anime_id
+"
 		fi
 	done <<-EOF
 	$search_results
@@ -487,6 +489,7 @@ case $scrape in
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
+		echo "$search_results"
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
 		episode_selection
@@ -503,7 +506,7 @@ case $scrape in
 esac
 
 check_input
-append_history
+#append_history
 open_selection
 
 
@@ -535,13 +538,9 @@ while :; do
 			episode=$((episode - 1))
 			;;
 
-		s)	prompt "Choose episode [1-$last_ep_number]" "episode"
-			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]
-			then
-				half_ep=1
-				episode=$(echo "$episode" | cut -c2-)
-			fi
-			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
+		s)	episode_selection
+			check_input
+			open_selection
 			;;
 
 		r)
@@ -555,7 +554,7 @@ while :; do
 			anime_selection "$search_results"
 			episode_selection
 			check_input
-			append_history
+			#append_history
 			open_selection
 			continue
 			;;
@@ -566,7 +565,7 @@ while :; do
 			anime_selection "$search_results"
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
-			append_history
+			#append_history
 			open_selection
 			continue
 			;;
