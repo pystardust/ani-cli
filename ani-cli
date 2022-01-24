@@ -505,17 +505,17 @@ case $scrape in
 		die "Unexpected Scrape type"
 esac
 
-check_input
-append_history
-open_selection
-
 
 ########
 # Loop #
 ########
 
 while :; do
+	check_input
+	append_history
+	open_selection
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+	# display menu
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_odd "next episode" "n"
 	fi
@@ -529,18 +529,20 @@ while :; do
 	menu_line_odd "search for another anime" "a"
 	menu_line_even "search history" "h"
 	menu_line_strong "exit" "q"
-	prompt "Enter choice" 
+	prompt "Enter choice"
+	# process user choice
 	choice=$REPLY
 	case $choice in
 		n)
-			episodes=$((episode + 1))
+			ep_choice_start=$((episode + 1))
+			ep_choice_end=""
 			;;
 		p)
-			episodes=$((episode - 1))
+			ep_choice_start=$((episode - 1))
+			ep_choice_end=""
 			;;
 
 		s)	episode_selection
-			check_input
 			;;
 
 		r)
@@ -554,18 +556,14 @@ while :; do
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
 			episode_selection
-			check_input
-			append_history
 			;;
 		h)
 			tput reset
-			
 			search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 			[ -z "$search_results" ] && die "History is empty"
 			search_results=$(search_for_unwatched "$search_results")
 			anime_selection "$search_results"
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-			check_input
 			;;
 
 		q)
@@ -575,5 +573,4 @@ while :; do
 			die "invalid choice"
 			;;
 	esac
-	open_selection
 done
