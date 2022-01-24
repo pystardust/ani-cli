@@ -49,26 +49,22 @@ help_text () {
 }
 
 version_text () {
-    printf "$c_blue%s$c_reset%s\n" "Version: " "$VERSION"  >&2
+    inf "Version: " "$VERSION"  >&2
 }
 
 die () {
-	printf "$c_red%s$c_reset\n" "$*" >&2
+	err $*
 	exit 1
-}
-
-err () {
-	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
 update_script () {
 	# get the newest version of this script from github and replace it
 	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
-		printf "$c_green%s$c_reset\n" "Script is up to date :)"
+		inf "Script is up to date :)"
 	else
-		printf '%s\n' "$update" | patch "$0" - && printf "$c_green%s$c_reset\n" "Script has been updated" ||
-            printf "$c_red%s$c_reset\n" "Can't update for some reason!"
+		printf '%s\n' "$update" | patch "$0" - && inf "Script has been updated" ||
+            err "Can't update for some reason!"
 	fi
 }
 
@@ -79,6 +75,7 @@ dep_ch () {
 			err "Program \"$dep\" not found. Please install it."
 			#aria2c is in the package aria2
 			if [ "$dep" == "aria2c" ]; then
+				# echo, inf or err?
 				echo "To install aria2c, Type <your_package_manager> aria2"
 			fi
 			exit 1
@@ -206,9 +203,24 @@ get_video_quality() {
 			fi
 			;;
 	esac
-	printf '%s' "$video_link"
+	inf "$video_link"
 }
 
+
+###############
+# Text output #
+###############
+
+
+err () {
+	# display an error message to stderr (in red)
+	printf "$c_red%s$c_reset\n" "$*" >&2
+}
+
+inf () {
+	# display an informational message (in green)
+	printf "$c_green%s$c_reset\n" "$*"
+}
 
 #################
 # Input parsing #
@@ -370,19 +382,19 @@ open_episode () {
 		esac
 		PID=$!
 
-		printf "${c_green}\nVideo playing"
+		inf "Video playing"
 		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
-		printf "Downloading episode $episode ...\n"
+		inf "Downloading episode $episode ...\n"
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 			aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
+				inf "Downloaded episode: $episode" ||
+				err "Download failed episode: $episode , please retry or check your internet connection"
 		}
 	fi
 }
