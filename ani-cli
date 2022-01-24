@@ -49,7 +49,7 @@ help_text () {
 }
 
 version_text () {
-    inf "Version: " "$VERSION"  >&2
+    inf "Version:" "$VERSION"  >&2
 }
 
 die () {
@@ -504,7 +504,6 @@ open_selection
 ########
 
 while :; do
-	echo ""
 	inf "Currently playing $selection_id episode $episode/$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
