@@ -217,14 +217,9 @@ inf () {
 }
 
 prompt () {
-        # prompts the user with message in $1 and saves the input to the variables in $2 and $3 
-        printf "$c_blue%s: $c_reset" "$1"
-        read -r input1 input2
-        # indirectly assigning the input to the variable in $2 and in $3 if present
-	eval "$2=$input1"
-        if [ -n "$3" ]; then
-               	eval "$3=$input2"
-        fi
+        # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+        printf "$c_blue%s$c_magenta%s$c_blue: $c_reset" "$1" "$2"
+        read -r REPLY REPLY2
 }
 
 menu_line_even () {
@@ -261,7 +256,8 @@ anime_selection () {
 	$search_results
 	EOF
 
-	prompt "Enter number" "choice"
+	prompt "Enter number" 
+	choice=$REPLY
 
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
@@ -295,7 +291,9 @@ episode_selection () {
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
-		prompt "Choose episode [1-$last_ep_number]" "ep_choice_start" "ep_choice_end"
+		prompt "Choose episode" "[1-$last_ep_number]" 
+		ep_choice_start=$REPLY
+		ep_choice_end=$REPLY2
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
@@ -348,7 +346,8 @@ open_episode () {
 		else
 			err "Episode out of range"
 		fi
-		prompt "Choose episode [1-$last_ep_number]" "episode"
+		prompt "Choose episode" "[1-$last_ep_number]" 
+		episode=$REPLY
 	done
 	#processing half episodes
 	if [ "$half_ep" -eq 1 ]
@@ -485,7 +484,8 @@ base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
-			prompt "Search Anime" "query"
+			prompt "Search Anime" 
+			query=$REPLY
 		else
 			query=$*
 		fi
@@ -529,7 +529,8 @@ while :; do
 	menu_line_odd "search for another anime" "a"
 	menu_line_even "search history" "h"
 	menu_line_strong "exit" "q"
-	prompt "Enter choice" "choice"
+	prompt "Enter choice" 
+	choice=$REPLY
 	case $choice in
 		n)
 			episodes=$((episode + 1))
@@ -547,7 +548,8 @@ while :; do
 			;;
 		a)
 			tput reset
-			prompt "Search Anime" "query"
+			prompt "Search Anime" 
+			query=$REPLY
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
