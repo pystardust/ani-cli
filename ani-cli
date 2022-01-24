@@ -49,7 +49,7 @@ help_text () {
 }
 
 version_text () {
-    inf "Version:" "$VERSION"  >&2
+    inf "Version: $VERSION"  >&2
 }
 
 die () {
@@ -119,7 +119,7 @@ search_eps () {
 get_search_query () {
 	# promp user for a search term
 	if [ -z "$*" ]; then
-		printf "$c_cyan%s" "Search Anime: "
+		inf "Search Anime: "
 		read -r query
 	else
 		query=$*
@@ -221,8 +221,8 @@ err () {
 }
 
 inf () {
-	# display an informational message (in green)
-	printf "$c_green%s$c_reset\n" "$*"
+	# display an informational message (first argument in green, second in cyan)
+	printf "$c_green%s $c_cyan%s$c_reset\n" "$1" "$2"
 }
 
 
@@ -252,9 +252,8 @@ anime_selection () {
 	EOF
 
 	# User input
-	printf "$c_blue%s$c_green" "Enter number: "
+	inf "Enter number: "
 	read -r choice
-	printf "$c_reset"
 
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
@@ -285,17 +284,16 @@ episode_selection () {
 	ep_choice_start="1"
 	if [ "$last_ep_number" -gt 1 ]
 	then
-		[ "$is_download" -eq 1 ] &&
+		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
-
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset$c_green: " "$last_ep_number"
+		fi
+		inf "Choose episode" "[1-$last_ep_number]"
 		read -r ep_choice_start ep_choice_end
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
 			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
 		fi
-		printf "$c_reset"
 	fi
 }
 
@@ -342,9 +340,8 @@ open_episode () {
 		else
 			err "Episode out of range"
 		fi
-		printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+		inf "Choose episode " "[1-$last_ep_number] "
 		read -r episode
-		printf "$c_reset"
 	done
 
 	if [ "$half_ep" -eq 1 ]
@@ -357,9 +354,6 @@ open_episode () {
 
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	video_url=$(get_video_quality "$dpage_link")
-
-	inf "$dpage_link"
-	inf "$video_url"
 	if [ "$half_ep" -eq 1 ]; then
 		episode=$temp_ep
 		half_ep=0
@@ -387,7 +381,6 @@ open_episode () {
 		esac
 		PID=$!
 
-		inf "Video playing"
 		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
@@ -397,9 +390,11 @@ open_episode () {
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-			aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-				inf "Downloaded episode: $episode" ||
+			if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+				inf "Downloaded episode: $episode" 
+			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
+			fi
 		}
 	fi
 }
@@ -509,7 +504,7 @@ open_selection
 ########
 
 while :; do
-	inf "Currently playing $selection_id episode $episode/$last_ep_number"
+	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
 	fi
@@ -523,10 +518,9 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-	printf "${c_blue}Enter choice:${c_green} "
+	inf "Enter choice: "
 
 	read -r choice
-	printf "$c_reset"
 	case $choice in
 		n)
 			episode=$((episode + 1))
@@ -535,14 +529,13 @@ while :; do
 			episode=$((episode - 1))
 			;;
 
-		s)	printf "${c_blue}Choose episode $c_cyan[1-%d]$c_reset:$c_green " "$last_ep_number"
+		s)	inf "Choose episode " "[1-$last_ep_number]:"
 			read -r episode
 			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]
 			then
 				half_ep=1
 				episode=$(echo "$episode" | cut -c2-)
 			fi
-			printf "$c_reset"
 			[ "$episode" -eq "$episode" ] 2>/dev/null || die "Invalid number entered"
 			;;
 
