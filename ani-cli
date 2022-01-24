@@ -1,10 +1,9 @@
 #!/bin/sh
 
-# version umber
-VERSION="1.1.0"
+# version number
+VERSION="1.1.3"
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 
 c_red="\033[1;31m"
 c_green="\033[1;32m"
@@ -23,10 +22,11 @@ help_text () {
 	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
-	  
+
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
+	  -f fast download
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
@@ -64,8 +64,8 @@ update_script () {
 	if [ -z "$update" ]; then
 		printf "$c_green%s$c_reset\n" "Script is up to date :)"
 	else
-		printf '%s\n' "$update" | patch "$0" -
-		printf "$c_green%s$c_reset\n" "Script has been updated"
+		printf '%s\n' "$update" | patch "$0" - && printf "$c_green%s$c_reset\n" "Script has been updated" ||
+            printf "$c_red%s$c_reset\n" "Can't update for some reason!"
 	fi
 }
 
@@ -336,11 +336,11 @@ open_episode () {
 		fi
 
 		case $player_fn in
-			"vlc")
-				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+			vlc)
+				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 			*)
-				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 		esac
 		PID=$!
@@ -354,8 +354,11 @@ open_episode () {
 		episode=$(printf "%03d" "$episode")
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
-			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-			aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+			if [ "$fast_download" -eq 1 ]; then
+				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide
+			else
+				aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide
+			fi
 				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
 				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
@@ -371,17 +374,21 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 
 # option parsing
 player_fn="mpv" #video player needs to be able to play urls
+fast_download=0
 is_download=0
 half_ep=0
 quality=best
 scrape=query
 download_dir="."
 
-while getopts 'viq:dp:chDUV:' OPT; do
+while getopts 'viq:fdp:chDUV' OPT; do
 	case $OPT in
 		h)
 			help_text
 			exit 0
+			;;
+		f)
+			fast_download=1
 			;;
 		d)
 			is_download=1
@@ -442,6 +449,7 @@ shift $((OPTIND - 1))
 ########
 
 
+base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
 		get_search_query "$*"
@@ -481,7 +489,7 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
 	printf "${c_blue}Enter choice:${c_green} "
-	
+
 	read -r choice
 	printf "$c_reset"
 	case $choice in
@@ -534,7 +542,9 @@ while :; do
 			break;;
 
 		*)
-			die "invalid choice"
+			tput reset
+			err "invalid choice"
+			continue
 			;;
 	esac
 
