@@ -74,7 +74,7 @@ patch - Update checking
 ### Linux / Mac
 
 ```sh
-git clone https://github.com/pystardust/ani-cli.git
+git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 sudo make
 ```
@@ -84,24 +84,22 @@ sudo make
 ```sh
 apt update
 apt install git make ncurses-utils openssl-tool jq -y
-git clone -b android-termux https://github.com/pystardust/ani-cli.git
+git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 make
 ```
 
 ### Windows
 
+* Download and install dependencies as mentioned above
 * Download and install [gitbash](https://git-scm.com/downloads)
-* Download and install vlc (mpv needs further testing)
-* Add vlc to Windows Env PATH like so: C:\Program Files\VideoLAN\VLC.
 * Open git bash by right-clicking and choosing "Run as administrator"
 * Run the following commands
 
 ```sh
-git clone -b windows-vlc https://github.com/pystardust/ani-cli.git
+git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
-chmod +x ani-cli-win
-./install
+make
 ```
 
 ## Disclaimer
