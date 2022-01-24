@@ -336,10 +336,10 @@ open_episode () {
 
 		case $player_fn in
 			vlc)
-				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 			*)
-				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				;;
 		esac
 		PID=$!
@@ -534,7 +534,8 @@ while :; do
 			break;;
 
 		*)
-			die "invalid choice"
+			err "invalid choice"
+			continue
 			;;
 	esac
 
