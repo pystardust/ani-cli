@@ -224,17 +224,17 @@ prompt () {
 
 menu_line_even () {
 	# displays an even (cyan) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "$c_blue[$c_cyan%c$c_blue] $c_cyan%s$c_reset%s\n" "$2" "$1"
+	printf "$c_blue"; printf "[$c_cyan%c$c_blue] $c_cyan%s$c_reset%s\n" "$2" "$1"
 }
 
 menu_line_odd() {
 	# displays an odd (yellow) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "$c_blue[$c_yellow%c$c_blue] $c_yellow%s$c_reset%s\n" "$2" "$1"
+	printf "$c_blue"; printf "[$c_yellow%c$c_blue] $c_yellow%s$c_reset%s\n" "$2" "$1"
 }
 
 menu_line_strong() {
 	# displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "$c_blue[$c_red%c$c_blue] $c_red%s$c_reset%s\n" "$2" "$1"
+	printf "$c_blue"; printf "[$c_red%c$c_blue] $c_red%s$c_reset%s\n" "$2" "$1"
 }
 
 
