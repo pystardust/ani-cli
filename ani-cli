@@ -546,7 +546,8 @@ while :; do
 			;;
 
 		r)
-			episodes=$((episode))
+			ep_choice_start=$((episode))
+			ep_choice_end=""
 			;;
 		a)
 			tput reset
