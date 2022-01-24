@@ -534,6 +534,7 @@ while :; do
 			break;;
 
 		*)
+			tput reset
 			err "invalid choice"
 			continue
 			;;
