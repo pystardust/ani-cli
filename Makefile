@@ -1,13 +1,13 @@
 all: install
 
 ifeq ($(OS), Windows_NT)
-        Platform = Msys
+Platform := Msys
 else
-        Platform = $(shell uname -o)
+Platform := $(shell uname -o)
 endif
 
 ifeq ($(Platform), GNU/Linux)
-	PREFIX := /usr/local
+PREFIX := /usr/local
 install:
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
@@ -17,7 +17,7 @@ uninstall:
 	echo "Removal successful (Linux)"
 
 else ifeq ($(Platform), Darwin)
-	PREFIX := /usr/local
+PREFIX := /usr/local
 install:
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
@@ -27,7 +27,7 @@ uninstall:
 	echo "Removal successful (Mac OS)"
 
 else ifeq ($(Platform), Android)
-	TERMUX_BIN := /data/data/com.termux/files/usr/bin
+TERMUX_BIN := /data/data/com.termux/files/usr/bin
 install:
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
@@ -39,7 +39,7 @@ uninstall:
 else ifeq ($(Platform), Msys)
 install:
 	rm -rf $(USERPROFILE)/.cache
-	mkdir $(USERPROFILE)/.cache 2> /dev/null
+	mkdir $(USERPROFILE)/.cache
 	cp ani-cli $(WINDIR)/system32/ani-cli
 	echo "Installation successful (Windows)"
 uninstall:
