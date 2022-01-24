@@ -53,7 +53,7 @@ version_text () {
 }
 
 die () {
-	err $*
+	err "$*"
 	exit 1
 }
 
@@ -74,7 +74,7 @@ dep_ch () {
 		if ! command -v "$dep" >/dev/null ; then
 			err "Program \"$dep\" not found. Please install it."
 			#aria2c is in the package aria2
-			if [ "$dep" == "aria2c" ]; then
+			if [ "$dep" = "aria2c" ]; then
 				# echo, inf or err?
 				echo "To install aria2c, Type <your_package_manager> aria2"
 			fi
@@ -220,6 +220,7 @@ inf () {
 	# display an informational message (in green)
 	printf "$c_green%s$c_reset\n" "$*"
 }
+
 
 #################
 # Input parsing #
