@@ -490,7 +490,6 @@ case $scrape in
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
-		echo "$search_results"
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
 		episode_selection
