@@ -46,4 +46,4 @@ uninstall:
 	@echo 'Failed to detect your operating system'
 endif
 
-.PHONY: all install uninstall
+.SILENT .PHONY: all install uninstall
