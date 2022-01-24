@@ -533,19 +533,18 @@ while :; do
 	prompt "Enter choice" "choice"
 	case $choice in
 		n)
-			episode=$((episode + 1))
+			episodes=$((episode + 1))
 			;;
 		p)
-			episode=$((episode - 1))
+			episodes=$((episode - 1))
 			;;
 
 		s)	episode_selection
 			check_input
-			open_selection
 			;;
 
 		r)
-			episode=$((episode))
+			episodes=$((episode))
 			;;
 		a)
 			tput reset
@@ -556,8 +555,6 @@ while :; do
 			episode_selection
 			check_input
 			append_history
-			open_selection
-			continue
 			;;
 		h)
 			tput reset
@@ -566,8 +563,6 @@ while :; do
 			anime_selection "$search_results"
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
-			open_selection
-			continue
 			;;
 
 		q)
@@ -577,7 +572,6 @@ while :; do
 			die "invalid choice"
 			;;
 	esac
-
-	open_episode "$selection_id" "$episode"
+	open_selection
 done
 
