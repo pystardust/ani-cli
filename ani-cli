@@ -211,7 +211,6 @@ get_video_quality() {
 # Text output #
 ###############
 
-
 err () {
 	# display an error message to stderr (in red)
 	printf "$c_red%s$c_reset\n" "$*" >&2
