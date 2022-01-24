@@ -516,18 +516,31 @@ open_selection
 
 while :; do
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+	menuopts=()
+	actions=()
+	line="0"
 	if [ "$episode" -ne "$last_ep_number" ]; then
-		menu_line_odd "next episode" "n"
+		menuopts+=("next episode")
+		actions+=("n")
 	fi
 	if [ "$episode" -ne "1" ]; then
-		menu_line_even "previous episode" "p"
+		menuopts+=("previous episode")
+		actions+=("p")
 	fi
 	if [ "$last_ep_number" -ne "1" ]; then
-		menu_line_odd "select episode" "s"
+		menuopts+=("select episode")
+		actions+=("s")
 	fi
-	menu_line_even "replay current episode" "r"
-	menu_line_odd "search for another anime" "a"
-	menu_line_even "search history" "h"
+	menuopts+=("replay current episode" "search for another anime" "search history")
+	actions+=("r" "a" "h")
+	for opt in ${actions[@]}; do
+		if [ $((line % 2)) -eq 0 ]; then
+			menu_line_even "${menuopts[$line]}" "$opt"
+		else
+			menu_line_odd "${menuopts[$line]}" "$opt"
+		fi
+		line=$((line + 1))
+	done
 	menu_line_strong "exit" "q"
 	prompt "Enter choice" 
 	choice=$REPLY
