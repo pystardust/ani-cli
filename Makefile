@@ -28,17 +28,16 @@ install:
 uninstall:
 	rm -rf $WINDIR/system32/ani-cli
 else ifeq ($(Platform),Android)
-install:
 	TERMUX_BIN := /data/data/com.termux/files/usr/bin
+install:
 	cp ani-cli $(TERMUX_BIN)/ani-cli
 	chmod 0755 $(TERMUX_BIN)/ani-cli
 	@echo 'am start --user 0 -a android.intent.action.VIEW -d "$$2" -e "http-header-fields" "$$1" -n is.xyz.mpv/.MPVActivity' > $(TERMUX_BIN)/mpv
 	chmod +x $(TERMUX_BIN)/mpv
 	mkdir -p $(HOME)/.cache
 uninstall:
-	TERMUX_BIN := /data/data/com.termux/files/usr/bin
 	rm -rf $(TERMUX_BIN)/ani-cli
-	rm -rf $(TERMUX_BIN)/mp
+	rm -rf $(TERMUX_BIN)/mpv
 else
 install:
 	@echo 'Failed to detect your operating system'
