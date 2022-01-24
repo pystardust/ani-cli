@@ -133,7 +133,7 @@ search_for_unwatched () {
 	if [ -z "$unwatched_anime" ]; then
 		die "No unwatched episodes"
 	fi
-	printf "%s""$unwatched_anime"
+	printf "%s" "$unwatched_anime"
 }
 
 
@@ -219,11 +219,9 @@ prompt () {
         printf "$c_blue%s: $c_reset" "$1"
         read -r input1 input2
         # indirectly assigning the input to the variable in $2 and in $3 if present
-        if [ -z "$3" ]; then
-                eval "$2=\$input1"
-        else
-                eval "$2=\$input1"
-                eval "$3=\$input2"
+	eval "$2=$input1"
+        if [ "$3" ]; then
+               	eval "$3=$input2"
         fi
 }
 
