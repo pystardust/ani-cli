@@ -228,6 +228,21 @@ prompt () {
         fi
 }
 
+menu_line_even () {
+	# displays an even (cyan) line of a menu line with $2 as an indicator in [] and $1 as the option
+	printf "$c_blue[$c_green%d$c_blue] $c_cyan%s$c_reset%s\n" "$2" "$1"
+}
+
+menu_line_odd() {
+	# displays an odd (yellow) line of a menu line with $2 as an indicator in [] and $1 as the option
+	printf "$c_blue[$c_green%d$c_blue] $c_yellow%s$c_reset%s\n" "$2" "$1"
+}
+
+menu_line_strong() {
+	# displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
+	printf "$c_blue[$c_green%d$c_blue] $c_red%s$c_reset%s\n" "$2" "$1"
+}
+
 
 #################
 # Input parsing #
@@ -235,20 +250,14 @@ prompt () {
 
 anime_selection () {
 	# user input for selecting anime
-	search_results=$*
-	menu_format_string='[%d] %s\n'
-	menu_format_string_c1="$c_blue[$c_cyan%d$c_blue] $c_blue%s$c_reset%s\n"
-	menu_format_string_c2="$c_blue[$c_cyan%d$c_blue] $c_magenta%s$c_reset\n"
-
 	count=1
 	while read -r anime_id; do
 		# alternating colors for menu
 		if [ $((count % 2)) -eq 0 ]; then
-			menu_format_string=$menu_format_string_c1
+			menu_line_even "$anime_id" "$count"
 		else
-			menu_format_string=$menu_format_string_c2
+			menu_line_odd "$anime_id" "$count"
 		fi
-		printf "$menu_format_string" "$count" "$anime_id"
 		count=$((count+1))
 	done <<-EOF
 	$search_results
@@ -509,18 +518,18 @@ open_selection
 while :; do
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
 	if [ "$episode" -ne "$last_ep_number" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "n" "next episode"
+		menu_line_odd "next episode" "n"
 	fi
 	if [ "$episode" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "p" "previous episode"
+		menu_line_even "previous episode" "p"
 	fi
 	if [ "$last_ep_number" -ne "1" ]; then
-		printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "s" "select episode"
+		menu_line_odd "select episode" "s"
 	fi
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "r" "replay current episode"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
-	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
+	menu_line_even "replay current episode" "r"
+	menu_line_odd "search for another anime" "a"
+	menu_line_even "search history" "h"
+	menu_line_strong "exit" "q"
 	prompt "Enter choice" "choice"
 	case $choice in
 		n)
