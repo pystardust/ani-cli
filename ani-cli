@@ -506,7 +506,7 @@ case $scrape in
 esac
 
 check_input
-#append_history
+append_history
 open_selection
 
 
@@ -554,7 +554,7 @@ while :; do
 			anime_selection "$search_results"
 			episode_selection
 			check_input
-			#append_history
+			append_history
 			open_selection
 			continue
 			;;
@@ -565,7 +565,6 @@ while :; do
 			anime_selection "$search_results"
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
-			#append_history
 			open_selection
 			continue
 			;;
