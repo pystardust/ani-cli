@@ -376,7 +376,7 @@ open_episode () {
 				nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 				;;
 			*)
-				nohup "$player_fn" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+				nohup "$player_fn" --referrer="$dpage_link" "$video_url" #> /dev/null 2>&1
 				;;
 		esac
 		PID=$!
