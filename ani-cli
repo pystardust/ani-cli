@@ -220,7 +220,7 @@ prompt () {
         read -r input1 input2
         # indirectly assigning the input to the variable in $2 and in $3 if present
 	eval "$2=$input1"
-        if [ "$3" ]; then
+        if [ -n "$3" ]; then
                	eval "$3=$input2"
         fi
 }
