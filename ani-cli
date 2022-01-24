@@ -559,8 +559,10 @@ while :; do
 			;;
 		h)
 			tput reset
+			
 			search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 			[ -z "$search_results" ] && die "History is empty"
+			search_results=$(search_for_unwatched "$search_results")
 			anime_selection "$search_results"
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			check_input
@@ -575,4 +577,3 @@ while :; do
 	esac
 	open_selection
 done
-
