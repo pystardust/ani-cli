@@ -63,8 +63,11 @@ update_script () {
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
 	else
-		printf '%s\n' "$update" | patch "$0" - && inf "Script has been updated" ||
-            err "Can't update for some reason!"
+		if printf '%s\n' "$update" | patch "$0" - ; then
+			inf "Script has been updated"
+		else
+            		die "Can't update for some reason!"
+            	fi
 	fi
 }
 
@@ -75,10 +78,9 @@ dep_ch () {
 			err "Program \"$dep\" not found. Please install it."
 			#aria2c is in the package aria2
 			if [ "$dep" = "aria2c" ]; then
-				# echo, inf or err?
-				echo "To install aria2c, Type <your_package_manager> aria2"
+				err "To install aria2c, Type <your_package_manager> aria2"
 			fi
-			exit 1
+			die
 		fi
 	done
 }
@@ -139,7 +141,9 @@ search_for_unwatched () {
 	done <<-EOF
 	$search_results
 	EOF
-	[ -z "$unwatched_anime" ] && die "No unwatched episodes"
+	if [ -z "$unwatched_anime" ]; then
+		die "No unwatched episodes"
+	fi
 	printf "%s""$unwatched_anime"
 }
 
@@ -236,10 +240,11 @@ anime_selection () {
 	count=1
 	while read -r anime_id; do
 		# alternating colors for menu
-		[ $((count % 2)) -eq 0 ] &&
-			menu_format_string=$menu_format_string_c1 ||
+		if [ $((count % 2)) -eq 0 ]; then
+			menu_format_string=$menu_format_string_c1
+		else
 			menu_format_string=$menu_format_string_c2
-
+		fi
 		printf "$menu_format_string" "$count" "$anime_id"
 		count=$((count+1))
 	done <<-EOF
@@ -266,8 +271,10 @@ anime_selection () {
 	$search_results
 	EOF
 
-	[ -z "$selection_id" ] && die "Invalid number entered"
-
+	if [ -z "$selection_id" ]; then
+		die "Invalid number entered"
+	fi
+	
 	read -r last_ep_number <<-EOF
 	$(search_eps "$selection_id")
 	EOF
@@ -353,8 +360,7 @@ open_episode () {
 
 	inf "$dpage_link"
 	inf "$video_url"
-	if [ "$half_ep" -eq 1 ]
-	then
+	if [ "$half_ep" -eq 1 ]; then
 		episode=$temp_ep
 		half_ep=0
 	fi
@@ -367,8 +373,7 @@ open_episode () {
 
 		kill "$PID" >/dev/null 2>&1
 
-		if [ -z "$video_url" ]
-		then
+		if [ -z "$video_url" ]; then
 			die "Video URL not found"
 		fi
 
