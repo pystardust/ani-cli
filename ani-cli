@@ -208,33 +208,33 @@ get_video_quality() {
 
 err () {
 	# display an error message to stderr (in red)
-	printf "%s%s%s\n" "$c_red" "$*" "$c_reset" >&2
+	printf "$c_red%s$c_reset\n" "$*" >&2
 }
 
 inf () {
 	# display an informational message (first argument in green, second in magenta)
-	printf "%s%s %s%s%s\n" "$c_green" "$1" "$c_magenta" "$2" "$c_reset"
+	printf "$c_green%s $c_magenta%s$c_reset\n" "$1" "$2"
 }
 
 prompt () {
         # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-        printf "%s%s%s%s%s: %s" "$c_blue" "$1" "$c_magenta" "$2" "$c_blue" "$c_reset"
+        printf "$c_blue%s$c_magenta%s$c_blue: $c_reset" "$1" "$2"
         read -r REPLY REPLY2
 }
 
 menu_line_even () {
 	# displays an even (cyan) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "%s[%s%c%s] %s%s%s\n" "$c_blue" "$c_cyan" "$2" "$c_blue" "$c_cyan" "$1" "$c_reset"
+	printf "$c_blue"; printf "[$c_cyan%c$c_blue] $c_cyan%s$c_reset%s\n" "$2" "$1"
 }
 
 menu_line_odd() {
 	# displays an odd (yellow) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "%s[%s%c%s] %s%s%s\n" "$c_blue" "$c_yellow" "$2" "$c_blue" "$c_yellow" "$1" "$c_reset"
+	printf "$c_blue"; printf "[$c_yellow%c$c_blue] $c_yellow%s$c_reset%s\n" "$2" "$1"
 }
 
 menu_line_strong() {
 	# displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
-	printf "%s[%s%c%s] %s%s%s\n" "$c_blue" "$c_red" "$2" "$c_blue" "$c_red" "$1" "$c_reset"
+	printf "$c_blue"; printf "[$c_red%c$c_blue] $c_red%s$c_reset%s\n" "$2" "$1"
 }
 
 
