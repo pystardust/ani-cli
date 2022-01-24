@@ -115,17 +115,6 @@ search_eps () {
 		'
 }
 
-
-get_search_query () {
-	# promp user for a search term
-	if [ -z "$*" ]; then
-		inf "Search Anime: "
-		read -r query
-	else
-		query=$*
-	fi
-}
-
 search_for_unwatched () {	
 	# compares history with gogoanime, only shows unfinished anime
 	search_results=$*
@@ -225,6 +214,21 @@ inf () {
 	printf "$c_green%s $c_cyan%s$c_reset\n" "$1" "$2"
 }
 
+prompt () {
+        # prompts the user with message in $1 and saves the input to the variables in $2 and $3 
+        printf "$c_blue%s: $c_reset" "$1"
+        local input1="" input2=""
+        var1="$2" var2="$3"
+        read -r input1 input2
+        # indirectly assigning the input to the variable in $2 and in $3 if present
+        if [ -z "$3" ]; then
+                printf -v "$var1" "%s" "$input1"
+        else
+                printf -v "$var1" "%s" "$input1"
+                printf -v "$var2" "%s" "$input2"
+        fi
+}
+
 
 #################
 # Input parsing #
@@ -251,9 +255,7 @@ anime_selection () {
 	$search_results
 	EOF
 
-	# User input
-	inf "Enter number: "
-	read -r choice
+	prompt "Enter number" "choice"
 
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
@@ -287,8 +289,7 @@ episode_selection () {
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
-		inf "Choose episode" "[1-$last_ep_number]"
-		read -r ep_choice_start ep_choice_end
+		prompt "Choose episode [1-$last_ep_number]" "ep_choice_start" "ep_choice_end"
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
 		then
 			half_ep=1
@@ -340,8 +341,7 @@ open_episode () {
 		else
 			err "Episode out of range"
 		fi
-		inf "Choose episode " "[1-$last_ep_number] "
-		read -r episode
+		prompt "Choose episode [1-$last_ep_number]" "episode"
 	done
 
 	if [ "$half_ep" -eq 1 ]
@@ -477,7 +477,11 @@ shift $((OPTIND - 1))
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
-		get_search_query "$*"
+		if [ -z "$*" ]; then
+			prompt "Search Anime" "query"
+		else
+			query=$*
+		fi
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
@@ -518,9 +522,7 @@ while :; do
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_yellow%s$c_reset\n" "a" "search for another anime"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_magenta%s$c_reset\n" "h" "search history"
 	printf "$c_blue[${c_cyan}%s$c_blue] $c_red%s$c_reset\n" "q" "exit"
-	inf "Enter choice: "
-
-	read -r choice
+	prompt "Enter choice" "choice"
 	case $choice in
 		n)
 			episode=$((episode + 1))
@@ -529,8 +531,7 @@ while :; do
 			episode=$((episode - 1))
 			;;
 
-		s)	inf "Choose episode " "[1-$last_ep_number]:"
-			read -r episode
+		s)	prompt "Choose episode [1-$last_ep_number]" "episode"
 			if [ "$(echo "$episode" | cut -c1-1)" = "h" ]
 			then
 				half_ep=1
@@ -544,7 +545,7 @@ while :; do
 			;;
 		a)
 			tput reset
-			get_search_query ""
+			prompt "Search Anime" "query"
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
