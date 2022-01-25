@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.1.3"
+VERSION="1.2.0"
 
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
@@ -394,9 +394,9 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
-			if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-			#if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+		    #if you have low bandwidth or low cpu power uncomment the line below
+			#if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+			if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 				inf "Downloaded episode: $episode" 
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
