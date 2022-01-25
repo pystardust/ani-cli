@@ -13,7 +13,7 @@ install:
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
 	echo "Installation successful (Linux)"
 uninstall:
-	rm -rf $(DESTDIR)$(PREFIX)/bin/ani-cli
+	rm $(DESTDIR)$(PREFIX)/bin/ani-cli
 	echo "Removal successful (Linux)"
 
 else ifeq ($(Platform), Darwin)
@@ -23,7 +23,7 @@ install:
 	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
 	echo "Installation successful (Mac OS)"
 uninstall:
-	rm -rf $(DESTDIR)$(PREFIX)/bin/ani-cli
+	rm $(DESTDIR)$(PREFIX)/bin/ani-cli
 	echo "Removal successful (Mac OS)"
 
 else ifeq ($(Platform), Android)
@@ -34,8 +34,8 @@ install:
 	chmod 0755 $(PREFIX)/bin/mpv
 	echo "Installation successful (Android Termux)"
 uninstall:
-	rm -rf $(PREFIX)/bin/ani-cli
-	rm -rf $(PREFIX)/bin/mpv
+	rm $(PREFIX)/bin/ani-cli
+	rm $(PREFIX)/bin/mpv
 	echo "Removal successful (Android Termux)"
 
 else ifeq ($(Platform), Msys)
@@ -45,7 +45,7 @@ install:
 	cp ani-cli $(WINDIR)/system32/ani-cli
 	echo "Installation successful (Windows)"
 uninstall:
-	rm -rf $(WINDIR)/system32/ani-cli
+	rm $(WINDIR)/system32/ani-cli
 	echo "Removal successful (Windows)"
 else
 install:
