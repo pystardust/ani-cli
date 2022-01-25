@@ -35,7 +35,7 @@ Test automation ideas welcome
 - Try to make extra dependencies optional
 - Adjust the Readme accordingly
 - Try using shell builtins over external commands
-- Try using built-in output functions (err, inf and die) instead of echo and printf
+- Try using built-in output functions (err, inf, prompt, menu_line_* and die) instead of echo and printf
 
 ## How else can I help?
 
