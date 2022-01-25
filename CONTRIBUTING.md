@@ -22,7 +22,7 @@ Our parsing was broken in the past and it will break in the future
 To spot breakage early, test with the following anime:
 
 - The safe bet: `One Piece`
-- Episode 5.5: `arifureta shokugyou de sekai saiku`
+- Episode 5.5: `arifureta shokugyou de sekai saikyou`
 - Unicode: `Saenai Heroine no Sodatekata ♭`
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 
@@ -35,7 +35,7 @@ Test automation ideas welcome
 - Try to make extra dependencies optional
 - Adjust the Readme accordingly
 - Try using shell builtins over external commands
-- Try using built-in output functions (err, inf and die) instead of echo and printf
+- Try using built-in output functions (err, inf, prompt, menu_line_* and die) instead of echo and printf
 
 ## How else can I help?
 
