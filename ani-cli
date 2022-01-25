@@ -497,15 +497,15 @@ case $scrape in
 		die "Unexpected Scrape type"
 esac
 
+	check_input
+	append_history
+	open_selection
 
 ########
 # Loop #
 ########
 
 while :; do
-	check_input
-	append_history
-	open_selection
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
 	# display menu
 	if [ "$episode" -ne "$last_ep_number" ]; then
@@ -563,7 +563,12 @@ while :; do
 			break;;
 
 		*)
-			die "invalid choice"
+			tput reset
+			err "invalid choice"
+			continue
 			;;
 	esac
+	check_input
+	append_history
+	open_selection
 done
