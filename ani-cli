@@ -395,7 +395,7 @@ open_episode () {
 		episode=$(printf "%03d" "$episode")
 		{
 		    #if you have low bandwidth or low cpu power uncomment the line below
-			if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+			#if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 			if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 				inf "Downloaded episode: $episode" 
 			else
