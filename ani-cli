@@ -2,6 +2,7 @@
 
 # version number
 VERSION="1.2.3"
+
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
@@ -98,14 +99,14 @@ search_anime () {
 search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
-
-	curl -s "$base_url/category/$anime_id" |
-	sed -n -E '
-		/^[[:space:]]*<a href="#" class="active" ep_start/{
-		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-		q
-		}
-		'
+	
+        curl -s "$base_url/category/$anime_id" |
+        sed -n -E '
+                /^[[:space:]]*<a href="#" class="active" ep_start/{
+                s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+                q
+                }
+                '
 }
 
 search_for_unwatched () {	
@@ -279,12 +280,23 @@ anime_selection () {
 episode_selection () {
 	# user input for selecting episodes of a series
 	ep_choice_start="1"
-	if [ "$last_ep_number" -gt 1 ]
+	
+	# using get_dpage_link to get confirmation from episode 0 if it exists,else first_ep_number becomes "1"
+	first_ep_number="0"
+	result=$(get_dpage_link "$anime_id" "$first_ep_number")
+	
+	if [ -n "$result" ];then 
+		true
+	else
+		first_ep_number="1"
+	fi
+	
+	if [ "$last_ep_number" -gt "$first_ep_number" ]
 	then
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
-		prompt "Choose episode" "[1-$last_ep_number]" 
+		prompt "Choose episode" "[$first_ep_number-$last_ep_number]" 
 		ep_choice_start=$REPLY
 		ep_choice_end=$REPLY2
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
@@ -331,7 +343,7 @@ open_episode () {
 	# Cool way of clearing screen
 	tput reset
 	# checking if episode is in range
-	while  [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
+	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
 	do
 		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ]; then
@@ -339,7 +351,7 @@ open_episode () {
 		else 
 			err "Episode out of range"
 		fi
-		prompt "Choose episode" "[1-$last_ep_number]" 
+		prompt "Choose episode" "[$first_ep_number-$last_ep_number]" 
 		episode="$REPLY $REPLY2"
 	done
 	#processing half episodes
@@ -515,10 +527,10 @@ while :; do
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_odd "next episode" "n"
 	fi
-	if [ "$episode" -ne "1" ]; then
+	if [ "$episode" -ne "$first_ep_number" ]; then
 		menu_line_even "previous episode" "p"
 	fi
-	if [ "$last_ep_number" -ne "1" ]; then
+	if [ "$last_ep_number" -ne "$first_ep_number" ]; then
 		menu_line_odd "select episode" "s"
 	fi
 	menu_line_even "replay current episode" "r"
