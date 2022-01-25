@@ -30,7 +30,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
   Options:
     -c continue watching anime from history
     -h show helptext
-    -s speedup download on low bandwidth and low cpu power
+    -s speed up download on low bandwidth and low cpu power
     -d download episode
     -q set video quality (best|worst|360|480|720|1080)
     -i use iina as the media player

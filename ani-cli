@@ -31,7 +31,7 @@ help_text () {
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
-	  -s speedup download on low bandwidth and low cpu power
+	  -s speed up download on low bandwidth and low cpu power
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
@@ -395,18 +395,10 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-			if [ $speedup_download -eq 1 ]; then
-				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode"
-				else
-					err "Download failed episode: $episode , please retry or check your internet connection"
-				fi
+			if aria2c $speedup_download --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+				inf "Downloaded episode: $episode"
 			else
-				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode"
-				else
-					err "Download failed episode: $episode , please retry or check your internet connection"
-				fi
+				err "Download failed episode: $episode , please retry or check your internet connection"
 			fi
 		}
 	fi
@@ -424,7 +416,7 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
-speedup_download=0
+speedup_download=" "
 is_download=0
 half_ep=0
 quality=best
@@ -439,7 +431,7 @@ while getopts 'viq:sdp:chDUV' OPT; do
 			exit 0
 			;;
 		s)
-			speedup_download=1
+			speedup_download=" -x 16 -s 16 "
 			;;
 		d)
 			is_download=1
