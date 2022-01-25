@@ -40,8 +40,7 @@ uninstall:
 
 else ifeq ($(Platform), Msys)
 install:
-	rm -rf $(USERPROFILE)/.cache
-	mkdir $(USERPROFILE)/.cache
+	[ -d "$(USERPROFILE)/.cache" ] || mkdir "$(USERPROFILE)/.cache"
 	cp ani-cli $(WINDIR)/system32/ani-cli
 	echo "Installation successful (Windows)"
 uninstall:
