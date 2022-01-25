@@ -24,13 +24,14 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] [-s] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
+	  -s speedup download on low bandwidth and low cpu power
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
@@ -394,12 +395,18 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-		    #if you have low bandwidth or low cpu power uncomment the line below
-			#if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-			if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-				inf "Downloaded episode: $episode" 
+			if [ $speedup_download -eq 1 ]; then
+				if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+					inf "Downloaded episode: $episode"
+				else
+					err "Download failed episode: $episode , please retry or check your internet connection"
+				fi
 			else
-				err "Download failed episode: $episode , please retry or check your internet connection"
+				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+					inf "Downloaded episode: $episode"
+				else
+					err "Download failed episode: $episode , please retry or check your internet connection"
+				fi
 			fi
 		}
 	fi
@@ -417,6 +424,7 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
+speedup_download=0
 is_download=0
 half_ep=0
 quality=best
@@ -424,11 +432,14 @@ scrape=query
 download_dir="."
 choice=""
 
-while getopts 'viq:dp:chDUV' OPT; do
+while getopts 'viq:sdp:chDUV' OPT; do
 	case $OPT in
 		h)
 			help_text
 			exit 0
+			;;
+		s)
+			speedup_download=1
 			;;
 		d)
 			is_download=1
