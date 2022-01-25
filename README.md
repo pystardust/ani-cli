@@ -12,7 +12,6 @@
 ![Windows](https://img.shields.io/badge/os-windows-yellow)
 ![Android](https://img.shields.io/badge/os-android-yellow)
 
-
 <p align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
 <img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
@@ -23,12 +22,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Usage
 
   ```text
-    ani-cli [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-v | -i] [-q <quality>] -c
+    ani-cli [-v | -i] [-q <quality>] -e [<arguments>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-v | -i] [-q <quality>] -e [<arguments>] -c
     ani-cli -h | -D | -U | -V
     
   Options:
     -c continue watching anime from history
+    -e pass arguments to player
     -h show helptext
     -d download episode
     -q set video quality (best|worst|360|480|720|1080)
@@ -105,3 +105,4 @@ make
 ## Disclaimer
 
 The disclaimer of this project can be found [here](./disclaimer.md)
+
