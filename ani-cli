@@ -283,8 +283,8 @@ episode_selection () {
 	first_ep_number="0"
 	result=$(get_dpage_link "$anime_id" "$first_ep_number")
 	
-	if [ $result ]; then
-		continue
+	if [ "$result" ];then
+		:
 	else
 		first_ep_number="1"
 	fi
