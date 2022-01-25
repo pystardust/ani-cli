@@ -17,13 +17,13 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] -e [<arguments>] [-d | -p <download_dir>] [<query>]
-	  $0 [-v | -i] [-q <quality>] -e [<arguments>] -c
+	  $0 [-v | -i] [-q <quality>] [-e <arguments>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] [-e <arguments>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
 	  -c continue watching anime from history
-	  -e pass arguments to the player
+	  -e pass arguments to the player/downloader
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
