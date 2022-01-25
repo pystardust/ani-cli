@@ -257,7 +257,7 @@ anime_selection () {
 	EOF
 
 	prompt "Enter number" 
-	choice=$REPLY
+	choice="$REPLY $REPLY2"
 
 	# Check if input is a number
 	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
@@ -347,7 +347,7 @@ open_episode () {
 			err "Episode out of range"
 		fi
 		prompt "Choose episode" "[1-$last_ep_number]" 
-		episode=$REPLY
+		episode="$REPLY $REPLY2"
 	done
 	#processing half episodes
 	if [ "$half_ep" -eq 1 ]
@@ -485,7 +485,7 @@ case $scrape in
 	query)
 		if [ -z "$*" ]; then
 			prompt "Search Anime" 
-			query=$REPLY
+			query="$REPLY $REPLY2"
 		else
 			query=$*
 		fi
@@ -531,7 +531,7 @@ while :; do
 	menu_line_strong "exit" "q"
 	prompt "Enter choice"
 	# process user choice
-	choice=$REPLY
+	choice="$REPLY $REPLY2"
 	case $choice in
 		n)
 			ep_choice_start=$((episode + 1))
@@ -552,7 +552,7 @@ while :; do
 		a)
 			tput reset
 			prompt "Search Anime" 
-			query=$REPLY
+			query="$REPLY $REPLY2"
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
 			anime_selection "$search_results"
