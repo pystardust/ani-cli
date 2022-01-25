@@ -571,8 +571,7 @@ while :; do
 			break;;
 
 		*)
-			err "invalid choice"
-			break
+			die "invalid choice"
 			;;
 	esac
 done
