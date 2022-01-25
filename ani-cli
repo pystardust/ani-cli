@@ -43,7 +43,7 @@ help_text () {
 }
 
 version_text () {
-    inf "Version: $VERSION"  >&2
+	inf "Version: $VERSION"  >&2
 }
 
 die () {
@@ -61,12 +61,12 @@ update_script () {
 			inf "Script has been updated"
 		else
 			die "Can't update for some reason!"
-            	fi
+		fi
 	fi
 }
 
 dep_ch () {
-	# checks if programs are present 
+	# checks if programs are present
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
 			err "Program \"$dep\" not found. Please install it."
@@ -99,17 +99,17 @@ search_anime () {
 search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
-	
-        curl -s "$base_url/category/$anime_id" |
-        sed -n -E '
-                /^[[:space:]]*<a href="#" class="active" ep_start/{
-                s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-                q
-                }
-                '
+
+	curl -s "$base_url/category/$anime_id" |
+	sed -n -E '
+		/^[[:space:]]*<a href="#" class="active" ep_start/{
+		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
+		q
+		}
+		'
 }
 
-search_for_unwatched () {	
+search_for_unwatched () {
 	# compares history with gogoanime, only shows unfinished anime
 	search_results=$*
 
@@ -151,23 +151,23 @@ get_dpage_link() {
 	fi
 
 	printf '%s' "$anime_page" |
-	    sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
-	    sed 's/^/https:/g'
+		sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
+		sed 's/^/https:/g'
 }
 
 decrypt_link() {
-    ajax_url='https://gogoplay.io/encrypt-ajax.php'
+	ajax_url='https://gogoplay.io/encrypt-ajax.php'
 
-    #get the id from the url
-    video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	#get the id from the url
+	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 
-    #construct ajax parameters
-    secret_key='3235373436353338353932393338333936373634363632383739383333323838'
-    iv='34323036393133333738303038313335'
-    ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
+	#construct ajax parameters
+	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
+	iv='34323036393133333738303038313335'
+	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
 
-    #send the request to the ajax url
-    curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
+	#send the request to the ajax url
+	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
 }
 
 get_video_quality() {
@@ -252,13 +252,13 @@ anime_selection () {
 	# user input for selecting anime
 	count=1
 	while read -r anime_id; do
-			menu_line_alternate "$anime_id" "$count"
-			: $((count+=1))
+		menu_line_alternate "$anime_id" "$count"
+		: $((count+=1))
 	done <<-EOF
 	$search_results
 	EOF
 
-	prompt "Enter number" 
+	prompt "Enter number"
 	choice="$REPLY $REPLY2"
 
 	# Check if input is a number
@@ -279,7 +279,7 @@ anime_selection () {
 	if [ -z "$selection_id" ]; then
 		die "Invalid number entered"
 	fi
-	
+
 	read -r last_ep_number <<-EOF
 	$(search_eps "$selection_id")
 	EOF
@@ -288,23 +288,23 @@ anime_selection () {
 episode_selection () {
 	# user input for selecting episodes of a series
 	ep_choice_start="1"
-	
+
 	# using get_dpage_link to get confirmation from episode 0 if it exists,else first_ep_number becomes "1"
 	first_ep_number="0"
 	result=$(get_dpage_link "$anime_id" "$first_ep_number")
-	
-	if [ -n "$result" ];then 
+
+	if [ -n "$result" ]; then
 		true
 	else
 		first_ep_number="1"
 	fi
-	
+
 	if [ "$last_ep_number" -gt "$first_ep_number" ]
 	then
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
-		prompt "Choose episode" "[$first_ep_number-$last_ep_number]" 
+		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 		ep_choice_start=$REPLY
 		ep_choice_end=$REPLY2
 		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
@@ -356,10 +356,10 @@ open_episode () {
 		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
-		else 
+		else
 			err "Episode out of range"
 		fi
-		prompt "Choose episode" "[$first_ep_number-$last_ep_number]" 
+		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 		episode="$REPLY $REPLY2"
 	done
 	#processing half episodes
@@ -410,7 +410,7 @@ open_episode () {
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 			if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-				inf "Downloaded episode: $episode" 
+				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
 			fi
@@ -491,7 +491,7 @@ dep_ch "curl" "sed" "grep" "git" "jq" "openssl"
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
 else
-	dep_ch "aria2c"	
+	dep_ch "aria2c"
 fi
 
 shift $((OPTIND - 1))
@@ -500,7 +500,7 @@ base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
-			prompt "Search Anime" 
+			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
 			query=$*
@@ -567,7 +567,7 @@ while :; do
 			;;
 		a)
 			tput reset
-			prompt "Search Anime" 
+			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 			search_results=$(search_anime "$query")
 			[ -z "$search_results" ] && die "No search results found"
