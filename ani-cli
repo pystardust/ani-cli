@@ -19,14 +19,13 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-f] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
 	  -c continue watching anime from history
 	  -h show helptext
-	  -f fast download
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
@@ -354,13 +353,9 @@ open_episode () {
 		episode=$(printf "%03d" "$episode")
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
-			if [ $fast_download -eq 1 ]; then
-				aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide
-			else
-				aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide
-			fi
-				printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
-				printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
+			aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
+			printf "${c_green}Downloaded episode: %s${c_reset}\n" "$episode" ||
+			printf "${c_red}Download failed episode: %s , please retry or check your internet connection${c_reset}\n" "$episode"
 		}
 	fi
 }
@@ -374,21 +369,17 @@ trap 'printf "$c_reset"; exit 1' INT HUP
 
 # option parsing
 player_fn="mpv" #video player needs to be able to play urls
-fast_download=0
 is_download=0
 half_ep=0
 quality=best
 scrape=query
 download_dir="."
 
-while getopts 'viq:fdp:chDUV' OPT; do
+while getopts 'viq:dp:chDUV' OPT; do
 	case $OPT in
 		h)
 			help_text
 			exit 0
-			;;
-		f)
-			fast_download=1
 			;;
 		d)
 			is_download=1
