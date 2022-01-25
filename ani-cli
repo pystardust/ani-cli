@@ -531,7 +531,7 @@ while :; do
 	menu_line_strong "exit" "q"
 	prompt "Enter choice"
 	# process user choice
-	choice="$REPLY $REPLY2"
+	choice="$REPLY"
 	case $choice in
 		n)
 			ep_choice_start=$((episode + 1))
