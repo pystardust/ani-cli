@@ -27,13 +27,15 @@ uninstall:
 	echo "Removal successful (Mac OS)"
 
 else ifeq ($(Platform), Android)
-TERMUX_BIN := /data/data/com.termux/files/usr/bin
 install:
-	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
-	chmod 0755 $(DESTDIR)$(PREFIX)/bin/ani-cli
+	cp ani-cli $(PREFIX)/bin/ani-cli
+	chmod 0755 $(PREFIX)/bin/ani-cli
+	echo 'am start --user 0 -a android.intent.action.VIEW -d "$$2" -e "http-header-fields" "$$1" -n is.xyz.mpv/.MPVActivity' > $(PREFIX)/bin/mpv
+	chmod 0755 $(PREFIX)/bin/mpv
 	echo "Installation successful (Android Termux)"
 uninstall:
-	rm $(DESTDIR)$(PREFIX)/bin/ani-cli
+	rm $(PREFIX)/bin/ani-cli
+	rm $(PREFIX)/bin/mpv
 	echo "Removal successful (Android Termux)"
 
 else ifeq ($(Platform), Msys)
