@@ -330,12 +330,12 @@ open_episode () {
 	# Cool way of clearing screen
 	tput reset
 	# checking if episode is in range
-	while [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
+	while [  ] || [ "$episode" -lt 1 ] || [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
 	do
-
+		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
-		else
+		else 
 			err "Episode out of range"
 		fi
 		prompt "Choose episode" "[1-$last_ep_number]" 
