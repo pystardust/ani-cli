@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.3.3"
+VERSION="1.3.4"
 
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -167,7 +167,9 @@ decrypt_link() {
 	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
-	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | jq -r '.source[].file'
+	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | 
+		sed -e 's/\].*/\]/' -e 's/\\//g' | 
+		grep -Eo 'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)' 
 }
 
 get_video_quality() {
@@ -495,7 +497,7 @@ while getopts 'viq:dp:chDUVe:' OPT; do
 done
 
 # check for main dependencies
-dep_ch "curl" "sed" "grep" "git" "jq" "openssl"
+dep_ch "curl" "sed" "grep" "git" "openssl"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then

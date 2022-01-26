@@ -55,7 +55,6 @@ grep
 sed
 curl
 openssl
-jq
 ```
 
 ### Optional
@@ -83,7 +82,7 @@ sudo make
 
 ```sh
 apt update
-apt install git make ncurses-utils openssl-tool jq -y
+apt install git make ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 make
