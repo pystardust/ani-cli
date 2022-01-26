@@ -159,7 +159,7 @@ decrypt_link() {
 	ajax_url='https://gogoplay.io/encrypt-ajax.php'
 
 	#get the id from the url
-	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	video_id=$(cut -d\? -f2 "$1" | cut -d\& -f1 | sed 's/id=//g')
 
 	#construct ajax parameters
 	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
@@ -280,7 +280,7 @@ anime_selection () {
 		die "Invalid number entered"
 	fi
 
-	search_ep_result = $(search_eps "$selection_id")
+	search_ep_result="$(search_eps "$selection_id")"
 	read -r last_ep_number <<-EOF
 	$search_ep_result
 	EOF
@@ -312,7 +312,7 @@ episode_selection () {
 		if [ "$is_half_ep" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
+			ep_choice_start=$(cut -c2- "$ep_choice_start")
 		fi
 	fi
 }
