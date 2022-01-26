@@ -7,14 +7,14 @@ assignees: ''
 
 ---
 
-**In what category does your enhancement fall?**
-Choose safety, speed, ux, or other
+**In what category does your enhancement fall? [choose: safety, speed, ux, qa, other]**
+ux
 
 **Status Quo **
-How are we doing things currently?
+Currently the alternating menus are yellow and green
 
 **The Enhancement**
-What makes your change/addition better than the status quo
+I really like blue and purple
 
 **Additional context**
-Add any other context or screenshots about the feature request here.
+pls fix uwu

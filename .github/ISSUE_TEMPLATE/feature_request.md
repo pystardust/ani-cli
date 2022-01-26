@@ -8,13 +8,14 @@ assignees: ''
 ---
 
 **Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+I really like mpv, but it frustrates me that there is a better player I can't use yet: iina
 
 **Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+Please add iina, maybe through a `-i` flag analogous to the vlc `-v` flag
 
 **Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+Maybe support any player string by the user, but I know thats drastically more difficult to achieve
 
 **Additional context**
-Add any other context or screenshots about the feature request here.
+iina is just an mpv frontend and accepts its flags.
+Needless to say it can play urls.
