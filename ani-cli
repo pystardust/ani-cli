@@ -318,7 +318,7 @@ episode_selection () {
 		fi
 	fi
 
-	if [ -z ${ep_choice_end} ]; then 
+	if [ -z "$ep_choice_end" ]; then 
 		auto_play=0
 	else
 		auto_play=1
@@ -407,7 +407,7 @@ open_episode () {
 
 		case $player_fn in
 			vlc)
-				if [ ${auto_play} -eq 0 ]; then
+				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" "$player_arguments" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
@@ -416,7 +416,7 @@ open_episode () {
 				fi
 				;;
 			*)
-				if [ ${auto_play} -eq 0 ]; then
+				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
