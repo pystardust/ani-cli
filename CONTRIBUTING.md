@@ -1,19 +1,19 @@
 # How to contribute
 
-## Support
+## Issues: Use an Issue template if applicable
 
-If you need help getting ani-cli to work, please use the support channel in our [discord](https://discord.gg/aqu7GpqVmR)
+## Support: Join our [discord](https://discord.gg/aqu7GpqVmR)
 
-## Issues
+## Pull Requests
 
-An issue template is in the works, tldr:
-
-- What is the problem?
-- Are you using the latest version?
-- What OS are you on?
-- With what anime did you encounter the problem?
-- Can you reproduce it with another anime?
-- What is the output?
+- Appease the linter
+- Don't echo-pipe into another command
+- Adjust the Readme according to your changes (if applicable)
+- Indent with tabs and clear trailing white space before commits.
+- Bump the version
+- Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
+- Try using shell builtins over external commands
+- Avoid extra dependencies
 
 ## Testing
 
@@ -27,16 +27,6 @@ To spot breakage early, test with the following anime:
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 
 Test automation ideas welcome
-
-## Pull Requests
-
-- Appease the linter
-- Avoid extra dependencies
-- Try to make extra dependencies optional
-- Adjust the Readme accordingly
-- Try using shell builtins over external commands
-- Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
-- Indent with tabs and clear trailing white space before commits.
 
 ## How else can I help?
 
