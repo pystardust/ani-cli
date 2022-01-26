@@ -280,8 +280,9 @@ anime_selection () {
 		die "Invalid number entered"
 	fi
 
+	search_ep_result = $(search_eps "$selection_id")
 	read -r last_ep_number <<-EOF
-	$(search_eps "$selection_id")
+	$search_ep_result
 	EOF
 }
 
@@ -307,7 +308,8 @@ episode_selection () {
 		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 		ep_choice_start=$REPLY
 		ep_choice_end=$REPLY2
-		if [ "$(echo "$ep_choice_start" | cut -c1-1)" = "h" ]
+		is_half_ep=$(cut -c1-1 "$ep_choice_start")
+		if [ "$is_half_ep" = "h" ]
 		then
 			half_ep=1
 			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
