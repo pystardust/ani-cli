@@ -2,7 +2,7 @@
 name: Enhancement
 about: Do you know a better way to do something?
 title: ''
-labels: 'type: enhancement'
+labels: 'priority 2: medium, type: enhancement'
 assignees: ''
 
 ---
