@@ -8,13 +8,16 @@ assignees: ''
 ---
 
 **Is your feature request related to a problem? Please describe.**
-I really like mpv, but it frustrates me that there is a better player I can't use yet: iina
+There is a better player for mac users than mpv.
+It's called iina and is a mpv frontend written in swift.
+It bugs me that I can't use it yet.
 
 **Describe the solution you'd like**
 Please add iina, maybe through a `-i` flag analogous to the vlc `-v` flag
 
 **Describe alternatives you've considered**
-Maybe support any player string by the user, but I know thats drastically more difficult to achieve
+Maybe support any player string by the user.
+But I assume thats drastically more difficult.
 
 **Additional context**
 iina is just an mpv frontend and accepts its flags.

@@ -7,15 +7,17 @@ assignees: ''
 
 ---
 
-**Metadata (please complete the following information):**
+**Metadata (please complete the following information)**
 Version: [e.g. v1.2.0 run `ani-cli -V` to get the version]
 OS: [e.g. Windows 10 / Linux Mint 20.3]
 Shell: [e.g. zsh, run `echo $SHELL` to get your shell]
 
 **Describe the bug**
-Downloading is broken and spits out `Exception: [download_helper.cc:451] errorCode=1 Unrecognized URI or unsupported protocol`
+Downloading is broken.
+It says something about an unsupported protocol, see screenshot.
 
-**To Reproduce**
+**Steps To Reproduce**
+
 1. Run `ani-cli -d flcl`
 2. Choose 2 (fooly-cooly)
 3. Choose episode 1

@@ -10,7 +10,7 @@ assignees: ''
 **In what category does your enhancement fall? [choose: safety, speed, ux, qa, other]**
 ux
 
-**Status Quo **
+**Status Quo**
 Currently the alternating menus are yellow and green
 
 **The Enhancement**
