@@ -280,7 +280,7 @@ anime_selection () {
 		die "Invalid number entered"
 	fi
 
-	search_ep_result = $(search_eps "$selection_id")
+	search_ep_result="$(search_eps "$selection_id")"
 	read -r last_ep_number <<-EOF
 	$search_ep_result
 	EOF
