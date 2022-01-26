@@ -1,5 +1,5 @@
 ---
-name: Bug report template
+name: Bug report
 about: Ran into some unexpected behaviour?
 title: ''
 labels: 'type: bug'
