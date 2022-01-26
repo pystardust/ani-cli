@@ -553,6 +553,7 @@ esac
 ########
 
 while :; do
+if [ -z "$select_first" ]; then
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
 	# display menu
 	if [ "$episode" -ne "$last_ep_number" ]; then
@@ -618,4 +619,8 @@ while :; do
 	check_input
 	append_history
 	open_selection
+else
+	wait $!
+	exit
+fi
 done
