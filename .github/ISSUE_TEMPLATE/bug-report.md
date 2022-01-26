@@ -13,20 +13,17 @@ OS: [e.g. Windows 10 / Linux Mint 20.3]
 Shell: [e.g. zsh, run `echo $SHELL` to get your shell]
 
 **Describe the bug**
-It seems like ani-cli can't find flcl episode 7.
-When I try to watch it I get an "episode out of range" Error.
+Downloading is broken and spits out `Exception: [download_helper.cc:451] errorCode=1 Unrecognized URI or unsupported protocol`
 
 **To Reproduce**
-1. Run `ani-cli -q 360 -v flcl`
+1. Run `ani-cli -d flcl`
 2. Choose 2 (fooly-cooly)
-3. Choose episode 7
+3. Choose episode 1
 
 **Expected behavior**
-I thought flcl had an episode 7
-*wink, this is a template. No flcl episode 7 exists*
+Downloading should work
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Screenshots (if applicable)**
+![image](https://user-images.githubusercontent.com/82055622/151030428-2e78d15f-4ba9-4d86-b6f3-8307557b4b29.png)
 
 **Additional context**
-Add any other context about the problem here.
