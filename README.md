@@ -62,7 +62,7 @@ openssl
 ```text
 mpv - The default video player (recommended)
 aria2 - For downloading (recommended)
-iina - An alternative video player for the Mac
+iina - The recommended video player for Mac
 vlc - An alternative video player
 diff - Update checking
 patch - Update checking
@@ -91,6 +91,7 @@ make
 ### Windows
 
 * Download and install dependencies as mentioned above
+* If you choose vlc, add it to path [Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows)
 * Download and install [gitbash](https://git-scm.com/downloads)
 * Open git bash by right-clicking and choosing "Run as administrator"
 * Run the following commands
