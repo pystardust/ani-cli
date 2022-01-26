@@ -30,7 +30,7 @@ else ifeq ($(Platform), Android)
 install:
 	cp ani-cli $(PREFIX)/bin/ani-cli
 	chmod 0755 $(PREFIX)/bin/ani-cli
-	echo 'am start --user 0 -a android.intent.action.VIEW -d "$$2" -e "http-header-fields" "$$1" -n is.xyz.mpv/.MPVActivity' > $(PREFIX)/bin/mpv
+	echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > $(PREFIX)/bin/mpv
 	chmod 0755 $(PREFIX)/bin/mpv
 	echo "Installation successful (Android Termux)"
 uninstall:
