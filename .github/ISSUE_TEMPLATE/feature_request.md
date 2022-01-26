@@ -2,7 +2,7 @@
 name: Feature request
 about: Are we missing your favorite feature?
 title: ''
-labels: 'type: feature request'
+labels: 'priority 4: wishlist, type: feature request'
 assignees: ''
 
 ---

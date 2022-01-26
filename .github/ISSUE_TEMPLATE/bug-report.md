@@ -2,7 +2,7 @@
 name: Bug report
 about: Ran into some unexpected behaviour?
 title: ''
-labels: 'type: bug'
+labels: 'priority 2: medium, type: bug'
 assignees: ''
 
 ---
