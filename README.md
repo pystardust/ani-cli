@@ -73,7 +73,7 @@ aria2
 
 ```text
 iina - The recommended video player for Mac
-vlc - An alternative video player
+vlc - The recommended video player for Windows
 diff - Update checking
 patch - Update checking
 ```
