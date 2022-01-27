@@ -318,11 +318,11 @@ episode_selection () {
 		else
 			ep_choice_start=$ep_choice_to_start && unset ep_choice_to_start
 		fi
-		whether_half="$(cut -c1-1 "$ep_choice_start")"
+		whether_half="$(echo "$ep_choice_start" | cut -c1-1)"
 		if [ "$whether_half" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(cut -c2- "$ep_choice_start")
+			ep_choice_start="$(echo "$ep_choice_start" | cut -c2-)"
 		fi
 	fi
 
@@ -548,7 +548,7 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
-			select_first=1
+			[ -n "$ep_choice_to_start" ] && select_first=1
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
