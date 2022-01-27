@@ -3,8 +3,8 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 ![Linux](https://img.shields.io/badge/os-linux-brightgreen)
 ![Mac](https://img.shields.io/badge/os-mac-brightgreen)
-![Windows](https://img.shields.io/badge/os-windows-yellow)
-![Android](https://img.shields.io/badge/os-android-yellow)
+![Windows](https://img.shields.io/badge/os-windows-brightgreen)
+![Android](https://img.shields.io/badge/os-android-brightgreen)
 
 <p align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
