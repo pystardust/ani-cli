@@ -1,5 +1,5 @@
 <p align=center>
-<img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=now%20sponsoring%20shellcheck&descAlignY=75&descAlign=60&color=00000000&animation=twinkling">
+<img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=good%20riddance%20Makefile&descAlignY=75&descAlign=60&color=00000000&animation=twinkling">
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
