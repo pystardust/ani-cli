@@ -10,14 +10,14 @@
 
 ## Pull Requests
 
-- Appease the linter
-- Don't echo-pipe into another command
-- Adjust the Readme according to your changes (if applicable)
-- Indent with tabs and clear trailing white space before commits.
-- Bump the version
-- Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
-- Try using shell builtins over external commands
-- Avoid extra dependencies
+1. Appease the linter
+2. Bump the version
+3. Avoid extra dependencies
+4. Adjust the Readme according to your changes (if applicable)
+7. Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
+8. Don't echo-pipe into another command if avoidable
+9. Indent with tabs
+10. Try using shell builtins over external commands
 
 ## Testing
 
