@@ -3,10 +3,10 @@ all: install
 ifeq ($(OS), Windows_NT)
 Platform := Msys
 else
-Platform := $(shell uname -o)
+Platform := $(shell uname -s)
 endif
 
-ifeq ($(Platform), GNU/Linux)
+ifeq ($(Platform), Linux)
 PREFIX := /usr/local
 install:
 	cp ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
