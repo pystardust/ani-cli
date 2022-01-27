@@ -89,10 +89,12 @@ yay -s ani-cli-git
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
-sudo +x 0755 /usr/local/bin/ani-cli
+sudo +x /usr/local/bin/ani-cli
 ```
 
 ### Mac
+
+*Someone please make a homebrew package*
 
 ```sh
 git clone https://github.com/pystardust/ani-cli
@@ -106,21 +108,21 @@ chmod +x /usr/local/bin/ani-cli
 what the hell is $(PREFIX)
 
 ```sh
-apt update
-apt install git make ncurses-utils openssl-tool -y
+pkg update
+pkg install git make ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 cp ani-cli $(PREFIX)/bin/ani-cli
-chmod 0755 $(PREFIX)/bin/ani-cli
+chmod +x $(PREFIX)/bin/ani-cli
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > $(PREFIX)/bin/mpv
-chmod 0755 $(PREFIX)/bin/mpv
+chmod +x $(PREFIX)/bin/mpv
 ```
 
 ### Windows
 
-* Download and install dependencies as mentioned above
-* If you choose vlc, add it to path [Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows)
-* Download and install [gitbash](https://git-scm.com/downloads)
+* Download and install [dependencies](#Dependencies)
+* If you choose vlc, add it to path ([Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows))
+* Download and install [git bash](https://git-scm.com/downloads)
 * Open git bash by right-clicking and choosing "Run as administrator"
 * Run the following commands
 
