@@ -65,13 +65,13 @@ grep
 sed
 curl
 openssl
+mpv
+aria2
 ```
 
 ### Optional
 
 ```text
-mpv - The default video player (recommended)
-aria2 - For downloading (recommended)
 iina - The recommended video player for Mac
 vlc - An alternative video player
 diff - Update checking
@@ -103,7 +103,7 @@ sudo chmod +x /usr/local/bin/ani-cli
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 cp ani-cli /usr/local/bin/ani-cli
-chmod +x /usr/local/bin/ani-cli
+sudo chmod +x /usr/local/bin/ani-cli
 ```
 
 ### Android/Termux
