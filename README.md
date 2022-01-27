@@ -22,6 +22,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
   Options:
     -c continue watching anime from history
     -e pass arguments to player/downloader
+    -a specify episode to watch
     -h show helptext
     -d download episode
     -q set video quality (best|worst|360|480|720|1080)
