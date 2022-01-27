@@ -18,7 +18,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     ani-cli [-v | -i] [-q <quality>] [-e <arguments>] [-a <episode>] [-d | -p <download_dir>] [<query>]
     ani-cli [-v | -i] [-q <quality>] [-e <arguments>] -c
     ani-cli -h | -D | -U | -V
-    
+
   Options:
     -c continue watching anime from history
     -e pass arguments to player/downloader
