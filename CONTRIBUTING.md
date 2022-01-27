@@ -10,14 +10,19 @@
 
 ## Pull Requests
 
+### Rules
+
 1. Appease the linter
 2. Bump the version
-3. Avoid extra dependencies
-4. Adjust the Readme according to your changes (if applicable)
-7. Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
-8. Don't echo-pipe into another command if avoidable
-9. Indent with tabs
-10. Try using shell builtins over external commands
+3. Adjust the Readme according to your changes (if applicable)
+4. No extra dependencies unless absolutely necessary
+
+### Guidelines
+
+5. Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
+6. Don't echo-pipe into another command if avoidable
+7. Indent with tabs
+8. Try using shell builtins over external commands
 
 ## Testing
 
