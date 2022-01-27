@@ -254,19 +254,20 @@ menu_line_strong() {
 #################
 
 anime_selection () {
+	count=1
+	while read -r anime_id; do
+		menu_line_alternate "$anime_id" "$count"
+		: $((count+=1))
+	done <<-EOF
+	$search_results
+	EOF
 	if [ -n "$ep_choice_to_start" ] && [ -n "$select_first" ]; then
-		selection_id="$(echo $search_results | sed 's/\ .*//' )"
+		tput reset
+		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		count=1
-		while read -r anime_id; do
-			menu_line_alternate "$anime_id" "$count"
-			: $((count+=1))
-		done <<-EOF
-		$search_results
-		EOF
-
 		prompt "Enter number"
 		choice="$REPLY $REPLY2"
+	fi
 
 		# Check if input is a number
 		[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
@@ -282,7 +283,6 @@ anime_selection () {
 		done <<-EOF
 		$search_results
 		EOF
-	fi
 
 	if [ -z "$selection_id" ]; then
 		die "Invalid number entered"
