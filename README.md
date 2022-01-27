@@ -77,10 +77,19 @@ patch - Update checking
 
 ### Linux
 
+#### Arch Linux
+
+```sh
+yay -s ani-cli-git
+```
+
+#### Other
+
 ```sh
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-sudo make
+sudo cp ani-cli /usr/local/bin/ani-cli
+sudo +x 0755 /usr/local/bin/ani-cli
 ```
 
 ### Mac
@@ -88,17 +97,23 @@ sudo make
 ```sh
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-sudo make
+cp ani-cli /usr/local/bin/ani-cli
+chmod +x /usr/local/bin/ani-cli
 ```
 
 ### Android/Termux
+
+what the hell is $(PREFIX)
 
 ```sh
 apt update
 apt install git make ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-make
+cp ani-cli $(PREFIX)/bin/ani-cli
+chmod 0755 $(PREFIX)/bin/ani-cli
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > $(PREFIX)/bin/mpv
+chmod 0755 $(PREFIX)/bin/mpv
 ```
 
 ### Windows
@@ -112,6 +127,9 @@ make
 ```sh
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
-make
+mkdir -p "$(USERPROFILE)/.cache"
+cp ani-cli $(WINDIR)/system32/ani-cli
 ```
 
+## Uninstall
+Just remove the thing from path lul
