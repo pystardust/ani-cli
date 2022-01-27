@@ -11,6 +11,7 @@ assignees: ''
 Version: [e.g. v1.2.0 run `ani-cli -V` to get the version]
 OS: [e.g. Windows 10 / Linux Mint 20.3]
 Shell: [e.g. zsh, run `echo $SHELL` to get your shell]
+Anime: [e.g. flcl] (if applicable)
 
 **Describe the bug**
 Downloading is broken.

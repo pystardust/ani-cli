@@ -3,9 +3,10 @@
 # version number
 VERSION="1.4.2"
 
+
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-
+auto_play=0
 
 #######################
 # Auxiliary functions #
@@ -324,6 +325,14 @@ episode_selection () {
 			ep_choice_start=$(cut -c2- "$ep_choice_start")
 		fi
 	fi
+
+	if [ -z "$ep_choice_end" ]; then 
+		auto_play=0
+	else
+		auto_play=1
+	fi
+
+
 }
 
 check_input() {
@@ -353,6 +362,7 @@ open_selection() {
 	do
 		open_episode "$selection_id" "$ep"
 	done
+	auto_play=0
 	episode=${ep_choice_end:-$ep_choice_start}
 }
 
@@ -401,12 +411,26 @@ open_episode () {
 			die "Video URL not found"
 		fi
 
+		
+
 		case $player_fn in
 			vlc)
-				nohup "$player_fn" "$player_arguments" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				if [ "$auto_play" -eq 0 ]; then
+					nohup "$player_fn" "$player_arguments" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				else
+					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+					"$player_fn" "$player_arguments" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+					sleep 2
+				fi
 				;;
 			*)
-				nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				if [ "$auto_play" -eq 0 ]; then
+					nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+				else
+					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+					"$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 
+					sleep 2
+				fi
 				;;
 		esac
 		PID=$!
@@ -562,7 +586,7 @@ esac
 while :; do
 if [ -z "$select_first" ]; then
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-	# display menu
+
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_alternate "next episode" "n"
 	fi
@@ -614,6 +638,9 @@ if [ -z "$select_first" ]; then
 			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 			;;
 
+		N)
+			ep_choice_start=$((episode + 1))
+			;;
 		q)
 			break;;
 
