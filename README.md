@@ -115,7 +115,3 @@ cd ani-cli
 make
 ```
 
-## Disclaimer
-
-The disclaimer of this project can be found [here](./disclaimer.md)
-
