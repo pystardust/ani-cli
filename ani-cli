@@ -362,7 +362,6 @@ open_selection() {
 	do
 		open_episode "$selection_id" "$ep"
 	done
-	auto_play=0
 	episode=${ep_choice_end:-$ep_choice_start}
 }
 
@@ -585,8 +584,11 @@ esac
 
 while :; do
 if [ -z "$select_first" ]; then
-	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-
+	if [ "$auto_play" -eq 0 ]; then
+		inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+	else
+		auto_play=0
+	fi
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_alternate "next episode" "n"
 	fi
@@ -653,6 +655,7 @@ if [ -z "$select_first" ]; then
 	check_input
 	append_history
 	open_selection
+	
 else
 	wait $!
 	exit
