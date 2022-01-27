@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # version number
-VERSION="1.4.1"
+VERSION="1.4.2"
+
 
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -17,13 +18,14 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-e <arguments>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] [-e <arguments>] [-a <episode>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v | -i] [-q <quality>] [-e <arguments>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
 	  -c continue watching anime from history
 	  -e pass arguments to the player/downloader
+	  -a specify episode to watch
 	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
@@ -39,6 +41,8 @@ help_text () {
 	  Multiple episodes can be chosen given a range
 	    Choose episode [1-13]: 1 6
 	    This would choose episodes 1 2 3 4 5 6
+	  When selecting non-interactively, the first result will be
+	  selected, if anime is passed
 	EOF
 }
 
@@ -251,7 +255,6 @@ menu_line_strong() {
 #################
 
 anime_selection () {
-	# user input for selecting anime
 	count=1
 	while read -r anime_id; do
 		menu_line_alternate "$anime_id" "$count"
@@ -259,24 +262,28 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
+	if [ -n "$ep_choice_to_start" ] && [ -n "$select_first" ]; then
+		tput reset
+		choice=1
+	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
+		prompt "Enter number"
+		choice="$REPLY $REPLY2"
+	fi
 
-	prompt "Enter number"
-	choice="$REPLY $REPLY2"
+		# Check if input is a number
+		[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
 
-	# Check if input is a number
-	[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
-
-	# Select respective anime_id
-	count=1
-	while read -r anime_id; do
-		if [ "$count" -eq "$choice" ]; then
-			selection_id=$anime_id
-			break
-		fi
-		count=$((count+1))
-	done <<-EOF
-	$search_results
-	EOF
+		# Select respective anime_id
+		count=1
+		while read -r anime_id; do
+			if [ "$count" -eq "$choice" ]; then
+				selection_id=$anime_id
+				break
+			fi
+			count=$((count+1))
+		done <<-EOF
+		$search_results
+		EOF
 
 	if [ -z "$selection_id" ]; then
 		die "Invalid number entered"
@@ -289,9 +296,6 @@ anime_selection () {
 }
 
 episode_selection () {
-	# user input for selecting episodes of a series
-	ep_choice_start="1"
-
 	# using get_dpage_link to get confirmation from episode 0 if it exists,else first_ep_number becomes "1"
 	first_ep_number="0"
 	result=$(get_dpage_link "$anime_id" "$first_ep_number")
@@ -307,11 +311,15 @@ episode_selection () {
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
-		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
-		ep_choice_start=$REPLY
-		ep_choice_end=$REPLY2
-		is_half_ep=$(cut -c1-1 "$ep_choice_start")
-		if [ "$is_half_ep" = "h" ]
+		if [ -z "$ep_choice_to_start" ]; then
+			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
+			ep_choice_start=$REPLY
+			ep_choice_end=$REPLY2
+		else
+			ep_choice_start=$ep_choice_to_start && unset ep_choice_to_start
+		fi
+		whether_half="$(cut -c1-1 "$ep_choice_start")"
+		if [ "$whether_half" = "h" ]
 		then
 			half_ep=1
 			ep_choice_start=$(cut -c2- "$ep_choice_start")
@@ -472,7 +480,7 @@ scrape=query
 download_dir="."
 choice=""
 
-while getopts 'viq:dp:chDUVe:' OPT; do
+while getopts 'viq:dp:chDUVe:a:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -480,6 +488,9 @@ while getopts 'viq:dp:chDUVe:' OPT; do
 			;;
 		d)
 			is_download=1
+			;;
+		a)
+			ep_choice_to_start=$OPTARG
 			;;
 		D)
 			: > "$logfile"
@@ -538,6 +549,7 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
+			select_first=1
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
@@ -550,6 +562,13 @@ case $scrape in
 		[ -z "$search_results" ] && die "History is empty"
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
+		first_ep_number="0"
+		result=$(get_dpage_link "$anime_id" "$first_ep_number")
+		if [ -n "$result" ]; then
+			true
+		else
+			first_ep_number="1"
+		fi
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 	*)
@@ -565,9 +584,9 @@ esac
 ########
 
 while :; do
-	# display menu
-	
+if [ -z "$select_first" ]; then
 	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_alternate "next episode" "n"
 	fi
@@ -634,4 +653,8 @@ while :; do
 	check_input
 	append_history
 	open_selection
+else
+	wait $!
+	exit
+fi
 done
