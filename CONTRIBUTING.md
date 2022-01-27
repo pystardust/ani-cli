@@ -1,8 +1,11 @@
-# How to contribute
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-brightgreen.svg)](https://GitHub.com/pystardust/ani-cli/graphs/commit-activity)
+[![Maintainer](https://img.shields.io/badge/maintainer-pystardust-blue)](https://github.com/pystardust)
+[![Maintainer](https://img.shields.io/badge/maintainer-ura43-blue)](https://github.com/ura43)
+[![Maintainer](https://img.shields.io/badge/maintainer-RayGL-blue)](https://github.com/RaynardGerraldo)
+[![Maintainer](https://img.shields.io/badge/maintainer-Dink4n-blue)](https://github.com/Dink4n)
+[![Maintainer](https://img.shields.io/badge/maintainer-CoolnsX-blue)](https://github.com/CoolnsX)
 
-## Issues: Use an Issue template if applicable
-
-## Support: Join our [discord](https://discord.gg/aqu7GpqVmR)
+# Contribution Guidelines
 
 ## Pull Requests
 
