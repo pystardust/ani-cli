@@ -12,14 +12,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
-      with:
-        version: v0.7.2
       env:
-        SHELLCHECK_OPTS: -s sh -e 1087 -e 2059 -o all -e 2250
-
-  markdown-link-check:
-    name: Dead Links
+        SHELLCHECK_OPTS: -s sh -o all -e 2250
+  whitespace:
+    name: Whitespace
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - uses: gaurav-nelson/github-action-markdown-link-check@v1
+      - uses: actions/checkout@v2
+      - uses: harupy/find-trailing-whitespace@master
