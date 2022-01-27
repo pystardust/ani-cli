@@ -6,7 +6,6 @@
 [![Maintainer](https://img.shields.io/badge/maintainer-CoolnsX-blue)](https://github.com/CoolnsX)
 [![Maintainer](https://img.shields.io/badge/maintainer-Derisis13-blue)](https://github.com/Derisis13)
 
-https://github.com/Derisis13
 # Contribution Guidelines
 
 ## Pull Requests
