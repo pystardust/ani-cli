@@ -12,6 +12,17 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
+## Table of Contents
+- [Usage](#Usage)
+- [Dependencies](#Dependencies)
+- [Installation](#Installation)
+  - [Linux](#Linux)
+  - [Mac](#Mac)
+  - [Android/Termux](#Android/Termux)
+  - [Windows](#Windows)
+- [Contribution Guidelines](./CONTRIBUTING.md)
+- [Disclaimer](./disclaimer.md)
+
 ## Usage
 
   ```text
@@ -80,7 +91,7 @@ cd ani-cli
 sudo make
 ```
 
-### Android (Termux)
+### Android/Termux
 
 ```sh
 apt update
