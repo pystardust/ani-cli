@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.4.2"
+VERSION="1.4.3"
 
 
 # history file path
@@ -171,9 +171,9 @@ decrypt_link() {
 	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
-	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" | 
-		sed -e 's/\].*/\]/' -e 's/\\//g' | 
-		grep -Eo 'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)' 
+	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
+		sed -e 's/\].*/\]/' -e 's/\\//g' |
+		grep -Eo 'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
 }
 
 get_video_quality() {
@@ -326,7 +326,7 @@ episode_selection () {
 		fi
 	fi
 
-	if [ -z "$ep_choice_end" ]; then 
+	if [ -z "$ep_choice_end" ]; then
 		auto_play=0
 	else
 		auto_play=1
@@ -428,7 +428,7 @@ open_episode () {
 					nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					"$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 
+					"$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -446,13 +446,13 @@ open_episode () {
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 			if [ -n "$player_arguments" ]; then
 				if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode" 
+					inf "Downloaded episode: $episode"
 				else
 					err "Download failed episode: $episode , please retry or check your internet connection"
 				fi
         		else
 				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode" 
+					inf "Downloaded episode: $episode"
 				else
 					err "Download failed episode: $episode , please retry or check your internet connection"
 				fi
