@@ -43,5 +43,5 @@ Contacting the maintainer
 </h3>
 <br>
 
-Begin by making a GitHub issue or sending an email to ura@ura43.xyz.
+Begin by making a GitHub issue or sending an email to pystardust@protonmail.com
 </div>
