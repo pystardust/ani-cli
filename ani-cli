@@ -172,8 +172,8 @@ decrypt_link() {
 
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
-		sed -e 's/\].*/\]/' -e 's/\\//g' |
-		grep -Eo 'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)'
+	sed -e 's/\].*/\]/' -e 's/\\//g' |
+	grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*'
 }
 
 get_video_quality() {
