@@ -85,7 +85,7 @@ patch - Update checking
 #### Arch Linux
 
 ```sh
-yay -S ani-cli-git
+yay -S ani-cli
 ```
 
 #### Other
