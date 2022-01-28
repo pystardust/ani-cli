@@ -1,5 +1,5 @@
 <p align=center>
-<img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=now%20sponsoring%20shellcheck&descAlignY=75&descAlign=60&color=00000000&animation=twinkling">
+<img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=good%20riddance%20Makefile&descAlignY=75&descAlign=60&color=00000000&animation=twinkling">
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
@@ -8,9 +8,25 @@
 <img src="https://img.shields.io/badge/os-android-brightgreen"></a>
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
+<br>
+<a href="https://github.com/ura43"><img src="https://img.shields.io/badge/lead-ura43-lightblue"></a>
+<a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
+<a href="https://github.com/RaynardGerraldo"><img src="https://img.shields.io/badge/maintainer-RayGL-blue"></a>
+<a href="https://github.com/Derisis13"><img src="https://img.shields.io/badge/maintainer-Derisis13-blue"></a>
 </p>
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
+
+## Table of Contents
+- [Usage](#Usage)
+- [Dependencies](#Dependencies)
+- [Installation](#Installation)
+  - [Linux](#Linux)
+  - [Mac](#Mac)
+  - [Android/Termux](#Android/Termux)
+  - [Windows](#Windows)
+- [Contribution Guidelines](./CONTRIBUTING.md)
+- [Disclaimer](./disclaimer.md)
 
 ## Usage
 
@@ -49,54 +65,74 @@ grep
 sed
 curl
 openssl
+mpv
+aria2
 ```
 
 ### Optional
 
 ```text
-mpv - The default video player (recommended)
-aria2 - For downloading (recommended)
 iina - The recommended video player for Mac
-vlc - An alternative video player
+vlc - The recommended video player for Windows
 diff - Update checking
 patch - Update checking
 ```
 
 ## Install
 
-### Linux / Mac
+### Linux
+
+#### Arch Linux
 
 ```sh
-git clone https://github.com/pystardust/ani-cli
-cd ani-cli
-sudo make
+yay -S ani-cli-git
 ```
 
-### Android (Termux)
+#### Other
 
 ```sh
-apt update
-apt install git make ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-make
+sudo cp ani-cli /usr/local/bin/ani-cli
+sudo chmod +x /usr/local/bin/ani-cli
+```
+
+### Mac
+
+```sh
+git clone https://github.com/pystardust/ani-cli
+cd ani-cli
+cp ani-cli /usr/local/bin/ani-cli
+sudo chmod +x /usr/local/bin/ani-cli
+```
+
+### Android/Termux
+
+```sh
+pkg update
+pkg install git make ncurses-utils openssl-tool -y
+git clone https://github.com/pystardust/ani-cli
+cd ani-cli
+cp ani-cli /data/data/com.termux/files/home/bin/ani-cli
+chmod +x /data/data/com.termux/files/home/bin/ani-cli
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > /data/data/com.termux/files/home/bin/bin/mpv
+chmod +x /data/data/com.termux/files/home/bin/bin/mpv
 ```
 
 ### Windows
 
-* Download and install dependencies as mentioned above
-* If you choose vlc, add it to path [Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows)
-* Download and install [gitbash](https://git-scm.com/downloads)
+* Download and install [dependencies](#Dependencies)
+* If you choose vlc, add it to path ([Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows))
+* Download and install [git bash](https://git-scm.com/downloads)
 * Open git bash by right-clicking and choosing "Run as administrator"
 * Run the following commands
 
 ```sh
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
-make
+mkdir -p "$(USERPROFILE)/.cache"
+cp ani-cli $(WINDIR)/system32/ani-cli
 ```
 
-## Disclaimer
-
-The disclaimer of this project can be found [here](./disclaimer.md)
-
+## Uninstall
+Just remove the thing from path lul
