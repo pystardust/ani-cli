@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.5.4"
+VERSION="1.6.0"
 
 
 # history file path
@@ -426,10 +426,10 @@ open_episode () {
 				;;
 			*)
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
+					echo "$player_arguments" | xargs nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					"$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
+					echo "$player_arguments" | xargs "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
