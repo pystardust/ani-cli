@@ -417,19 +417,19 @@ open_episode () {
 		case $player_fn in
 			vlc)
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" $player_arguments --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+					nohup "$player_fn" "$player_arguments" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					"$player_fn" $player_arguments --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+					"$player_fn" "$player_arguments" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
 			*)
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" $player_arguments --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+					nohup "$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					"$player_fn" $player_arguments --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+					"$player_fn" "$player_arguments" --referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -445,7 +445,7 @@ open_episode () {
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-			if aria2c $player_arguments --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+			if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
