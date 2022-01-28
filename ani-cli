@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.5.0"
+VERSION="1.5.1"
 
 
 # history file path
@@ -307,9 +307,9 @@ episode_selection () {
 	fi
 
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
-		if [ "$is_download" -eq 1 ]; then
-			inf "Range of episodes can be specified: start_number end_number"
-		fi
+
+		inf "Range of episodes can be specified: start_number end_number"
+
 		if [ -z "$ep_choice_to_start" ]; then
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start=$REPLY
