@@ -131,7 +131,7 @@ chmod +x /data/data/com.termux/files/home/bin/bin/mpv
 git clone https://github.com/pystardust/ani-cli.git
 cd ani-cli
 mkdir -p "$(USERPROFILE)/.cache"
-cp ani-cli $(WINDIR)/system32/ani-cli
+cp ani-cli $WINDIR/system32/ani-cli
 ```
 
 ## Uninstall
