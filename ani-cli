@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.4.3"
+VERSION="1.5.1"
 
 
 # history file path
@@ -306,11 +306,10 @@ episode_selection () {
 		first_ep_number="1"
 	fi
 
-	if [ "$last_ep_number" -gt "$first_ep_number" ]
-	then
-		if [ "$is_download" -eq 1 ]; then
-			inf "Range of episodes can be specified: start_number end_number"
-		fi
+	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
+
+		inf "Range of episodes can be specified: start_number end_number"
+
 		if [ -z "$ep_choice_to_start" ]; then
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start=$REPLY
@@ -318,12 +317,15 @@ episode_selection () {
 		else
 			ep_choice_start=$ep_choice_to_start && unset ep_choice_to_start
 		fi
-		whether_half="$(cut -c1-1 "$ep_choice_start")"
+		whether_half="$(echo "$ep_choice_start" | cut -c1-1)"
 		if [ "$whether_half" = "h" ]
 		then
 			half_ep=1
-			ep_choice_start=$(cut -c2- "$ep_choice_start")
+			ep_choice_start="$(echo "$ep_choice_start" | cut -c2-)"
 		fi
+	else
+		# In case the anime contains only a single episode
+		ep_choice_start=1
 	fi
 
 	if [ -z "$ep_choice_end" ]; then
@@ -362,7 +364,6 @@ open_selection() {
 	do
 		open_episode "$selection_id" "$ep"
 	done
-	auto_play=0
 	episode=${ep_choice_end:-$ep_choice_start}
 }
 
@@ -444,19 +445,11 @@ open_episode () {
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-			if [ -n "$player_arguments" ]; then
-				if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode"
-				else
-					err "Download failed episode: $episode , please retry or check your internet connection"
-				fi
-        		else
-				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode"
-				else
-					err "Download failed episode: $episode , please retry or check your internet connection"
-				fi
-        		fi
+			if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
+				inf "Downloaded episode: $episode"
+			else
+				err "Download failed episode: $episode , please retry or check your internet connection"
+			fi
 		}
 	fi
 }
@@ -549,7 +542,7 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
-			select_first=1
+			[ -n "$ep_choice_to_start" ] && select_first=1
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
@@ -585,8 +578,11 @@ esac
 
 while :; do
 if [ -z "$select_first" ]; then
-	inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-
+	if [ "$auto_play" -eq 0 ]; then
+		inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+	else
+		auto_play=0
+	fi
 	if [ "$episode" -ne "$last_ep_number" ]; then
 		menu_line_alternate "next episode" "n"
 	fi
@@ -653,6 +649,7 @@ if [ -z "$select_first" ]; then
 	check_input
 	append_history
 	open_selection
+	
 else
 	wait $!
 	exit
