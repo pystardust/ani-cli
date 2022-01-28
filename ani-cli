@@ -306,8 +306,7 @@ episode_selection () {
 		first_ep_number="1"
 	fi
 
-	if [ "$last_ep_number" -gt "$first_ep_number" ]
-	then
+	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
 		if [ "$is_download" -eq 1 ]; then
 			inf "Range of episodes can be specified: start_number end_number"
 		fi
@@ -324,6 +323,9 @@ episode_selection () {
 			half_ep=1
 			ep_choice_start="$(echo "$ep_choice_start" | cut -c2-)"
 		fi
+	else
+		# In case the anime contains only a single episode
+		ep_choice_start=1
 	fi
 
 	if [ -z "$ep_choice_end" ]; then
