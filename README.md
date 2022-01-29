@@ -55,11 +55,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
       Choose episode [1-13]: 1 6
       This would choose episodes 1 2 3 4 5 6
 
-   Passing arguments:
-     Put all the arguments inside quotes '' or ""
-     Seperate the arguments with spaces
-     For e.g.
-	ani-cli -e '--brightness=-15 --gamma=-15 --pause'
+    Passing arguments:
+      Put all the arguments inside quotes '' or ""
+      You may seperate them with multiple -e
+      Seperate the arguments with spaces
+      For e.g.
+	$ ani-cli -e '--brightness=-15 --gamma=-15 --pause'
+	$ ani-cli -e '--brightness=-15' -e '--gamma=-15' -e '--pause'
   ```
 
 ## Dependencies

@@ -46,9 +46,11 @@ help_text () {
 
 	Passing arguments:
 	  Put all the arguments inside quotes '' or ""
+	  You may seperate them with multiple -e
 	  Seperate the arguments with spaces
 	  For e.g.
-	  	ani-cli -e '--brightness=-15 --gamma=-15 --pause'
+	  	$ ani-cli -e '--brightness=-15 --gamma=-15 --pause'
+		$ ani-cli -e '--brightness=-15' -e '--gamma=-15' -e '--contrast=15'
 	EOF
 }
 
@@ -509,7 +511,7 @@ while getopts 'viq:dp:chDUVe:a:' OPT; do
 			download_dir=$OPTARG
 			;;
 		e)
-			player_arguments=$OPTARG
+			player_arguments="$OPTARG $player_arguments"
 			;;
 		i)
 			player_fn="iina"
