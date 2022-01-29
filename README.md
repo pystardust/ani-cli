@@ -119,10 +119,10 @@ pkg update
 pkg install git make ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-cp ani-cli /data/data/com.termux/files/home/bin/ani-cli
-chmod +x /data/data/com.termux/files/home/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > /data/data/com.termux/files/home/bin/bin/mpv
-chmod +x /data/data/com.termux/files/home/bin/bin/mpv
+cp ani-cli /data/data/com.termux/files/usr/bin/ani-cli
+chmod +x /data/data/com.termux/files/usr/bin/ani-cli
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$2" -e "http-header-fields" "$1" -n is.xyz.mpv/.MPVActivity' > /data/data/com.termux/files/usr/bin/mpv
+chmod +x /data/data/com.termux/files/usr/bin/mpv
 ```
 
 ### Windows
