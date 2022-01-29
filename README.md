@@ -116,13 +116,13 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 ```sh
 pkg update
-pkg install git make ncurses-utils openssl-tool -y
+pkg install git make termux-tools ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-cp ani-cli /data/data/com.termux/files/home/bin/ani-cli
-chmod +x /data/data/com.termux/files/home/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > /data/data/com.termux/files/home/bin/bin/mpv
-chmod +x /data/data/com.termux/files/home/bin/bin/mpv
+cp ani-cli $PREFIX/bin/ani-cli
+chmod +x $PREFIX/bin/ani-cli
+echo 'termux-open --content-type video "$2"' > $PREFIX/bin/mpv
+chmod +x $PREFIX/bin/mpv
 ```
 
 ### Windows
