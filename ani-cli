@@ -539,7 +539,7 @@ while getopts 'viq:dp:chDUVe:a:' OPT; do
 done
 
 # check for main dependencies
-dep_ch "curl" "sed" "grep" "git" "openssl"
+dep_ch "curl" "sed" "grep" "git" "openssl" "xargs"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
