@@ -73,6 +73,7 @@ curl
 openssl
 mpv
 aria2
+xargs
 ```
 
 ### Optional
