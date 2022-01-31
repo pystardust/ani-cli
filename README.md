@@ -31,13 +31,12 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Usage
 
   ```text
-    ani-cli [-v | -i] [-q <quality>] [-e <arguments>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-v | -i] [-q <quality>] [-e <arguments>] -c
+    ani-cli [-v | -i] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-v | -i] [-q <quality>] -c
     ani-cli -h | -D | -U | -V
 
   Options:
     -c continue watching anime from history
-    -e pass arguments to player/downloader
     -a specify episode to watch
     -h show helptext
     -d download episode
@@ -54,12 +53,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     Multiple episodes can be chosen given a range
       Choose episode [1-13]: 1 6
       This would choose episodes 1 2 3 4 5 6
-
-   Passing arguments:
-     Put all the arguments inside quotes '' or ""
-     Seperate the arguments with spaces
-     For e.g.
-	ani-cli -e '--brightness=-15 --gamma=-15 --pause'
   ```
 
 ## Dependencies

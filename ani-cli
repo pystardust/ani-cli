@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.5.5"
+VERSION="1.5.6"
 
 
 # history file path
@@ -18,13 +18,12 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-e <arguments>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  $0 [-v | -i] [-q <quality>] [-e <arguments>] -c
+	  $0 [-v | -i] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v | -i] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
 	  -c continue watching anime from history
-	  -e pass arguments to the player/downloader
 	  -a specify episode to watch
 	  -h show helptext
 	  -d download episode
@@ -43,12 +42,6 @@ help_text () {
 	    This would choose episodes 1 2 3 4 5 6
 	  When selecting non-interactively, the first result will be
 	  selected, if anime is passed
-
-	Passing arguments:
-	  Put all the arguments inside quotes '' or ""
-	  Seperate the arguments with spaces
-	  For e.g.
-	  	ani-cli -e '--brightness=-15 --gamma=-15 --pause'
 	EOF
 }
 
@@ -423,19 +416,19 @@ open_episode () {
 		case $player_fn in
 			vlc)
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" "$player_arguments" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
+					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					"$player_fn" "$player_arguments" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
+					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
 			*)
 				if [ "$auto_play" -eq 0 ]; then
-					echo "$player_arguments" | xargs nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
+					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-					echo "$player_arguments" | xargs "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
+					"$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -451,20 +444,11 @@ open_episode () {
 		{
 		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
-			if [ -z "$player_arguments" ]; then
 				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 					inf "Downloaded episode: $episode"
 				else
 					err "Download failed episode: $episode , please retry or check your internet connection"
 				fi
-			else
-				if aria2c "$player_arguments" --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
-					inf "Downloaded episode: $episode"
-				else
-					err "Download failed episode: $episode , please retry or check your internet connection"
-				fi
-			fi
-
 		}
 	fi
 }
@@ -488,7 +472,7 @@ scrape=query
 download_dir="."
 choice=""
 
-while getopts 'viq:dp:chDUVe:a:' OPT; do
+while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -507,9 +491,6 @@ while getopts 'viq:dp:chDUVe:a:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
-			;;
-		e)
-			player_arguments=$OPTARG
 			;;
 		i)
 			player_fn="iina"
@@ -543,7 +524,7 @@ dep_ch "curl" "sed" "grep" "git" "openssl"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
-	dep_ch "$player_fn"
+    dep_ch "$player_fn"
 else
 	dep_ch "aria2c"
 fi
