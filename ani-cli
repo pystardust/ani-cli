@@ -135,6 +135,24 @@ search_for_unwatched () {
 	printf "%s" "$unwatched_anime"
 }
 
+search_another_anime () {
+	tput reset
+	prompt "Search Anime"
+	query="$REPLY $REPLY2"
+	search_results=$(search_anime "$query")
+	[ -z "$search_results" ] && die "No search results found"
+	anime_selection "$search_results"
+	episode_selection
+}
+
+search_history () {
+	tput reset
+	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	[ -z "$search_results" ] && die "History is empty"
+	search_results=$(search_for_unwatched "$search_results")
+	anime_selection "$search_results"
+	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+}
 
 ##################
 # URL processing #
@@ -265,12 +283,14 @@ anime_selection () {
 		tput reset
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		prompt "Enter number"
+        menu_line_alternate "search for another anime" "a"
+        menu_line_strong "exit" "q"
+		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
 	fi
 
 		# Check if input is a number
-		[ "$choice" -eq "$choice" ] 2>/dev/null || die "Invalid number entered"
+		[ "$choice" -eq "$choice" ] 2>/dev/null || return 0
 
 		# Select respective anime_id
 		count=1
@@ -411,7 +431,7 @@ open_episode () {
 			die "Video URL not found"
 		fi
 
-		
+
 
 		case $player_fn in
 			vlc)
@@ -544,7 +564,12 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
-		episode_selection
+        [ "$REPLY" != "[0-9]+$" ] && episode_selection
+        while [ "$REPLY" = "a" ]; do
+            search_another_anime
+        done
+        [ "$REPLY" = "q" ] && exit 0
+        die "invalid choice"
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
@@ -613,21 +638,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=""
 			;;
 		a)
-			tput reset
-			prompt "Search Anime"
-			query="$REPLY $REPLY2"
-			search_results=$(search_anime "$query")
-			[ -z "$search_results" ] && die "No search results found"
-			anime_selection "$search_results"
-			episode_selection
+            search_another_anime
 			;;
 		h)
-			tput reset
-			search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
-			[ -z "$search_results" ] && die "History is empty"
-			search_results=$(search_for_unwatched "$search_results")
-			anime_selection "$search_results"
-			ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+            search_history
 			;;
 
 		N)
@@ -645,7 +659,7 @@ if [ -z "$select_first" ]; then
 	check_input
 	append_history
 	open_selection
-	
+
 else
 	wait $!
 	exit
