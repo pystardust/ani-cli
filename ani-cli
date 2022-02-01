@@ -331,7 +331,7 @@ episode_selection () {
 		auto_play=0
 	else
 		auto_play=1
-		[ "$ep_choice_end" == "-1" ] && ep_choice_end="$last_ep_number"
+		[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 	fi
 
 
