@@ -564,12 +564,13 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
-        [ "$REPLY" != "[0-9]+$" ] && episode_selection
         while [ "$REPLY" = "a" ]; do
             search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
-        die "invalid choice"
+        if [ "$REPLY" -gt 0 ]; then episode_selection
+        else die "invalid choice"
+        fi
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
