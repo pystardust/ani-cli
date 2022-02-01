@@ -181,7 +181,7 @@ get_video_quality() {
 	video_links=$(decrypt_link "$dpage_url")
 	case $quality in
 		best)
-			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			video_link=$(printf '%s' "$video_links" | sed -n "4p")
 			;;
 
 		worst)
@@ -193,7 +193,7 @@ get_video_quality() {
 			if [ -z "$video_link" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+				video_link=$(printf '%s' "$video_links" | sed -n "4p")
 			fi
 			;;
 	esac
