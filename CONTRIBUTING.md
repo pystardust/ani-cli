@@ -26,6 +26,7 @@ To spot breakage early, test with the following anime:
 - Episode 5.5: `arifureta shokugyou de sekai saikyou`
 - Unicode: `Saenai Heroine no Sodatekata ♭`
 - Unreleased: `boku-no-hero-academia-the-movie-3`
+- Old anime: `Paprika`
 
 Test automation ideas welcome
 

@@ -31,13 +31,12 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Usage
 
   ```text
-    ani-cli [-v | -i] [-q <quality>] [-e <arguments>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-v | -i] [-q <quality>] [-e <arguments>] -c
+    ani-cli [-v | -i] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+    ani-cli [-v | -i] [-q <quality>] -c
     ani-cli -h | -D | -U | -V
 
   Options:
     -c continue watching anime from history
-    -e pass arguments to player/downloader
     -a specify episode to watch
     -h show helptext
     -d download episode
@@ -85,7 +84,7 @@ patch - Update checking
 #### Arch Linux
 
 ```sh
-yay -S ani-cli-git
+yay -S ani-cli
 ```
 
 #### Other
@@ -110,29 +109,31 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 ```sh
 pkg update
-pkg install git make ncurses-utils openssl-tool -y
+pkg install git make termux-tools ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
-cp ani-cli /data/data/com.termux/files/home/bin/ani-cli
-chmod +x /data/data/com.termux/files/home/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$$3" -e "http-header-fields" "$$2" -n is.xyz.mpv/.MPVActivity' > /data/data/com.termux/files/home/bin/bin/mpv
-chmod +x /data/data/com.termux/files/home/bin/bin/mpv
+cp ani-cli $PREFIX/bin/ani-cli
+chmod +x $PREFIX/bin/ani-cli
+echo 'termux-open "$2"' > $PREFIX/bin/mpv
+chmod +x $PREFIX/bin/mpv
 ```
 
 ### Windows
-
-* Download and install [dependencies](#Dependencies)
-* If you choose vlc, add it to path ([Guide](https://www.vlchelp.com/add-vlc-command-prompt-windows))
-* Download and install [git bash](https://git-scm.com/downloads)
-* Open git bash by right-clicking and choosing "Run as administrator"
+* Open Powershell by right-clicking and choosing "Run as administrator"
+* Download scoop [Guide](https://scoop.sh/)
+* If you haven't, download and install git and git bash `scoop install git`
 * Run the following commands
 
-```sh
-git clone https://github.com/pystardust/ani-cli.git
-cd ani-cli
-mkdir -p "$(USERPROFILE)/.cache"
-cp ani-cli $(WINDIR)/system32/ani-cli
 ```
+scoop bucket add extras
+mkdir -p "$env:USERPROFILE/.cache"
+scoop install ani-cli -g
+```
+* If you want to use vlc, do `scoop install vlc`
+* Then, open git bash by right-clicking and choosing "Run as administrator"
+* Run ani-cli [Usage](#usage)
+
+Scoop updates are based on releases, to get updates before releases, do `ani-cli -U`
 
 ## Uninstall
 Just remove the thing from path lul
