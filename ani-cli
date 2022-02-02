@@ -4,10 +4,6 @@
 VERSION='1.6.4'
 
 
-# history file path
-logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-auto_play="0"
-
 #######################
 # Auxiliary functions #
 #######################
@@ -477,6 +473,9 @@ open_episode () {
 # Start Up #
 ############
 
+# history file path
+logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+
 # to clear the colors when exited using SIGINT
 trap 'printf "\033[0m"; exit 1' INT HUP
 
@@ -485,12 +484,13 @@ trap 'printf "\033[0m"; exit 1' INT HUP
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
-is_download='0'
-half_ep='0'
+is_download="0"
+half_ep="0"
 quality='best'
 scrape='query'
 download_dir='.'
 choice=''
+auto_play="0"
 
 while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
