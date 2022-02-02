@@ -579,13 +579,10 @@ case $scrape in
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-
-
         while [ "$REPLY" = "a" ]; do
             search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
-
 		first_ep_number="0"
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		if [ -n "$result" ]; then
