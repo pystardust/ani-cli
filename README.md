@@ -136,3 +136,4 @@ Scoop updates are based on releases, to get updates before releases, do `ani-cli
 
 ## Uninstall
 Just remove the thing from path lul
+If you're on Mac, you can run ```brew uninstall ani-cli```
