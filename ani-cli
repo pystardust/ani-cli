@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.6.2"
+VERSION="1.6.3"
 
 
 # history file path
@@ -137,7 +137,7 @@ search_for_unwatched () {
 }
 
 search_another_anime () {
-	tput reset
+	tput clear
 	prompt "Search Anime"
 	query="$REPLY $REPLY2"
 	search_results=$(search_anime "$query")
@@ -147,7 +147,7 @@ search_another_anime () {
 }
 
 search_history () {
-	tput reset
+	tput clear
 	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
@@ -281,7 +281,7 @@ anime_selection () {
 	$search_results
 	EOF
 	if [ -n "$ep_choice_to_start" ] && [ -n "$select_first" ]; then
-		tput reset
+		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
         menu_line_alternate "search for another anime" "a"
@@ -392,7 +392,7 @@ open_episode () {
 	anime_id=$1
 	episode=$2
 	# Cool way of clearing screen
-	tput reset
+	tput clear
 	# checking if episode is in range
 	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
 	do
@@ -654,7 +654,7 @@ if [ -z "$select_first" ]; then
 			break;;
 
 		*)
-			tput reset
+			tput clear
 			err "invalid choice"
 			continue
 			;;
