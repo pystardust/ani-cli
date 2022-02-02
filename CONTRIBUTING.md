@@ -15,6 +15,8 @@
 6. Don't echo-pipe into another command if avoidable
 7. Indent with tabs
 8. Try using shell builtins over external commands
+9. Use [shellcheck](https://github.com/koalaman/shellcheck) before pushing (recommended)
+10. Test using the dash shell, since it's strictly posix compliant
 
 ## Testing
 
