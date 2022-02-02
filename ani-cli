@@ -174,13 +174,13 @@ get_dpage_link() {
 
 decrypt_link() {
 	ajax_url='https://gogoplay.io/encrypt-ajax.php'
+	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
+	iv='34323036393133333738303038313335'
 
 	#get the id from the url
 	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 
 	#construct ajax parameters
-	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
-	iv='34323036393133333738303038313335'
 	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
