@@ -619,7 +619,7 @@ if [ -z "$select_first" ]; then
 	menu_line_alternate "replay current episode" "r"
 	menu_line_alternate "search for another anime" "a"
 	menu_line_alternate "search history" "h"
-	menu_line_alternate "select quality" "b"
+	menu_line_alternate "select quality (current: $quality)" "b"
 	menu_line_strong "exit" "q"
 	prompt "Enter choice"
 	# process user choice
@@ -629,10 +629,9 @@ if [ -z "$select_first" ]; then
 			ep_choice_start=$((episode + 1))
 			ep_choice_end=""
 			;;
-        	b)
+		b)
 			prompt "Select quality"
 			quality="$REPLY"
-			video_url=$(get_video_quality "$dpage_link")
 			;;
 		p)
 			ep_choice_start=$((episode - 1))
