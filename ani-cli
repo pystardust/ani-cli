@@ -147,7 +147,6 @@ search_another_anime () {
 }
 
 search_history () {
-	tput clear
 	search_results="$(sed -n -E 's/\t[0-9]*//p' "$logfile")"
 	[ -z "$search_results" ] && die 'History is empty'
 	search_results="$(search_for_unwatched "$search_results")"
@@ -574,11 +573,7 @@ case "$scrape" in
         fi
 		;;
 	history)
-		search_results="$(sed -n -E 's/\t[0-9]*//p' "$logfile")"
-		[ -z "$search_results" ] && die "History is empty"
-		search_results="$(search_for_unwatched "$search_results")"
-		anime_selection "$search_results"
-		ep_choice_start="$(sed -n -E "s/${selection_id}\t//p" "$logfile")"
+		search_history
 
 
         while [ "$REPLY" = 'a' ]; do
@@ -650,6 +645,7 @@ if [ -z "$select_first" ]; then
             		search_another_anime
 			;;
 		h)
+			tput clear
             		search_history
 			;;
 
