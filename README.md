@@ -97,13 +97,11 @@ sudo cp ani-cli /usr/local/bin/ani-cli
 sudo chmod +x /usr/local/bin/ani-cli
 ```
 
-### Mac
+### Mac (with Homebrew)
 
 ```sh
-git clone https://github.com/pystardust/ani-cli
-cd ani-cli
-cp ani-cli /usr/local/bin/ani-cli
-sudo chmod +x /usr/local/bin/ani-cli
+brew tap iamchokerman/ani-cli
+brew install ani-cli
 ```
 
 ### Android/Termux
@@ -138,3 +136,4 @@ Scoop updates are based on releases, to get updates before releases, do `ani-cli
 
 ## Uninstall
 Just remove the thing from path lul
+If you're on Mac, you can run ```brew uninstall ani-cli```
