@@ -28,6 +28,10 @@ To spot breakage early, test with the following anime:
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 - Old anime: `Paprika`
 
+## Shellchecks
+- Use [shellcheck](https://github.com/koalaman/shellcheck) package (recommended)
+- Use dash for shellcheck, since it is strictly POSIX-compliant shell
+
 Test automation ideas welcome
 
 ## How else can I help?
