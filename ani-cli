@@ -292,7 +292,6 @@ anime_selection () {
 
 		# Check if input is a number
 		[ "$choice" -eq "$choice" ] 2>/dev/null || return 0
-
 		# Select respective anime_id
 		count=1
 		while read -r anime_id; do
@@ -579,6 +578,14 @@ case $scrape in
 		[ -z "$search_results" ] && die "History is empty"
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
+		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+
+
+        while [ "$REPLY" = "a" ]; do
+            search_another_anime
+        done
+        [ "$REPLY" = "q" ] && exit 0
+
 		first_ep_number="0"
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		if [ -n "$result" ]; then
@@ -586,7 +593,6 @@ case $scrape in
 		else
 			first_ep_number="1"
 		fi
-		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 		;;
 	*)
 		die "Unexpected Scrape type"
