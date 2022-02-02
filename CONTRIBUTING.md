@@ -15,6 +15,8 @@
 6. Don't echo-pipe into another command if avoidable
 7. Indent with tabs
 8. Try using shell builtins over external commands
+9. Use [shellcheck](https://github.com/koalaman/shellcheck) package (recommended)
+10. Use dash for shellcheck, since it is strictly POSIX-compliant shell
 
 ## Testing
 
@@ -27,10 +29,6 @@ To spot breakage early, test with the following anime:
 - Unicode: `Saenai Heroine no Sodatekata ♭`
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 - Old anime: `Paprika`
-
-## Shellchecks
-- Use [shellcheck](https://github.com/koalaman/shellcheck) package (recommended)
-- Use dash for shellcheck, since it is strictly POSIX-compliant shell
 
 Test automation ideas welcome
 
