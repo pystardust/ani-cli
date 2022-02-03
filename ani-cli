@@ -566,7 +566,7 @@ case $scrape in
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
         while [ "$REPLY" = "a" ]; do
-            search_another_anime
+        	search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
         if [ "$REPLY" -gt 0 ]; then episode_selection
@@ -582,7 +582,7 @@ case $scrape in
 
 
         while [ "$REPLY" = "a" ]; do
-            search_another_anime
+        	search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
 
@@ -652,10 +652,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=""
 			;;
 		a)
-        		search_another_anime
+			search_another_anime
 			;;
 		h)
-        		search_history
+			search_history
 			;;
 
 		N)
