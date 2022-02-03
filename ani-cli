@@ -235,9 +235,9 @@ inf () {
 }
 
 prompt () {
-        # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-        printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
-        read -r REPLY REPLY2
+	# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+	read -r REPLY REPLY2
 }
 
 menu_line_even () {
@@ -284,8 +284,8 @@ anime_selection () {
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-        menu_line_alternate "search for another anime" "a"
-        menu_line_strong "exit" "q"
+		menu_line_alternate "search for another anime" "a"
+		menu_line_strong "exit" "q"
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
 	fi
@@ -433,7 +433,6 @@ open_episode () {
 		fi
 
 
-
 		case $player_fn in
 			vlc)
 				if [ "$auto_play" -eq 0 ]; then
@@ -545,7 +544,7 @@ dep_ch "curl" "sed" "grep" "git" "openssl"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
-    dep_ch "$player_fn"
+	dep_ch "$player_fn"
 else
 	dep_ch "aria2c"
 fi
@@ -565,13 +564,13 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
-        if [ "$REPLY" -gt 0 ]; then episode_selection
-        else die "invalid choice"
-        fi
+		while [ "$REPLY" = "a" ]; do
+			search_another_anime
+		done
+		[ "$REPLY" = "q" ] && exit 0
+		if [ "$REPLY" -gt 0 ]; then episode_selection
+		else die "invalid choice"
+		fi
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
@@ -579,13 +578,10 @@ case $scrape in
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-
-
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
-
+		while [ "$REPLY" = "a" ]; do
+			search_another_anime
+		done
+		[ "$REPLY" = "q" ] && exit 0
 		first_ep_number="0"
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		if [ -n "$result" ]; then
@@ -643,10 +639,8 @@ if [ -z "$select_first" ]; then
 			ep_choice_start=$((episode - 1))
 			ep_choice_end=""
 			;;
-
 		s)	episode_selection
 			;;
-
 		r)
 			ep_choice_start=$((episode))
 			ep_choice_end=""
@@ -657,13 +651,11 @@ if [ -z "$select_first" ]; then
 		h)
         		search_history
 			;;
-
 		N)
 			ep_choice_start=$((episode + 1))
 			;;
 		q)
 			break;;
-
 		*)
 			tput clear
 			err "invalid choice"
