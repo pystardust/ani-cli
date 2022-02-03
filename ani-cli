@@ -235,9 +235,9 @@ inf () {
 }
 
 prompt () {
-        # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-        printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
-        read -r REPLY REPLY2
+		# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+		printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+		read -r REPLY REPLY2
 }
 
 menu_line_even () {
@@ -354,7 +354,6 @@ episode_selection () {
 		[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 	fi
 
-
 }
 
 check_input() {
@@ -431,8 +430,6 @@ open_episode () {
 		if [ -z "$video_url" ]; then
 			die "Video URL not found"
 		fi
-
-
 
 		case $player_fn in
 			vlc)
@@ -565,13 +562,13 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
-        if [ "$REPLY" -gt 0 ]; then episode_selection
-        else die "invalid choice"
-        fi
+		while [ "$REPLY" = "a" ]; do
+			search_another_anime
+		done
+		[ "$REPLY" = "q" ] && exit 0
+		if [ "$REPLY" -gt 0 ]; then episode_selection
+		else die "invalid choice"
+		fi
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
@@ -579,10 +576,10 @@ case $scrape in
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
+		while [ "$REPLY" = "a" ]; do
+			search_another_anime
+		done
+		[ "$REPLY" = "q" ] && exit 0
 		first_ep_number="0"
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		if [ -n "$result" ]; then
@@ -644,10 +641,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=""
 			;;
 		a)
-            search_another_anime
+			search_another_anime
 			;;
 		h)
-            search_history
+			search_history
 			;;
 
 		N)
