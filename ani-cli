@@ -143,7 +143,7 @@ search_another_anime () {
 	search_results=$(search_anime "$query")
 	[ -z "$search_results" ] && die "No search results found"
 	anime_selection "$search_results"
-	episode_selection
+	! [ "$REPLY" -eq "$REPLY" ] 2>/dev/null || episode_selection
 }
 
 search_history () {
@@ -163,14 +163,9 @@ get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
-
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	# dub prefix takes the value "-dub" when dub is needed else is empty
-	anime_page=$(curl -s "$base_url/$anime_id-$ep_no")
-
-	if printf '%s' "$anime_page" | grep -q "404" ; then
-		anime_page=$(curl -s "$base_url/$anime_id-episode-$ep_no")
-	fi
+	anime_page=$(curl -s "$base_url/$anime_id-episode-$ep_no")
 
 	printf '%s' "$anime_page" |
 		sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
@@ -384,7 +379,6 @@ open_selection() {
 	do
 		open_episode "$selection_id" "$ep"
 	done
-	episode=${ep_choice_end:-$ep_choice_start}
 }
 
 open_episode () {
@@ -393,7 +387,7 @@ open_episode () {
 	# Cool way of clearing screen
 	tput clear
 	# checking if episode is in range
-	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
+	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ] || [ "$episode" -lt "$first_ep_number" ] 
 	do
 		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ]; then
@@ -565,13 +559,13 @@ case $scrape in
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
-        if [ "$REPLY" -gt 0 ]; then episode_selection
-        else die "invalid choice"
-        fi
+        	while [ "$REPLY" = "a" ]; do
+			search_another_anime
+        	done
+        	[ "$REPLY" = "q" ] && exit 0
+        	if [ "$REPLY" -gt 0 ]; then episode_selection
+        	else die "invalid choice"
+        	fi
 		;;
 	history)
 		search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
@@ -579,13 +573,10 @@ case $scrape in
 		search_results=$(search_for_unwatched "$search_results")
 		anime_selection "$search_results"
 		ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
-
-
-        while [ "$REPLY" = "a" ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = "q" ] && exit 0
-
+        	while [ "$REPLY" = "a" ]; do
+			search_another_anime
+        	done
+        	[ "$REPLY" = "q" ] && exit 0
 		first_ep_number="0"
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		if [ -n "$result" ]; then
@@ -647,10 +638,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=""
 			;;
 		a)
-            search_another_anime
+            		search_another_anime
 			;;
 		h)
-            search_history
+            		search_history
 			;;
 
 		N)
