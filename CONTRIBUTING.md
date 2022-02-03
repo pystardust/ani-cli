@@ -13,7 +13,7 @@
 
 5. Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
 6. Don't echo-pipe into another command if avoidable
-7. Indent with tabs
+7. Indent with tabs (with tabwidth = 4)
 8. Try using shell builtins over external commands
 9. Use [shellcheck](https://github.com/koalaman/shellcheck) before pushing (recommended)
 10. Test using the dash shell, since it's strictly posix compliant
