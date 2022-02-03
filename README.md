@@ -98,7 +98,6 @@ yay -S ani-cli
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
-sudo chmod +x /usr/local/bin/ani-cli
 ```
 
 ### Mac (with Homebrew)
