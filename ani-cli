@@ -387,7 +387,7 @@ open_episode () {
 	# Cool way of clearing screen
 	tput clear
 	# checking if episode is in range
-	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ] || [ "$episode" -lt "$first_ep_number" ] 
+	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ] || [ "$episode" -lt "$first_ep_number" ]
 	do
 		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ]; then
