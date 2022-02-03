@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION='1.6.4'
+VERSION='1.6.5'
 
 
 #######################
@@ -458,7 +458,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf '%03d' "$episode")
 		{
-		    #uncomment this below line if you are getting low download speeds, and comment next one after below line
+			#uncomment this below line if you are getting low download speeds, and comment next one after below line
 			#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 				if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ;then
 					inf "Downloaded episode: $episode"
@@ -620,6 +620,7 @@ if [ -z "$select_first" ]; then
 	menu_line_alternate 'replay current episode' 'r'
 	menu_line_alternate 'search for another anime' 'a'
 	menu_line_alternate 'search history' 'h'
+	menu_line_alternate "select quality (current: $quality)" 'b'
 	menu_line_strong 'exit' 'q'
 	prompt 'Enter choice'
 	# process user choice
@@ -628,6 +629,10 @@ if [ -z "$select_first" ]; then
 		n)
 			ep_choice_start="$((episode + 1))"
 			ep_choice_end=''
+			;;
+		b)
+			prompt "Select quality"
+			quality="$REPLY"
 			;;
 		p)
 			ep_choice_start="$((episode - 1))"
@@ -642,11 +647,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=''
 			;;
 		a)
-            		search_another_anime
+        		search_another_anime
 			;;
 		h)
-			tput clear
-            		search_history
+        		search_history
 			;;
 
 		N)
