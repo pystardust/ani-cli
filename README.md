@@ -92,7 +92,7 @@ brew tap iamchokerman/ani-cli
 brew install ani-cli
 ```
 
-*Note that only mpv installed through homebrew is not compatible*
+*Note that only mpv installed through homebrew is compatible*
 
 ### Windows
 
