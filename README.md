@@ -73,15 +73,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Install
 
-### Linux
-
-#### Arch Linux
+### Arch Linux
 
 ```sh
 yay -S ani-cli
 ```
 
-#### Other
+### Other Linux
 
 ```sh
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
@@ -97,7 +95,9 @@ brew tap iamchokerman/ani-cli
 brew install ani-cli
 ```
 
-### Android/Termux
+### Android
+
+Install termux [(Guide)](https://termux.com/)
 
 ```sh
 pkg install git make termux-tools ncurses-utils openssl-tool -y
