@@ -158,7 +158,6 @@ get_dpage_link() {
 	ep_no="$2"
 
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
-	# dub prefix takes the value "-dub" when dub is needed else is empty
 	anime_page="$(curl -s "$base_url/$anime_id-$ep_no")"
 
 	if printf '%s' "$anime_page" | grep -q '404' ; then
