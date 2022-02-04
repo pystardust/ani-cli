@@ -66,6 +66,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ### Arch
 
+Also consider ani-cli-git
+
 ```sh
 yay -S ani-cli
 ```
