@@ -42,7 +42,7 @@ help_text () {
 }
 
 version_text () {
-	inf "Version: $VERSION"  >&2
+	inf "Version: $VERSION" >&2
 }
 
 die () {
@@ -87,10 +87,7 @@ dep_ch () {
 search_anime () {
 	# get anime name along with its id for search term
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-
-	curl -s "$base_url//search.html" \
-		-G \
-		-d "keyword=$search" |
+	curl -s "$base_url//search.html" -G -d "keyword=$search" |
 	sed -n -E '
 		s_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p
 		'
@@ -99,7 +96,6 @@ search_anime () {
 search_eps () {
 	# get available episodes for anime_id
 	anime_id=$1
-
 	curl -s "$base_url/category/$anime_id" |
 	sed -n -E '
 		/^[[:space:]]*<a href="#" class="active" ep_start/{
@@ -113,7 +109,6 @@ search_for_unwatched () {
 	# compares history with gogoanime, only shows unfinished anime
 	search_results=$*
 	unwatched_anime=''
-	
 	while read -r anime_id; do
 		current_ep_number="$(search_eps "$anime_id")"
 		history_ep_number="$(sed -n -E "s/${anime_id}\t//p" "$logfile")"
@@ -156,14 +151,11 @@ get_dpage_link() {
 	# get the download page url
 	anime_id="$1"
 	ep_no="$2"
-
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	anime_page="$(curl -s "$base_url/$anime_id-$ep_no")"
-
 	if echo "$anime_page" | grep -q '404' ; then
 		anime_page="$(curl -s "$base_url/$anime_id-episode-$ep_no")"
 	fi
-
 	printf '%s' "$anime_page" |
 		sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
 		sed 's/^/https:/g'
@@ -173,13 +165,10 @@ decrypt_link() {
 	ajax_url='https://gogoplay.io/encrypt-ajax.php'
 	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
 	iv='34323036393133333738303038313335'
-
 	#get the id from the url
 	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
-
 	#construct ajax parameters
-	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
-
+	ajax=$(echo "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
 	sed -e 's/\].*/\]/' -e 's/\\//g' |
@@ -227,9 +216,9 @@ inf () {
 }
 
 prompt () {
-        # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-        printf '\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m' "$1" "$2"
-        read -r REPLY REPLY2
+	# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+	printf '\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m' "$1" "$2"
+	read -r REPLY REPLY2
 }
 
 menu_line_even () {
@@ -244,7 +233,6 @@ menu_line_odd() {
 
 menu_line_alternate() {
 	menu_line_parity="${menu_line_parity:-0}"
-
 	if [ "$menu_line_parity" -eq 0 ]; then
 		menu_line_odd "$1" "$2"
 		menu_line_parity=1
@@ -276,12 +264,11 @@ anime_selection () {
 		tput clear
 		choice="1"
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-        menu_line_alternate 'search for another anime' 'a'
-        menu_line_strong 'exit' 'q'
+	menu_line_alternate 'search for another anime' 'a'
+	menu_line_strong 'exit' 'q'
 		prompt 'Enter choice'
 		choice="$REPLY $REPLY2"
 	fi
-
 		# Check if input is a number
 		[ "$choice" -eq "$choice" ] 2>/dev/null || return 0
 		# Select respective anime_id
@@ -295,11 +282,9 @@ anime_selection () {
 		done <<-EOF
 		$search_results
 		EOF
-
 	if [ -z "$selection_id" ]; then
 		die 'Invalid number entered'
 	fi
-
 	search_ep_result="$(search_eps "$selection_id")"
 	read -r last_ep_number <<-EOF
 	$search_ep_result
@@ -310,13 +295,11 @@ episode_selection () {
 	# using get_dpage_link to get confirmation from episode 0 if it exists,else first_ep_number becomes "1"
 	first_ep_number="0"
 	result="$(get_dpage_link "$anime_id" "$first_ep_number")"
-
 	if [ -n "$result" ]; then
 		true
 	else
 		first_ep_number="1"
 	fi
-
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
 
 		inf 'Range of episodes can be specified: start_number end_number'
@@ -338,15 +321,12 @@ episode_selection () {
 		# In case the anime contains only a single episode
 		ep_choice_start="1"
 	fi
-
 	if [ -z "$ep_choice_end" ]; then
 		auto_play="0"
 	else
 		auto_play="1"
 		[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 	fi
-
-
 }
 
 check_input() {
@@ -385,7 +365,7 @@ open_episode () {
 	# Cool way of clearing screen
 	tput clear
 	# checking if episode is in range
-	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
+	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]
 	do
 		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die 'Invalid number entered'
 		if [ "$last_ep_number" -eq 0 ]; then
@@ -402,7 +382,6 @@ open_episode () {
 		temp_ep="$episode"
 		episode="$episode'-5'"
 	fi
-
 	inf "Getting data for episode $episode"
 	# decrypting url
 	dpage_link="$(get_dpage_link "$anime_id" "$episode")"
@@ -423,9 +402,6 @@ open_episode () {
 		if [ -z "$video_url" ]; then
 			die 'Video URL not found'
 		fi
-
-
-
 		case "$player_fn" in
 			vlc)
 				if [ "$auto_play" -eq 0 ]; then
@@ -447,7 +423,6 @@ open_episode () {
 				;;
 		esac
 		PID="$!"
-
 		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
@@ -466,18 +441,10 @@ open_episode () {
 	fi
 }
 
+
 ############
 # START UP #
 ############
-
-# history file path
-logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-
-# to clear the colors when exited using SIGINT
-trap 'printf "\033[0m"; exit 1' INT HUP
-
-# create history file if none found
-[ -f "$logfile" ] || : > "$logfile"
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
@@ -488,6 +455,15 @@ scrape='query'
 download_dir='.'
 choice=''
 auto_play="0"
+# gogoanime likes to change domains but keep the olds as redirects
+base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
+# history file path
+logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+
+# to clear the colors when exited using SIGINT
+trap 'printf "\033[0m"; exit 1' INT HUP
+# create history file if none found
+[ -f "$logfile" ] || : > "$logfile"
 
 while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
@@ -532,20 +508,17 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 			;;
 	esac
 done
+shift "$((OPTIND - 1))"
 
 # check for main dependencies
 dep_ch 'curl' 'sed' 'grep' 'git' 'openssl'
-
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
-    dep_ch "$player_fn"
+	dep_ch "$player_fn"
 else
 	dep_ch 'aria2c'
 fi
 
-shift "$((OPTIND - 1))"
-# gogoanime likes to change domains but keep the olds as redirects
-base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 case "$scrape" in
 	query)
 		if [ -z "$*" ]; then
@@ -558,22 +531,22 @@ case "$scrape" in
 		search_results="$(search_anime "$query")"
 		[ -z "$search_results" ] && die 'No search results found'
 		anime_selection "$search_results"
-        while [ "$REPLY" = 'a' ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = 'q' ] && exit 0
-        if [ "$REPLY" -gt 0 ]; then episode_selection
-        else die 'invalid choice'
-        fi
+	while [ "$REPLY" = 'a' ]; do
+		search_another_anime
+	done
+	[ "$REPLY" = 'q' ] && exit 0
+	if [ "$REPLY" -gt 0 ]; then episode_selection
+	else die 'invalid choice'
+	fi
 		;;
 	history)
 		search_history
 
 
-        while [ "$REPLY" = 'a' ]; do
-            search_another_anime
-        done
-        [ "$REPLY" = 'q' ] && exit 0
+	while [ "$REPLY" = 'a' ]; do
+		search_another_anime
+	done
+	[ "$REPLY" = 'q' ] && exit 0
 
 		first_ep_number="0"
 		result="$(get_dpage_link "$anime_id" "$first_ep_number")"
@@ -587,9 +560,9 @@ case "$scrape" in
 		die 'Unexpected Scrape type'
 esac
 
-	check_input
-	append_history
-	open_selection
+check_input
+append_history
+open_selection
 
 ########
 # LOOP #
@@ -633,26 +606,25 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=''
 			;;
 
-		s)	episode_selection
+		s)
+			episode_selection
 			;;
-
 		r)
 			ep_choice_start="$((episode))"
 			ep_choice_end=''
 			;;
 		a)
-        		search_another_anime
+			search_another_anime
 			;;
 		h)
-        		search_history
+			search_history
 			;;
-
 		N)
 			ep_choice_start="$((episode + 1))"
 			;;
 		q)
-			break;;
-
+			break
+			;;
 		*)
 			tput clear
 			err 'invalid choice'
@@ -662,7 +634,6 @@ if [ -z "$select_first" ]; then
 	check_input
 	append_history
 	open_selection
-
 else
 	wait "$!"
 	exit
