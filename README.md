@@ -84,8 +84,7 @@ yay -S ani-cli
 #### Other
 
 ```sh
-git clone https://github.com/pystardust/ani-cli
-cd ani-cli
+git clone https://github.com/pystardust/ani-cli && cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
 ```
 
@@ -99,14 +98,10 @@ brew install ani-cli
 ### Android/Termux
 
 ```sh
-pkg update
 pkg install git make termux-tools ncurses-utils openssl-tool -y
-git clone https://github.com/pystardust/ani-cli
-cd ani-cli
+git clone https://github.com/pystardust/ani-cli && cd ani-cli
 cp ani-cli $PREFIX/bin/ani-cli
-chmod +x $PREFIX/bin/ani-cli
 echo 'termux-open "$2"' > $PREFIX/bin/mpv
-chmod +x $PREFIX/bin/mpv
 ```
 
 ### Windows
