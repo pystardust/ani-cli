@@ -360,11 +360,29 @@ episode_selection () {
 check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
 	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
+	
 	episodes=$ep_choice_start
+	[ "$half_ep" -eq 1 ] && episodes="h$ep_choice_start"
+	
 	if [ -n "$ep_choice_end" ]; then
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
 		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
+
+		temp_episodes=""
+		for ep in $episodes
+		do
+			if curl -s "https://www1.gogoanime.pe/$anime_id-episode-$ep-5" | grep 404 > /dev/null; then
+				temp_episodes="$temp_episodes $ep"
+			else
+				temp_episodes="$temp_episodes $ep"
+				temp_episodes="$temp_episodes h$ep"
+			fi
+		done
+
+		episodes=$temp_episodes
+		unset temp_episodes
+		
 	fi
 }
 
@@ -382,6 +400,14 @@ open_selection() {
 	# opens selected episodes one-by-one
 	for ep in $episodes
 	do
+		whether_half="$(echo "$ep" | cut -c1-1)"
+		if [ "$whether_half" = "h" ]
+		then
+			half_ep=1
+			ep="$(echo "$ep" | cut -c2-)"
+		else
+			half_ep=0
+		fi
 		open_episode "$selection_id" "$ep"
 	done
 	episode=${ep_choice_end:-$ep_choice_start}
@@ -417,7 +443,6 @@ open_episode () {
 	video_url=$(get_video_quality "$dpage_link")
 	if [ "$half_ep" -eq 1 ]; then
 		episode=$temp_ep
-		half_ep=0
 	fi
 	# Download or play episodes
 	if [ "$is_download" -eq 0 ]; then
@@ -632,8 +657,19 @@ if [ -z "$select_first" ]; then
 	choice="$REPLY"
 	case $choice in
 		n)
-			ep_choice_start=$((episode + 1))
-			ep_choice_end=""
+			if curl -s "https://www1.gogoanime.pe/$anime_id-episode-$episode-5" | grep 404 > /dev/null; then
+				ep_choice_start=$((episode + 1))
+				ep_choice_end=""
+			else
+				if [ "$half_ep" -eq 1 ]; then
+					half_ep=0
+					ep_choice_start=$((episode + 1))
+					ep_choice_end=""
+				else
+					half_ep=1
+					ep_choice_start=$episode
+				fi
+			fi
 			;;
 		b)
 			prompt "Select quality"
