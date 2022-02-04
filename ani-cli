@@ -52,7 +52,8 @@ die () {
 
 update_script () {
 	# get the newest version of this script from github and replace it
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u "$0" -)"
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" 
+		| diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf 'Script is up to date :)'
 	else
