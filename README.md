@@ -92,8 +92,6 @@ brew tap iamchokerman/ani-cli
 brew install ani-cli
 ```
 
-*Note that only mpv installed through homebrew is compatible*
-
 ### Windows
 
 Install scoop [(Guide)](https://scoop.sh/)
