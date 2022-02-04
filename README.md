@@ -88,7 +88,9 @@ git clone https://github.com/pystardust/ani-cli && cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
 ```
 
-### Mac (with Homebrew)
+### Mac
+
+Install homebrew [(Guide)](https://brew.sh/)
 
 ```sh
 brew tap iamchokerman/ani-cli
@@ -107,11 +109,13 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 ### Windows
 
 Install scoop [(Guide)](https://scoop.sh/)
+
 ```
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
 scoop install ani-cli -g
 ```
+
 *Ani-cli only runs in git bash, not powershell*
 
 ## Uninstall
