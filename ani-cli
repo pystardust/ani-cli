@@ -5,7 +5,7 @@ VERSION='1.6.5'
 
 
 #######################
-# Auxiliary functions #
+# AUXILIARY FUNCTIONS #
 #######################
 
 help_text () {
@@ -81,7 +81,7 @@ dep_ch () {
 
 
 #############
-# Searching #
+# SEARCHING #
 #############
 
 search_anime () {
@@ -149,7 +149,7 @@ search_history () {
 }
 
 ##################
-# URL processing #
+# URL PROCESSING #
 ##################
 
 get_dpage_link() {
@@ -213,7 +213,7 @@ get_video_quality() {
 
 
 ###############
-# Text output #
+# TEXT OUTPUT #
 ###############
 
 err () {
@@ -261,7 +261,7 @@ menu_line_strong() {
 
 
 #################
-# Input parsing #
+# INPUT PARSING #
 #################
 
 anime_selection () {
@@ -362,7 +362,7 @@ check_input() {
 
 
 ##################
-# Video Playback #
+# VIDEO PLAYBACK #
 ##################
 
 append_history () {
@@ -467,7 +467,7 @@ open_episode () {
 }
 
 ############
-# Start Up #
+# START UP #
 ############
 
 # history file path
@@ -592,7 +592,7 @@ esac
 	open_selection
 
 ########
-# Loop #
+# LOOP #
 ########
 
 while :; do
