@@ -375,7 +375,7 @@ append_history () {
 
 open_selection() {
 	# opens selected episodes one-by-one
-	for ep in "$episodes"
+	for ep in $episodes
 	do
 		open_episode "$selection_id" "$ep"
 	done
