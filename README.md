@@ -72,6 +72,8 @@ yay -S ani-cli
 
 ### Linux
 
+Install dependencies [(See below)](#Dependencies)
+
 ```sh
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
