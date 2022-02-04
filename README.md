@@ -62,25 +62,14 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Dependencies
 
-### Essential
-
-```text
-grep
-sed
-curl
-openssl
-mpv
-aria2
-```
-
-### Optional
-
-```text
-iina - The recommended video player for Mac
-vlc - The recommended video player for Windows
-diff - Update checking
-patch - Update checking
-```
+- grep
+- sed
+- curl
+- openssl
+- mpv - Video Player
+- aria2 - Download manager
+- diff - Update checking
+- patch - Update checking
 
 ## Install
 
@@ -121,6 +110,7 @@ chmod +x $PREFIX/bin/mpv
 ```
 
 ### Windows
+
 * Open Powershell by right-clicking and choosing "Run as administrator"
 * Download scoop [Guide](https://scoop.sh/)
 * If you haven't, download and install git and git bash `scoop install git`
