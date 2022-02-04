@@ -23,12 +23,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Table of Contents
 - [Usage](#Usage)
-- [Dependencies](#Dependencies)
-- [Installation](#Installation)
+- [Install](#Installation)
   - [Linux](#Linux)
   - [Mac](#Mac)
-  - [Android/Termux](#Android/Termux)
   - [Windows](#Windows)
+  - [Android](#Android)
+- [Uninstall](#Uninstall)
+- [Dependencies](#Dependencies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
@@ -60,17 +61,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
       To select the last episode use "-1"
   ```
 
-## Dependencies
-
-- grep
-- sed
-- curl
-- openssl
-- mpv - Video Player
-- aria2 - Download manager
-- diff - Update checking
-- patch - Update checking
-
 ## Install
 
 ### Arch Linux
@@ -95,17 +85,6 @@ brew tap iamchokerman/ani-cli
 brew install ani-cli
 ```
 
-### Android
-
-Install termux [(Guide)](https://termux.com/)
-
-```sh
-pkg install git make termux-tools ncurses-utils openssl-tool -y
-git clone https://github.com/pystardust/ani-cli && cd ani-cli
-cp ani-cli $PREFIX/bin/ani-cli
-echo 'termux-open "$2"' > $PREFIX/bin/mpv
-```
-
 ### Windows
 
 Install scoop [(Guide)](https://scoop.sh/)
@@ -118,7 +97,29 @@ scoop install ani-cli -g
 
 *Ani-cli only runs in git bash, not powershell*
 
+### Android
+
+Install termux [(Guide)](https://termux.com/)
+
+```sh
+pkg install git make termux-tools ncurses-utils openssl-tool -y
+git clone https://github.com/pystardust/ani-cli && cd ani-cli
+cp ani-cli $PREFIX/bin/ani-cli
+echo 'termux-open "$2"' > $PREFIX/bin/mpv
+```
+
 ## Uninstall
 * Just remove the thing from path lul
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
+
+## Dependencies
+
+- grep
+- sed
+- curl
+- openssl
+- mpv - Video Player
+- aria2 - Download manager
+- diff - Update checking
+- patch - Update checking
