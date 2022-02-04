@@ -57,6 +57,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     Multiple episodes can be chosen given a range
       Choose episode [1-13]: 1 6
       This would choose episodes 1 2 3 4 5 6
+	  To select the last episode use -1
 
     When selecting non-interactively, the first result will be
     selected, if anime is passed
