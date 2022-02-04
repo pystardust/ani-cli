@@ -1,5 +1,5 @@
 <p align=center>
-<img src="https://capsule-render.vercel.app/api?type=soft&fontColor=e5ab3e&text=pystardust/ani-cli&height=150&fontSize=60&desc=good%20riddance%20Makefile&descAlignY=75&descAlign=60&color=00000000&animation=twinkling">
+<img src="https://user-images.githubusercontent.com/82055622/152351606-308b770d-a47e-4b92-b161-e21b4eff49e6.png">
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
@@ -12,7 +12,11 @@
 <a href="https://github.com/ura43"><img src="https://img.shields.io/badge/lead-ura43-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
 <a href="https://github.com/RaynardGerraldo"><img src="https://img.shields.io/badge/maintainer-RayGL-blue"></a>
+<br>
+<a href="https://github.com/71zenith"><img src="https://img.shields.io/badge/maintainer-71zenith-blue"></a>
+<a href="https://github.com/iamchokerman"><img src="https://img.shields.io/badge/maintainer-iamchokerman-blue"></a>
 <a href="https://github.com/Derisis13"><img src="https://img.shields.io/badge/maintainer-Derisis13-blue"></a>
+
 </p>
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
@@ -94,7 +98,6 @@ yay -S ani-cli
 git clone https://github.com/pystardust/ani-cli
 cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
-sudo chmod +x /usr/local/bin/ani-cli
 ```
 
 ### Mac (with Homebrew)
@@ -135,5 +138,5 @@ scoop install ani-cli -g
 Scoop updates are based on releases, to get updates before releases, do `ani-cli -U`
 
 ## Uninstall
-Just remove the thing from path lul
-If you're on Mac, you can run ```brew uninstall ani-cli```
+* Just remove the thing from path lul
+* If you're on Mac, you can run ```brew uninstall ani-cli```
