@@ -368,11 +368,10 @@ check_input() {
 		[ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
 		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
-
 		temp_episodes=""
 		for ep in $episodes
 		do
-			if curl -s "https://www1.gogoanime.pe/$anime_id-episode-$ep-5" | grep 404 > /dev/null; then
+			if curl -s "$base_url/$anime_id-episode-$ep-5" | grep 404 > /dev/null; then
 				temp_episodes="$temp_episodes $ep"
 			else
 				temp_episodes="$temp_episodes $ep"
@@ -657,7 +656,7 @@ if [ -z "$select_first" ]; then
 	choice="$REPLY"
 	case $choice in
 		n)
-			if curl -s "https://www1.gogoanime.pe/$anime_id-episode-$episode-5" | grep 404 > /dev/null; then
+			if curl -s "$base_url/$anime_id-episode-$episode-5" | grep 404 > /dev/null; then
 				ep_choice_start=$((episode + 1))
 				ep_choice_end=""
 			else
