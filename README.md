@@ -111,22 +111,15 @@ chmod +x $PREFIX/bin/mpv
 
 ### Windows
 
-* Open Powershell by right-clicking and choosing "Run as administrator"
-* Download scoop [Guide](https://scoop.sh/)
-* If you haven't, download and install git and git bash `scoop install git`
-* Run the following commands
-
+Install scoop [(Guide)](https://scoop.sh/)
 ```
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
 scoop install ani-cli -g
 ```
-* If you want to use vlc, do `scoop install vlc`
-* Then, open git bash by right-clicking and choosing "Run as administrator"
-* Run ani-cli [Usage](#usage)
-
-Scoop updates are based on releases, to get updates before releases, do `ani-cli -U`
+*Ani-cli only runs in git bash, not powershell*
 
 ## Uninstall
 * Just remove the thing from path lul
-* If you're on Mac, you can run ```brew uninstall ani-cli```
+* Mac: ```brew uninstall ani-cli```
+* Windows: ```scoop uninstall ani-cli```
