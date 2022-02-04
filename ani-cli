@@ -18,8 +18,8 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  $0 [-v | -i] [-q <quality>] -c
+	  $0 [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
@@ -29,7 +29,6 @@ help_text () {
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
-	  -i use iina as the media player
 	  -v use VLC as the media player
 	  -D delete history
 	  -U fetch update from github
@@ -512,9 +511,6 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
-			;;
-		i)
-			player_fn="iina"
 			;;
 		q)
 			quality=$OPTARG
