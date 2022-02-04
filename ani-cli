@@ -10,7 +10,7 @@ VERSION='1.6.5'
 
 help_text () {
 	while IFS= read -r line; do
-		printf '%s\n' "$line"
+		echo "$line"
 	done <<-EOF
 
 	Usage:
@@ -52,12 +52,12 @@ die () {
 
 update_script () {
 	# get the newest version of this script from github and replace it
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" 
-		| diff -u "$0" -)"
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" |
+		diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf 'Script is up to date :)'
 	else
-		if printf '%s\n' "$update" | patch "$0" - ; then
+		if echo "$update" | patch "$0" - ; then
 			inf 'Script has been updated'
 		else
 			die "Can't update for some reason!"
@@ -160,7 +160,7 @@ get_dpage_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	anime_page="$(curl -s "$base_url/$anime_id-$ep_no")"
 
-	if printf '%s' "$anime_page" | grep -q '404' ; then
+	if echo "$anime_page" | grep -q '404' ; then
 		anime_page="$(curl -s "$base_url/$anime_id-episode-$ep_no")"
 	fi
 
@@ -367,7 +367,7 @@ check_input() {
 
 append_history () {
 	grep -q -w "${selection_id}" "$logfile" ||
-		printf '%s\t%d\n' "$selection_id" "$((episode+1))" >> "$logfile"
+		printf "%s\t%s\n" "$selection_id" "$((episode+1))" >> "$logfile"
 }
 
 open_selection() {
