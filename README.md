@@ -24,8 +24,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Table of Contents
 - [Usage](#Usage)
 - [Install](#Installation)
-  - [Arch Linux](#Arch)
-  - [Other Linux](#Other)
+  - [Arch Linux](#Installation)
+  - [Other Linux](#Installation)
   - [Mac](#Mac)
   - [Windows](#Windows)
   - [Android](#Android)
