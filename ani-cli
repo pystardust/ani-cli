@@ -40,7 +40,6 @@ help_text () {
 	  Multiple episodes can be chosen given a range
 	    Choose episode [1-13]: 1 6
 	    This would choose episodes 1 2 3 4 5 6
-		To select the last episode use "-1"
 	  When selecting non-interactively, the first result will be
 	  selected, if anime is passed
 	EOF
@@ -333,6 +332,14 @@ episode_selection () {
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start=$REPLY
 			ep_choice_end=$REPLY2
+			while [ "$ep_choice_start" -lt "$first_ep_number" ] || [ "$ep_choice_end" -gt "$last_ep_number" ] || [ "$ep_choice_start" -gt "$last_ep_number" ]
+			do
+				tput clear
+				err "Invalid number chosen"
+				prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
+				ep_choice_start=$REPLY
+				ep_choice_end=$REPLY2
+			done
 		else
 			ep_choice_start=$ep_choice_to_start && unset ep_choice_to_start
 		fi
@@ -351,7 +358,6 @@ episode_selection () {
 		auto_play=0
 	else
 		auto_play=1
-		[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 	fi
 
 
