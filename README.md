@@ -99,7 +99,7 @@ Install scoop [(Guide)](https://scoop.sh/)
 ```
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
-scoop install ani-cli -g
+scoop install ani-cli
 ```
 
 *Ani-cli only runs in git bash, not powershell*
