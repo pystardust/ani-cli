@@ -25,7 +25,6 @@ help_text () {
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
-	  -v use VLC as the media player
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
@@ -425,27 +424,14 @@ open_episode () {
 		fi
 
 
-
-		case "$player_fn" in
-			vlc)
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
-				else
-					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-			*)
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
-				else
-					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-		esac
+		if [ "$auto_play" -eq 0 ]; then
+			nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
+		else
+			inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+			"$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
+			sleep 2
+		fi
+		;;
 		PID="$!"
 
 		mv "${logfile}.new" "$logfile"
@@ -465,6 +451,7 @@ open_episode () {
 		}
 	fi
 }
+
 
 ############
 # Start Up #
@@ -514,9 +501,6 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 			;;
 		c)
 			scrape="history"
-			;;
-		v)
-			player_fn="vlc"
 			;;
 		U)
 			update_script
