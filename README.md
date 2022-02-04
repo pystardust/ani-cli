@@ -24,7 +24,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Table of Contents
 - [Usage](#Usage)
 - [Install](#Installation)
-  - [Linux](#Linux)
+  - [Arch Linux](#Arch Linux)
+  - [Other Linux](#Other Linux)
   - [Mac](#Mac)
   - [Windows](#Windows)
   - [Android](#Android)
@@ -109,9 +110,12 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 ```
 
 ## Uninstall
-* Just remove the thing from path lul
+
+* Arch Linux: ```yay -R ani-cli```
+* Other Linux: Just remove the thing from path
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
+* Android: Just remove the thing from path
 
 ## Dependencies
 
