@@ -24,8 +24,8 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 ## Table of Contents
 - [Usage](#Usage)
 - [Install](#Installation)
-  - [Arch Linux](#Installation)
-  - [Other Linux](#Installation)
+  - [Arch](#Arch)
+  - [Linux](#Linux)
   - [Mac](#Mac)
   - [Windows](#Windows)
   - [Android](#Android)
@@ -64,13 +64,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 
 ## Install
 
-### Arch Linux
+### Arch
 
 ```sh
 yay -S ani-cli
 ```
 
-### Other Linux
+### Linux
 
 ```sh
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
