@@ -14,8 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
-# Project repository: https://github.com/pystardust/ani-cli 
+#
+# Project repository: https://github.com/pystardust/ani-cli
 # Version number:
 VERSION='1.6.5'
 
@@ -354,14 +354,14 @@ check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
 	if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
 		true
-	else 
+	else
 		die 'Invalid number entered'
 	fi
 	episodes="$ep_choice_start"
 	if [ -n "$ep_choice_end" ]; then
 		if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
 			true
-		else 
+		else
 			die 'Invalid number entered'
 		fi
 		# create list of episodes to download/watch
@@ -569,9 +569,9 @@ case "$scrape" in
 		if [ "$REPLY" = 'q' ]; then
 			exit 0
 		fi
-		if [ "$REPLY" -gt 0 ]; then 
+		if [ "$REPLY" -gt 0 ]; then
 			episode_selection
-		else 
+		else
 			die 'invalid choice'
 		fi
 		;;
