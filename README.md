@@ -81,6 +81,8 @@ git clone https://github.com/pystardust/ani-cli && cd ani-cli
 sudo cp ani-cli /usr/local/bin/ani-cli
 ```
 
+*Note that mpv installed through flatpak is not compatible*
+
 ### Mac
 
 Install homebrew [(Guide)](https://brew.sh/)
