@@ -347,8 +347,10 @@ episode_selection () {
 }
 
 check_input() {
-	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
+	# processes input, creates $episodes from $ep_choice_start and $ep_choice_end
 	[ -z "$ep_choice_end" ] && ep_choice_end=$ep_choice_start
+	[ "$ep_choice_start" -eq "-1" ] && ep_choice_start="$last_ep_number"
+	[ "$ep_choice_end" -eq "-1" ] && ep_choice_end="$last_ep_number"
 	is_number "$ep_choice_start"
 	is_number "$ep_choice_end"
 	# checking if episode is in range
