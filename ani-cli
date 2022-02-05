@@ -135,9 +135,7 @@ search_for_unwatched () {
 	done <<-EOF
 	$search_results
 	EOF
-	if [ -z "$unwatched_anime" ]; then
-		die 'No unwatched episodes'
-	fi
+	[ -z "$unwatched_anime" ] && die 'No unwatched episodes'
 }
 
 search_another_anime () {
@@ -145,18 +143,14 @@ search_another_anime () {
 	prompt 'Search Anime'
 	query="$REPLY $REPLY2"
 	search_results="$(search_anime "$query")"
-	if [ -z "$search_results" ]; then
-		die 'No search results found'
-	fi
+	[ -z "$search_results" ] && die 'No search results found'
 	anime_selection "$search_results"
 	episode_selection
 }
 
 search_history () {
 	search_results="$(sed -n -E 's/\t[0-9]*//p' "$logfile")"
-	if [ -z "$search_results" ]; then
-		die 'History is empty'
-	fi
+	[ -z "$search_results" ] && die 'History is empty'
 	search_results="$(search_for_unwatched "$search_results")"
 	anime_selection "$search_results"
 	ep_choice_start="$(sed -n -E "s/${selection_id}\t//p" "$logfile")"
@@ -173,9 +167,7 @@ get_dpage_link() {
 	ep_no="$2"
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	anime_page="$(curl -s "$base_url/$anime_id-$ep_no")"
-	if echo "$anime_page" | grep -q '404' ; then
-		anime_page="$(curl -s "$base_url/$anime_id-episode-$ep_no")"
-	fi
+	! printf '%s' "$anime_page" | grep -q '404' || anime_page="$(curl -s "$base_url/$anime_id-episode-$ep_no")"
 	printf '%s' "$anime_page" |
 		sed -n -E 's/^[[:space:]]*<a href="#" rel="100" data-video="([^"]*)".*/\1/p' |
 		sed 's/^/https:/g'
@@ -306,9 +298,7 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-	if [ -z "$selection_id" ]; then
-		die 'Invalid number entered'
-	fi
+	[ -z "$selection_id" ] && die 'Invalid number entered'
 	search_ep_result="$(search_eps "$selection_id")"
 	read -r last_ep_number <<-EOF
 	$search_ep_result
@@ -344,26 +334,16 @@ episode_selection () {
 		auto_play="0"
 	else
 		auto_play="1"
-		if [ "$ep_choice_end" = "-1" ]; then
-			ep_choice_end="$last_ep_number"
-		fi
+		[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 	fi
 }
 
 check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
-	if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-		true
-	else
-		die 'Invalid number entered'
-	fi
+	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die 'Invalid number entered'
 	episodes="$ep_choice_start"
 	if [ -n "$ep_choice_end" ]; then
-		if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-			true
-		else
-			die 'Invalid number entered'
-		fi
+		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die "Invalid number entered"
 		# create list of episodes to download/watch
 		episodes="$(seq "$ep_choice_start" "$ep_choice_end")"
 	fi
@@ -394,11 +374,7 @@ open_episode () {
 	tput clear
 	# checking if episode is in range
 	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
-		if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-			true
-		else
-			die "Invalid number entered"
-		fi
+		[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null && die "Invalid number entered"
 		if [ "$last_ep_number" -eq 0 ] 2>/dev/null; then
 			die "Episodes not released yet!"
 		else
@@ -481,17 +457,13 @@ scrape='query'
 download_dir='.'
 choice=''
 auto_play="0"
-# gogoanime likes to change domains but keep the olds as redirects
-base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
 # to clear the colors when exited using SIGINT
-trap 'printf "\033[0m"; exit 1' INT HUP
+trap 'printf "\033[0m";rm "$logfile".new;exit 1' INT HUP
 # create history file if none found
-if [ ! -f "$logfile" ]; then
-	touch "$logfile"
-fi
+[ -f "$logfile" ] || touch "$logfile"
 
 while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
@@ -547,15 +519,16 @@ else
 	dep_ch 'aria2c'
 fi
 
+# gogoanime likes to change domains but keep the olds as redirects
+base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
+
 case "$scrape" in
 	query)
 		if [ -z "$*" ]; then
 			prompt 'Search Anime'
 			query="$REPLY $REPLY2"
 		else
-			if [ -n "$ep_choice_to_start" ]; then
-				select_first='1'
-			fi
+			[ -z "$ep_choice_to_start" ] && select_first="1"
 			query="$*"
 		fi
 		search_results="$(search_anime "$query")"
@@ -580,14 +553,10 @@ case "$scrape" in
 		while [ "$REPLY" = 'a' ]; do
 			search_another_anime
 		done
-		if [ "$REPLY" = 'q' ]; then
-			exit 0
-		fi
+		[ "$REPLY" = 'q' ] && exit 0
 		first_ep_number="0"
 		result="$(get_dpage_link "$anime_id" "$first_ep_number")"
-		if [ -z "$result" ]; then
-			first_ep_number="1"
-		fi
+		[ -z "$result" ] && first_ep_number="1"
 		;;
 	*)
 		die 'Unexpected Scrape type'
@@ -608,15 +577,9 @@ if [ -z "$select_first" ]; then
 	else
 		auto_play="0"
 	fi
-	if [ "$episode" -ne "$last_ep_number" ]; then
-		menu_line_alternate 'next episode' 'n'
-	fi
-	if [ "$episode" -ne "$first_ep_number" ]; then
-		menu_line_alternate 'previous episode' 'p'
-	fi
-	if [ "$last_ep_number" -ne "$first_ep_number" ]; then
-		menu_line_alternate 'select episode' 's'
-	fi
+	[ "$episode" -ne "$last_ep_number" ] && menu_line_alternate 'next episode' 'n'
+	[ "$episode" -ne "$first_ep_number" ] && menu_line_alternate 'previous episode' 'p'
+	[ "$last_ep_number" -ne "$first_ep_number" ] && menu_line_alternate 'select episode' 's'
 	menu_line_alternate 'replay current episode' 'r'
 	menu_line_alternate 'search for another anime' 'a'
 	menu_line_alternate 'search history' 'h'
@@ -637,7 +600,6 @@ if [ -z "$select_first" ]; then
 			ep_choice_start="$((episode - 1))"
 			ep_choice_end=''
 			;;
-
 		s)
 			episode_selection
 			;;
