@@ -379,7 +379,7 @@ append_history () {
 
 open_selection() {
 	# opens selected episodes one-by-one
-	for ep in $episodes
+	for ep in "$episodes"
 	do
 		open_episode "$selection_id" "$ep"
 	done
@@ -471,7 +471,7 @@ logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 # to clear the colors when exited using SIGINT
 trap 'printf "\033[0m";rm "$logfile".new;exit 1' INT HUP
 # create history file if none found
-[ -f "$logfile" ] && : > "$logfile"
+[ -f "$logfile" ] || : > "$logfile"
 
 while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
