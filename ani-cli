@@ -572,7 +572,10 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
-			[ -n "$ep_choice_to_start" ] && select_first=1
+			if [ -n "$ep_choice_to_start" ] ; then
+		    	REPLY=1
+    			select_first=1
+			fi
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
