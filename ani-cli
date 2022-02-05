@@ -272,6 +272,15 @@ menu_line_strong() {
 # INPUT PARSING #
 #################
 
+is_number () {
+	if [ "$1" -eq "$1" ] 2>/dev/null; then
+		true
+	else
+		die 'Invalid number entered'
+	fi
+}
+
+
 anime_selection () {
 	count="1"
 	while read -r anime_id; do
@@ -289,12 +298,7 @@ anime_selection () {
 		prompt 'Enter choice'
 		choice="$REPLY $REPLY2"
 	fi
-	# Check if input is a number
-	if [ "$choice" -eq "$choice" ] 2>/dev/null; then
-		true
-	else
-		return 0
-	fi
+	is_number "$choice"
 	# Select respective anime_id
 	count="1"
 	while read -r anime_id; do
@@ -352,18 +356,10 @@ episode_selection () {
 
 check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
-	if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-		true
-	else
-		die 'Invalid number entered'
-	fi
+	is_number "$ep_choice_start"
 	episodes="$ep_choice_start"
 	if [ -n "$ep_choice_end" ]; then
-		if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-			true
-		else
-			die 'Invalid number entered'
-		fi
+		is_number "$ep_choice_end"
 		# create list of episodes to download/watch
 		episodes="$(seq "$ep_choice_start" "$ep_choice_end")"
 	fi
@@ -394,12 +390,8 @@ open_episode () {
 	tput clear
 	# checking if episode is in range
 	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
-		if [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null; then
-			true
-		else
-			die "Invalid number entered"
-		fi
-		if [ "$last_ep_number" -eq 0 ] 2>/dev/null; then
+		is_number "$ep_choice_start"
+		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
 		else
 			err 'Episode out of range'
@@ -454,9 +446,9 @@ open_episode () {
 		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
-		inf "Downloading episode $episode ...\n"
 		# add 0 padding to the episode name
 		episode=$(printf '%03d' "$episode")
+		inf "Downloading episode $episode ..."
 		#uncomment this below line if you are getting low download speeds, and comment next one after below line
 		#aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide &&
 		if aria2c --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide; then
@@ -481,17 +473,13 @@ scrape='query'
 download_dir='.'
 choice=''
 auto_play="0"
-# gogoanime likes to change domains but keep the olds as redirects
-base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 
 # to clear the colors when exited using SIGINT
-trap 'printf "\033[0m"; exit 1' INT HUP
+trap 'printf "\033[0m"; exit 1; rm "$logfile.new"' INT HUP
 # create history file if none found
-if [ ! -f "$logfile" ]; then
-	touch "$logfile"
-fi
+touch "$logfile"
 
 while getopts 'viq:dp:chDUVa:' OPT; do
 	case $OPT in
@@ -537,6 +525,9 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 	esac
 done
 shift "$((OPTIND - 1))"
+
+# gogoanime likes to change domains but keep the olds as redirects
+base_url="$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)"
 
 # check for main dependencies
 dep_ch 'curl' 'sed' 'grep' 'git' 'openssl'
