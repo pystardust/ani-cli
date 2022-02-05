@@ -512,6 +512,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 			;;
 		d)
 			is_download=1
+			select_first=1
 			;;
 		a)
 			ep_choice_to_start=$OPTARG
@@ -523,6 +524,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
+			select_first=1
 			;;
 		i)
 			player_fn="iina"
