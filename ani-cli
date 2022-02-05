@@ -26,7 +26,7 @@ VERSION='1.6.5'
 
 help_text () {
 	while IFS= read -r line; do
-		echo "$line"
+		printf '%s\n' "$line"
 	done <<-EOF
 
 	Usage:
@@ -73,7 +73,7 @@ update_script () {
 	if [ -z "$update" ]; then
 		inf 'Script is up to date :)'
 	else
-		if echo "$update" | patch "$0" - ; then
+		if printf '%s\n' "$update" | patch "$0" - ; then
 			inf 'Script has been updated'
 		else
 			die "Can't update for some reason!"
@@ -130,7 +130,7 @@ search_for_unwatched () {
 		history_ep_number=$(sed -n -E "s/${anime_id}\t//p" "$logfile")
 		if [ "$current_ep_number" -ge "$history_ep_number" ]; then
 			unwatched_anime=1
-			echo "$anime_id"
+			printf '%s\n' "$anime_id"
 		fi
 	done <<-EOF
 	$search_results
@@ -175,9 +175,9 @@ decrypt_link() {
 	secret_key='3235373436353338353932393338333936373634363632383739383333323838'
 	iv='34323036393133333738303038313335'
 	#get the id from the url
-	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	video_id=$(printf '%s\n' "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 	#construct ajax parameters
-	ajax=$(echo "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	ajax=$(printf '%s\n' "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
 		sed -e 's/\].*/\]/' -e 's/\\//g' |
@@ -327,10 +327,10 @@ episode_selection () {
 		else
 			ep_choice_start="$ep_choice_to_start" && unset ep_choice_to_start
 		fi
-		whether_half=$(echo "$ep_choice_start" | cut -c1-1)
+		whether_half=$(printf '%s\n' "$ep_choice_start" | cut -c1-1)
 		if [ "$whether_half" = "h" ]; then
 			half_ep=1
-			ep_choice_start=$(echo "$ep_choice_start" | cut -c2-)
+			ep_choice_start=$(printf '%s\n' "$ep_choice_start" | cut -c2-)
 		fi
 	else
 		# In case the anime contains only a single episode
