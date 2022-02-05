@@ -374,11 +374,9 @@ check_input() {
 			if curl -s "$base_url/$anime_id-episode-$ep-5" | grep 404 > /dev/null; then
 				temp_episodes="$temp_episodes $ep"
 			else
-				temp_episodes="$temp_episodes $ep"
-				temp_episodes="$temp_episodes h$ep"
+				temp_episodes="$temp_episodes $ep h$ep"
 			fi
 		done
-
 		episodes=$temp_episodes
 		unset temp_episodes
 		
@@ -656,12 +654,13 @@ if [ -z "$select_first" ]; then
 	choice="$REPLY"
 	case $choice in
 		n)
-			if curl -s "$base_url/$anime_id-episode-$episode-5" | grep 404 > /dev/null; then
+			
+			if [ "$half_ep" -eq 1 ]; then
+				half_ep=0
 				ep_choice_start=$((episode + 1))
 				ep_choice_end=""
 			else
-				if [ "$half_ep" -eq 1 ]; then
-					half_ep=0
+				if curl -s "$base_url/$anime_id-episode-$episode-5" | grep 404 > /dev/null; then
 					ep_choice_start=$((episode + 1))
 					ep_choice_end=""
 				else
