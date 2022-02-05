@@ -142,10 +142,7 @@ search_another_anime () {
 	tput clear
 	prompt 'Search Anime'
 	query="$REPLY $REPLY2"
-	search_results="$(search_anime "$query")"
-	[ -z "$search_results" ] && die 'No search results found'
-	anime_selection "$search_results"
-	episode_selection
+	process_search
 }
 
 search_history () {
@@ -265,9 +262,20 @@ menu_line_strong() {
 #################
 
 is_number () {
-	[ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || die 'Invalid number entered'
+	[ "$1" -eq "$1" ] 2>/dev/null || die 'Invalid number entered'
 }
 
+process_search () {
+	search_results="$(search_anime "$query")"
+	while [ -z "$search_results" ]; do
+		err 'No search results found'
+		prompt 'Search Anime'
+		query="$REPLY $REPLY2"
+		search_results="$(search_anime "$query")"
+	done
+	anime_selection "$search_results"
+	episode_selection
+}
 
 anime_selection () {
 	count="1"
@@ -281,11 +289,11 @@ anime_selection () {
 		tput clear
 		choice="1"
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		menu_line_alternate 'search for another anime' 'a'
 		menu_line_strong 'exit' 'q'
 		prompt 'Enter choice'
 		choice="$REPLY $REPLY2"
 	fi
+	[ "$REPLY" = 'q' ] && exit 0
 	is_number "$choice"
 	# Select respective anime_id
 	count="1"
@@ -340,13 +348,24 @@ episode_selection () {
 
 check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
+	[ -z "$ep_choice_end" ] && ep_choice_end=$ep_choice_start
 	is_number "$ep_choice_start"
-	episodes="$ep_choice_start"
-	if [ -n "$ep_choice_end" ]; then
+	is_number "$ep_choice_end"
+	# checking if episode is in range
+	while [ "$ep_choice_start" -gt "$last_ep_number" ] || [ "$first_ep_number" -gt "$ep_choice_end" ] ; do
+		if [ "$last_ep_number" -eq 0 ]; then
+			die "Episodes not released yet!"
+		else
+			err 'Episode out of range'
+		fi
+		prompt 'Choose episode' "[$first_ep_number-$last_ep_number]"
+		ep_choice_start="$REPLY"
+		ep_choice_end="$REPLY2"
+		is_number "$ep_choice_start"
 		is_number "$ep_choice_end"
-		# create list of episodes to download/watch
-		episodes="$(seq "$ep_choice_start" "$ep_choice_end")"
-	fi
+		[ -z "$ep_choice_end" ] && ep_choice_end=$ep_choice_start
+	done
+	episodes="$(seq "$ep_choice_start" "$ep_choice_end")"
 }
 
 
@@ -370,24 +389,13 @@ open_selection() {
 open_episode () {
 	anime_id="$1"
 	episode="$2"
-	# Cool way of clearing screen
-	tput clear
-	# checking if episode is in range
-	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
-		is_number "$ep_choice_start"
-		if [ "$last_ep_number" -eq 0 ]; then
-			die "Episodes not released yet!"
-		else
-			err 'Episode out of range'
-		fi
-		prompt 'Choose episode' "[$first_ep_number-$last_ep_number]"
-		episode="$REPLY $REPLY2"
-	done
 	#processing half episodes
 	if [ "$half_ep" -eq 1 ]; then
 		temp_ep="$episode"
 		episode="$episode'-5'"
 	fi
+	# Cool way of clearing screen
+	tput clear
 	inf "Getting data for episode $episode"
 	# decrypting url
 	dpage_link="$(get_dpage_link "$anime_id" "$episode")"
@@ -531,31 +539,13 @@ case "$scrape" in
 			prompt 'Search Anime'
 			query="$REPLY $REPLY2"
 		else
-			[ -z "$ep_choice_to_start" ] && select_first="1"
+			[ -n "$ep_choice_to_start" ] && select_first="1"
 			query="$*"
 		fi
-		search_results="$(search_anime "$query")"
-		if [ -z "$search_results" ]; then
-			die 'No search results found'
-		fi
-		anime_selection "$search_results"
-		while [ "$REPLY" = 'a' ]; do
-			search_another_anime
-		done
-		if [ "$REPLY" = 'q' ]; then
-			exit 0
-		fi
-		if [ "$REPLY" -gt 0 ]; then
-			episode_selection
-		else
-			die 'invalid choice'
-		fi
+		process_search
 		;;
 	history)
 		search_history
-		while [ "$REPLY" = 'a' ]; do
-			search_another_anime
-		done
 		[ "$REPLY" = 'q' ] && exit 0
 		first_ep_number="0"
 		result="$(get_dpage_link "$anime_id" "$first_ep_number")"
