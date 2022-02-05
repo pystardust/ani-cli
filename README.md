@@ -64,7 +64,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
     selected, if anime is passed
   ```
 
-
 ## Install
 
 ### Arch
