@@ -18,8 +18,8 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  $0 [-v | -i] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  $0 [-v | -i] [-q <quality>] -c
+	  $0 [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+	  $0 [-v] [-q <quality>] -c
 	  $0 -h | -D | -U | -V
 
 	Options:
@@ -29,7 +29,6 @@ help_text () {
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
-	  -i use iina as the media player
 	  -v use VLC as the media player
 	  -D delete history
 	  -U fetch update from github
@@ -40,7 +39,8 @@ help_text () {
 	  Multiple episodes can be chosen given a range
 	    Choose episode [1-13]: 1 6
 	    This would choose episodes 1 2 3 4 5 6
-		To select the last episode use "-1"
+		To select the last episode use -1
+
 	  When selecting non-interactively, the first result will be
 	  selected, if anime is passed
 	EOF
@@ -333,6 +333,16 @@ episode_selection () {
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start=$REPLY
 			ep_choice_end=$REPLY2
+			while [ "$ep_choice_start" -lt "$first_ep_number" ] || [ "$ep_choice_end" -gt "$last_ep_number" ] || [ "$ep_choice_start" -gt "$last_ep_number" ]
+			do
+				if [ "$ep_choice_end" != -1 ];then
+					tput clear
+					err "Invalid number chosen"
+					prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
+					ep_choice_start=$REPLY
+					ep_choice_end=$REPLY2
+				fi
+			done
 		else
 			ep_choice_start=$ep_choice_to_start && unset ep_choice_to_start
 		fi
@@ -515,7 +525,7 @@ scrape=query
 download_dir="."
 choice=""
 
-while getopts 'viq:dp:chDUVa:' OPT; do
+while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -523,6 +533,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 			;;
 		d)
 			is_download=1
+			select_first=1
 			;;
 		a)
 			ep_choice_to_start=$OPTARG
@@ -534,9 +545,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
-			;;
-		i)
-			player_fn="iina"
+			select_first=1
 			;;
 		q)
 			quality=$OPTARG
@@ -581,14 +590,17 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
-			[ -n "$ep_choice_to_start" ] && select_first=1
+			if [ -n "$ep_choice_to_start" ] ; then
+				REPLY=1
+				select_first=1
+			fi
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
 		[ -z "$search_results" ] && die "No search results found"
 		anime_selection "$search_results"
         while [ "$REPLY" = "a" ]; do
-            search_another_anime
+        	search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
         if [ "$REPLY" -gt 0 ]; then episode_selection
@@ -604,7 +616,7 @@ case $scrape in
 
 
         while [ "$REPLY" = "a" ]; do
-            search_another_anime
+        	search_another_anime
         done
         [ "$REPLY" = "q" ] && exit 0
 
@@ -695,10 +707,10 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=""
 			;;
 		a)
-        		search_another_anime
+			search_another_anime
 			;;
 		h)
-        		search_history
+			search_history
 			;;
 
 		N)
