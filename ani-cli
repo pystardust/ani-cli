@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # version number
-VERSION="1.6.5"
+VERSION="1.6.6"
 
 
 # history file path
@@ -512,6 +512,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 			;;
 		d)
 			is_download=1
+			select_first=1
 			;;
 		a)
 			ep_choice_to_start=$OPTARG
@@ -523,6 +524,7 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
+			select_first=1
 			;;
 		i)
 			player_fn="iina"
@@ -570,7 +572,10 @@ case $scrape in
 			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
-			[ -n "$ep_choice_to_start" ] && select_first=1
+			if [ -n "$ep_choice_to_start" ] ; then
+				REPLY=1
+				select_first=1
+			fi
 			query=$*
 		fi
 		search_results=$(search_anime "$query")
