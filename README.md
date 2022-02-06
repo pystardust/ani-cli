@@ -1,5 +1,4 @@
 <p align=center>
-<img src="https://user-images.githubusercontent.com/82055622/152351606-308b770d-a47e-4b92-b161-e21b4eff49e6.png">
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
@@ -21,8 +20,14 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
+<h1 align="center">
+	Showcase
+</h1>
+<p align="center">
+<img src=.assets/ani-cli.gif width="100%">
+</p>
+
 ## Table of Contents
-- [Usage](#Usage)
 - [Install](#Installation)
   - [Arch](#Arch)
   - [Linux](#Linux)
@@ -33,36 +38,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 - [Dependencies](#Dependencies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
-
-## Usage
-
-  ```text
-    ani-cli [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-    ani-cli [-v] [-q <quality>] -c
-    ani-cli -h | -D | -U | -V
-
-  Options:
-    -c continue watching anime from history
-    -a specify episode to watch
-    -h show helptext
-    -d download episode
-    -q set video quality (best|worst|360|480|720|1080)
-    -v use VLC as the media player
-    -D delete history
-    -U fetch update from github
-    -V print version number and exit
-
-  Episode selection:
-    Add 'h' on beginning for episodes like '6.5' -> 'h6'
-
-    Multiple episodes can be chosen given a range
-      Choose episode [1-13]: 1 6
-      This would choose episodes 1 2 3 4 5 6
-	  To select the last episode use -1
-
-    When selecting non-interactively, the first result will be
-    selected, if anime is passed
-  ```
 
 ## Install
 
@@ -95,6 +70,7 @@ brew install ani-cli
 ```
 
 ### Windows
+*Note that the installation must be done inside powershell, not in cmd*
 
 Install scoop [(Guide)](https://scoop.sh/)
 
@@ -104,7 +80,9 @@ mkdir -p "$env:USERPROFILE/.cache"
 scoop install ani-cli
 ```
 
-*Ani-cli only runs in git bash, not powershell*
+*Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
+
+*You can run ani-cli from any Windows console, e.g Windows Terminal,Command Prompt,Powershell*
 
 ### Android
 
@@ -133,5 +111,3 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 - openssl
 - mpv - Video Player
 - aria2 - Download manager
-- diff - Update checking
-- patch - Update checking
