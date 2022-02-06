@@ -111,5 +111,3 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 - openssl
 - mpv - Video Player
 - aria2 - Download manager
-- diff - Update checking
-- patch - Update checking
