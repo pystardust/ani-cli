@@ -503,7 +503,7 @@ scrape=query
 download_dir="."
 choice=""
 
-while getopts 'viq:dp:chDUVa:' OPT; do
+while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
 		h)
 			help_text
