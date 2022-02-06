@@ -38,7 +38,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 	This is a little showcase
 </h1>
 <p align="center">
-<img src=.assets/ytfzf.gif width="100%">
+<img src=.assets/ani-cli.gif width="100%">
 </p>
 
 ## Usage
