@@ -34,6 +34,13 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
+<h1 align="center">
+	Showcase
+</h1>
+<p align="center">
+<img src=.assets/ani-cli.gif width="100%">
+</p>
+
 ## Usage
 
   ```text
@@ -96,6 +103,7 @@ brew install ani-cli
 ```
 
 ### Windows
+*Note that the installation must be done inside powershell, not in cmd*
 
 Install scoop [(Guide)](https://scoop.sh/)
 
