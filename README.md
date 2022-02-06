@@ -80,7 +80,9 @@ mkdir -p "$env:USERPROFILE/.cache"
 scoop install ani-cli
 ```
 
-*Ani-cli only runs in git bash, not powershell*
+*Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
+
+*You can run ani-cli from any Windows console, e.g Windows Terminal,Command Prompt,Powershell*
 
 ### Android
 
