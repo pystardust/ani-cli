@@ -35,7 +35,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 - [Disclaimer](./disclaimer.md)
 
 <h1 align="center">
-	This is a little showcase
+	Showcase
 </h1>
 <p align="center">
 <img src=.assets/ani-cli.gif width="100%">
