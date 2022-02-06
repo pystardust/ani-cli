@@ -24,6 +24,7 @@ help_text () {
 
 	Options:
 	  -c continue watching anime from history
+	  -s disable saving and resuming playback from last known timestamp
 	  -a specify episode to watch
 	  -h show helptext
 	  -d download episode
@@ -457,10 +458,10 @@ open_episode () {
 				;;
 			*)
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
+					nohup "$player_fn" "$save_timestamp" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
+					"$player_fn" "$save_timestamp" --referrer="$dpage_link" "$video_url" --title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -503,8 +504,9 @@ quality=best
 scrape=query
 download_dir="."
 choice=""
+save_timestamp="--save-position-on-quit"
 
-while getopts 'viq:dp:chDUVa:' OPT; do
+while getopts 'viq:dp:chDUVa:s' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -543,6 +545,9 @@ while getopts 'viq:dp:chDUVa:' OPT; do
 		V)
 			version_text
 			exit 0
+			;;
+		s)
+			save_timestamp="--no-resume-playback"
 			;;
 		*)
 			help_text
