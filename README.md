@@ -103,6 +103,7 @@ brew install ani-cli
 ```
 
 ### Windows
+*Note that the installation must be done inside powershell, not in cmd*
 
 Install scoop [(Guide)](https://scoop.sh/)
 
