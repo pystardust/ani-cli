@@ -1,5 +1,4 @@
 <p align=center>
-<img src="https://user-images.githubusercontent.com/82055622/152351606-308b770d-a47e-4b92-b161-e21b4eff49e6.png">
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
@@ -21,6 +20,13 @@
 
 A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
 
+<h1 align="center">
+	Showcase
+</h1>
+<p align="center">
+<img src=.assets/ani-cli.gif width="100%">
+</p>
+
 ## Table of Contents
 - [Usage](#Usage)
 - [Install](#Installation)
@@ -33,13 +39,6 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 - [Dependencies](#Dependencies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
-
-<h1 align="center">
-	Showcase
-</h1>
-<p align="center">
-<img src=.assets/ani-cli.gif width="100%">
-</p>
 
 ## Usage
 
