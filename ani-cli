@@ -573,8 +573,8 @@ case $scrape in
 			query="$REPLY $REPLY2"
 		else
 			if [ -n "$ep_choice_to_start" ] ; then
-		    	REPLY=1
-    			select_first=1
+				REPLY=1
+				select_first=1
 			fi
 			query=$*
 		fi
