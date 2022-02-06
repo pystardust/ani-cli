@@ -24,7 +24,7 @@ help_text () {
 
 	Options:
 	  -c continue watching anime from history
-	  -s disable saving and resuming playback from last known timestamp
+	  -s disable saving and resuming playback from last known timestamp (mpv only)
 	  -a specify episode to watch
 	  -h show helptext
 	  -d download episode
