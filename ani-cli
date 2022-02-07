@@ -333,6 +333,7 @@ episode_selection () {
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start=$REPLY
 			ep_choice_end=$REPLY2
+			[ -z "$ep_choice_start" ] && ep_choice_start=$first_ep_number
 			while [ "$ep_choice_start" -lt "$first_ep_number" ] || [ "$ep_choice_end" -gt "$last_ep_number" ] || [ "$ep_choice_start" -gt "$last_ep_number" ]
 			do
 				if [ "$ep_choice_end" != -1 ];then
