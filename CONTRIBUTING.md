@@ -18,6 +18,19 @@
 9. Use [shellcheck](https://github.com/koalaman/shellcheck) before pushing (recommended)
 10. Test using the dash shell, since it's strictly posix compliant
 
+## Advice for maintainers
+
+1. Always use [semantic commits](https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716) when merging to master
+2. Remove features. Who will do it if you don't?
+3. Use labels
+4. Link PRs to the issues they solve
+5. Assign issues if you know who will/should solve them
+6. Close stale, unreproducible and low quality issues
+7. Don't use projects or milestones, they don't add any value to the workflow
+8. Don't advertise to the wrong demographic
+9. Don't advertise
+10. Help new contributors find things to work on
+
 ## Testing
 
 Our parsing was broken in the past and it will break in the future
