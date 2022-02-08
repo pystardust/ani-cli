@@ -613,7 +613,7 @@ if [ -z "$select_first" ]; then
 			ep_choice_start=$((episode - 1))
 			ep_choice_end=""
 			;;
-		s)	
+		s)
 			episode_selection
 			;;
 		r)
