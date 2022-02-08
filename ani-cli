@@ -290,7 +290,6 @@ anime_selection () {
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		menu_line_alternate "search for another anime" "a"
 		menu_line_strong "exit" "q"
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
