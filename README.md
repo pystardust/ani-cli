@@ -69,11 +69,11 @@ brew install ani-cli
 ```
 
 ### Windows
-Install scoop [(Guide)](https://scoop.sh/)
 
 *Note that the installation instruction below must be done inside 
 Powershell as **administrator**, not in Command Prompt*
 
+Install scoop [(Guide)](https://scoop.sh/)
 ```
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
