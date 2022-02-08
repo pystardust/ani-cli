@@ -13,7 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Project repository: https://github.com/pystardust/ani-cli
 
@@ -139,7 +139,7 @@ search_another_anime () {
 	tput clear
 	prompt "Search Anime"
 	query="$REPLY $REPLY2"
-    process_search
+	process_search
 }
 
 search_history () {
@@ -177,7 +177,7 @@ decrypt_link() {
 	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 
 	#construct ajax parameters
-	ajax=$(echo "$video_id" | openssl enc -aes256  -K "$secret_key" -iv "$iv" -a)
+	ajax=$(echo "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
@@ -189,7 +189,7 @@ get_video_quality() {
 	# chooses the link for the set quality
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
-    echo "$video_links" > a
+	printf '%s' "$video_links" > a
 	case $quality in
 		best)
 			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
@@ -227,9 +227,9 @@ inf () {
 }
 
 prompt () {
-        # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
-    printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
-    read -r REPLY REPLY2
+	# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+	read -r REPLY REPLY2
 }
 
 menu_line_even () {
@@ -292,13 +292,13 @@ anime_selection () {
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-        	menu_line_alternate "search for another anime" "a"
-        	menu_line_strong "exit" "q"
+		menu_line_alternate "search for another anime" "a"
+		menu_line_strong "exit" "q"
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
 	fi
 	# Check if input is a number
-    is_number "$choice"
+	is_number "$choice"
 	# Select respective anime_id
 	count=1
 	while read -r anime_id; do
@@ -362,10 +362,10 @@ episode_selection () {
 
 check_input() {
 	# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
-    is_number "$ep_choice_start"
+	is_number "$ep_choice_start"
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
-        is_number "$ep_choice_end"
+		is_number "$ep_choice_end"
 		# create list of episodes to download/watch
 		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
 	fi
@@ -395,9 +395,8 @@ open_episode () {
 	# cool way of clearing screen
 	tput clear
 	# checking if episode is in range
-	while  [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode"  ]
-	do
-        is_number "$ep_choice_start"
+	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]
+	is_number "$ep_choice_start"
 		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
 		else
@@ -546,7 +545,7 @@ dep_ch "curl" "sed" "grep" "git" "openssl"
 
 # check for optional dependencies
 if [ "$is_download" -eq 0 ]; then
-    dep_ch "$player_fn"
+	dep_ch "$player_fn"
 else
 	dep_ch "aria2c"
 fi
@@ -564,11 +563,11 @@ case $scrape in
 			fi
 			query=$*
 		fi
-        process_search
+		process_search
 		;;
 	history)
-        search_history
-        [ "$REPLY" = "q" ] && exit 0
+		search_history
+		[ "$REPLY" = "q" ] && exit 0
 		first_ep_number=0
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
 		[ -z "$result" ] && first_ep_number=1
