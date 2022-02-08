@@ -9,14 +9,37 @@
 3. Adjust the Readme according to your changes (if applicable)
 4. No extra dependencies unless absolutely necessary
 
-### Guidelines
+### Formatting Guidelines
+5. Indent with tabs, one for each layer
+6. Layers are: function definitions, branches and loops, line-breaking
+7. Avoid breaking lines with "backslash+newline"
+8. Keep one newline between functions and two above labels
+9. Keep `then` and `do` statements in the line of the condition
+10. Comment only if it's not clear what a piece of code does, and keep it short even then
+11. Keep variable declarations together in the beginning of the functions by default
+12. If possible group code by functionality
 
-5. Try using built-in output functions (err, inf, prompt, `menu_line_*` and die) instead of echo and printf
-6. Don't echo-pipe into another command if avoidable
-7. Indent with tabs
-8. Try using shell builtins over external commands
-9. Use [shellcheck](https://github.com/koalaman/shellcheck) before pushing (recommended)
-10. Test using the dash shell, since it's strictly posix compliant
+### Coding Guidelines
+13. Use `&&` and `||` if there's only one condition, one branch and one statement. 
+Use `if` and `case` every other time
+14. Try using built-in output functions (`err`, `inf`, `prompt`, `menu_line_*` and `die`) instead of `echo` and `printf`
+15. Use `printf '%s\n' "string"` instead of `echo "string"`
+16. Don't `printf`-pipe into another command if avoidable
+17. Try using shell builtins over external commands
+18. Use [shellcheck](https://github.com/koalaman/shellcheck) before pushing (recommended)
+19. Test using the dash shell, since it's strictly posix compliant
+
+
+### Discarded ideas and features:
+1. Option to edit the history file
+2. Auto-default to dub
+3. Resume playback
+4. Different provider(s)
+5. Makefile for installation
+6. iina support (until iina+ is out)
+
+PRs and issues relating to these will be closed without further notice. 
+If you want to know why we decided against these features, check closed PRs and issues.
 
 ## Advice for maintainers
 
