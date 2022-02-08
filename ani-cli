@@ -174,10 +174,10 @@ decrypt_link() {
 	iv='34323036393133333738303038313335'
 
 	#get the id from the url
-	video_id=$(echo "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	video_id=$(printf '%s\n' "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 
 	#construct ajax parameters
-	ajax=$(echo "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	ajax=$(printf '%s\n' "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
@@ -189,7 +189,6 @@ get_video_quality() {
 	# chooses the link for the set quality
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
-	printf '%s' "$video_links" > a
 	case $quality in
 		best)
 			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
@@ -345,7 +344,7 @@ episode_selection () {
 		whether_half="$(printf '%s\n' "$ep_choice_start" | cut -c1-1)"
 		if [ "$whether_half" = "h" ];then
 			half_ep=1
-			ep_choice_start="$(echo "$ep_choice_start" | cut -c2-)"
+			ep_choice_start="$(printf '%s' "$ep_choice_start" | cut -c2-)"
 		fi
 	else
 		# In case the anime contains only a single episode
@@ -476,16 +475,16 @@ open_episode () {
 ############
 
 # to clear the colors when exited using SIGINT
-trap 'printf "\033[0m";[ -n "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
+trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
 # default options
-player_fn="mpv" #video player needs to be able to play urls
+player_fn=mpv #video player needs to be able to play urls
 is_download=0
 half_ep=0
 quality=best
 scrape=query
-download_dir="."
-choice=""
+download_dir=.
+choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -522,7 +521,7 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			scrape=history
 			;;
 		v)
-			player_fn="vlc"
+			player_fn=vlc
 			;;
 		U)
 			update_script
@@ -549,6 +548,7 @@ if [ "$is_download" -eq 0 ]; then
 else
 	dep_ch "aria2c"
 fi
+
 # gogoanime likes to change domains but keep the olds as redirects
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 case $scrape in
