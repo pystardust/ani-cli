@@ -157,7 +157,6 @@ get_dpage_link() {
 	# get the download page url
 	anime_id=$1
 	ep_no=$2
-
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix
 	anime_page=$(curl -s "$base_url/$anime_id-$ep_no")
 	printf '%s' "$anime_page" | grep -q '404' && anime_page=$(curl -s "$base_url/$anime_id-episode-$ep_no")
@@ -192,11 +191,9 @@ get_video_quality() {
 		best)
 			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
 			;;
-
 		worst)
 			video_link=$(printf '%s' "$video_links" | head -n 1)
 			;;
-
 		*)
 			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p" | head -n 1)
 			if [ -z "$video_link" ]; then
@@ -242,7 +239,6 @@ menu_line_odd() {
 
 menu_line_alternate() {
 	menu_line_parity=${menu_line_parity:-0}
-
 	if [ "$menu_line_parity" -eq 0 ]; then
 		menu_line_odd "$1" "$2"
 		menu_line_parity=1
@@ -307,7 +303,6 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-
 	[ -z "$selection_id" ] && die "Invalid number entered"
 	search_ep_result="$(search_eps "$selection_id")"
 	read -r last_ep_number <<-EOF
@@ -348,7 +343,6 @@ episode_selection () {
 		# In case the anime contains only a single episode
 		ep_choice_start=1
 	fi
-
 	if [ -z "$ep_choice_end" ]; then
 		auto_play=0
 	else
@@ -408,7 +402,6 @@ open_episode () {
 		temp_ep=$episode
 		episode=$episode"-5"
 	fi
-
 	inf "Getting data for episode $episode"
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
@@ -423,11 +416,8 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
-
 		kill "$PID" >/dev/null 2>&1
-
 		[ -z "$video_url" ] && die "Video URL not found"
-
 		case $player_fn in
 			vlc)
 				if [ "$auto_play" -eq 0 ]; then
@@ -449,7 +439,6 @@ open_episode () {
 				;;
 		esac
 		PID=$!
-
 		mv "${logfile}.new" "$logfile"
 	else
 		mkdir -p "$download_dir"
