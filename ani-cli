@@ -172,10 +172,10 @@ decrypt_link() {
 	iv='34323036393133333738303038313335'
 
 	#get the id from the url
-	video_id=$(print '%s' "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
+	video_id=$(printf '%s' "$1" | cut -d\? -f2 | cut -d\& -f1 | sed 's/id=//g')
 
 	#construct ajax parameters
-	ajax=$(prinf '%s' "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	ajax=$(printf '%s' "$video_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 
 	#send the request to the ajax url
 	curl -s -H 'x-requested-with:XMLHttpRequest' "$ajax_url" -d "id=$ajax" -d "time=69420691337800813569" |
@@ -343,7 +343,7 @@ episode_selection () {
 		whether_half="$(printf '%s' "$ep_choice_start" | cut -c1-1)"
 		if [ "$whether_half" = "h" ];then
 			half_ep=1
-			ep_choice_start="$(print '%s' "$ep_choice_start" | cut -c2-)"
+			ep_choice_start="$(printf '%s' "$ep_choice_start" | cut -c2-)"
 		fi
 	else
 		# In case the anime contains only a single episode
