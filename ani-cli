@@ -330,6 +330,7 @@ episode_selection () {
 					ep_choice_start="$REPLY"
 					ep_choice_end="$REPLY2"
 				fi
+				[ "$REPLY" -eq "$REPLY" ] 2> /dev/null || unset REPLY
 			done
 		else
 			ep_choice_start="$ep_choice_to_start" && unset ep_choice_to_start
