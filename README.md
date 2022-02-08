@@ -69,19 +69,20 @@ brew install ani-cli
 ```
 
 ### Windows
-*Note that the installation must be done inside powershell, not in cmd*
-
 Install scoop [(Guide)](https://scoop.sh/)
+
+*Note that the installation instruction below must be done inside 
+Powershell as **administrator**, not in Command Prompt*
 
 ```
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
-scoop install ani-cli
+scoop install ani-cli -g
 ```
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
-*You can run ani-cli from any Windows console, e.g Windows Terminal,Command Prompt,Powershell*
+*You can run ani-cli in Git Bash(recommended) or from any Windows console, e.g Windows Terminal,Command Prompt,Powershell*
 
 ### Android
 
