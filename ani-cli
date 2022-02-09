@@ -120,17 +120,13 @@ search_eps () {
 search_for_unwatched () {
 	# compares history with gogoanime, only shows unfinished anime
 	search_results="$*"
-	unwatched_anime=
-
 	while read -r anime_id; do
 		current_ep_number=$(search_eps "$anime_id")
 		history_ep_number=$(sed -n -E "s/${anime_id}\t//p" "$logfile")
-		# breaks down with \n because of display functions
 		[ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
 	done <<-EOF
 	$search_results
 	EOF
-	[ -z "$unwatched_anime" ] && die "No unwatched episodes"
 }
 
 search_another_anime () {
@@ -145,6 +141,7 @@ search_history () {
 	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
+	[ -z "$search_reasults" ] && die "No unwatched episodes"
 	anime_selection "$search_results"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 }
