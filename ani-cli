@@ -183,7 +183,6 @@ get_video_quality() {
 	# chooses the link for the set quality
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
-	printf '%s' "$video_links" > a
 	case $quality in
 		best)
 			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
