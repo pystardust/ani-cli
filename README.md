@@ -5,6 +5,7 @@
 <img src="https://img.shields.io/badge/os-mac-brightgreen"></a>
 <img src="https://img.shields.io/badge/os-windows-brightgreen"></a>
 <img src="https://img.shields.io/badge/os-android-brightgreen"></a>
+<a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg"></a>
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <br>
@@ -70,7 +71,7 @@ brew install ani-cli
 
 ### Windows
 
-*Note that the installation instruction below must be done inside 
+*Note that the installation instruction below must be done inside
 Powershell as **administrator**, not in Command Prompt*
 
 Install scoop [(Guide)](https://scoop.sh/)
