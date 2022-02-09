@@ -289,9 +289,14 @@ anime_selection () {
 		menu_line_strong "exit" "q"
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
+        while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ] ;
+        do
+            [ "$choice" = "q " ] && die
+            err "Invalid choice entered"
+		    prompt "Enter choice"
+		    choice="$REPLY $REPLY2"
+    done
 	fi
-	# Check if input is a number
-	is_number "$choice"
 	# Select respective anime_id
 	count=1
 	while read -r anime_id; do
@@ -303,7 +308,7 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-	[ -z "$selection_id" ] && die "Invalid number entered"
+	# [ -z "$selection_id" ] && die "Invalid number entered"
 	search_ep_result=$(search_eps "$selection_id")
 	read -r last_ep_number <<-EOF
 	$search_ep_result
