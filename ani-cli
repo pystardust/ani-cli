@@ -289,13 +289,13 @@ anime_selection () {
 		menu_line_strong "exit" "q"
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
-        while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ] ;
-        do
-            [ "$choice" = "q " ] && die
-            err "Invalid choice entered"
-		    prompt "Enter choice"
-		    choice="$REPLY $REPLY2"
-    done
+	while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ] ;
+	do
+        	[ "$choice" = "q " ] && die
+        	err "Invalid choice entered"
+		prompt "Enter choice"
+		choice="$REPLY $REPLY2"
+    	done
 	fi
 	# Select respective anime_id
 	count=1
