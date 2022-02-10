@@ -286,7 +286,7 @@ anime_selection () {
 		prompt "Enter choice"
 		choice="$REPLY $REPLY2"
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
-			[ "$choice" = "q " ] && die
+			[ "$choice" = "q " ] && exit 0
 			err "Invalid choice entered"
 			prompt "Enter choice"
 			choice="$REPLY $REPLY2"
