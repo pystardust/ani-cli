@@ -624,7 +624,7 @@ if [ -z "$select_first" ]; then
 	append_history
 	open_selection
 else
-	wait "$!"
+	wait $!
 	exit
 fi
 done
