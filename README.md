@@ -8,6 +8,7 @@
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <br>
+<a href="https://github.com/ura43"><img src="https://img.shields.io/badge/maintainer-ura43-blue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
 <a href="https://github.com/RaynardGerraldo"><img src="https://img.shields.io/badge/maintainer-RayGL-blue"></a>
 <br>
