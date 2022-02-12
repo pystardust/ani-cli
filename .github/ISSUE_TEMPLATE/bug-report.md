@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Ran into some unexpected behaviour?
+about: Ran into some unexpected behaviour? NOT FOR FEATURE REQUESTS
 title: ''
 labels: 'priority 2: medium, type: bug'
 assignees: ''
