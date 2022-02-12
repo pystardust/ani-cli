@@ -48,7 +48,7 @@ Also consider ani-cli-git
 ```sh
 yay -S ani-cli
 ```
-### Linux
+### Other Linux
 
 Install dependencies [(See below)](#Dependencies)
 
