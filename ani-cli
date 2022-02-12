@@ -390,7 +390,8 @@ open_episode () {
 			err "Episode out of range"
 		fi
 		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
-		episode="$REPLY $REPLY2"
+		episode="$REPLY"
+		ep_choice_start=$episode
 	done
 	#processing half episodes
 	if [ "$half_ep" -eq 1 ]; then
