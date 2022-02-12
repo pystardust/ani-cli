@@ -382,7 +382,7 @@ open_episode () {
 	# cool way of clearing screen
 	tput clear
 	# checking if episode is in range
-	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
+	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ] || [ "$episode" -lt "$first_ep_number" ]; do
 	is_number "$ep_choice_start"
 		if [ "$last_ep_number" -eq 0 ]; then
 			die "Episodes not released yet!"
