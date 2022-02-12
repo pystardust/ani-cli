@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.7.2"
+VERSION="1.7.6"
 
 #######################
 # AUXILIARY FUNCTIONS #
