@@ -61,7 +61,7 @@ Our parsing was broken in the past and it will break in the future
 To spot breakage early, test with the following anime:
 
 - The safe bet: `One Piece`
-- Episode 5.5: `arifureta shokugyou de sekai saikyou`
+- ~~Episode 5.5: `arifureta shokugyou de sekai saikyou`~~ (#523)
 - Unicode: `Saenai Heroine no Sodatekata ♭`
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 - Old anime: `Paprika`
