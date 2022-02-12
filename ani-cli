@@ -470,8 +470,10 @@ choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# create history file if none found
+# create history file and history dir if none found
+[ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
 while getopts 'vq:dp:chDUVa:' OPT; do
