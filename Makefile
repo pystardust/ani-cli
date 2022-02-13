@@ -2,12 +2,12 @@
 PREFIX ?= /usr/local
 
 all:
-		@echo RUN \'sudo make install\' to install ani-cli
+		@echo plz type \'sudo make install\' to install ani-cli
 
 install:
 		@install -Dm755 ani-cli $(DESTDIR)$(PREFIX)/bin/ani-cli
-		@echo "ani-cli installed"
+		@echo "successfully installed ani-cli"
 
 uninstall:
 		@rm -f $(DESTDIR)$(PREFIX)/bin/ani-cli
-		@echo "ani-cli removed"
+		@echo "successfully removed ani-cli"
