@@ -48,7 +48,7 @@ Install dependencies [(See below)](#Dependencies)
 git clone https://github.com/pystardust/ani-cli.git &&
 cd ani-cli && sudo make install
 ```
-will move ani-cli to /usr/local/bin
+will copy ani-cli to /usr/local/bin
 
 *Note that mpv installed through flatpak is not compatible*
 
@@ -90,7 +90,7 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 
 ## Uninstall
 
-* Linux: ```sudo make uninstall in ani-cli dir``
+* Linux: ```"sudo make uninstall" in ani-cli folder will remove the script from /usr/loca/bin``
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
