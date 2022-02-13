@@ -45,8 +45,10 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-cd ani-cli && sudo make install will move ani-cli to /usr/local/bin
+git clone https://github.com/pystardust/ani-cli.git &&
+cd ani-cli && sudo make install
 ```
+will move ani-cli to /usr/local/bin
 
 *Note that mpv installed through flatpak is not compatible*
 
@@ -88,7 +90,7 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 
 ## Uninstall
 
-* Linux: Just remove the thing from path
+* Linux: ```sudo make uninstall``
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
