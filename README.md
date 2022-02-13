@@ -45,8 +45,7 @@ A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-git clone https://github.com/pystardust/ani-cli && cd ani-cli
-sudo cp ani-cli /usr/local/bin/ani-cli
+cd ani-cli && sudo make install will move ani-cli to /usr/local/bin
 ```
 
 *Note that mpv installed through flatpak is not compatible*
