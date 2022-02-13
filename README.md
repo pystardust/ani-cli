@@ -90,7 +90,7 @@ echo 'termux-open "$2"' > $PREFIX/bin/mpv
 
 ## Uninstall
 
-* Linux: ```"sudo make uninstall" in ani-cli folder will remove the script from /usr/loca/bin``
+* Linux: ```"sudo make uninstall" in ani-cli folder will remove the script from /usr/loca/bin```
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
