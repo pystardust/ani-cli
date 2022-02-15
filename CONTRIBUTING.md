@@ -31,14 +31,9 @@ Use `if` and `case` every other time
 
 
 ### Discarded ideas and features:
-1. Option to edit the history file
-2. Auto-default to dub
-3. Resume playback
-4. Different provider(s)
-5. Makefile for installation
-6. iina support (until iina+ is out)
+see meta-issue #523
 
-PRs and issues relating to these will be closed without further notice. 
+PRs and issues relating to these will be closed with the wontfix label.
 If you want to know why we decided against these features, check closed PRs and issues.
 
 ## Advice for maintainers
@@ -61,7 +56,7 @@ Our parsing was broken in the past and it will break in the future
 To spot breakage early, test with the following anime:
 
 - The safe bet: `One Piece`
-- Episode 5.5: `arifureta shokugyou de sekai saikyou`
+- ~~Episode 5.5: `arifureta shokugyou de sekai saikyou`~~ (#523)
 - Unicode: `Saenai Heroine no Sodatekata ♭`
 - Unreleased: `boku-no-hero-academia-the-movie-3`
 - Old anime: `Paprika`
