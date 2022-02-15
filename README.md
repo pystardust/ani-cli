@@ -92,7 +92,10 @@ Install termux [(Guide)](https://termux.com/)
 pkg install git make termux-tools ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
 cp ani-cli $PREFIX/bin/ani-cli
-echo 'termux-open "$2"' > $PREFIX/bin/mpv
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$2" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
+chmod +x $PREFIX/bin/mpv
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$2" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity' > $PREFIX/bin/vlc
+chmod +x $PREFIX/bin/vlc
 ```
 
 ## Uninstall
