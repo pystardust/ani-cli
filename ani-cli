@@ -420,7 +420,6 @@ open_episode () {
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
-					sleep 2
 				fi
 				;;
 			*)
@@ -429,7 +428,6 @@ open_episode () {
 				else
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="ani-cli: $anime_id ep $episode" > /dev/null 2>&1
-					sleep 2
 				fi
 				;;
 		esac
