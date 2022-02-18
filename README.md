@@ -89,7 +89,7 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-pkg install git make termux-tools ncurses-utils openssl-tool -y
+pkg install git termux-tools ncurses-utils openssl-tool -y
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
 cp ani-cli $PREFIX/bin/ani-cli
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$2" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
