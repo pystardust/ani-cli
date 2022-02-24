@@ -67,6 +67,7 @@ Install homebrew [(Guide)](https://brew.sh/)
 brew tap iamchokerman/ani-cli
 brew install ani-cli
 ```
+*If you are upgrading from the old manual install process, you may have to remove the old ani-cli by running `sudo rm /usr/local/bin/ani-cli`*
 
 ### Windows
 
