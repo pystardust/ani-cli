@@ -413,11 +413,9 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
-
-        if [ "$PID" != "" ] && [ "$auto_play" -eq 0 ]; then
-		    kill "$PID" >/dev/null 2>&1
-        fi
-
+		if [ -n "$PID" ] && [ "$auto_play" -eq 0 ]; then
+			kill "$PID" >/dev/null 2>&1
+		fi
 		[ -z "$video_url" ] && die "Video URL not found"
 		case "$player_fn" in
 			vlc)
