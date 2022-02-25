@@ -20,6 +20,7 @@
 # Version number
 VERSION="1.8.1"
 
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -32,7 +33,7 @@ help_text () {
 	Usage:
 	  $0 [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
 	  $0 [-v] [-q <quality>] -c
-	  $0 -h | -D | -U | -V
+	  $0 -h | -D | -U | -V | -l
 
 	Options:
 	  -c continue watching anime from history
@@ -41,6 +42,7 @@ help_text () {
 	  -d download episode
 	  -p download episode to specified directory
 	  -q set video quality (best|worst|360|480|720|1080)
+	  -l show history and select
 	  -v use VLC as the media player
 	  -D delete history
 	  -U fetch update from github
@@ -143,6 +145,17 @@ search_history () {
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
 	anime_selection "$search_results"
+	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+}
+
+list_history() {
+	tput clear
+	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	[ -z "$search_results" ] && die "History is empty"
+	anime_selection "$search_results"	
+	current_ep_number=$(search_eps "$selection_id")
+	history_ep_number=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+	[ "$history_ep_number" -gt "$current_ep_number"  ] && die "No unwatched episodes"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 }
 
@@ -476,7 +489,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
-while getopts 'vq:dp:chDUVa:' OPT; do
+while getopts 'vq:dp:chDUVa:l' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -497,6 +510,9 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			is_download=1
 			download_dir=$OPTARG
 			select_first=1
+			;;
+		l)
+			scrape=list_history
 			;;
 		q)
 			quality=$OPTARG
@@ -550,6 +566,13 @@ case $scrape in
 		;;
 	history)
 		search_history
+		[ "$REPLY" = "q" ] && exit 0
+		first_ep_number=0
+		result=$(get_dpage_link "$anime_id" "$first_ep_number")
+		[ -z "$result" ] && first_ep_number=1
+		;;
+	list_history)
+		list_history	
 		[ "$REPLY" = "q" ] && exit 0
 		first_ep_number=0
 		result=$(get_dpage_link "$anime_id" "$first_ep_number")
