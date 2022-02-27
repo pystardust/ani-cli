@@ -413,7 +413,7 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
-		[ -n "$PID" ] && [ "$PID" -ne 0 ] && kill "$PID" >/dev/null 2>&1
+		[ "$PID" -ne 0 ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
 		case "$player_fn" in
 			vlc)
@@ -463,6 +463,7 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 half_ep=0
+PID=0
 quality=best
 scrape=query
 download_dir="."
