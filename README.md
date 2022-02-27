@@ -83,7 +83,7 @@ scoop install ani-cli -g
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
-*You can run ani-cli in Git Bash(recommended) or from any Windows console, e.g Windows Terminal,Command Prompt,Powershell*
+*Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
 
 ### Android
 
