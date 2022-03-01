@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.8.1"
+VERSION="1.8.2"
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -591,7 +591,7 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=
 			;;
 		b)
-			prompt "Select quality"
+			prompt "Select quality. Options (best|worst|360|480|720|1080)"
 			quality="$REPLY"
 			;;
 		p)
