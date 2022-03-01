@@ -20,6 +20,7 @@
 # Version number
 VERSION="1.8.3"
 
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -592,7 +593,7 @@ if [ -z "$select_first" ]; then
 			ep_choice_end=
 			;;
 		b)
-			prompt "Select quality"
+			prompt "Select quality. Options (best|worst|360|480|720|1080)"
 			quality="$REPLY"
 			;;
 		p)
