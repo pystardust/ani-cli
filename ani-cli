@@ -18,7 +18,8 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.8.2"
+VERSION="1.8.3"
+
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -286,12 +287,12 @@ anime_selection () {
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
 		menu_line_strong "exit" "q"
 		prompt "Enter choice"
-		choice="$REPLY $REPLY2"
+		choice="$REPLY"
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
-			[ "$choice" = "q " ] && exit 0
+			[ "$choice" = "q" ] && exit 0
 			err "Invalid choice entered"
 			prompt "Enter choice"
-			choice="$REPLY $REPLY2"
+			choice="$REPLY"
 		done
 	fi
 	# Select respective anime_id
@@ -413,7 +414,7 @@ open_episode () {
 		sed -E "
 			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
 		" "$logfile" > "${logfile}.new"
-		kill "$PID" >/dev/null 2>&1
+		[ "$PID" -ne 0 ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
 		case "$player_fn" in
 			vlc)
@@ -463,6 +464,7 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 half_ep=0
+PID=0
 quality=best
 scrape=query
 download_dir="."
