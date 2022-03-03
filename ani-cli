@@ -170,17 +170,17 @@ decrypt_link() {
 	pad_data="\x08\x0e\x03\x08\t\x03\x04\t"
 	ajax_url="https://gogoplay4.com/encrypt-ajax.php"
 	crypto_data=$(curl -s "$1" | sed -nE 's/.*data-value="([^"]*)".*/\1/p')
-	id=$(printf '%s' "$crypto_data" | base64 -d | openssl enc -d -aes256 -K $secret_key -iv $iv | cut -d '&' -f1)
+	id=$(printf '%s' "$crypto_data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | cut -d '&' -f1)
 	new_id=${id}${pad_data}
 
 	#encrypt and create the final ajax
-	ajax=$(echo -n -e "$new_id" | openssl enc -aes256 -K $secret_key -iv $iv -a)
+	ajax=$(echo -n -e "$new_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 
 	#send request and get the data(most lamest way)
-	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d id=$ajax | cut -d\" -f4 | tr -d '\\')
+	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | cut -d\" -f4 | tr -d '\\')
 	
 	#decrypt the data to get final links
-	 printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K $secret_key -iv $iv | sed -e 's/\].*/\]/' -e 's/\\//g' |
+	 printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
 		grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*'
 }
 
