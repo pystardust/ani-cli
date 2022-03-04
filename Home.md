@@ -8,7 +8,7 @@ ani-cli is a cli tool that scrapes Gogoanime and play's the anime locally on MPV
 - [History](#History)
 - [Tweaking](#Tweaking)
 - [Issues](#Reporting-an-issue)
-- [contribute](#Developer-contribution)
+- [Contribute](#Developer-contribution)
 - [Dependencies](#Dependencies)
 - [Install](#Installation)
   - [Arch](#Arch)
