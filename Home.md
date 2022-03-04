@@ -39,7 +39,7 @@ ani-cli is a cli tool that scrapes Gogoanime and play's the anime locally on MPV
 ## History
 The list of anime you have watched saves in `XDG_CACHE_HOME` or `$HOME/.cache/ani-hist`\
 The list is saved in the format "anime episode" for example bleach 200 ; each episode is on a new line.\
-To add anime to the list eather just watch or append to the list manually with a text editor.
+To add anime to the list either just watch or append to the list manually with a text editor.
 
 ## Tweaking
 To set the defaults of the application there are some variables That can be changed under the `# default options` comment in `ani-cli` script.
