@@ -37,7 +37,7 @@ ani-cli is a cli tool that scrapes Gogoanime and play's the anime locally on MPV
 `ani-cli -a 300 -v -q 720 bleach` starts episode 300 of bleach in vlc at 720p.
 
 ## History
-The list of anime you have watched saves in `XDG_CACHE_HOME` or `$HOME/.cache/ani-hist`\
+The list of anime you have watched saves in `$XDG_CACHE_HOME/ani-hsts` or `$HOME/.cache/ani-hsts`\
 The list is saved in the format "anime episode" for example bleach 200 ; each episode is on a new line.\
 To add anime to the list either just watch or append to the list manually with a text editor.
 
