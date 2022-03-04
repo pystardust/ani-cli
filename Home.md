@@ -44,7 +44,7 @@ using a text editor, make sure to use proper tabs (2 spaces not 4), otherwise se
 
 ## Tweaking
 To set the defaults of the application there are some variables That can be changed under the `# default options` comment in `ani-cli` script.
-1. player_fn this can be changed to your media player of choice (VLC, or MPV (default)) ; your media player of choice needs have a referrer title option, as the argument --referrer=https://gogoanime.film is necessary for functioning (else the video simply won't play)
+1. player_fn this can be changed to your media player of choice (VLC, or MPV (default)) ; your media player of choice needs have a referrer title option, as the argument --referrer="https://gogoanime.film" is necessary for functioning (else the video simply won't play)
 2. quality this can be changed to any of these (best(default)|worst|360|480|720|1080)
 3. download_dir can be changed to a custom directory of choice, by default it will be the working directory.
 
