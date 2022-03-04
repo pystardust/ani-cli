@@ -6,7 +6,7 @@ Ani-cli is a cli tool that scrapes Gogoanime and play's the anime locally on MPV
 - [Flags](#Flags)
 - [Examples](#Examples)
 - [History](#History)
-- [Hacking](#Hacking)
+- [Tweaking](#Tweaking)
 - [Issues](#Reporting-an-issue)
 - [contribute](#Developer-contribution)
 - [Dependencies](#Dependencies)
@@ -38,21 +38,21 @@ Ani-cli is a cli tool that scrapes Gogoanime and play's the anime locally on MPV
 
 ## History
 The list of anime you have watched saves in `XDG_CACHE_HOME` or `$HOME/.cache/ani-hist`\
-the list is saved like in the forman "anime episode" for example `bleach 200` each episode is on a new line.\
-to add anime to the list eather just watch or append to the list manually with a text editor.
+The list is saved in the format "anime episode" for example bleach 200 ; each episode is on a new line.\
+To add anime to the list eather just watch or append to the list manually with a text editor.
 
-## Hacking
+## Tweaking
 To set the defaults of the application there are some variables That can be changed under the `# default options` comment in `ani-cli` script.
-1. player_fn this can be changed to your media player of choice (VLC, or mpv(Defalt))
+1. player_fn this can be changed to your media player of choice (VLC, or MPV (default)) ; your media player of choice needs have a referrer title option, as the argument --referrer=https://gogoanime.film is necessary for functioning (else the video simply won't play)
 2. quality this can be changed to any of these (best(default)|worst|360|480|720|1080)
-3. download_dir can be changed to a custom directory of choice default is working directory.
+3. download_dir can be changed to a custom directory of choice, by default it will be the working directory.
 
 
 ## Reporting an issue
 1. Look at issues to see if the problem is not in discussion.
 2. Follow the provided template.
 3. Do not give bad one line information like "The program is broken".
-4. Be respectfull to the people trying to help you.
+4. Be respectful to the people trying to help you.
 5. If you have a general question don't open an issue ask on the [Discord](https://discord.gg/aqu7GpqVmR)
 
 ## Developer contribution 
