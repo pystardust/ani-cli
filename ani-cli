@@ -158,7 +158,7 @@ get_dpage_link() {
 	# credits to fork: https://github.com/Dink4n/ani-cli for the fix 
 	for params in "-episode-$ep_no" "-$ep_no" "-episode-$ep_no-1" "-camrip-episode-$ep_no"; do
 		anime_page=$(curl -s "$base_url/$anime_id$params")
-		printf '%s' "$anime_page" | grep -q '404' || break
+		printf '%s' "$anime_page" | grep -q '<h1 class="entry-title">404</h1>' || break
 	done
 	printf '%s' "$anime_page" |
 		sed -n -E 's/.*class="active" rel="1" data-video="([^"]*)".*/\1/p' | sed 's/^/https:/g'
