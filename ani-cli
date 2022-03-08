@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.9.1"
+VERSION="2.0.0"
 
 
 #######################
@@ -102,27 +102,15 @@ dep_ch () {
 search_anime () {
 	# get anime name along with its id for search term
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -s "$base_url//search.html" -G -d "keyword=$search" |
-		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
-}
-
-search_eps () {
-	# get available episodes for anime_id
-	anime_id="$1"
-	curl -s "$base_url/category/$anime_id" |
-	sed -n -E '
-		/^[[:space:]]*<a href="#" class="active" ep_start/{
-		s/.* '\''([0-9]*)'\'' ep_end = '\''([0-9]*)'\''.*/\2/p
-		q
-		}
-		'
+	curl -s "$base_url/search.html" -G -d "keyword=$search" |
+	    sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
 search_for_unwatched () {
 	# compares history with gogoanime, only shows unfinished anime
 	search_results="$*"
 	while read -r anime_id; do
-		current_ep_number=$(search_eps "$anime_id")
+		current_ep_number=$(printf "%s" "$anime_id" | sed 's/.*episode-//')
 		history_ep_number=$(sed -n -E "s/${anime_id}\t//p" "$logfile")
 		[ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
 	done <<-EOF
@@ -157,19 +145,16 @@ get_dpage_link() {
 	# get the download page url
 	anime_id="$1"
 	ep_no="$2"
-	# credits to fork: https://github.com/Dink4n/ani-cli for the fix 
-	for params in "-episode-$ep_no" "-$ep_no" "-episode-$ep_no-1" "-camrip-episode-$ep_no"; do
-		anime_page=$(curl -s "$base_url/$anime_id$params")
-		printf '%s' "$anime_page" | grep -q '<h1 class="entry-title">404</h1>' || break
-	done
-	printf '%s' "$anime_page" |
-		sed -n -E 's/.*class="active" rel="1" data-video="([^"]*)".*/\1/p' | sed 's/^/https:/g'
+
+	curl -s "https://gogoplay.io/videos/$anime_id-episode-$ep_no" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
+	    sed 's/^/https:/g'
+
 }
 
 decrypt_link() {
 	secret_key='3235373136353338353232393338333936313634363632323738383333323838'
 	iv='31323835363732393835323338333933'
-	ajax_url="https://gogoplay4.com/encrypt-ajax.php"
+	ajax_url="$base_url/encrypt-ajax.php"
 	crypto_data=$(curl -s "$1" | sed -nE 's/.*data-value="([^"]*)".*/\1/p')
 	id=$(printf '%s' "$crypto_data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | cut -d '&' -f1)
 
@@ -308,10 +293,11 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-	search_ep_result=$(search_eps "$selection_id")
+	search_ep_result=$(printf "%s" "$selection_id" | sed 's/.*episode-//')
 	read -r last_ep_number <<-EOF
 	$search_ep_result
 	EOF
+	selection_id=$(printf "%s" "$selection_id" | sed 's/-episode.*//')
 }
 
 episode_selection () {
@@ -537,7 +523,7 @@ else
 	dep_ch "aria2c"
 fi
 # gogoanime likes to change domains but keep the olds as redirects
-base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+base_url="https://gogoplay4.com"
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
