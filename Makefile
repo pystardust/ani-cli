@@ -1,2 +1,2 @@
-arch:
-	sudo cp ani-cli /usr/bin/ani-cli
+linux:
+	sudo cp ani-cli /usr/local/bin/ani-cli
