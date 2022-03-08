@@ -103,7 +103,7 @@ search_anime () {
 	# get anime name along with its id for search term
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	curl -s "$base_url/search.html" -G -d "keyword=$search" |
-	    sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
+		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
 search_for_unwatched () {
@@ -131,8 +131,8 @@ search_history () {
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
-  one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
-  [ "$one_hist" = 1 ] && select_first=1
+	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
+	[ "$one_hist" = 1 ] && select_first=1
 	anime_selection "$search_results"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 }
@@ -147,7 +147,7 @@ get_dpage_link() {
 	ep_no="$2"
 
 	curl -s "https://gogoplay.io/videos/$anime_id-episode-$ep_no" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
-	    sed 's/^/https:/g'
+		sed 's/^/https:/g'
 
 }
 
