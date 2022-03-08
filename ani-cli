@@ -143,8 +143,8 @@ search_history () {
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
-  [ "$(printf '%s\n' "$search_results" | wc -l)" = 1 ] && select_first=1
-  anime_selection "$search_results"
+	[ "$(printf '%s\n' "$search_results" | grep -e "$" -c)" = 1 ] && select_first=1
+	anime_selection "$search_results"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 }
 
