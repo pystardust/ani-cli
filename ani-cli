@@ -144,7 +144,7 @@ get_dpage_link() {
 	anime_id="$1"
 	ep_no="$2"
 
-	curl -s "https://gogoplay.io/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
+	curl -s "$base_url/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
 		sed 's/^/https:/g'
 
 }
@@ -381,7 +381,7 @@ open_episode () { # todo move input checking
 	anime_id="$1"
 	episode="$2"
 
-	#tput clear
+	tput clear
 	# checking if episode is in range
 	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
 	is_number "$ep_choice_start"
@@ -417,7 +417,7 @@ open_episode () { # todo move input checking
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
-					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+					inf "Currently playing $selection_id " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
