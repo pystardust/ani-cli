@@ -106,12 +106,17 @@ search_anime () {
 		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
+check_episode () {
+	tmp=$(printf "%s" "$1" | sed 's/[0-9]*.$//')
+	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${tmp}(.*)\">_\1_p" | head -n 1
+}
+
 search_for_unwatched () { # todo: merge into search_history
 	search_results="$*"
 	while read -r anime_id; do
-		current_ep_number=$(search_anime "$anime_id" | head -1 | sed 's/.*episode-//')
-		history_ep_number=$(sed -n -E "s/${anime_id}\t//p" "$logfile")
-		[ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
+		current_ep_number=$(check_episode "$anime_id")
+		history_ep_number=$(printf "%s" "$anime_id" | grep -Po '\K\d+' | tail -n 1)
+		[ ! -z "$current_ep_number" ] && [ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
 	done <<-EOF
 	$search_results
 	EOF
@@ -120,14 +125,14 @@ search_for_unwatched () { # todo: merge into search_history
 # compares history with gogoplay, only shows unfinished anime
 search_history () {
 	tput clear
-	search_results=$(sed -n -E 's/\t[0-9]*//p' "$logfile")
+	search_results=$(cat "$logfile")
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
 	[ "$one_hist" = 1 ] && select_first=1
 	anime_selection "$search_results"
-	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+	ep_choice_start=$(sed -n -E "s/${selection_id}(.*)/\1/p" "$logfile")
 }
 
 ##################
@@ -139,7 +144,7 @@ get_dpage_link() {
 	anime_id="$1"
 	ep_no="$2"
 
-	curl -s "https://gogoplay.io/videos/$anime_id-episode-$ep_no" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
+	curl -s "https://gogoplay.io/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
 		sed 's/^/https:/g'
 
 }
@@ -289,18 +294,24 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-	search_ep_result=$(printf "%s" "$selection_id" | sed 's/.*episode-//')
+
+	case $scrape in
+	    query)
+		select_ep_result=$(printf "%s" "$selection_id" | grep -Po '\K\d+' | tail -1);;
+	    history)
+		select_ep_result=$(check_episode "$selection_id");;
+	esac
 	read -r last_ep_number <<-EOF
-	$search_ep_result
+	$select_ep_result
 	EOF
-	selection_id=$(printf "%s" "$selection_id" | sed 's/-episode.*//')
+	selection_id=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
 episode_selection () {
 	# using get_dpage_link to get confirmation from episode 0 if it exists,else first_ep_number becomes "1"
 	first_ep_number=0
-	result=$(get_dpage_link "$anime_id" "$first_ep_number")
+	result=$(get_dpage_link "$selection_id" "$first_ep_number")
 	[ -z "$result" ] && first_ep_number=1
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
 		inf "Range of episodes can be specified: start_number end_number"
@@ -353,7 +364,7 @@ check_input() {
 ##################
 
 append_history () { # todo: unite this with the temporary histfile writing
-	grep -q -w "${selection_id}" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
+	grep -q "${selection_id}" "$logfile" || printf "%s%s\n" "$selection_id" $((episode+1)) >> "$logfile"
 }
 
 # opens selected episodes one-by-one
@@ -368,7 +379,7 @@ open_episode () { # todo move input checking
 	anime_id="$1"
 	episode="$2"
 
-	tput clear
+	#tput clear
 	# checking if episode is in range
 	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
 	is_number "$ep_choice_start"
@@ -395,7 +406,7 @@ open_episode () { # todo move input checking
 	if [ "$is_download" -eq 0 ]; then
 		# write anime and episode number and save to temporary history
 		sed -E "
-			s/^${selection_id}\t[0-9]+/${selection_id}\t$((episode+1))/
+			s/^${selection_id}[0-9]*/${selection_id}$((episode+1))/
 		" "$logfile" > "${logfile}.new"
 		[ "$PID" -ne 0 ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
@@ -534,7 +545,7 @@ case $scrape in
 		search_history
 		[ "$REPLY" = "q" ] && exit 0
 		first_ep_number=0
-		result=$(get_dpage_link "$anime_id" "$first_ep_number")
+		result=$(get_dpage_link "$selection_id" "$first_ep_number")
 		[ -z "$result" ] && first_ep_number=1
 		;;
 	*)
