@@ -162,8 +162,9 @@ decrypt_link() {
 	else
 		# xor the last character of id with 0xA if length(id) is 8, make it the new last character
 		lastchar=$(printf %d "'$(printf %s "$id" | tail -c 1)")
-		x=$(printf "\\$(printf %o $((lastchar ^ 10 )))")
-		new_id=$(printf "%s" "$id" | sed "s/.$/$x/")
+		xor=$((lastchar ^ 10 ))
+		octal=$(printf "\\$(printf %o "$xor")")
+		new_id=$(printf "%s" "$id" | sed "s/.$/$octal/")
 	fi
 	# encrypt new_id using iv and secret_key
 	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$new_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
@@ -450,7 +451,7 @@ open_episode () { # todo move input checking
 		inf "Downloading episode $episode ..."
 		episode=$(printf "%03d" "$episode")
 		{
-			if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ; then
+			if aria2c -octal 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
