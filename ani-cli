@@ -161,7 +161,8 @@ decrypt_link() {
 		new_id=$(printf "%s$pad" "$id")
 	else
 		# xor the last character of id with 0xA if length(id) is 8, make it the new last character
-		x=$(printf "\\$(printf %o $(($(printf %d "'$(printf %s "$id" | tail -c 1)") ^ 10 )))")
+		lastchar=$(printf %d "'$(printf %s "$id" | tail -c 1)")
+		x=$(printf "\\$(printf %o $((lastchar ^ 10 )))")
 		new_id=$(printf "%s" "$id" | sed "s/.$/$x/")
 	fi
 	# encrypt new_id using iv and secret_key
