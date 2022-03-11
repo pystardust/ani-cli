@@ -270,6 +270,7 @@ process_search () {
 anime_selection () {
 	count=1
 	while read -r anime_id; do
+		anime_id=$(printf '%s' "$anime_id" | sed -e 's/[0-9]*.$//' -e 's/-episode-//')
 		menu_line_alternate "$anime_id" "$count"
 		: $((count+=1))
 	done <<-EOF
