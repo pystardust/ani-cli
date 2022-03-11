@@ -423,6 +423,7 @@ open_episode () { # todo move input checking
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
+					selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
 					inf "Currently playing $selection_id " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
@@ -432,6 +433,7 @@ open_episode () { # todo move input checking
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="ani-cli: $anime_id $episode" > /dev/null 2>&1 &
 				else
+					selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
 					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="ani-cli: $anime_id $episode" > /dev/null 2>&1
 					sleep 2
@@ -571,6 +573,7 @@ open_selection
 while :; do
 if [ -z "$select_first" ]; then
 	if [ "$auto_play" -eq 0 ]; then
+		selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
 		inf "Currently playing $selection_id " "$episode/$last_ep_number"
 	else
 		auto_play=0
