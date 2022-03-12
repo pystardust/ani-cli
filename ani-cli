@@ -107,15 +107,15 @@ search_anime () {
 }
 
 check_episode () {
-	tmp=$(printf "%s" "$1" | sed 's/[0-9]*.$//')
-	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${tmp}(.*)\">_\1_p" | head -n 1
+	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p" | head -n 1
 }
 
 search_for_unwatched () { # todo: merge into search_history
 	search_results="$*"
 	while read -r anime_id; do
-		current_ep_number=$(check_episode "$anime_id")
-		history_ep_number=$(printf "%s" "$anime_id" | grep -Po '\K\d+' | tail -n 1)
+		tmp=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
+		current_ep_number=$(check_episode "$anime_id" "$tmp")
+		history_ep_number=$(printf "%s" "$anime_id" | sed "s/$tmp//g")
 		[ -n "$current_ep_number" ] && [ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
 	done <<-EOF
 	$search_results
@@ -273,7 +273,7 @@ process_search () {
 anime_selection () {
 	count=1
 	while read -r anime_id; do
-		anime_id=$(printf '%s' "$anime_id" | sed -e 's/[0-9]*.$//' -e 's/-episode-//')
+		#anime_id=$(printf '%s' "$anime_id" | sed -e 's/[0-9]*.$//' -e 's/-episode-//')
 		menu_line_alternate "$anime_id" "$count"
 		: $((count+=1))
 	done <<-EOF
@@ -304,19 +304,14 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-
-	case $scrape in
-	    query)
-		select_ep_result=$(printf "%s" "$selection_id" | grep -Po '\K\d+' | tail -1);;
-	    history)
-		select_ep_result=$(check_episode "$selection_id");;
-	    *)
-		die "Unexpected scrape type";;
-	esac
+	tmp=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
+	[ "$scrape" = "query" ] &&
+		select_ep_result=$(printf "%s" "$selection_id" | sed "s/$tmp//g") ||
+		select_ep_result=$(check_episode "$selection_id" "$tmp")
 	read -r last_ep_number <<-EOF
 	$select_ep_result
 	EOF
-	selection_id=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
+	selection_id=$tmp
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
