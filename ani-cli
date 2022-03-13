@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.9.0"
+VERSION="1.9.1"
 
 
 #######################
@@ -143,6 +143,8 @@ search_history () {
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
+  one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
+  [ "$one_hist" = 1 ] && select_first=1
 	anime_selection "$search_results"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
 }
@@ -168,11 +170,23 @@ decrypt_link() {
 	secret_key='3235373136353338353232393338333936313634363632323738383333323838'
 	iv='31323835363732393835323338333933'
 	ajax_url="https://gogoplay4.com/encrypt-ajax.php"
-	crypto_data=$(curl -s "$1" | sed -nE 's/.*data-value="([^"]*)".*/\1/p')
-	id=$(printf '%s' "$crypto_data" | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | cut -d '&' -f1)
+	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+
+	if [ "${#id}" -lt "8" ]; then
+		#pad the id with character until it length(id) reaches to 8, no xor needed to be done on it
+		pad=$(printf "\010\016\003\010\t\003\004\t" | cut -c"$((8-(${#id} % 16)))"-)
+		new_id=$(printf "%s$pad" "$id")
+	else
+		# xor the last character of id with 0xA if length(id) is 8, make it the new last character
+		lastchar=$(printf %s "$id" | tail -c 1)
+		lastcharval=$(printf %d "'$lastchar")
+		xor=$((lastcharval ^ 10 ))
+		octalval=$(printf "\\$(printf %o "$xor")")
+		new_id=$(printf "%s" "$id" | sed "s/.$/$octalval/")
+	fi
 
 	#encrypt and create the final ajax
-	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
+	ajax=$(printf "%s\010\016\003\010\t\003\004\t" "$new_id" | openssl enc -aes256 -K "$secret_key" -iv "$iv" -a)
 
 	#send request and get the data(most lamest way)
 	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "$ajax_url" -d "id=$ajax" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
@@ -281,7 +295,7 @@ anime_selection () {
 	done <<-EOF
 	$search_results
 	EOF
-	if [ -n "$ep_choice_to_start" ] && [ -n "$select_first" ]; then
+	if [ -n "$select_first" ]; then
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
