@@ -500,7 +500,6 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			;;
 		d)
 			is_download=1
-			select_first=1
 			;;
 		a)
 			ep_choice_to_start=$OPTARG
@@ -512,7 +511,6 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
-			select_first=1
 			;;
 		q)
 			quality=$OPTARG
