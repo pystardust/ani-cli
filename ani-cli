@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="1.9.1"
+VERSION="1.9.2"
 
 
 #######################
@@ -417,7 +417,11 @@ open_episode () {
 	inf "Getting data for episode $episode"
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	video_url=$(get_video_quality "$dpage_link")
+	if [ -z "$dpage_link" ];then 
+	    err "Episode doesn't exist!!"
+	else
+	    video_url=$(get_video_quality "$dpage_link")
+	fi
 	if [ "$half_ep" -eq 1 ]; then
 		episode="$temp_ep"
 		half_ep=0
