@@ -119,3 +119,4 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 - openssl
 - mpv - Video Player
 - aria2 - Download manager
+- ffmpeg - m3u8 Downloader
