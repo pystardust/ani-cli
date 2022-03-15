@@ -114,6 +114,7 @@ search_anime () {
 		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
+#
 check_episode () {
 	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
@@ -312,7 +313,7 @@ anime_selection () {
 	$search_results
 	EOF
 	temp_anime_id=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
-    	select_ep_result=$(check_episode "$selection_id" "$temp_anime_id")
+	select_ep_result=$(check_episode "$selection_id" "$temp_anime_id")
 	last_ep_number=$(printf "%s" "$select_ep_result" | head -n 1)
 	first_ep_number=$(printf "%s" "$select_ep_result" | tail -n 1)
 	selection_id=$temp_anime_id
@@ -433,7 +434,7 @@ open_episode () { # todo move input checking
 				fi
 				;;
 			*)
-			trackma_title=$(printf '%s' "$anime_id" | tr '-' ' ' )
+				trackma_title=$(printf '%s' "$anime_id" | tr '-' ' ' )
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 				else
