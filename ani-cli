@@ -94,6 +94,14 @@ dep_ch () {
 	done
 }
 
+download () {
+case $2 in
+	*mp4*)
+		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide;;
+	*)
+		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4";;
+esac
+}
 
 #############
 # SEARCHING #
@@ -397,7 +405,11 @@ open_episode () { # todo move input checking
 	inf "Getting data for episode $episode"
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	video_url=$(get_video_quality "$dpage_link")
+	if [ -z "$dpage_link" ];then 
+	    err "Episode doesn't exist!!"
+	else
+	    video_url=$(get_video_quality "$dpage_link")
+	fi
 	if [ "$half_ep" -eq 1 ]; then
 		episode="$temp_ep"
 		half_ep=0
@@ -421,12 +433,12 @@ open_episode () { # todo move input checking
 				fi
 				;;
 			*)
+			trackma_title=$(printf '%s' "$anime_id" | tr '-' ' ' )
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="ani-cli: $anime_id $episode" > /dev/null 2>&1 &
+					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 				else
-					selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
-					inf "Currently playing $selection_id episode " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="ani-cli: $anime_id $episode" > /dev/null 2>&1
+					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -439,7 +451,7 @@ open_episode () { # todo move input checking
 		inf "Downloading episode $episode ..."
 		episode=$(printf "%03d" "$episode")
 		{
-			if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}${episode}.mp4" --download-result=hide ; then
+			if download "$dpage_link" "$video_url" "$anime_id" "$episode" ; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
@@ -522,7 +534,7 @@ dep_ch "curl" "sed" "grep" "git" "openssl"
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
 else
-	dep_ch "aria2c"
+	dep_ch "aria2c" "ffmpeg"
 fi
 
 base_url="https://gogoplay4.com"
