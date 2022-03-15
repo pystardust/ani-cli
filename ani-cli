@@ -114,6 +114,14 @@ search_anime () {
 		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
+# searches on gogoanime (instead of gogoplay) because they index english titles
+extended_search () {
+	indexing_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+	search=$(printf '%s' "$1" | tr ' ' '-' )
+	curl -s "$indexing_url//search.html" -G -d "keyword=$search" |
+		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
+}
+
 #
 check_episode () {
 	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
@@ -268,6 +276,12 @@ is_number () { # todo make this better, or make this inline
 process_search () {
 	search_results=$(search_anime "$query")
 	while [ -z "$search_results" ]; do
+		extended_search_results=$(extended_search "$query")
+		if [ -n "$extended_search_results" ]; then
+			extended_search_results=$(printf '%s' "$extended_search_results" | head -n 1)
+			search_results=$(search_anime "$extended_search_results")
+			break
+		fi
 		err 'No search results found'
 		prompt 'Search Anime'
 		query="$REPLY $REPLY2"
