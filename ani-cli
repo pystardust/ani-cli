@@ -94,6 +94,14 @@ dep_ch () {
 	done
 }
 
+download () {
+case $2 in
+	*mp4*)
+		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir=$download_dir -o "${3}-${4}.mp4" --download-result=hide;;
+	*)
+		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4";;
+esac
+}
 
 #############
 # SEARCHING #
@@ -463,7 +471,7 @@ open_episode () {
 		# add 0 padding to the episode name
 		episode=$(printf "%03d" "$episode")
 		{
-			if aria2c -x 16 -s 16 --referer="$dpage_link" "$video_url" --dir="$download_dir" -o "${anime_id}-${episode}.mp4" --download-result=hide ; then
+			if download "$dpage_link" "$video_url" "$anime_id" "$episode" ; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
@@ -549,7 +557,7 @@ dep_ch "curl" "sed" "grep" "git" "openssl"
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
 else
-	dep_ch "aria2c"
+	dep_ch "aria2c" "ffmpeg"
 fi
 # gogoanime likes to change domains but keep the olds as redirects
 base_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
