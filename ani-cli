@@ -292,7 +292,6 @@ process_search () {
 anime_selection () {
 	count=1
 	while read -r anime_id; do
-		#anime_id=$(printf '%s' "$anime_id" | sed -e 's/[0-9]*.$//' -e 's/-episode-//')
 		menu_line_alternate "$anime_id" "$count"
 		: $((count+=1))
 	done <<-EOF
@@ -438,8 +437,7 @@ open_episode () {
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
-					selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
-					inf "Currently playing $selection_id episode " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+					inf "Currently playing $display_name episode " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
@@ -449,7 +447,7 @@ open_episode () {
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 				else
-					inf "Currently playing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+					inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
 					sleep 2
 				fi
@@ -586,8 +584,8 @@ open_selection
 while :; do
 if [ -z "$select_first" ]; then
 	if [ "$auto_play" -eq 0 ]; then
-		selection_id=$(printf '%s' "$selection_id" | sed 's/-episode-//')
-		inf "Currently playing $selection_id episode " "$episode/$last_ep_number"
+		display_name=$(printf '%s' "$selection_id" | sed 's/-episode-//')
+		inf "Currently playing $display_name episode " "$episode/$last_ep_number"
 	else
 		auto_play=0
 	fi
