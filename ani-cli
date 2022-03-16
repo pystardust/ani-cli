@@ -336,19 +336,22 @@ anime_selection () {
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
 episode_selection () {
+	if [ "$last_ep_number" -eq 0 ]; then
+		die "Episodes not released yet!"
+	fi
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
 		inf "Range of episodes can be specified: start_number end_number"
 		if [ -z "$ep_choice_to_start" ]; then
 			prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 			ep_choice_start="$REPLY"
 			ep_choice_end="$REPLY2"
-			while [ "$ep_choice_start" -lt "$first_ep_number" ] 2> /dev/null || [ "$ep_choice_end" -gt "$last_ep_number" ] 2> /dev/null || [ "$ep_choice_start" -gt "$last_ep_number" ] 2> /dev/null || [ -z "$ep_choice_start" ] 2> /dev/null; do
-				if [ "$ep_choice_end" != -1 ]; then
+			while [ "$ep_choice_start" -lt "$first_ep_number" ] 2> /dev/null || [ "$ep_choice_end" -gt "$last_ep_number" ] 2> /dev/null ||
+				[ "$ep_choice_start" -gt "$last_ep_number" ] 2> /dev/null || [ -z "$ep_choice_start" ] 2> /dev/null ||
+				[ "$ep_choice_end" != -1 ]; do
 					err "Invalid number chosen"
 					prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 					ep_choice_start="$REPLY"
 					ep_choice_end="$REPLY2"
-				fi
 			done
 		else
 			ep_choice_start="$ep_choice_to_start" && unset ep_choice_to_start
@@ -398,22 +401,11 @@ open_selection() {
 	episode=${ep_choice_end:-$ep_choice_start}
 }
 
-open_episode () { # todo move input checking
+open_episode () {
 	anime_id="$1"
 	episode="$2"
 
 	tput clear
-	# checking if episode is in range
-	while [ "$episode" -gt "$last_ep_number" ] || [ -z "$episode" ]; do
-	is_number "$ep_choice_start"
-		if [ "$last_ep_number" -eq 0 ]; then
-			die "Episodes not released yet!"
-		else
-			err "Episode out of range"
-		fi
-		prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
-		episode="$REPLY $REPLY2"
-	done
 	if [ "$half_ep" -eq 1 ]; then
 		temp_ep="$episode"
 		episode="${episode}-5"
@@ -422,9 +414,9 @@ open_episode () { # todo move input checking
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	if [ -z "$dpage_link" ];then 
-	    err "Episode doesn't exist!!"
+		err "Episode doesn't exist!!"
 	else
-	    video_url=$(get_video_quality "$dpage_link")
+		video_url=$(get_video_quality "$dpage_link")
 	fi
 	if [ "$half_ep" -eq 1 ]; then
 		episode="$temp_ep"
