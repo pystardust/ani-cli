@@ -269,10 +269,6 @@ menu_line_strong() {
 # INPUT PARSING #
 #################
 
-is_number () { # todo make this better, or make this inline
-	[ "$1" -eq "$1" ] 2>/dev/null || die 'Invalid number entered'
-}
-
 # only lets the user pass in case of a valid search
 process_search () {
 	search_results=$(search_anime "$query")
@@ -346,8 +342,7 @@ episode_selection () {
 			ep_choice_start="$REPLY"
 			ep_choice_end="$REPLY2"
 			while [ "$ep_choice_start" -lt "$first_ep_number" ] 2> /dev/null || [ "$ep_choice_end" -gt "$last_ep_number" ] 2> /dev/null ||
-				[ "$ep_choice_start" -gt "$last_ep_number" ] 2> /dev/null || [ -z "$ep_choice_start" ] 2> /dev/null ||
-				[ "$ep_choice_end" != -1 ]; do
+				[ "$ep_choice_start" -gt "$last_ep_number" ] 2> /dev/null || [ -z "$ep_choice_start" ] 2> /dev/null || [ "$ep_choice_end" != -1 ]; do
 					err "Invalid number chosen"
 					prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
 					ep_choice_start="$REPLY"
@@ -373,13 +368,10 @@ episode_selection () {
 	fi
 }
 
-# checks if input is number, creates $episodes from $ep_choice_start and $ep_choice_end
-check_input() {
-	is_number "$ep_choice_start"
+# creates $episodes from $ep_choice_start and $ep_choice_end
+generate_ep_list() {
 	episodes=$ep_choice_start
 	if [ -n "$ep_choice_end" ]; then
-		is_number "$ep_choice_end"
-		# create list of episodes to download/watch
 		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
 	fi
 }
@@ -571,7 +563,7 @@ case $scrape in
 		die "Unexpected scrape type"
 esac
 
-check_input
+generate_ep_list
 append_history
 open_selection
 
@@ -635,7 +627,7 @@ if [ -z "$select_first" ]; then
 			continue
 			;;
 	esac
-	check_input
+	generate_ep_list
 	append_history
 	open_selection
 else
