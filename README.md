@@ -2,9 +2,9 @@
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
-<img src="https://img.shields.io/badge/os-mac-brightgreen"></a>
-<img src="https://img.shields.io/badge/os-windows-brightgreen"></a>
-<img src="https://img.shields.io/badge/os-android-brightgreen"></a>
+<img src="https://img.shields.io/badge/os-mac-brightgreen">
+<img src="https://img.shields.io/badge/os-windows-brightgreen">
+<img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <br>
@@ -18,7 +18,9 @@
 
 </p>
 
-A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
+A cli to browse and watch anime. This tool scrapes the site [gogoplay](https://gogoplay4.com).
+<br>
+Latest stable version: 2.0.0
 
 <h1 align="center">
 	Showcase
