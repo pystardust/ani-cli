@@ -151,10 +151,14 @@ search_history () {
 	[ -z "$search_results" ] && die "History is empty"
 	search_results=$(search_for_unwatched "$search_results")
 	[ -z "$search_results" ] && die "No unwatched episodes"
-  one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
-  [ "$one_hist" = 1 ] && select_first=1
+ 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)  	
+	menu_line_alternate "search for another anime" "a"	
+	[ "$one_hist" = 1 ] && select_first=1
 	anime_selection "$search_results"
 	ep_choice_start=$(sed -n -E "s/${selection_id}\t//p" "$logfile")
+	
+
+	
 }
 
 ##################
@@ -312,6 +316,8 @@ anime_selection () {
 		choice="$REPLY"
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
+			[ "$choice" = "a" ] && search_another_anime
+			
 			err "Invalid choice entered"
 			prompt "Enter choice"
 			choice="$REPLY"
