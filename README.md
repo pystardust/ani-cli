@@ -54,8 +54,12 @@ Install dependencies [(See below)](#Dependencies)
 
 ```sh
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
-sudo cp ani-cli /usr/local/bin/ani-cli
+sudo make install
 ```
+
+#### Update
+
+```sudo make update```
 
 *Note that mpv installed through flatpak is not compatible*
 
@@ -106,7 +110,7 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
-* Other Linux: Just remove the thing from path
+* Other Linux: ```sudo make uninstall```
 * Mac: ```brew uninstall ani-cli```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
