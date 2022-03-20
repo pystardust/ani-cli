@@ -125,7 +125,9 @@ extended_search () {
 
 #
 check_episode () {
-	curl -s "$base_url/videos/$1" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
+       data=$(curl -s "$base_url/videos/$1")
+       del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d\: -f1)
+       printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
 
 search_for_unwatched () { # todo: merge into search_history
@@ -228,23 +230,23 @@ err () {
 
 # display an informational message (first argument in green, second in magenta)
 inf () {
-	printf "\033[1;32m%s \033[1;35m%s\033[0m\n" "$1" "$2"
+	printf "\033[1;35m%s \033[1;35m%s\033[0m\n" "$1" "$2"
 }
 
 # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
 prompt () {
-	printf "\033[1;34m%s\033[1;35m%s\033[1;34m: \033[0m" "$1" "$2"
+  printf "\033[1;35m%s\033[1;35m%s\033[1;34m\033[0m" "$1" "$2"
 	read -r REPLY REPLY2
 }
 
-# displays an even (cyan) line of a menu line with $2 as an indicator in [] and $1 as the option
+# displays an even (cyan) line of a menu line with $2 as an indicator in () and $1 as the option
 menu_line_even () {
-	printf "\033[1;34m[\033[1;36m%s\033[1;34m] \033[1;36m%s\033[0m\n" "$2" "$1"
+ 	printf "\033[1;36m(\033[1;36m%s\033[1;36m) \033[1;36m%s\033[0m\n" "$2" "$1"
 }
 
-# displays an odd (yellow) line of a menu line with $2 as an indicator in [] and $1 as the option
+# displays an odd (yellow) line of a menu line with $2 as an indicator in () and $1 as the option
 menu_line_odd() {
-	printf "\033[1;34m[\033[1;33m%s\033[1;34m] \033[1;33m%s\033[0m\n" "$2" "$1"
+	printf "\033[1;33m(\033[1;33m%s\033[1;33m) \033[1;33m%s\033[0m\n" "$2" "$1"
 }
 
 # display alternating menu lines (even and odd)
@@ -261,7 +263,7 @@ menu_line_alternate() {
 
 # displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
 menu_line_strong() {
-	printf "\033[1;34m[\033[1;31m%s\033[1;34m] \033[1;31m%s\033[0m\n" "$2" "$1"
+  printf "\033[1;31m(\033[1;31m%s\033[1;31m) \033[1;31m%s\033[0m\n" "$2" "$1"
 }
 
 
@@ -280,7 +282,7 @@ process_search () {
 			break
 		fi
 		err 'No search results found'
-		prompt 'Search Anime'
+		prompt 'Search Anime: '
 		query="$REPLY $REPLY2"
 		search_results=$(search_anime "$query")
 	done
@@ -292,22 +294,24 @@ process_search () {
 anime_selection () {
 	count=1
 	while read -r anime_id; do
-		menu_line_alternate "$anime_id" "$count"
+  displayed_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF-2;i++) printf $i" "; print "("$(NF-1), $NF")"}' \
+   |  awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')"
+		menu_line_alternate "$displayed_title" "$count"
 		: $((count+=1))
 	done <<-EOF
-	$search_results
+  $search_results
 	EOF
 	if [ -n "$select_first" ]; then
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
 		menu_line_strong "exit" "q"
-		prompt "Enter choice"
+		prompt "> "
 		choice="$REPLY"
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
 			err "Invalid choice entered"
-			prompt "Enter choice"
+			prompt "> "
 			choice="$REPLY"
 		done
 	fi
@@ -338,8 +342,9 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
-				inf "Range of episodes can be specified: start_number end_number"
-				prompt "Choose episode" "[$first_ep_number-$last_ep_number]"
+        inf "To specify a range, use: start_number end_number"
+				inf "Episodes:" "($first_ep_number-$last_ep_number)"
+        prompt "> "
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				if [ "$REPLY" = q ]; then
@@ -413,7 +418,7 @@ open_episode () {
 		temp_ep="$episode"
 		episode="${episode}-5"
 	fi
-	inf "Getting data for episode $episode"
+	inf "Loading episode $episode..."
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
 	if [ -z "$dpage_link" ];then 
@@ -437,18 +442,18 @@ open_episode () {
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
 				else
-					inf "Currently playing $display_name episode " "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+					inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
 			*)
-				trackma_title=$(printf '%s' "$anime_id" | tr '-' ' ' )
+        trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ')"
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
+					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title$episode" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
+					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title$episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
@@ -551,7 +556,7 @@ base_url="https://gogoplay4.com"
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
-			prompt "Search Anime"
+			prompt "Search Anime: "
 			query="$REPLY $REPLY2"
 		else
 			if [ -n "$ep_choice_to_start" ]; then
@@ -585,19 +590,19 @@ while :; do
 if [ -z "$select_first" ]; then
 	if [ "$auto_play" -eq 0 ]; then
 		display_name=$(printf '%s' "$selection_id" | sed 's/-episode-//')
-		inf "Currently playing $display_name episode " "$episode/$last_ep_number"
+		inf "Currently playing $display_name episode" "$episode/$last_ep_number"
 	else
 		auto_play=0
 	fi
-	[ "$episode" -ne "$last_ep_number" ] && menu_line_alternate 'next episode' 'n'
-	[ "$episode" -ne "$first_ep_number" ] && menu_line_alternate 'previous episode' 'p'
-	[ "$last_ep_number" -ne "$first_ep_number" ] && menu_line_alternate 'select episode' 's'
-	menu_line_alternate "replay current episode" "r"
-	menu_line_alternate "search for another anime" "a"
-	menu_line_alternate "search history" "h"
-	menu_line_alternate "select quality (current: $quality)" "b"
+	[ "$episode" -ne "$last_ep_number" ] && menu_line_alternate 'next' 'n'
+	[ "$episode" -ne "$first_ep_number" ] && menu_line_alternate 'previous' 'p'
+	[ "$last_ep_number" -ne "$first_ep_number" ] && menu_line_alternate 'select' 's'
+	menu_line_alternate "replay" "r"
+	menu_line_alternate "search" "a"
+	menu_line_alternate "history" "h"
+	menu_line_alternate "quality (current: $quality)" "b"
 	menu_line_strong "exit" "q"
-	prompt "Enter choice"
+	prompt "> "
 	choice="$REPLY"
 	case $choice in
 		n)
@@ -621,7 +626,7 @@ if [ -z "$select_first" ]; then
 			;;
 		a)
 			tput clear
-			prompt "Search Anime"
+			prompt "Search Anime: "
 			query="$REPLY $REPLY2"
 			process_search
 			;;
