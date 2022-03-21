@@ -127,8 +127,8 @@ extended_search () {
 check_episode () {
 	data=$(curl -s "$base_url/videos/$1")
 	if [ "$data" != "404" ]; then
-	    del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-	    printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
+		del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+		printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 	fi
 }
 
