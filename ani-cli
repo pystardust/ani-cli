@@ -237,13 +237,13 @@ inf () {
 
 # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
 prompt () {
-  printf "\033[1;35m%s\033[1;35m%s\033[1;34m\033[0m" "$1" "$2"
+	printf "\033[1;35m%s\033[1;35m%s\033[1;34m\033[0m" "$1" "$2"
 	read -r REPLY REPLY2
 }
 
 # displays an even (cyan) line of a menu line with $2 as an indicator in () and $1 as the option
 menu_line_even () {
- 	printf "\033[1;36m(\033[1;36m%s\033[1;36m) \033[1;36m%s\033[0m\n" "$2" "$1"
+	printf "\033[1;36m(\033[1;36m%s\033[1;36m) \033[1;36m%s\033[0m\n" "$2" "$1"
 }
 
 # displays an odd (yellow) line of a menu line with $2 as an indicator in () and $1 as the option
@@ -265,7 +265,7 @@ menu_line_alternate() {
 
 # displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
 menu_line_strong() {
-  printf "\033[1;31m(\033[1;31m%s\033[1;31m) \033[1;31m%s\033[0m\n" "$2" "$1"
+	printf "\033[1;31m(\033[1;31m%s\033[1;31m) \033[1;31m%s\033[0m\n" "$2" "$1"
 }
 
 
@@ -296,12 +296,12 @@ process_search () {
 anime_selection () {
 	count=1
 	while read -r anime_id; do
-  displayed_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF-2;i++) printf $i" "; print "("$(NF-1), $NF")"}' \
-   |  awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')"
+	displayed_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF-2;i++) printf $i" "; print "("$(NF-1), $NF")"}' \
+		| awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')"
 		menu_line_alternate "$displayed_title" "$count"
 		: $((count+=1))
 	done <<-EOF
-  $search_results
+	$search_results
 	EOF
 	if [ -n "$select_first" ]; then
 		tput clear
@@ -335,16 +335,16 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
-        inf "To specify a range, use: start_number end_number"
+				inf "To specify a range, use: start_number end_number"
 				inf "Episodes:" "($first_ep_number-$last_ep_number)"
-        prompt "> "
+				prompt "> "
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				if [ "$REPLY" = q ]; then
 					exit 0
 				fi
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
-				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end"  -eq "$ep_choice_end" ] 2>/dev/null; }; then
+				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
 					err "Invalid number(s)"
 					continue
 				fi
@@ -441,7 +441,7 @@ open_episode () {
 				fi
 				;;
 			*)
-        trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ')"
+				trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ')"
 				if [ "$auto_play" -eq 0 ]; then
 					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title$episode" > /dev/null 2>&1 &
 				else
