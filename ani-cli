@@ -125,9 +125,11 @@ extended_search () {
 
 #
 check_episode () {
-       data=$(curl -s "$base_url/videos/$1")
-       del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-       printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
+	data=$(curl -s "$base_url/videos/$1")
+	if [ "$data" != "404" ]; then
+	    del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+	    printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
+	fi
 }
 
 search_for_unwatched () { # todo: merge into search_history
@@ -316,16 +318,7 @@ anime_selection () {
 		done
 	fi
 	# Select respective anime_id
-	count=1
-	while read -r anime_id; do
-		if [ "$count" -eq "$choice" ]; then
-			selection_id="$anime_id"
-			break
-		fi
-		count=$((count+1))
-	done <<-EOF
-	$search_results
-	EOF
+	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
 	temp_anime_id=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
 	select_ep_result=$(check_episode "$selection_id" "$temp_anime_id")
 	last_ep_number=$(printf "%s" "$select_ep_result" | head -n 1)
