@@ -185,7 +185,7 @@ decrypt_link() {
 		lastchar=$(printf %s "$id" | tail -c 1)
 		lastcharval=$(printf %d "'$lastchar")
 		xor=$((lastcharval ^ 10 ))
-		octalval=$(printf "\\$(printf %o "$xor")")
+		octalval=$(printf "%b" "\\$(printf %o "$xor")")
 		new_id=$(printf "%s" "$id" | sed "s/.$/$octalval/")
 	fi
 	# encrypt new_id using iv and secret_key
