@@ -441,12 +441,12 @@ open_episode () {
 				fi
 				;;
 			*)
-				trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ')"
+        trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
 				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title$episode" > /dev/null 2>&1 &
+					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 				else
 					inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title$episode" > /dev/null 2>&1
+					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
 					sleep 2
 				fi
 				;;
