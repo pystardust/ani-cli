@@ -45,6 +45,8 @@ help_text () {
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -v use VLC as the media player
 	  -D delete history
+	  -f fullscreen
+	  -s screen (0-32 integer)
 	  -U fetch update from github
 	  -V print version number and exit
 
@@ -430,28 +432,9 @@ open_episode () {
 		" "$logfile" > "${logfile}.new"
 		[ "$PID" -ne 0 ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
-		case "$player_fn" in
-			vlc)
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
-				else
-					inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-			*)
-        trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
-				else
-					inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-		esac
-		PID=$!
+
+		play_episode
+
 		# overwrite history with temporary history
 		mv "${logfile}.new" "$logfile"
 	else
@@ -466,6 +449,35 @@ open_episode () {
 			fi
 		}
 	fi
+}
+
+play_episode() {
+	# setup command
+	set -- "$player_fn"
+	[ -n "$fullscreen" ] && set -- "$@" "--fullscreen"
+
+	case "$player_fn" in
+		vlc)
+			[ "$auto_play" -ne 0 ] && set -- "$@" --play-and-exit
+			set -- "$@" --http-referrer="$dpage_link" "$video_url"
+		;;
+		*)
+			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
+
+			[ -n "$screen_id" ] && set -- "$@" "--screen=$screen_id" 
+			set -- "$@" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode"
+		;;
+	esac
+
+	# run command
+	if [ "$auto_play" -eq 0 ]; then
+		nohup "$@" > /dev/null 2>&1 &
+	else
+		inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+		"$@" > /dev/null 2>&1
+		sleep 2
+	fi
+	PID=$!
 }
 
 ############
@@ -485,6 +497,8 @@ scrape=query
 download_dir="."
 choice=
 auto_play=0
+fullscreen=
+screen_id=
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -493,7 +507,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
-while getopts 'vq:dp:chDUVa:' OPT; do
+while getopts 'vq:dp:chDUVa:fs:' OPT; do
 	case $OPT in
 		h)
 			help_text
@@ -521,6 +535,12 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			;;
 		v)
 			player_fn="vlc"
+			;;
+		f)
+			fullscreen="yes"
+			;;
+		s)
+			screen_id="$OPTARG"
 			;;
 		U)
 			update_script
