@@ -525,7 +525,7 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 done
 shift $((OPTIND - 1))
 
-dep_ch "curl" "sed" "grep" "git" "openssl"
+dep_ch "curl" "sed" "grep" "openssl"
 if [ "$is_download" -eq 0 ]; then
 	dep_ch "$player_fn"
 else
