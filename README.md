@@ -25,6 +25,7 @@ Latest stable version: 2.0.0
 <h1 align="center">
 	Showcase
 </h1>
+
 https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-87db-313c83caf6bb.mp4
 
 ## Table of Contents
