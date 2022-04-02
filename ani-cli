@@ -350,9 +350,7 @@ episode_selection () {
 # creates $episodes from $ep_choice_start and $ep_choice_end
 generate_ep_list() {
 	episodes=$ep_choice_start
-	if [ -n "$ep_choice_end" ]; then
-		episodes=$(seq "$ep_choice_start" "$ep_choice_end")
-	fi
+	[ -n "$ep_choice_end" ] && episodes=$(seq "$ep_choice_start" "$ep_choice_end")
 }
 
 
