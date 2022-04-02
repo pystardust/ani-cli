@@ -3,6 +3,11 @@
 histfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 base_url="https://gogoplay4.com"
 
+die () {
+	err "$*"
+	exit 1
+}
+
 # display an error message to stderr (in red)
 err () {
 	printf "\033[1;31m%s\033[0m\n" "$*" >&2
