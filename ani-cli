@@ -454,10 +454,6 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
-		h)
-			help_text
-			exit 0
-			;;
 		d)
 			is_download=1
 			;;
