@@ -135,12 +135,11 @@ search_for_unwatched () { # todo: merge into search_history
 	search_results="$*"
 	while read -r anime_id; do
 		temp_anime_id=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
-		current_ep_number=$(check_episode "$anime_id" "$temp_anime_id" | head -n 1)
-		history_ep_number=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")
-		[ -n "$current_ep_number" ] && [ "$current_ep_number" -ge "$history_ep_number" ] && printf '%s\n' "$anime_id"
+		current_ep=$(check_episode "$anime_id" "$temp_anime_id" | head -n 1) && [ -n "$current_ep" ] && [ "$current_ep" -ge "$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")" ] && printf "%s\n" "$anime_id" &
 	done <<-EOF
 	$search_results
 	EOF
+	wait
 }
 
 # compares history with gogoplay, only shows unfinished anime
