@@ -558,11 +558,7 @@ if [ -z "$select_first" ]; then
 	fi
 	[ "$episode" -ne "$last_ep_number" ] && menu_line_alternate 'next' 'n'
 	[ "$episode" -ne "$first_ep_number" ] && menu_line_alternate 'previous' 'p'
-	[ "$last_ep_number" -ne "$first_ep_number" ] && menu_line_alternate 'select' 's'
 	menu_line_alternate "replay" "r"
-	menu_line_alternate "search" "a"
-	menu_line_alternate "history" "h"
-	menu_line_alternate "quality (current: $quality)" "b"
 	menu_line_strong "exit" "q"
 	prompt "> "
 	choice="$REPLY"
@@ -571,29 +567,13 @@ if [ -z "$select_first" ]; then
 			ep_choice_start=$((episode + 1))
 			ep_choice_end=
 			;;
-		b)
-			prompt "Select quality. Options (best|worst|360|480|720|1080)"
-			quality="$REPLY"
-			;;
 		p)
 			ep_choice_start=$((episode - 1))
 			ep_choice_end=
 			;;
-		s)
-			episode_selection
-			;;
 		r)
 			ep_choice_start=$((episode))
 			ep_choice_end=
-			;;
-		a)
-			tput clear
-			prompt "Search Anime: "
-			query="$REPLY $REPLY2"
-			process_search
-			;;
-		h)
-			search_history
 			;;
 		q)
 			break
