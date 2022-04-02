@@ -549,6 +549,7 @@ if [ -z "$select_first" ]; then
 	[ "$episode" -ne "$last_ep_number" ] && menu_line_alternate 'next' 'n'
 	[ "$episode" -ne "$first_ep_number" ] && menu_line_alternate 'previous' 'p'
 	menu_line_alternate "replay" "r"
+	[ "$last_ep_number" -ne "$first_ep_number" ] && menu_line_alternate 'select' 's'
 	menu_line_strong "exit" "q"
 	prompt "> "
 	choice="$REPLY"
@@ -564,6 +565,9 @@ if [ -z "$select_first" ]; then
 		r)
 			ep_choice_start=$((episode))
 			ep_choice_end=
+			;;
+		s)
+			episode_selection
 			;;
 		q)
 			break
