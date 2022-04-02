@@ -131,24 +131,16 @@ check_episode () {
 	fi
 }
 
-search_for_unwatched () { # todo: merge into search_history
-	search_results="$*"
-	while read -r anime_id; do
-		temp_anime_id=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
-		latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")
-		current_ep=$(check_episode "$anime_id" "$temp_anime_id" | head -n 1) && [ -n "$current_ep" ] && [ "$current_ep" -ge "$latest_ep" ] && printf "%s\n" "$anime_id" &
-	done <<-EOF
-	$search_results
-	EOF
-	wait
-}
-
 # compares history with gogoplay, only shows unfinished anime
 search_history () {
 	tput clear
-	search_results=$(cat "$logfile")
-	[ -z "$search_results" ] && die "History is empty"
-	search_results=$(search_for_unwatched "$search_results")
+	[ ! -s "$logfile" ] && die "History is empty"
+	search_results=$(while read -r anime_id; do
+		temp_anime_id=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
+		latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")
+		current_ep=$(check_episode "$anime_id" "$temp_anime_id" | head -n 1) && [ -n "$current_ep" ] && [ "$current_ep" -ge "$latest_ep" ] && printf "%s\n" "$anime_id" &
+	done < "$logfile"
+	wait)
 	[ -z "$search_results" ] && die "No unwatched episodes"
 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
 	[ "$one_hist" = 1 ] && select_first=1
