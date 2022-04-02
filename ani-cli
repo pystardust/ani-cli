@@ -556,15 +556,12 @@ if [ -z "$select_first" ]; then
 	case $choice in
 		n)
 			ep_choice_start=$((episode + 1))
-			ep_choice_end=
 			;;
 		p)
 			ep_choice_start=$((episode - 1))
-			ep_choice_end=
 			;;
 		r)
-			ep_choice_start=$((episode))
-			ep_choice_end=
+			ep_choice_start=$(episode)
 			;;
 		s)
 			episode_selection
