@@ -2,9 +2,9 @@
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <img src="https://img.shields.io/badge/os-linux-brightgreen">
-<img src="https://img.shields.io/badge/os-mac-brightgreen"></a>
-<img src="https://img.shields.io/badge/os-windows-brightgreen"></a>
-<img src="https://img.shields.io/badge/os-android-brightgreen"></a>
+<img src="https://img.shields.io/badge/os-mac-brightgreen">
+<img src="https://img.shields.io/badge/os-windows-brightgreen">
+<img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <br>
@@ -18,14 +18,17 @@
 
 </p>
 
-A cli to browse and watch anime. This tool scrapes the site [gogoanime](https://gogoanime.pe).
+<h3 align="center">
+A cli to browse and watch anime. This tool scrapes the site <a href="https://gogoplay4.com">gogoplay.</a>
 
+Latest stable version: 2.0.0
+</h3>
+	
 <h1 align="center">
 	Showcase
 </h1>
-<p align="center">
-<img src=.assets/ani-cli.gif width="100%">
-</p>
+
+https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-87db-313c83caf6bb.mp4
 
 ## Table of Contents
 - [Install](#Installation)

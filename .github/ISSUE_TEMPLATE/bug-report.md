@@ -1,3 +1,9 @@
+**PLEASE UPDATE TO THE LATEST VERSION BEFORE POSTING AN ISSUE**
+
+Linux/Mac: `sudo ani-cli -U`
+
+Windows: run git bash as administator, then run `ani-cli -U`
+
 ---
 name: Bug report
 about: Ran into some unexpected behaviour? NOT FOR FEATURE REQUESTS
@@ -8,7 +14,6 @@ assignees: ''
 ---
 
 **Metadata (please complete the following information)**
-Version: [e.g. v1.2.0 run `ani-cli -V` to get the version]
 OS: [e.g. Windows 10 / Linux Mint 20.3]
 Shell: [e.g. zsh, run `echo $SHELL` to get your shell]
 Anime: [e.g. flcl] (if applicable)
@@ -26,7 +31,7 @@ It says something about an unsupported protocol, see screenshot.
 **Expected behavior**
 Downloading should work
 
-**Screenshots (if applicable)**
+**Screenshots (if applicable; you can just drag the image onto github)**
 ![image](https://user-images.githubusercontent.com/82055622/151030428-2e78d15f-4ba9-4d86-b6f3-8307557b4b29.png)
 
 **Additional context**
