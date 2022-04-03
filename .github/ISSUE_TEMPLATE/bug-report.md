@@ -1,9 +1,3 @@
-**PLEASE UPDATE TO THE LATEST VERSION BEFORE POSTING AN ISSUE**
-
-Linux/Mac: `sudo ani-cli -U`
-
-Windows: run git bash as administator, then run `ani-cli -U`
-
 ---
 name: Bug report
 about: Ran into some unexpected behaviour? NOT FOR FEATURE REQUESTS
