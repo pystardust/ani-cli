@@ -68,13 +68,22 @@ die () {
 	exit 1
 }
 
+patch_script () {
+	stat=$(ls -l "$0")
+	if [ "${stat#* root }" != "$stat" ] && [ "$(id -u)" != "0" ] && command -v "sudo" >/dev/null; then
+		printf "%s" "$update" | sudo patch "$0" -
+	else
+		printf "%s" "$update" | patch "$0" -
+	fi
+}
+
 # get the newest version of this script from github and replace it
 update_script () {
 	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
 	else
-		if printf '%s\n' "$update" | patch "$0" - ; then
+		if patch_script ; then
 			inf "Script has been updated"
 		else
 			die "Can't update for some reason!"
