@@ -31,6 +31,7 @@ Latest stable version: 2.0.0
 https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-87db-313c83caf6bb.mp4
 
 ## Table of Contents
+- [Fixing errors](#Fixing errors)
 - [Install](#Installation)
   - [Arch](#Arch)
   - [Linux](#Linux)
@@ -41,6 +42,15 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Dependencies](#Dependencies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
+
+### Fixing errors
+if you encounter "Video url not found" or any breaking issue, then make sure youu are on latest version by typing
+`sudo ani-cli -U` to update on linux, mac and android. On windows, run gitbash as administrator then there type `ani-cli -U`.
+If after this the issue persists then open an issue.
+<br>
+If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history
+transition script (history_transition.sh). Download it: `git clone https://github.com/pystardust/ani-cli` then run: `./ani-cli/hist-transition.sh`
+It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
 
