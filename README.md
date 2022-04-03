@@ -43,8 +43,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
-### Fixing errors
-if you encounter "Video url not found" or any breaking issue, then make sure youu are on latest version by typing
+## Fixing errors
+if you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
 `sudo ani-cli -U` to update on linux, mac and android. On windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>
@@ -103,16 +103,17 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-pkg install git termux-tools ncurses-utils openssl-tool -y
+pkg update
+pkg install git termux-tools ncurses-utils openssl-tool ffmpeg -y
 git clone https://github.com/pystardust/ani-cli && cd ani-cli
 cp ani-cli $PREFIX/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$2" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 chmod +x $PREFIX/bin/mpv
 ```
 
 Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xyz.mpv)
 
-*Add ```referrer="https://gogoanime.fi"``` to mpv.conf (Open mpv app, goto three dots top right->Settings->Advanced-->Edit mpv.conf)* 
+*Add ```referrer="https://gogoplay5.com"``` to mpv.conf (Open mpv app, goto three dots top right->Settings->Advanced-->Edit mpv.conf)* 
 
 *Note: VLC android doesn't support referrer option. So it will not work*
 
