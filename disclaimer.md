@@ -30,17 +30,16 @@ This project has no control on the content it is serving, using copyrighted cont
 <br>
 
 <b>
-
 A browser is a tool, and the maliciousness of the tool is directly based on the user.
 </b>
 
-This project uses client-side content access mechanisms. Hence, the copyright infrigements or DMCA in this project's regards are to be forwarded to the associated site by the associated notifier of any such claims. As of writing this is gogoanime
+This project uses client-side content access mechanisms. Hence, the copyright infrigements or DMCA in this project's regards are to be forwarded to the associated site by the associated notifier of any such claims. As of writing this is gogoplay
 
-<b>Do not harass the maintainer.</b>
+<b> Do not harass the maintainer. </b>
 
 <h2>
 Contacting the maintainer
-</h3>
+</h2>
 <br>
 
 Begin by making a GitHub issue or sending an email to pystardust@protonmail.com
