@@ -111,10 +111,10 @@ chmod +x $PREFIX/bin/mpv
 ```
 
 Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xyz.mpv)
-
 *Add ```referrer="https://gogoanime.fi"``` to mpv.conf (Open mpv app, goto three dots top right->Settings->Advanced-->Edit mpv.conf)* 
 
-*Note: VLC android doesn't support referrer option. So it will not work*
+*Note: VLC android doesn't support referrer option, but it is possible to get it working via this command:*
+```echo 'termux-open --chooser --content-type=video "$2"' > $PREFIX/bin/mpv```
 
 ## Uninstall
 
