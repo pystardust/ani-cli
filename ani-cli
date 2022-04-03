@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.1"
+VERSION="2.0.2"
 
 
 
@@ -394,28 +394,7 @@ open_episode () {
 		" "$logfile" > "${logfile}.new"
 		[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
-		case "$player_fn" in
-			vlc)
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1 &
-				else
-					inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --play-and-exit --http-referrer="$dpage_link" "$video_url" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-			*)
-				trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-				if [ "$auto_play" -eq 0 ]; then
-					nohup "$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
-				else
-					inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-					"$player_fn" --referrer="$dpage_link" "$video_url" --force-media-title="$trackma_title $episode" > /dev/null 2>&1
-					sleep 2
-				fi
-				;;
-		esac
-		PID=$!
+		play_episode
 		# overwrite history with temporary history
 		mv "${logfile}.new" "$logfile"
 	else
@@ -430,6 +409,30 @@ open_episode () {
 			fi
 		}
 	fi
+}
+
+play_episode () {
+	# Build command
+	set -- "$player_fn" "$video_url"
+	case "$player_fn" in
+		vlc)
+			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
+			set -- "$@" --http-referrer="$dpage_link"
+			;;
+		*)
+			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
+			set -- "$@" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			;;
+	esac
+	# Run Command
+	if [ "$auto_play" -eq 0 ]; then
+		nohup "$@" > /dev/null 2>&1 &
+	else
+		inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+		"$@" > /dev/null 2>&1
+		sleep 2
+	fi
+	PID=$!
 }
 
 ############
