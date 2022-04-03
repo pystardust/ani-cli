@@ -71,9 +71,9 @@ die () {
 patch_script () {
 	stat=$(ls -l "$0")
 	if [ "${stat#* root }" != "$stat" ] && [ "$(id -u)" != "0" ] && command -v "sudo" >/dev/null; then
-		printf "%s" "$update" | sudo patch "$0" -
+		printf "%s\n" "$update" | sudo patch "$0" -
 	else
-		printf "%s" "$update" | patch "$0" -
+		printf "%s\n" "$update" | patch "$0" -
 	fi
 }
 
