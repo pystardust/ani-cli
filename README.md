@@ -94,7 +94,7 @@ Install scoop [(Guide)](https://scoop.sh/)
 scoop bucket add extras
 mkdir -p "$env:USERPROFILE/.cache"
 scoop install ani-cli -g
-export MSYS_NO_PATHCONV=1
+echo "export MSYS_NO_PATHCONV=1" >> .bashrc
 ```
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
