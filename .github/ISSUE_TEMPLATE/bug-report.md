@@ -8,6 +8,7 @@ assignees: ''
 ---
 
 **Metadata (please complete the following information)**
+Version: [e.g. 2.0.2]
 OS: [e.g. Windows 10 / Linux Mint 20.3]
 Shell: [e.g. zsh, run `echo $SHELL` to get your shell]
 Anime: [e.g. flcl] (if applicable)
