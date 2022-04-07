@@ -10,17 +10,13 @@
 
 ## Issues
 
-- Use the (correct) issue template
-- When requesting a feature, check it's not already in our [Rejected Feature Requests](https://github.com/pystardust/ani-cli/issues/523)
+- Use the issue templates
+- When requesting a feature, check it hasn't been [rejected](https://github.com/pystardust/ani-cli/issues/523) previously
 - Provide screenshot if applicable
 
 ## Testing
 
 ### Testcases
-
-Our parsing was broken in the past and it will break in the future
-
-To spot breakage early, test with the following anime:
 
 - The safe bet: `One Piece`
 - Episode 0: `Saenai Heroine no Sodatekata ♭`
@@ -29,9 +25,17 @@ To spot breakage early, test with the following anime:
 - Unreleased: `soredemo ayumu wa yosetekuru`
 - Short id (for decryption): `Log Horizon` episode 1-2
 
-### Release checklist
+### Merge checklist
 
 - any anime playing
+- next works
+- no shellcheck complaints
+- bumped version
+- short review of the changed code
+
+### Release checklist
+
+- merge checklist
 - all testcases playing
 - next, prev and replay work
 - quality works
@@ -39,7 +43,6 @@ To spot breakage early, test with the following anime:
 - download works
 - select episode -a and rapid resume work
 - autoplay, aka range selection, works
-- no shellcheck complaints
 
 ## How else can I help?
 
