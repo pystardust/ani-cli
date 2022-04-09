@@ -451,6 +451,7 @@ scrape=query
 download_dir="."
 choice=
 auto_play=0
+pipe=
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -458,6 +459,12 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # create history file and history dir if none found
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
+
+# Consume pipe input
+if [ ! -t 0 ]; then
+	pipe=$(cat | sed 1q)
+	exec 0</dev/tty
+fi
 
 while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
@@ -510,15 +517,17 @@ fi
 base_url="https://gogoplay4.com"
 case $scrape in
 	query)
-		if [ -z "$*" ]; then
-			prompt "Search Anime: "
-			query="$REPLY $REPLY2"
-		else
+		if [ -n "$*" ]; then
 			if [ -n "$ep_choice_to_start" ]; then
 				REPLY=1
 				select_first=1
 			fi
 			query="$*"
+		elif [ -n "$pipe" ]; then
+			query="$pipe"
+		else
+			prompt "Search Anime: "
+			query="$REPLY $REPLY2"
 		fi
 		process_search
 		;;
