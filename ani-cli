@@ -462,7 +462,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # Consume pipe input
 if [ ! -t 0 ]; then
-	pipe=$(cat | sed 1q)
+	pipe=$(sed 1q)
 	exec 0</dev/tty
 fi
 
