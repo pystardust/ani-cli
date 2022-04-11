@@ -98,7 +98,7 @@ download () {
 case $2 in
 	*mp4*)
 		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
-	*)
+	*)	
 		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4" ;;
 esac
 }
@@ -177,26 +177,50 @@ decrypt_link() {
 }
 
 # chooses the link for the set quality
-get_video_quality() {
+get_video_link() {
 	dpage_url="$1"
-	video_links=$(decrypt_link "$dpage_url")
+	video_links=$(decrypt_link "$dpage_url")	
+	if printf '%s' $video_links | grep -q "mp4"; then 
+		video_url=$(get_video_quality_mp4 "$video_links")
+	else
+		video_url=$video_links
+		video_url=$(get_video_quality_m3u8 "$video_url")
+	fi
+}	
+
+get_video_quality_mp4() {
 	case $quality in
 		best)
-			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
 			;;
 		worst)
-			video_link=$(printf '%s' "$video_links" | head -n 1)
+			video_url=$(printf '%s' "$1" | head -n 1)
 			;;
 		*)
-			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p" | head -n 1)
-			if [ -z "$video_link" ]; then
+			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1)
+			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
 			fi
 			;;
 	esac
-	printf '%s' "$video_link"
+	printf '%s' "$video_url"
+}
+
+get_video_quality_m3u8() {
+    aria2c -q -x 16 -s 16 --referer="$dpage_link" "$1" --dir="$download_dir" -o "${anime_id}-${episode}.m3u8" --download-result=hide
+	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | grep -oE "https://manifest.*rendition.m3u8.*" | grep -v "https://manifest.*rendition.m3u8.*\"")
+	rm "$download_dir"/"${anime_id}-${episode}.m3u8"
+	case $quality in
+		best)
+			video_url=$(printf '%s' "$m3u8_links" | head -n 4 | tail -n 1)
+			;;
+		worst)
+		  video_url=$(printf '%s' "$m3u8_links" | head -n 2 | tail -n 1)
+			;;
+	esac
+	printf '%s' "$video_url"
 }
 
 
@@ -385,7 +409,7 @@ open_episode () {
 	if [ -z "$dpage_link" ];then 
 		err "Episode doesn't exist!!"
 	else
-		video_url=$(get_video_quality "$dpage_link")
+		get_video_link "$dpage_link"
 	fi
 	if [ "$is_download" -eq 0 ]; then
 		# write anime and episode number and save to temporary history
@@ -402,7 +426,7 @@ open_episode () {
 		inf "Downloading episode $episode ..."
 		episode=$(printf "%03d" "$episode")
 		{
-			if download "$dpage_link" "$video_url" "$anime_id" "$episode" ; then
+			if download "$dpage_link" "$video_url" "$anime_id" "$episode"; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
@@ -589,3 +613,4 @@ else
 	exit
 fi
 done
+
