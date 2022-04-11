@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.2"
+VERSION="2.1.0"
 
 
 
@@ -451,7 +451,7 @@ scrape=query
 download_dir="."
 choice=
 auto_play=0
-pipe=
+query=
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -462,7 +462,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # Consume pipe input
 if [ ! -t 0 ]; then
-	pipe=$(sed 1q)
+	query=$(sed 1q)
 	exec 0</dev/tty
 fi
 
@@ -523,9 +523,7 @@ case $scrape in
 				select_first=1
 			fi
 			query="$*"
-		elif [ -n "$pipe" ]; then
-			query="$pipe"
-		else
+		elif [ -z "$query" ]; then
 			prompt "Search Anime: "
 			query="$REPLY $REPLY2"
 		fi
