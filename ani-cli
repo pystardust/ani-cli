@@ -210,7 +210,7 @@ get_video_quality_mp4() {
 
 get_video_quality_m3u8() {
     aria2c -q -x 16 -s 16 --referer="$dpage_link" "$1" --dir="$download_dir" -o "${anime_id}-${episode}.m3u8" --download-result=hide
-	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | grep -oE "https://manifest.*rendition.m3u8.*" | grep -v "https://manifest.*rendition.m3u8.*\"")
+	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | grep -oE "https://.*rendition.m3u8.*" | grep -v "https://.*rendition.m3u8.*\"")
 	rm "$download_dir"/"${anime_id}-${episode}.m3u8"
 	case $quality in
 		best)
