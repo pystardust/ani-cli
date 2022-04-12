@@ -160,7 +160,7 @@ updateurl () {
     prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
     new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
     if [ "$prev_url" != "$new_url" ]; then
-	printf "$new_url" > $urlfile
+	printf "%s" "$new_url" > "$urlfile"
     fi
 }
 
@@ -188,7 +188,7 @@ decrypt_link() {
 get_video_link() {
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")	
-	if printf '%s' $video_links | grep -q "mp4"; then 
+	if printf '%s' "$video_links" | grep -q "mp4"; then 
 		video_url=$(get_video_quality_mp4 "$video_links")
 		idx=1
 	else
@@ -228,10 +228,9 @@ get_video_quality_m3u8() {
 		*)
 			idx=5;;
 	esac
-	case $video_url in
-		*gogocdn*m3u*)
-			idx=$((idx-1));;
-	esac
+	if printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*"; then 
+		idx=$((idx-1))
+	fi
 }
 
 
@@ -456,7 +455,7 @@ play_episode () {
 			;;
 		*)
 			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-			set -- "$@" --vid=$idx --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$@" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
@@ -545,7 +544,7 @@ else
 fi
 
 if [ -s "$urlfile" ] ; then
-	base_url="https://$(cat $urlfile)"
+	base_url="https://$(cat "$urlfile")"
 else
 	base_url="https://gogoplay5.com"
 fi
