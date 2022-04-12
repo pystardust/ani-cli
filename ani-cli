@@ -18,8 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.2"
-
+VERSION="2.0.3"
 
 
 #######################
@@ -99,7 +98,7 @@ case $2 in
 	*mp4*)
 		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
 	*)	
-		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4" ;;
+		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx-1))?" -c copy "$download_dir/${3}-${4}.mp4" ;;
 esac
 }
 
@@ -122,11 +121,11 @@ extended_search () {
 		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
 }
 
-#
+#check no of episodes in an anime
 check_episode () {
 	data=$(curl -s "$base_url/videos/$1")
-	if [ "$data" != "404" ]; then
-		del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+	if [ -n "$del" ]; then
 		printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 	fi
 }
@@ -156,6 +155,15 @@ search_history () {
 # URL PROCESSING #
 ##################
 
+#update main url to latest one
+updateurl () {
+    prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
+    new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
+    if [ "$prev_url" != "$new_url" ]; then
+	printf "$new_url" > $urlfile
+    fi
+}
+
 # get the download page url
 get_dpage_link() {
 	anime_id="$1"
@@ -182,9 +190,10 @@ get_video_link() {
 	video_links=$(decrypt_link "$dpage_url")	
 	if printf '%s' $video_links | grep -q "mp4"; then 
 		video_url=$(get_video_quality_mp4 "$video_links")
+		idx=1
 	else
 		video_url=$video_links
-		video_url=$(get_video_quality_m3u8 "$video_url")
+		get_video_quality_m3u8
 	fi
 }	
 
@@ -209,18 +218,20 @@ get_video_quality_mp4() {
 }
 
 get_video_quality_m3u8() {
-    aria2c -q -x 16 -s 16 --referer="$dpage_link" "$1" --dir="$download_dir" -o "${anime_id}-${episode}.m3u8" --download-result=hide
-	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | grep -oE "https://.*rendition.m3u8.*" | grep -v "https://.*rendition.m3u8.*\"")
-	rm "$download_dir"/"${anime_id}-${episode}.m3u8"
 	case $quality in
-		best)
-			video_url=$(printf '%s' "$m3u8_links" | head -n 4 | tail -n 1)
-			;;
-		worst)
-		  video_url=$(printf '%s' "$m3u8_links" | head -n 2 | tail -n 1)
-			;;
+		worst|360)
+			idx=2;;
+		480)
+			idx=3;;
+		720)
+			idx=4;;
+		*)
+			idx=5;;
 	esac
-	printf '%s' "$video_url"
+	case $video_url in
+		*gogocdn*m3u*)
+			idx=$((idx-1));;
+	esac
 }
 
 
@@ -445,7 +456,7 @@ play_episode () {
 			;;
 		*)
 			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-			set -- "$@" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$@" --vid=$idx --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
@@ -471,12 +482,14 @@ player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 PID=0
 quality=best
+idx=5
 scrape=query
 download_dir="."
 choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+urlfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-url"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # create history file and history dir if none found
@@ -531,7 +544,12 @@ else
 	dep_ch "aria2c" "ffmpeg"
 fi
 
-base_url="https://gogoplay4.com"
+if [ -s "$urlfile" ] ; then
+	base_url="https://$(cat $urlfile)"
+else
+	base_url="https://gogoplay5.com"
+fi
+
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
@@ -549,9 +567,6 @@ case $scrape in
 	history)
 		search_history
 		[ "$REPLY" = "q" ] && exit 0
-		first_ep_number=0
-		result=$(get_dpage_link "$selection_id" "$first_ep_number")
-		[ -z "$result" ] && first_ep_number=1
 		;;
 	*)
 		die "Unexpected scrape type"
@@ -560,6 +575,7 @@ esac
 generate_ep_list
 append_history
 open_selection
+updateurl &
 
 ########
 # LOOP #
@@ -613,4 +629,3 @@ else
 	exit
 fi
 done
-
