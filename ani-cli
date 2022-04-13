@@ -125,9 +125,7 @@ extended_search () {
 check_episode () {
 	data=$(curl -s "$base_url/videos/$1")
 	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-	if [ -n "$del" ]; then
-		printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
-	fi
+	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
 
 process_hist_entry () {
@@ -157,11 +155,9 @@ search_history () {
 
 #update main url to latest one
 updateurl () {
-    prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
-    new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
-    if [ "$prev_url" != "$new_url" ]; then
-	printf "%s" "$new_url" > "$urlfile"
-    fi
+	prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
+	new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
+	[ "$prev_url" != "$new_url" ] && printf "%s" "$new_url" > "$urlfile"
 }
 
 # get the download page url
@@ -228,9 +224,7 @@ get_video_quality_m3u8() {
 		*)
 			idx=5;;
 	esac
-	if printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*"; then 
-		idx=$((idx-1))
-	fi
+	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
 
 
