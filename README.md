@@ -26,7 +26,7 @@ https://matrix.to/#/#gen-ani-cli:matrix.org
 <h3 align="center">
 A cli to browse and watch anime. This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
 
-Latest stable version: 2.0.3
+Latest stable version: 2.0.4
 </h3>
 	
 <h1 align="center">
@@ -55,8 +55,10 @@ if you encounter "Video url not found" or any breaking issue, then make sure you
 `sudo ani-cli -U` to update on linux, mac and android. On windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>
-If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history
-transition script (history_transition.sh). Download it: `git clone https://github.com/pystardust/ani-cli` then run: `./ani-cli/hist-transition.sh`
+If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
+```sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
+```
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
