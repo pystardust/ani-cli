@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.3"
+VERSION="2.0.4"
 
 
 #######################
@@ -170,8 +170,8 @@ get_dpage_link() {
 }
 
 decrypt_link() {
-	secret_key='3633393736383832383733353539383139363339393838303830383230393037'
-	iv='34373730343738393639343138323637'
+	secret_key='3633393736383832383733353336383139363339393232303833323735393037'
+	iv='34373836343433393639343138323637'
 	ajax_url="$base_url/encrypt-ajax.php"
 	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
 	ajax=$(printf '%s' "$id" |openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
@@ -477,7 +477,6 @@ player_fn="mpv" #video player needs to be able to play urls
 is_download=0
 PID=0
 quality=best
-idx=5
 scrape=query
 download_dir="."
 choice=
