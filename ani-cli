@@ -442,6 +442,8 @@ play_episode () {
 # clears the colors and deletes temporary logfile when exited using SIGINT
 trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
+alias curl="curl -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Safari/537.36'"
+
 # default options
 player_fn="mpv" #video player needs to be able to play urls
 is_download=0
