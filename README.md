@@ -33,15 +33,6 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
-- [Others]
-   -[mov-cli](https://github.com/mov-cli/mov-cli)
-   -[ani-sync](https://github.com/iamchokerman/ani-sync)
-   -[animdl](https://github.com/justfoolingaround/animdl)
-   -[saikou](https://github.com/saikou-app/saikou)
-   -[anipy-cli](https://github.com/sdaqo/anipy-cli)
-   -[dra-cla](https://github.com/CoolnsX/dra-cla)
-   -[kaa.si-cli](https://github.com/Soviena/kaa.si-cli)
-   -[MangDL](https://github.com/MangDL/MangDL)
 - [Install](#Installation)
   - [Arch](#Arch)
   - [Linux](#Linux)
@@ -50,6 +41,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [Android](#Android)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
+- [Partners](#Partners)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
@@ -151,3 +143,13 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 - mpv - Video Player
 - aria2 - Download manager
 - ffmpeg - m3u8 Downloader
+
+## Partners 
+-[mov-cli](https://github.com/mov-cli/mov-cli) Watch movies in the cli
+-[ani-sync](https://github.com/iamchokerman/ani-sync) Works with ani-cli to watch anime with people
+-[animdl](https://github.com/justfoolingaround/animdl) Watch anime in the cli (Supports Multiply anime sources)
+-[saikou](https://github.com/saikou-app/saikou) Anime app for android
+-[anipy-cli](https://github.com/sdaqo/anipy-cli) Python anime cli 
+-[dra-cla](https://github.com/CoolnsX/dra-cla) Watch anime in the cli
+-[kaa.si-cli](https://github.com/Soviena/kaa.si-cli) Watch anime in the cli
+-[manga-cli](https://github.com/7USTIN/manga-cli) Read manga in the cli
