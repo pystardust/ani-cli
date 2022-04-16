@@ -199,11 +199,9 @@ get_video_link() {
 get_video_quality_mp4() {
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
-			;;
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1) ;;
 		worst)
-			video_url=$(printf '%s' "$1" | head -n 1)
-			;;
+			video_url=$(printf '%s' "$1" | head -n 1) ;;
 		*)
 			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1)
 			if [ -z "$video_url" ]; then
@@ -219,15 +217,15 @@ get_video_quality_mp4() {
 get_video_quality_m3u8() {
 	case $quality in
 		worst|360)
-			idx=2;;
+			idx=2 ;;
 		480)
-			idx=3;;
+			idx=3 ;;
 		720)
-			idx=4;;
+			idx=4 ;;
 		1080|best)
-			idx=5;;
+			idx=5 ;;
 		*)
-			idx=5;;
+			idx=5 ;;
 	esac
 	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
@@ -496,11 +494,9 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
 		d)
-			is_download=1
-			;;
+			is_download=1 ;;
 		a)
-			ep_choice_to_start=$OPTARG
-			;;
+			ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
@@ -510,14 +506,11 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			download_dir=$OPTARG
 			;;
 		q)
-			quality=$OPTARG
-			;;
+			quality=$OPTARG ;;
 		c)
-			scrape=history
-			;;
+			scrape=history ;;
 		v)
-			player_fn="vlc"
-			;;
+			player_fn="vlc" ;;
 		U)
 			update_script
 			exit 0
@@ -603,11 +596,9 @@ if [ -z "$select_first" ]; then
 			unset ep_choice_end
 			;;
 		s)
-			episode_selection
-			;;
+			episode_selection ;;
 		q)
-			break
-			;;
+			break ;;
 		*)
 			tput clear
 			err "Invalid choice"
