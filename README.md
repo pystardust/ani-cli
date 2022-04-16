@@ -26,7 +26,8 @@ https://matrix.to/#/#gen-ani-cli:matrix.org
 <h3 align="center">
 A cli to browse and watch anime. This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
 
-Latest stable version: 2.0.4
+Latest stable version: 2.0.5
+
 </h3>
 	
 <h1 align="center">
