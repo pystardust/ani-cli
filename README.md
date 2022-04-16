@@ -41,7 +41,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [Android](#Android)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
-- [Partners](#Partners)
+- [Homies](#Homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
@@ -144,12 +144,13 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 - aria2 - Download manager
 - ffmpeg - m3u8 Downloader
 
-## Partners 
--[mov-cli](https://github.com/mov-cli/mov-cli) Watch movies in the cli
--[ani-sync](https://github.com/iamchokerman/ani-sync) Works with ani-cli to watch anime with people
--[animdl](https://github.com/justfoolingaround/animdl) Watch anime in the cli (Supports Multiply anime sources)
--[saikou](https://github.com/saikou-app/saikou) Anime app for android
--[anipy-cli](https://github.com/sdaqo/anipy-cli) Python anime cli 
--[dra-cla](https://github.com/CoolnsX/dra-cla) Watch anime in the cli
--[kaa.si-cli](https://github.com/Soviena/kaa.si-cli) Watch anime in the cli
--[manga-cli](https://github.com/7USTIN/manga-cli) Read manga in the cli
+## Homies 
+
+* [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: animixplay, 9anime...) (Python)
+* [anime-helper-shell](https://github.com/Atreyagaurav/anime-helper-shell): A python shell for searching, watching, and downloading anime (Python)
+* [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
+* [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
+* [kaa.si-cli](https://github.com/Soviena/kaa.si-cli): Stream anime from kaa.si and sync with anilist (Python)
+* [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
+* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/tv shows in the cli (work in progress) (Python/Shell)
+* [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
