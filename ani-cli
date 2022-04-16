@@ -186,7 +186,7 @@ decrypt_link() {
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	video_links=$(decrypt_link "$dpage_url")	
+	video_links=$(decrypt_link "$dpage_url")
 	if printf '%s' "$video_links" | grep -q "mp4"; then 
 		video_url=$(get_video_quality_mp4 "$video_links")
 		idx=1
