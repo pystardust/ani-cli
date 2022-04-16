@@ -35,6 +35,13 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Fixing errors](#Fixing-errors)
 - [Others]
    -[mov-cli](https://github.com/mov-cli/mov-cli)
+   -[ani-sync](https://github.com/iamchokerman/ani-sync)
+   -[animdl](https://github.com/justfoolingaround/animdl)
+   -[saikou](https://github.com/saikou-app/saikou)
+   -[anipy-cli](https://github.com/sdaqo/anipy-cli)
+   -[dra-cla](https://github.com/CoolnsX/dra-cla)
+   -[kaa.si-cli](https://github.com/Soviena/kaa.si-cli)
+   -[MangDL](https://github.com/MangDL/MangDL)
 - [Install](#Installation)
   - [Arch](#Arch)
   - [Linux](#Linux)
