@@ -466,6 +466,7 @@ play_episode () {
 	PID=$!
 }
 
+
 ############
 # START UP #
 ############
@@ -534,7 +535,6 @@ else
 	dep_ch "aria2c" "ffmpeg"
 fi
 
-
 base_url="https://goload.pro"
 case $scrape in
 	query)
@@ -562,6 +562,7 @@ generate_ep_list
 append_history
 open_selection
 updateurl &
+
 
 ########
 # LOOP #
