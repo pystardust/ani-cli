@@ -39,6 +39,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [Android](#Android)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
+- [Homies](#Homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
@@ -142,3 +143,14 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 - mpv - Video Player
 - aria2 - Download manager
 - ffmpeg - m3u8 Downloader
+
+## Homies 
+
+* [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: animixplay, 9anime...) (Python)
+* [anime-helper-shell](https://github.com/Atreyagaurav/anime-helper-shell): A python shell for searching, watching, and downloading anime (Python)
+* [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
+* [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
+* [kaa.si-cli](https://github.com/Soviena/kaa.si-cli): Stream anime from kaa.si and sync with anilist (Python)
+* [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
+* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/tv shows in the cli (work in progress) (Python/Shell)
+* [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
