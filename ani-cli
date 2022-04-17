@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.5"
+VERSION="2.0.6"
 
 
 
@@ -313,6 +313,7 @@ episode_selection () {
 		die "Episodes not released yet!"
 	fi
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
+		[ "$ep_choice_to_start" = "-1" ] && ep_choice_to_start="$last_ep_number"
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
@@ -324,6 +325,7 @@ episode_selection () {
 				if [ "$REPLY" = q ]; then
 					exit 0
 				fi
+				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
 					err "Invalid number(s)"
@@ -384,7 +386,7 @@ open_episode () {
 	inf "Loading episode $episode..."
 	# decrypting url
 	dpage_link=$(get_dpage_link "$anime_id" "$episode")
-	if [ -z "$dpage_link" ];then 
+	if [ -z "$dpage_link" ];then
 		err "Episode doesn't exist!!"
 	else
 		video_url=$(get_video_quality "$dpage_link")
