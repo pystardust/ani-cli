@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.0.6"
+VERSION="2.1.0"
 
 
 
@@ -99,7 +99,7 @@ case $2 in
 	*mp4*)
 		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
 	*)
-		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4" ;;
+		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx-1))?" -c copy "$download_dir/${3}-${4}.mp4" ;;
 esac
 }
 
@@ -122,13 +122,11 @@ extended_search () {
 		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
 }
 
-#
+#check no of episodes in an anime
 check_episode () {
 	data=$(curl -s "$base_url/videos/$1")
-	if [ "$data" != "404" ]; then
-		del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-		printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
-	fi
+	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
+	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
 
 process_hist_entry () {
@@ -156,6 +154,13 @@ search_history () {
 # URL PROCESSING #
 ##################
 
+#update main url to latest one
+updateurl () {
+	prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
+	new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
+	[ "$prev_url" != "$new_url" ] && printf "%s" "$new_url" > "$urlfile"
+}
+
 # get the download page url
 get_dpage_link() {
 	anime_id="$1"
@@ -179,26 +184,50 @@ decrypt_link() {
 }
 
 # chooses the link for the set quality
-get_video_quality() {
+get_video_link() {
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
+	if printf '%s' "$video_links" | grep -q "mp4"; then 
+		video_url=$(get_video_quality_mp4 "$video_links")
+		idx=1
+	else
+		video_url="$video_links"
+		get_video_quality_m3u8
+	fi
+}	
+
+get_video_quality_mp4() {
 	case $quality in
 		best)
-			video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
-			;;
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1) ;;
 		worst)
-			video_link=$(printf '%s' "$video_links" | head -n 1)
-			;;
+			video_url=$(printf '%s' "$1" | head -n 1) ;;
 		*)
-			video_link=$(printf '%s' "$video_links" | grep -i "${quality}p" | head -n 1)
-			if [ -z "$video_link" ]; then
+			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1)
+			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_link=$(printf '%s' "$video_links" | head -n 4 | tail -n 1)
+				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
 			fi
 			;;
 	esac
-	printf '%s' "$video_link"
+	printf '%s' "$video_url"
+}
+
+get_video_quality_m3u8() {
+	case $quality in
+		worst|360)
+			idx=2 ;;
+		480)
+			idx=3 ;;
+		720)
+			idx=4 ;;
+		1080|best)
+			idx=5 ;;
+		*)
+			idx=5 ;;
+	esac
+	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
 
 
@@ -389,7 +418,7 @@ open_episode () {
 	if [ -z "$dpage_link" ];then
 		err "Episode doesn't exist!!"
 	else
-		video_url=$(get_video_quality "$dpage_link")
+		get_video_link "$dpage_link"
 	fi
 	if [ "$is_download" -eq 0 ]; then
 		# write anime and episode number and save to temporary history
@@ -406,7 +435,7 @@ open_episode () {
 		inf "Downloading episode $episode ..."
 		episode=$(printf "%03d" "$episode")
 		{
-			if download "$dpage_link" "$video_url" "$anime_id" "$episode" ; then
+			if download "$dpage_link" "$video_url" "$anime_id" "$episode"; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
@@ -425,7 +454,7 @@ play_episode () {
 			;;
 		*)
 			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-			set -- "$@" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$@" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
@@ -438,6 +467,7 @@ play_episode () {
 	fi
 	PID=$!
 }
+
 
 ############
 # START UP #
@@ -457,6 +487,7 @@ choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
+urlfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-url"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # create history file and history dir if none found
@@ -466,11 +497,9 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 while getopts 'vq:dp:chDUVa:' OPT; do
 	case $OPT in
 		d)
-			is_download=1
-			;;
+			is_download=1 ;;
 		a)
-			ep_choice_to_start=$OPTARG
-			;;
+			ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
@@ -480,14 +509,11 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 			download_dir=$OPTARG
 			;;
 		q)
-			quality=$OPTARG
-			;;
+			quality=$OPTARG ;;
 		c)
-			scrape=history
-			;;
+			scrape=history ;;
 		v)
-			player_fn="vlc"
-			;;
+			player_fn="vlc" ;;
 		U)
 			update_script
 			exit 0
@@ -529,9 +555,6 @@ case $scrape in
 	history)
 		search_history
 		[ "$REPLY" = "q" ] && exit 0
-		first_ep_number=0
-		result=$(get_dpage_link "$selection_id" "$first_ep_number")
-		[ -z "$result" ] && first_ep_number=1
 		;;
 	*)
 		die "Unexpected scrape type"
@@ -540,6 +563,8 @@ esac
 generate_ep_list
 append_history
 open_selection
+updateurl &
+
 
 ########
 # LOOP #
@@ -574,11 +599,9 @@ if [ -z "$select_first" ]; then
 			unset ep_choice_end
 			;;
 		s)
-			episode_selection
-			;;
+			episode_selection ;;
 		q)
-			break
-			;;
+			break ;;
 		*)
 			tput clear
 			err "Invalid choice"
