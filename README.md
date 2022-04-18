@@ -33,7 +33,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
   - [Arch](#Arch)
-  - [Linux & Mac OS](#Linux & Mac OS)
+  - [Linux & Mac OS](#Linux-&-Mac-OS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
