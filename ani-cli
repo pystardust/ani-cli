@@ -225,9 +225,9 @@ get_video_quality_m3u8() {
 			idx=3 ;;
 		720)
 			idx=1 ;;
-		1080|best)
-			idx="$links_count" ;;
-		*)
+		1080)
+			idx=5 ;;
+		*|best)
 			idx="$links_count" ;;
 	esac
 	if [ "$idx" -lt 1 ] || [ "$idx" -gt "$links_count" ];then
