@@ -99,7 +99,7 @@ case $2 in
 	*mp4*)
 		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
 	*)
-		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx-1))?" -c copy "$download_dir/${3}-${4}.mp4" ;;
+		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/${3}-${4}.mp4";;
 esac
 }
 
@@ -187,12 +187,11 @@ decrypt_link() {
 get_video_link() {
 	dpage_url="$1"
 	video_links=$(decrypt_link "$dpage_url")
-	if printf '%s' "$video_links" | grep -q "mp4"; then 
+	if printf '%s' "$video_links" | grep -q "mp4"; then
 		video_url=$(get_video_quality_mp4 "$video_links")
-		idx=1
 	else
 		video_url="$video_links"
-		get_video_quality_m3u8
+		video_url=$(get_video_quality_m3u8 "$video_url")
 	fi
 }	
 
@@ -215,19 +214,40 @@ get_video_quality_mp4() {
 }
 
 get_video_quality_m3u8() {
-	case $quality in
-		worst|360)
-			idx=2 ;;
-		480)
-			idx=3 ;;
-		720)
-			idx=4 ;;
-		1080|best)
-			idx=5 ;;
-		*)
-			idx=5 ;;
-	esac
-	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
+    aria2c -q -x 16 -s 16 --referer="$dpage_link" "$1" --dir="$download_dir" -o "${anime_id}-${episode}.m3u8" --download-result=hide
+	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d')
+	links_count=$(printf '%s' "$m3u8_links" | wc -w)
+	rm "$download_dir"/"${anime_id}-${episode}.m3u8" &
+	if printf '%s' "$m3u8_links" | grep -q "https";then
+	  case $quality in
+	  	  worst|360)
+			  video_url=$(printf '%s' "$m3u8_links" | head -n 2 | tail -n 1) ;;
+		  480)
+			  video_url=$(printf '%s' "$m3u8_links" | head -n 3 | tail -n 1) ;;
+		  720)
+			  video_url=$(printf '%s' "$m3u8_links" | head -n 1 | tail -n 1) ;;
+		  best|1080)
+			  video_url=$(printf '%s' "$m3u8_links" | head -n "$links_count" | tail -n 1) ;;
+		  *)
+		  	  video_url=$(printf '%s' "$m3u8_links" | head -n "$links_count" | tail -n 1) ;;
+	  esac
+	else
+		m3u8_base=$(printf '%s' "$1" | sed "s/ep.$episode.*$//")
+		case $quality in
+			worst|360)
+				m3u8_quality=$(printf '%s' "$m3u8_links" | head -n 1 | tail -n 1) ;;
+			480)
+				m3u8_quality=$(printf '%s' "$m3u8_links" | head -n 2 | tail -n 1) ;;
+			720)
+				m3u8_quality=$(printf '%s' "$m3u8_links" | head -n 3 | tail -n 1) ;;
+			best|1080)
+				m3u8_quality=$(printf '%s' "$m3u8_links" | head -n "$links_count" | tail -n 1) ;;
+			*)
+				m3u8_quality=$(printf '%s' "$m3u8_links" | head -n "$links_count" | tail -n 1) ;;
+		esac
+		video_url=$(printf '%s' "$m3u8_base$m3u8_quality")
+	fi
+	printf '%s' "$video_url"
 }
 
 
@@ -454,7 +474,7 @@ play_episode () {
 			;;
 		*)
 			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-			set -- "$@" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$@" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
