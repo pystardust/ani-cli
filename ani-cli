@@ -220,7 +220,7 @@ select_line() {
 
 get_video_quality_m3u8() {
 	aria2c -q -x 16 -s 16 --referer="$dpage_link" "$1" --dir="$download_dir" -o "${anime_id}-${episode}.m3u8" --download-result=hide
-	m3u8_links=$(cat "$download_dir"/"${anime_id}-${episode}.m3u8" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d')
+	m3u8_links=$(sed 's/#.*$//' "$download_dir"/"${anime_id}-${episode}.m3u8" | sed '/^[[:space:]]*$/d')
 	links_count=$(printf '%s' "$m3u8_links" | wc -w)
 	rm "$download_dir"/"${anime_id}-${episode}.m3u8" &
 	case $quality in
@@ -236,8 +236,8 @@ get_video_quality_m3u8() {
 	video_url=$(select_line "$m3u8_links" "$video_idx")
 	# things are different for http and https links
 	if printf '%s' "$m3u8_links" | grep -q "https";then
-		video_idx=$(( $video_idx - 1 ))
-		[ $video_idx -eq 0 ] && video_idx=3
+		video_idx=$(( video_idx - 1 ))
+		[ "$video_idx" -eq 0 ] && video_idx=3
 		m3u8_base=$(printf '%s' "$1" | sed "s/ep.$episode.*$//")
 		m3u8_quality=$(select_line "$m3u8_links" "$video_idx")
 		video_url=$(printf '%s' "$m3u8_base$m3u8_quality")
