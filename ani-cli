@@ -230,8 +230,9 @@ get_video_quality_m3u8() {
 		*)
 			idx="$links_count" ;;
 	esac
-	if [ $idx -lt 1 ] || [ $idx -gt "$links_count" ];then
-		err "Current video quality is not available (defaulting to best quality)"		 idx="$links_count"
+	if [ "$idx" -lt 1 ] || [ "$idx" -gt "$links_count" ];then
+		err "Current video quality is not available (defaulting to best quality)"		 
+		idx="$links_count"
 	fi
 	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
