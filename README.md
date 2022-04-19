@@ -33,8 +33,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
   - [Arch](#Arch)
-  - [Linux](#Linux)
-  - [Mac](#Mac)
+  - [Linux & Mac OS](#linux--mac-os)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
@@ -64,7 +63,7 @@ Also consider ani-cli-git
 ```sh
 yay -S ani-cli
 ```
-### Linux
+### Linux & Mac OS
 
 Install dependencies [(See below)](#Dependencies)
 
@@ -75,15 +74,11 @@ sudo cp ani-cli /usr/local/bin/ani-cli
 
 *Note that mpv installed through flatpak is not compatible*
 
-### Mac
-
-Install homebrew [(Guide)](https://brew.sh/)
+*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
-brew tap iamchokerman/ani-cli
-brew install ani-cli
+brew install curl grep aria2 mpv openssl@1.1 ffmpeg git
 ```
-*If you are upgrading from the old manual install process, you may have to remove the old ani-cli by running `sudo rm /usr/local/bin/ani-cli`*
 
 ### Windows
 
