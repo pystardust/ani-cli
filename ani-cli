@@ -215,19 +215,25 @@ get_video_quality_mp4() {
 	printf '%s' "$video_url"
 }
 
-get_video_quality_m3u8() {
+get_video_quality_m3u8() { 
+	m3u8_links=$(curl -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d')
+	links_count=$(printf '%s' "$m3u8_links" | wc -w)
 	case $quality in
 		worst|360)
 			idx=2 ;;
 		480)
 			idx=3 ;;
 		720)
-			idx=4 ;;
-		1080|best)
+			idx=1 ;;
+		1080)
 			idx=5 ;;
-		*)
-			idx=5 ;;
+		best|*)
+			idx="$links_count" ;;
 	esac
+	if [ "$idx" -lt 1 ] || [ "$idx" -gt "$links_count" ];then
+		err "Current video quality is not available (defaulting to best quality)"		 
+		idx="$links_count"
+	fi
 	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
 
