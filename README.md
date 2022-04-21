@@ -68,8 +68,8 @@ yay -S ani-cli
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-git clone https://github.com/pystardust/ani-cli && cd ani-cli
-sudo cp ani-cli /usr/local/bin/ani-cli
+sudo curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o /usr/local/bin/ani-cli &&
+sudo chmod +x /usr/local/bin/ani-cli
 ```
 
 *Note that mpv installed through flatpak is not compatible*
