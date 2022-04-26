@@ -521,7 +521,7 @@ while getopts 'svq:dp:chDUVa:' OPT; do
 			case "$(uname -s)" in
 				Darwin*)
 					player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-				*)
+				Linux*)
 					player_fn="syncplay" ;;
 			esac
 			;;
