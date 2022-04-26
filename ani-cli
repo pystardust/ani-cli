@@ -459,7 +459,7 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
 			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
 			;;
-		/Applications/Syncplay.app/Contents/MacOS/Syncplay|syncplay)
+		syncplay|/Applications/Syncplay.app/Contents/MacOS/syncplay)
 			nohup $player_fn $video_url -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 			;;
 		*)
@@ -518,12 +518,12 @@ while getopts 'svq:dp:chDUVa:' OPT; do
 			download_dir=$OPTARG
 			;;
 		s)
-			OS="`uname`"
-			if [[ "$OS" == "Linux"* ]]; then
-				player_fn="syncplay"
-			elif [[ "$OS" == "Darwin"* ]]; then
-				player_fn="/Applications/Syncplay.app/Contents/MacOS/Syncplay"
-			fi
+			case "$(uname -s)" in
+				Darwin*)
+					player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+				*)
+					player_fn="syncplay" ;;
+			esac
 			;;
 		q)
 			quality=$OPTARG ;;
