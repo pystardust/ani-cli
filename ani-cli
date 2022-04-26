@@ -459,13 +459,8 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
 			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
 			;;
-		/Applications/Syncplay.app/Contents/MacOS/Syncplay)
-      if [ "$auto_play" -eq 0 ]; then
-        nohup $player_fn $video_url -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
-      else
-        inf "sharing $selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-        $player_fn $video_url -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode"> /dev/null 2>&1 &
-      fi
+		/Applications/Syncplay.app/Contents/MacOS/Syncplay|syncplay)
+			nohup $player_fn $video_url -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
 			;;
 		*)
 			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
@@ -523,9 +518,10 @@ while getopts 'svq:dp:chDUVa:' OPT; do
 			download_dir=$OPTARG
 			;;
 		s)
-			if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+			OS="`uname`"
+			if [[ "$OS" == "Linux"* ]]; then
 				player_fn="syncplay"
-			elif [[ "$OSTYPE" == "darwin"* ]]; then
+			elif [[ "$OS" == "Darwin"* ]]; then
 				player_fn="/Applications/Syncplay.app/Contents/MacOS/Syncplay"
 			fi
 			;;
