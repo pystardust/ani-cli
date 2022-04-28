@@ -460,7 +460,7 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
 			;;
 		syncplay|/Applications/Syncplay.app/Contents/MacOS/syncplay)
-			"$player_fn" "$video_url" -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode" > /dev/null 2>&1 &
+			set -- "$player_fn" "$video_url" -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 		*)
 			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
@@ -470,7 +470,7 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 	if [ "$auto_play" -eq 0 ]; then
 		nohup "$@" > /dev/null 2>&1 &
 	else
-		inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+		inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 		"$@" > /dev/null 2>&1
 		sleep 2
 	fi
