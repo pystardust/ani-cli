@@ -70,12 +70,8 @@ die () {
 
 # get the newest version of this script from github and replace it
 update_script () {
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")"
-	if [ -z "$update" ]; then
-		die "Can't connect to internet"
-	else
-		update="$(printf '%s\n' "$update" | diff -u "$0" -)"
-	fi
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
 	else
