@@ -454,22 +454,24 @@ open_episode () {
 
 play_episode () {
 	# Build command
-	set -- "$player_fn" "$video_url"
+trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
 	case "$player_fn" in
 		vlc)
 			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
-			set -- "$@" --http-referrer="$dpage_link"
+			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
+			;;
+		syncplay|/Applications/Syncplay.app/Contents/MacOS/syncplay)
+			set -- "$player_fn" "$video_url" -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 		*)
-			trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-			set -- "$@" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
 	if [ "$auto_play" -eq 0 ]; then
 		nohup "$@" > /dev/null 2>&1 &
 	else
-		inf "Currently playing $display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
+		inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
 		"$@" > /dev/null 2>&1
 		sleep 2
 	fi
@@ -502,7 +504,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
-while getopts 'vq:dp:chDUVa:' OPT; do
+while getopts 'svq:dp:chDUVa:' OPT; do
 	case $OPT in
 		d)
 			is_download=1 ;;
@@ -515,6 +517,12 @@ while getopts 'vq:dp:chDUVa:' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
+			;;
+		s)
+			case "$(uname -s)" in
+				Darwin*) player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+				*) player_fn="syncplay" ;;
+			esac
 			;;
 		q)
 			quality=$OPTARG ;;
