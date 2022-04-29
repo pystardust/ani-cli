@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.1.5"
+VERSION="2.1.6"
 
 
 
@@ -70,7 +70,8 @@ die () {
 
 # get the newest version of this script from github and replace it
 update_script () {
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" | diff -u "$0" -)"
+	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
 	else
