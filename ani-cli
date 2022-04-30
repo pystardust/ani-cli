@@ -39,7 +39,7 @@ help_text () {
 	Options:
 	  -v use VLC as the media player
 	  -q set video quality (best|worst|360|480|720|1080)
-		-s watch anime together with friends, using Syncplay (works with mpv only)
+	  -s watch anime together with friends, using Syncplay (works with mpv only)
 	  -a specify episode to watch
 	  -d download episode
 	  -p download episode to specified directory
