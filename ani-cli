@@ -522,8 +522,7 @@ while getopts 'svq:dp:chDUVa:' OPT; do
 		s)
 			case "$(uname -s)" in
 				Darwin*) player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-				MINGW*) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
-				*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+				MINGW*|*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
 				*) player_fn="syncplay" ;;
 			esac
 			;;
