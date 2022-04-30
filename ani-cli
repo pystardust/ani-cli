@@ -32,8 +32,8 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  ${0##*/} [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  ${0##*/} [-v] [-q <quality>] -c
+	  ${0##*/} [-s] [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
+	  ${0##*/} [-s] [-v] [-q <quality>] -c
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
