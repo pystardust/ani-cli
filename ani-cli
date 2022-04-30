@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.1.6"
+VERSION="2.2.0"
 
 
 
@@ -37,13 +37,14 @@ help_text () {
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
-	  -c continue watching anime from history
+	  -v use VLC as the media player
+	  -q set video quality (best|worst|360|480|720|1080)
+		-s watch anime together with friends, using Syncplay (works with mpv only)
 	  -a specify episode to watch
-	  -h show helptext
 	  -d download episode
 	  -p download episode to specified directory
-	  -q set video quality (best|worst|360|480|720|1080)
-	  -v use VLC as the media player
+	  -c continue watching anime from history
+	  -h show helptext
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
@@ -460,7 +461,7 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
 			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
 			;;
-		syncplay|/Applications/Syncplay.app/Contents/MacOS/syncplay)
+		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
 			set -- "$player_fn" "$video_url" -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
 			;;
 		*)
@@ -521,6 +522,8 @@ while getopts 'svq:dp:chDUVa:' OPT; do
 		s)
 			case "$(uname -s)" in
 				Darwin*) player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+				MINGW*) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+				*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
 				*) player_fn="syncplay" ;;
 			esac
 			;;

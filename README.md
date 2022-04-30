@@ -19,7 +19,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime. This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
 </h3>
 	
 <h1 align="center">
@@ -44,8 +44,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 
 ## Fixing errors
 
-if you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
-`sudo ani-cli -U` to update on linux, mac and android. On windows, run gitbash as administrator then there type `ani-cli -U`.
+If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
+`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>
 If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
