@@ -175,20 +175,20 @@ get_dpage_link() {
 generate_link() {
     case $1 in
 	    1)
-		    mp4up_link=$(printf "$links" | grep "mp4upload")
+		    mp4up_link=$(printf "%s" "$links" | grep "mp4upload")
 		    refr="$mp4up_link"
-		    [ -z "$mp4up_link" ] || mp4up_id=$(printf "$links" | sed -nE 's_.*embed-(.*).html_\1_p')
+		    [ -z "$mp4up_link" ] || mp4up_id=$(printf "%s" "$links" | sed -nE 's_.*embed-(.*).html_\1_p')
 		    [ -z "$mp4up_id" ] || half_2=$(curl -A "$agent" -s "https://www.mp4upload.com/$mp4up_id" | sed -nE 's/.*fname" value="(.*)">/\1/p')
 		    [ -z "$half_2" ] || half_1=$(curl -A "$agent" -k -s "$mp4up_link" | sed -nE 's_.*embed\|(.*)\|.*blank.*video\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\3/d/\2/_p')
 		    [ -z "$half_1" ] || video_links="${half_1}${half_2}";;
 	    2)
-		    dood_id=$(printf "$links" | sed -n "s_.*dood.*/e/__p")
+		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
 		    refr="https://dood.ws/d/$dood_id"
 		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
 		    sleep 0.5
 		    [ -z "$dood_link" ] || video_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
 	    3)
-		    fb_id=$(printf "$links" | sed -n "s_.*fembed.*/v/__p")
+		    fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
 		    refr="https://fembed-hd.com/v/$fb_id"
 		    [ -z "$fb_id" ] || video_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
 	    *)
