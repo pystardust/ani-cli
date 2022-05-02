@@ -175,12 +175,8 @@ get_dpage_link() {
 generate_link() {
     case $1 in
 	    1)
-		    mp4up_link=$(printf "%s" "$links" | grep "mp4upload")
-		    refr="$mp4up_link"
-		    [ -z "$mp4up_link" ] || mp4up_id=$(printf "%s" "$links" | sed -nE 's_.*embed-(.*).html_\1_p')
-		    [ -z "$mp4up_id" ] || half_2=$(curl -A "$agent" -s "https://www.mp4upload.com/$mp4up_id" | sed -nE 's/.*fname" value="(.*)">/\1/p')
-		    [ -z "$half_2" ] || half_1=$(curl -A "$agent" -k -s "$mp4up_link" | sed -nE 's_.*embed\|(.*)\|.*blank.*video\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\3/d/\2/_p')
-		    [ -z "$half_1" ] || video_links="${half_1}${half_2}";;
+		    refr=$(printf "%s" "$links" | grep "mp4upload")
+		    [ -z "$refr" ] || video_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
 	    2)
 		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
 		    refr="https://dood.ws/d/$dood_id"
