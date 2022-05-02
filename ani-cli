@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.1.6"
+VERSION="2.1.7"
 
 
 
@@ -175,12 +175,8 @@ get_dpage_link() {
 generate_link() {
     case $1 in
 	    1)
-		    mp4up_link=$(printf "%s" "$links" | grep "mp4upload")
-		    refr="$mp4up_link"
-		    [ -z "$mp4up_link" ] || mp4up_id=$(printf "%s" "$links" | sed -nE 's_.*embed-(.*).html_\1_p')
-		    [ -z "$mp4up_id" ] || half_2=$(curl -A "$agent" -s "https://www.mp4upload.com/$mp4up_id" | sed -nE 's/.*fname" value="(.*)">/\1/p')
-		    [ -z "$half_2" ] || half_1=$(curl -A "$agent" -k -s "$mp4up_link" | sed -nE 's_.*embed\|(.*)\|.*blank.*video\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\3/d/\2/_p')
-		    [ -z "$half_1" ] || video_links="${half_1}${half_2}";;
+		    refr=$(printf "%s" "$links" | grep "mp4upload")
+		    [ -z "$refr" ] || video_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
 	    2)
 		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
 		    refr="https://dood.ws/d/$dood_id"
@@ -198,10 +194,10 @@ generate_link() {
 		    secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 		    iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 		    second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-		    token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
-		    ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
+		    token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
+		    ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
 		    data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-		    video_links="$(printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
+		    video_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
 	esac
 }
 
