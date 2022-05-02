@@ -21,7 +21,6 @@
 VERSION="2.2.0"
 
 
-
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -71,7 +70,7 @@ die () {
 
 # get the newest version of this script from github and replace it
 update_script () {
-	update="$(curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
 	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
@@ -97,11 +96,12 @@ dep_ch () {
 }
 
 download () {
+	[ "$idx" = "auto" ] && idx=5
 case $2 in
-	*mp4*)
-		aria2c --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
-	*)
+	*m3u8*)
 		ffmpeg -loglevel error -stats -referer "$1" -i "$2" -map "0:p:$((idx-1))?" -c copy "$download_dir/${3}-${4}.mp4" ;;
+	*)
+		aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
 esac
 }
 
@@ -112,21 +112,21 @@ esac
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -s "$base_url/search.html" -G -d "keyword=$search" |
+	curl -A "$agent" -s "$base_url/search.html" -G -d "keyword=$search" |
 		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
 }
 
 # searches on gogoanime (instead of gogoplay) because they index english titles
 extended_search () {
-	indexing_url=$(curl -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
+	indexing_url=$(curl -A "$agent" -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -s "$indexing_url//search.html" -G -d "keyword=$search" |
+	curl -A "$agent" -s "$indexing_url//search.html" -G -d "keyword=$search" |
 		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
 }
 
 #check no of episodes in an anime
 check_episode () {
-	data=$(curl -s "$base_url/videos/$1")
+	data=$(curl -A "$agent" -s "$base_url/videos/$1")
 	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
 	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
 }
@@ -168,49 +168,75 @@ get_dpage_link() {
 	anime_id="$1"
 	ep_no="$2"
 
-	curl -s "$base_url/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
+	curl -A "$agent" -s "$base_url/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
 		sed 's/^/https:/g'
 }
 
-decrypt_link() {
-	ajax_url="$base_url/encrypt-ajax.php"
-	id=$(printf "%s" "$1" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-	resp=$(curl -s "$1")
-	secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-	token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
-	ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" | base64)
-	data=$(curl -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-	printf '%s' "$data" | base64 -d | openssl enc -d -aes256 -K "$second_key" -iv "$iv" | sed -e 's/\].*/\]/' -e 's/\\//g' |
-		grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*'
+generate_link() {
+    case $1 in
+	    1)
+		    refr=$(printf "%s" "$links" | grep "mp4upload")
+		    [ -z "$refr" ] || video_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
+	    2)
+		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
+		    refr="https://dood.ws/d/$dood_id"
+		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+		    sleep 0.5
+		    [ -z "$dood_link" ] || video_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
+	    3)
+		    fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+		    refr="https://fembed-hd.com/v/$fb_id"
+		    [ -z "$fb_id" ] || video_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
+	    *)
+		    ajax_url="$base_url/encrypt-ajax.php"
+		    refr="$dpage_url"
+		    id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+		    secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+		    iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+		    second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+		    token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
+		    ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
+		    data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+		    video_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
+	esac
 }
 
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	video_links=$(decrypt_link "$dpage_url")
-	if printf '%s' "$video_links" | grep -q "mp4"; then 
-		video_url=$(get_video_quality_mp4 "$video_links")
-		idx=1
+	resp=$(curl -A "$agent" -s "$1")
+	if [ "$is_download" -eq 1 ];then
+	    i=1
+	    [ "$quality" != "best" ] && i=3
 	else
+	    i=4
+	fi
+	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
+	while [ -z "$video_links" ];do
+		generate_link "$i"
+		[ "$is_download" -eq 1 ] && i=$((i + 1)) || i=$((i - 1))
+	done
+	if printf '%s' "$video_links" | grep -q "m3u8"; then 
 		video_url="$video_links"
 		get_video_quality_m3u8
+	else
+		video_url=$(get_video_quality_mp4 "$video_links")
+		idx=1
 	fi
 }	
 
 get_video_quality_mp4() {
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1) ;;
+			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2) ;;
 		worst)
-			video_url=$(printf '%s' "$1" | head -n 1) ;;
+			video_url=$(printf '%s' "$1" | head -n 1 | cut -d">" -f2) ;;
 		*)
-			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1)
+			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1 | cut -d">" -f2)
 			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1)
+				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
 			fi
 			;;
 	esac
@@ -218,25 +244,22 @@ get_video_quality_mp4() {
 }
 
 get_video_quality_m3u8() { 
-	m3u8_links=$(curl -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d')
-	links_count=$(printf '%s' "$m3u8_links" | wc -w)
+	m3u8_links_count=$(curl -A "$agent" -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d' | wc -w)
 	case $quality in
 		worst|360)
 			idx=2 ;;
 		480)
 			idx=3 ;;
 		720)
-			idx=1 ;;
-		1080)
-			idx=5 ;;
-		best|*)
+			idx=4 ;;
+		1080|best|*)
 			idx="auto" ;;
 	esac
-	if [ "$idx" -lt 1 ] || [ "$idx" -gt "$links_count" ];then
+	if [ "$idx" -lt 1 ] 2>/dev/null || [ "$idx" -gt "$m3u8_links_count" ] 2>/dev/null ;then
 		err "Current video quality is not available (defaulting to best quality)"		 
 		idx="auto"
 	fi
-	printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
+	[ "$idx" != "auto" ] 2>/dev/null && printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
 }
 
 
@@ -444,7 +467,7 @@ open_episode () {
 		inf "Downloading episode $episode ..."
 		episode=$(printf "%03d" "$episode")
 		{
-			if download "$dpage_link" "$video_url" "$anime_id" "$episode"; then
+			if download "$refr" "$video_url" "$anime_id" "$episode"; then
 				inf "Downloaded episode: $episode"
 			else
 				err "Download failed episode: $episode , please retry or check your internet connection"
@@ -459,13 +482,13 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 	case "$player_fn" in
 		vlc)
 			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
-			set -- "$player_fn" "$video_url"  --http-referrer="$dpage_link"
+			set -- "$player_fn" "$video_url"  --http-referrer="$refr"
 			;;
 		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
-			set -- "$player_fn" "$video_url" -- --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
 		*)
-			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$dpage_link" --force-media-title="$trackma_title $episode"
+			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
 	esac
 	# Run Command
@@ -489,6 +512,7 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
+agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
 is_download=0
 PID=0
 quality=best
