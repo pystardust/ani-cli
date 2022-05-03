@@ -63,6 +63,11 @@ Also consider ani-cli-git
 ```sh
 yay -S ani-cli
 ```
+
+### NixOS
+
+Available in the [NUR](https://github.com/nix-community/NUR): `nur.repos.willpower3309.ani-cli`
+
 ### Linux & Mac OS
 
 Install dependencies [(See below)](#Dependencies)
