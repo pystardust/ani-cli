@@ -176,17 +176,17 @@ generate_link() {
     case $1 in
 	    1)
 		    refr=$(printf "%s" "$links" | grep "mp4upload")
-		    [ -z "$refr" ] || video_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
+		    [ -z "$refr" ] || result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
 	    2)
 		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
 		    refr="https://dood.ws/d/$dood_id"
 		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
 		    sleep 0.5
-		    [ -z "$dood_link" ] || video_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
+		    [ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
 	    3)
 		    fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
 		    refr="https://fembed-hd.com/v/$fb_id"
-		    [ -z "$fb_id" ] || video_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
+		    [ -z "$fb_id" ] || result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
 	    *)
 		    ajax_url="$base_url/encrypt-ajax.php"
 		    refr="$dpage_url"
@@ -197,7 +197,7 @@ generate_link() {
 		    token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
 		    ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
 		    data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-		    video_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
+		    result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
 	esac
 }
 
@@ -212,10 +212,12 @@ get_video_link() {
 	    i=4
 	fi
 	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
-	while [ -z "$video_links" ];do
+	while [ "$i" -ge 1 ] && [ "$i" -le 4 ] && [ -z "$result_links" ];do
 		generate_link "$i"
 		[ "$is_download" -eq 1 ] && i=$((i + 1)) || i=$((i - 1))
 	done
+	video_links="$result_links"
+	unset result_links
 	if printf '%s' "$video_links" | grep -q "m3u8"; then 
 		video_url="$video_links"
 		get_video_quality_m3u8
