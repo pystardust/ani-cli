@@ -64,6 +64,17 @@ Also consider ani-cli-git
 yay -S ani-cli
 ```
 
+### Nix
+
+Available in the [NUR](https://github.com/nix-community/NUR): `nur.repos.willpower3309.ani-cli`. To install on nixOS, [add the NUR to your configuration](https://github.com/nix-community/NUR/blob/master/README.md#installation), and the ani-cli package to your `configuration.nix`:
+
+```nix
+# configuration.nix
+environment.systemPackages = with pkgs; [
+  nur.repos.willpower3309.ani-cli
+];
+```
+
 ### Other native packages
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
