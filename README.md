@@ -68,7 +68,7 @@ yay -S ani-cli
 
 Available in the [NUR](https://github.com/nix-community/NUR): `nur.repos.willpower3309.ani-cli`. To install on nixOS, [add the NUR to your configuration](https://github.com/nix-community/NUR/blob/master/README.md#installation), and the ani-cli package to your `configuration.nix`:
 
-```nix
+```console
 # configuration.nix
 environment.systemPackages = with pkgs; [
   nur.repos.willpower3309.ani-cli
