@@ -64,9 +64,9 @@ Also consider ani-cli-git
 yay -S ani-cli
 ```
 
-### NixOS
+### Other native packages
 
-Available in the [NUR](https://github.com/nix-community/NUR): `nur.repos.willpower3309.ani-cli`
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
 ### Linux & Mac OS
 
