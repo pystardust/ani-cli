@@ -63,6 +63,11 @@ Also consider ani-cli-git
 ```sh
 yay -S ani-cli
 ```
+
+### Other native packages
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
+
 ### Linux & Mac OS
 
 Install dependencies [(See below)](#Dependencies)
