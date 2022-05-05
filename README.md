@@ -7,6 +7,13 @@
 <img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
+<h3 align="center">
+You can also join us on Matrix or on Revolt.
+</h3>
+<br>
+<h1 align="center">
+<a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
+<a href="https://nightly.revolt.chat/invite/4FKHbs78"><img src="https://developers.revolt.chat/img/logo.png" width="80"></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
@@ -125,7 +132,7 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 
 * Arch Linux: ```yay -R ani-cli```
 * Other Linux: Just remove the thing from path
-* Mac: ```brew uninstall ani-cli```
+* Mac: Just remove the thing from path
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
 
@@ -133,6 +140,7 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 
 - grep
 - sed
+- awk
 - curl
 - openssl
 - mpv - Video Player
