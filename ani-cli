@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.1.8"
+VERSION="2.1.9"
 
 
 
@@ -207,14 +207,14 @@ get_video_link() {
 	resp=$(curl -A "$agent" -s "$1")
 	if [ "$is_download" -eq 1 ];then
 	    i=1
-	    [ "$quality" != "best" ] && i=3
 	else
-	    i=4
+	    i=2
 	fi
+	[ "$quality" != "best" ] && i=3
 	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
 	while [ "$i" -ge 1 ] && [ "$i" -le 4 ] && [ -z "$result_links" ];do
 		generate_link "$i"
-		[ "$is_download" -eq 1 ] && i=$((i + 1)) || i=$((i - 1))
+		i=$((i + 1))
 	done
 	video_links="$result_links"
 	unset result_links
