@@ -118,19 +118,8 @@ source ~/.bashrc
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-pkg update
-pkg install git termux-tools ncurses-utils openssl-tool ffmpeg -y
-git clone https://github.com/pystardust/ani-cli && cd ani-cli
-cp ani-cli $PREFIX/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
-chmod +x $PREFIX/bin/mpv
+pkg install ani-cli
 ```
-
-Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xyz.mpv)
-
-*Add ```referrer="https://gogoplay5.com"``` to mpv.conf (Open mpv app, goto three dots top right->Settings->Advanced-->Edit mpv.conf)* 
-
-*Note: VLC android doesn't support referrer option. So it will not work*
 
 ## Uninstall
 
