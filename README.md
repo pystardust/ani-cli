@@ -10,7 +10,6 @@
 <h3 align="center">
 You can also join us on Matrix or on Revolt.
 </h3>
-<br>
 <h1 align="center">
 <a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
 <a href="https://nightly.revolt.chat/invite/4FKHbs78"><img src="https://developers.revolt.chat/img/logo.png" width="80"></a>
