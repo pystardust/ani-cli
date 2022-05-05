@@ -7,6 +7,12 @@
 <img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
+<h3 align="center">
+You can also join us on Matrix or on Revolt.
+</h3>
+<h1 align="center">
+<a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
+<a href="https://nightly.revolt.chat/invite/4FKHbs78"><img src="https://developers.revolt.chat/img/logo.png" width="80"></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
@@ -19,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime. This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
 </h3>
 	
 <h1 align="center">
@@ -44,8 +50,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 
 ## Fixing errors
 
-if you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
-`sudo ani-cli -U` to update on linux, mac and android. On windows, run gitbash as administrator then there type `ani-cli -U`.
+If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
+`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>
 If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
@@ -112,25 +118,14 @@ source ~/.bashrc
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-pkg update
-pkg install git termux-tools ncurses-utils openssl-tool ffmpeg -y
-git clone https://github.com/pystardust/ani-cli && cd ani-cli
-cp ani-cli $PREFIX/bin/ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
-chmod +x $PREFIX/bin/mpv
+pkg install ani-cli
 ```
-
-Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xyz.mpv)
-
-*Add ```referrer="https://gogoplay5.com"``` to mpv.conf (Open mpv app, goto three dots top right->Settings->Advanced-->Edit mpv.conf)* 
-
-*Note: VLC android doesn't support referrer option. So it will not work*
 
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
 * Other Linux: Just remove the thing from path
-* Mac: ```brew uninstall ani-cli```
+* Mac: Just remove the thing from path
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
 
@@ -138,6 +133,7 @@ Install mpv-android [(Link)](https://play.google.com/store/apps/details?id=is.xy
 
 - grep
 - sed
+- awk
 - curl
 - openssl
 - mpv - Video Player
