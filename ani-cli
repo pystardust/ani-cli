@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.2.0"
+VERSION="2.2.1"
 
 
 #######################
@@ -380,13 +380,19 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
-				inf "To specify a range, use: start_number end_number"
-				inf "Episodes:" "($first_ep_number-$last_ep_number)"
-				prompt "> "
-				ep_choice_start="$REPLY"
-				ep_choice_end="$REPLY2"
-				if [ "$REPLY" = q ]; then
-					exit 0
+				if [ -n "$1" ]; then
+					ep_choice_start="$1"
+					ep_choice_end="$2"
+					set --
+				else
+					inf "To specify a range, use: start_number end_number"
+					inf "Episodes:" "($first_ep_number-$last_ep_number)"
+					prompt "> "
+					ep_choice_start="$REPLY"
+					ep_choice_end="$REPLY2"
+					if [ "$REPLY" = q ]; then
+						exit 0
+					fi
 				fi
 				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
@@ -644,6 +650,8 @@ if [ -z "$select_first" ]; then
 			;;
 		s)
 			episode_selection ;;
+		[0-9]* | -[0-9]*)
+			episode_selection "$REPLY" "$REPLY2"  ;;
 		q)
 			break ;;
 		*)
