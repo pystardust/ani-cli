@@ -102,12 +102,6 @@ scoop install ani-cli -g
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
-Exit Powershell, then in Git Bash, run 
-```
-echo "export MSYS_NO_PATHCONV=1" >> ~/.bashrc
-source ~/.bashrc
-```
-
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
 
 ### Android
