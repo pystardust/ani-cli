@@ -6,12 +6,9 @@
 <img src="https://img.shields.io/badge/os-windows-brightgreen">
 <img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
-<a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
-<h3 align="center">
-You can also join us on Matrix or on Revolt.
-</h3>
 <h1 align="center">
 <a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
+<a href="https://discord.gg/aqu7GpqVmR"><img src="https://pnggrid.com/wp-content/uploads/2021/05/Discord-Logo-Square-1024x1024.png" width="80"></a>
 <a href="https://nightly.revolt.chat/invite/4FKHbs78"><img src="https://developers.revolt.chat/img/logo.png" width="80"></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
@@ -104,12 +101,6 @@ scoop install ani-cli -g
 ```
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
-
-Exit Powershell, then in Git Bash, run 
-```
-echo "export MSYS_NO_PATHCONV=1" >> ~/.bashrc
-source ~/.bashrc
-```
 
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
 
