@@ -111,6 +111,11 @@ Install termux [(Guide)](https://termux.com/)
 ```sh
 pkg install ani-cli
 ```
+Make sure to add the referrer in mpv by opening mpv (playstore version), going into Settings -> Advanced -> Edit mpv.conf and adding:
+
+```
+referrer="https:///gogoanime.fi/"
+```
 
 ## Uninstall
 
