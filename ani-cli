@@ -169,37 +169,36 @@ updateurl () {
 get_dpage_link() {
 	anime_id="$1"
 	ep_no="$2"
-
 	curl -A "$agent" -s "$base_url/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
 		sed 's/^/https:/g'
 }
 
 generate_link() {
-    case $1 in
-	    1)
-		    refr=$(printf "%s" "$links" | grep "mp4upload")
-		    [ -z "$refr" ] || result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
-	    2)
-		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
-		    refr="https://dood.ws/d/$dood_id"
-		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
-		    sleep 0.5
-		    [ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
-	    3)
-		    fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
-		    refr="https://fembed-hd.com/v/$fb_id"
-		    [ -z "$fb_id" ] || result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
-	    *)
-		    ajax_url="$base_url/encrypt-ajax.php"
-		    refr="$dpage_url"
-		    id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-		    secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-		    iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-		    second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-		    token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
-		    ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
-		    data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-		    result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
+	case $1 in
+		1)
+			refr=$(printf "%s" "$links" | grep "mp4upload")
+			[ -z "$refr" ] || result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
+		2)
+			dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
+			refr="https://dood.ws/d/$dood_id"
+			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+			sleep 0.5
+			[ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
+		3)
+			fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+			refr="https://fembed-hd.com/v/$fb_id"
+			[ -z "$fb_id" ] || result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
+		*)
+			ajax_url="$base_url/encrypt-ajax.php"
+			refr="$dpage_url"
+			id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+			secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
+			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
+			data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
 	esac
 }
 
@@ -208,9 +207,9 @@ get_video_link() {
 	dpage_url="$1"
 	resp=$(curl -A "$agent" -s "$1")
 	if [ "$is_download" -eq 1 ];then
-	    i=1
+		i=1
 	else
-	    i=2
+		i=2
 	fi
 	[ "$quality" != "best" ] && i=3
 	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
@@ -227,7 +226,7 @@ get_video_link() {
 		video_url=$(get_video_quality_mp4 "$video_links")
 		idx=1
 	fi
-}	
+}
 
 get_video_quality_mp4() {
 	case $quality in
@@ -333,9 +332,7 @@ anime_selection () {
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
 episode_selection () {
-	if [ "$last_ep_number" -eq 0 ]; then
-		die "Episodes not released yet!"
-	fi
+	[ "$last_ep_number" -eq 0 ] && die "Episodes not released yet!"
 	if [ "$last_ep_number" -gt "$first_ep_number" ]; then
 		[ "$ep_choice_to_start" = "-1" ] && ep_choice_to_start="$last_ep_number"
 		if [ -z "$ep_choice_to_start" ]; then
@@ -344,9 +341,7 @@ episode_selection () {
 				get_input "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number)" # won't work with \n
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
-				if [ "$REPLY" = q ]; then
-					exit 0
-				fi
+				[ "$REPLY" = q ] && exit 0
 				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
@@ -403,7 +398,6 @@ open_selection() {
 open_episode () {
 	anime_id="$1"
 	episode="$2"
-
 	tput clear
 	inf "Loading episode $episode..."
 	# decrypting url
@@ -491,7 +485,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # create history file and history dir if none found
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
-
+# source the UI
 . ./UI || die "No UI file"
 
 while getopts 'svq:dp:chDUVa:' OPT; do
