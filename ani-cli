@@ -119,8 +119,13 @@ search_anime () {
 
 #check no of episodes in an anime
 episode_list () {
+	#curl and extract data from selected query
 	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
-	al_id=$(printf "%s" "$data" | tail -1)
+
+	#allanime server.. commented it for now 
+	#al_id=$(printf "%s" "$data" | tail -1)
+
+	#extract all embed links of all episode from data 
 	select_ep_result=$(printf "%s" "$data" | head -1 | jq -r 'to_entries[] | .value' | sed "1d")
 	first_ep_number=1
 	last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
@@ -187,6 +192,8 @@ generate_link() {
 get_video_link() {
 	dpage_url="$1"
 	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+
+	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" | sed -nE 's/.*class="container-(.*)">/\1/p ; s/.*class="wrapper container-(.*)">/\1/p ; s/.*class=".*videocontent-(.*)">/\1/p ; s/.*data-value="(.*)">.*/\1/p ; s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
 	if [ "$is_download" -eq 1 ];then
 		i=1
@@ -264,12 +271,6 @@ append () {
 process_search () {
 	search_results=$(search_anime "$query")
 	while [ -z "$search_results" ]; do
-		extended_search_results=$(extended_search "$query")
-		if [ -n "$extended_search_results" ]; then
-			extended_search_results=$(printf '%s' "$extended_search_results" | head -n 1)
-			search_results=$(search_anime "$extended_search_results")
-			break
-		fi
 		retry 'No search results found'
 		query="$REPLY $REPLY2"
 		search_results=$(search_anime "$query")
@@ -305,7 +306,6 @@ anime_selection () {
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
 	episode_list "$selection_id"
-	first_ep_number=1
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
@@ -457,7 +457,6 @@ choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-urlfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-url"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # create history file and history dir if none found
