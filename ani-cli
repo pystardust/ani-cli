@@ -18,7 +18,7 @@
 # Project repository: https://github.com/pystardust/ani-cli
 
 # Version number
-VERSION="2.2.0"
+VERSION="3.0.0"
 
 
 #######################
@@ -113,30 +113,29 @@ esac
 
 # gets anime names along with its id for search term
 search_anime () {
-	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -A "$agent" -s "$base_url/search.html" -G -d "keyword=$search" |
-		sed -nE 's_^[[:space:]]*<a href="/videos/([^"]*)">_\1_p'
-}
-
-# searches on gogoanime (instead of gogoplay) because they index english titles
-extended_search () {
-	indexing_url=$(curl -A "$agent" -s -L -o /dev/null -w "%{url_effective}\n" https://gogoanime.cm)
-	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -A "$agent" -s "$indexing_url//search.html" -G -d "keyword=$search" |
-		sed -n -E 's_^[[:space:]]*<a href="/category/([^"]*)" title="([^"]*)".*_\1_p'
+	search=$(printf '%s' "$1" | tr ' ' '+' )
+	curl -A "$agent" -s "https://v1.w0ltfgqz8y3ygjozgs4v.workers.dev" -X POST -d "q2=$search" | sed -e 's_<li>_\n_g' -e 's_\\__g' | sed -nE 's_.*a href="/v1/(.*)".*title.*_\1_p'
 }
 
 #check no of episodes in an anime
-check_episode () {
-	data=$(curl -A "$agent" -s "$base_url/videos/$1")
-	del=$(printf "%s" "$data" | grep -n "Latest Episodes" | cut -d ":" -f1)
-	[ -n "$del" ] && printf "%s" "$data" | sed "$del,$ d" | sed -nE "s_^[[:space:]]*<a href.*videos/${2}(.*)\">_\1_p"
+episode_list () {
+	#curl and extract data from selected query
+	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
+
+	#allanime server.. commented it for now 
+	#al_id=$(printf "%s" "$data" | tail -1)
+
+	#extract all embed links of all episode from data 
+	select_ep_result=$(printf "%s" "$data" | head -1 | jq -r 'to_entries[] | .value' | sed "1d")
+	first_ep_number=1
+	last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
+
 }
 
 process_hist_entry () {
 	temp_anime_id=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
 	latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")
-	current_ep=$(check_episode "$anime_id" "$temp_anime_id" | head -n 1)
+	current_ep=$(episode_list "$anime_id" "$temp_anime_id" | head -n 1)
 	if [ -n "$current_ep" ] && [ "$current_ep" -ge "$latest_ep" ]; then
 		printf "%s\n" "$anime_id"
 	fi
@@ -158,46 +157,33 @@ search_history () {
 # URL PROCESSING #
 ##################
 
-#update main url to latest one
-updateurl () {
-	prev_url=$(printf "%s" "$base_url" | cut -d"/" -f3)
-	new_url=$(printf "%s" "$dpage_link" | cut -d"/" -f3)
-	[ "$prev_url" != "$new_url" ] && printf "%s" "$new_url" > "$urlfile"
-}
-
-# get the download page url
-get_dpage_link() {
-	anime_id="$1"
-	ep_no="$2"
-	curl -A "$agent" -s "$base_url/videos/${anime_id}${ep_no}" | sed -nE 's_^[[:space:]]*<iframe src="([^"]*)".*_\1_p' |
-		sed 's/^/https:/g'
-}
-
 generate_link() {
 	case $1 in
 		1)
 			refr=$(printf "%s" "$links" | grep "mp4upload")
+			[ -z "$refr" ] && return 0
 			[ -z "$refr" ] || result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
 		2)
 			dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
-			refr="https://dood.ws/d/$dood_id"
-			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
-			sleep 0.5
-			[ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
+			refr="https://dood.to/d/$dood_id"
+			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "$refr" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+			[ -z "$dood_link" ] && return 0
+			sleep .7
+			result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
 		3)
 			fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+			[ -z "$fb_id" ] && return 0
 			refr="https://fembed-hd.com/v/$fb_id"
-			[ -z "$fb_id" ] || result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
+			result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" | sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')";;
 		*)
-			ajax_url="$base_url/encrypt-ajax.php"
+			[ -z "$id" ] && return 0
 			refr="$dpage_url"
-			id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-			secret_key=$(printf "%s" "$resp" | sed -nE 's/.*class="container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			iv=$(printf "%s" "$resp" | sed -nE 's/.*class="wrapper container-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			second_key=$(printf "%s" "$resp" | sed -nE 's/.*class=".*videocontent-(.*)">/\1/p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			token=$(printf "%s" "$resp" | sed -nE 's/.*data-value="(.*)">.*/\1/p' | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | sed -nE 's/.*&(token.*)/\1/p')
-			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" 2>/dev/null | base64)
-			data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "${ajax_url}?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
+			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
+			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
+			data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 			result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null | sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')";;
 	esac
 }
@@ -205,14 +191,17 @@ generate_link() {
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	resp=$(curl -A "$agent" -s "$1")
+	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+
+	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
+	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" | sed -nE 's/.*class="container-(.*)">/\1/p ; s/.*class="wrapper container-(.*)">/\1/p ; s/.*class=".*videocontent-(.*)">/\1/p ; s/.*data-value="(.*)">.*/\1/p ; s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
 	if [ "$is_download" -eq 1 ];then
 		i=1
 	else
 		i=2
 	fi
 	[ "$quality" != "best" ] && i=3
-	links=$(printf "%s" "$resp" | sed -nE 's/.*data-status="1".*data-video="(.*)">.*/\1/p')
+	links=$(printf "%s" "$resp" | sed -n '5,$ p')
 	while [ "$i" -ge 1 ] && [ "$i" -le 4 ] && [ -z "$result_links" ];do
 		generate_link "$i"
 		i=$((i + 1))
@@ -282,12 +271,6 @@ append () {
 process_search () {
 	search_results=$(search_anime "$query")
 	while [ -z "$search_results" ]; do
-		extended_search_results=$(extended_search "$query")
-		if [ -n "$extended_search_results" ]; then
-			extended_search_results=$(printf '%s' "$extended_search_results" | head -n 1)
-			search_results=$(search_anime "$extended_search_results")
-			break
-		fi
 		retry 'No search results found'
 		query="$REPLY $REPLY2"
 		search_results=$(search_anime "$query")
@@ -301,8 +284,7 @@ anime_selection () {
 	count=1
 	unset selection_list
 	while read -r anime_id; do
-	displayed_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF-2;i++) printf $i" "; print "("$(NF-1), $NF")"}' \
-		| awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')"
+	    displayed_title="$(printf '%s' "$anime_id" | tr '-' ' ')"
 		selection_list=$(append "$selection_list" "$displayed_title" "$count")
 		: $((count+=1))
 	done <<-EOF
@@ -323,11 +305,7 @@ anime_selection () {
 	fi
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
-	temp_anime_id=$(printf "%s" "$selection_id" | sed 's/[0-9]*.$//')
-	select_ep_result=$(check_episode "$selection_id" "$temp_anime_id")
-	last_ep_number=$(printf "%s" "$select_ep_result" | head -n 1)
-	first_ep_number=$(printf "%s" "$select_ep_result" | tail -n 1)
-	selection_id=$temp_anime_id
+	episode_list "$selection_id"
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
@@ -401,7 +379,7 @@ open_episode () {
 	tput clear
 	inf "Loading episode $episode..."
 	# decrypting url
-	dpage_link=$(get_dpage_link "$anime_id" "$episode")
+	dpage_link=$(printf "%s" "$select_ep_result" | sed -n "${episode}p")
 	if [ -z "$dpage_link" ];then
 		err "Episode doesn't exist!!"
 	else
@@ -479,7 +457,6 @@ choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-urlfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-url"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 # create history file and history dir if none found
@@ -538,7 +515,7 @@ else
 	dep_ch "aria2c" "ffmpeg"
 fi
 
-base_url="https://goload.pro"
+base_url="https://animixplay.to"
 case $scrape in
 	query)
 		if [ -z "$*" ]; then
@@ -564,8 +541,6 @@ esac
 generate_ep_list
 append_history
 open_selection
-updateurl &
-
 
 ########
 # LOOP #
