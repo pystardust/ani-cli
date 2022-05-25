@@ -269,9 +269,9 @@ get_video_quality_m3u8() {
 
 append () {
 	if [ -z "$1" ]; then
-		printf "%s\n%s" "$2" "$3"
+		printf "%s %s" "$3" "$2"
 	else
-		printf  "%s\n%s\n%s" "$1" "$2" "$3"
+		printf  "%s\n%s %s" "$1" "$3" "$2"
 	fi
 }
 

@@ -1,6 +1,5 @@
 #!/bin/sh
 
-
 # ani-cli UI
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,7 +17,7 @@
 #
 # Project repository: https://github.com/pystardust/ani-cli
 
-UI_VERSION="0.1.0"
+UI_VERSION="1.0.0"
 UI_NAME="classic"
 
 
@@ -68,19 +67,13 @@ prompt () {
 }
 
 selection_menu() {
-	menu_lines=$(( $(printf '%s' "$*" | wc -l) / 2 ))
-	i=0
-	{
-		while [ "$i" -lt "$menu_lines" ]; do
-			read -r line
-			read -r option
+	while read -r option line; do
+		if [ "$option" = "q" ]; then
+			menu_line_strong "$line" "$option"
+		else
 			menu_line_alternate "$line" "$option"
-			i=$(( i + 1 ))
-		done
-		read -r line
-		read -r option
-		menu_line_strong "$line" "$option"
-	}<<-EOF
+		fi
+	done <<-EOF
 	$*
 	EOF
 	prompt "> "
