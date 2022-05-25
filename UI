@@ -21,7 +21,6 @@
 UI_VERSION="0.1.0"
 UI_NAME="classic"
 
-# need to be implemented for all frontends
 
 ui_version_text() {
 	inf "UI theme: $UI_NAME"
@@ -87,8 +86,6 @@ selection_menu() {
 	prompt "> "
 }
 
-#helper functions for this frontend
-
 # displays an even (cyan) line of a menu line with $2 as an indicator in () and $1 as the option
 menu_line_even () {
 	printf "\033[1;36m(\033[1;36m%s\033[1;36m) \033[1;36m%s\033[0m\n" "$2" "$1"
@@ -114,10 +111,4 @@ menu_line_alternate() {
 # displays a warning (red) line of a menu line with $2 as an indicator in [] and $1 as the option
 menu_line_strong() {
 	printf "\033[1;31m(\033[1;31m%s\033[1;31m) \033[1;31m%s\033[0m\n" "$2" "$1"
-}
-
-
-display_range() {
-	display_name=$(printf '%s' "$1" | sed 's/-episode-//')
-
 }
