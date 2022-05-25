@@ -486,7 +486,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 # source the UI
-. ./UI || die "No UI file"
+. "$(dirname "$0")"/UI || die "No UI file"
 
 while getopts 'svq:dp:chDUVa:' OPT; do
 	case $OPT in
