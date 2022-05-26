@@ -118,14 +118,19 @@ search_anime () {
 		sed -e 's_<li>_\n_g' -e 's_\\__g' | sed -nE 's_.*a href="/v1/(.*)".*title.*_\1_p'
 }
 
-#check no of episodes in an anime
+#fetches all the episodes embed links in an anime from both allanime and gogoanime server
 episode_list () {
-	#curl and extract data from selected query
+	#curl and extract data from selected query, this one gogoanime's data
 	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
-
-	#allanime server.. commented it for now 
-	#al_id=$(printf "%s" "$data" | tail -1)
-
+	#allanime server..
+	ext_id=$(printf "%s" "$data" | tail -1)
+	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$agent" | jq -r '.data[] | select(.type == "AL").items[].url')
+	if printf "%s" "$selection_id" | grep -q "dub"; then
+		al_server_link=$(printf "%s" "$al_server_link" | grep "dub")
+	else
+		al_server_link=$(printf "%s" "$al_server_link" | sed '/-dub/d')
+	fi
+	[ -z "$al_server_link" ] || al_data=$(curl -s "${base_url}${al_server_link}" -A "$agent" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
 	#extract all embed links of all episode from data 
 	select_ep_result=$(printf "%s" "$data" | head -1 | jq -r 'to_entries[] | .value' | sed "1d")
 	first_ep_number=1
@@ -160,13 +165,15 @@ search_history () {
 generate_link() {
 	case $1 in
 		1)
-			refr=$(printf "%s" "$links" | grep "mp4upload")
+			refr=$(printf "%s" "$al_links" | grep "mp4upload")
+			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
 			[ -z "$refr" ] && return 0
-			result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" |
+			result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" -L |
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
-			dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
+			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
+			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
 			refr="https://dood.to/d/$dood_id"
 			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "$refr" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
 			[ -z "$dood_link" ] && return 0
@@ -174,7 +181,19 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
 			;;
 		3)
-			fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
+			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
+			[ -z "$lare_id" ] && return 0
+			lare_token=$(curl -s -A "$agent" "https://streamlare.com/e/$lare_id" | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
+			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" -H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | tr -d '\\' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
+			;;
+		4)
+			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
+			[ -z "$ok_id" ] && return 0
+			refr="https://odnoklassniki.ru/videoembed/$ok_id"
+			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | tr -d '\\' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' | sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ; s/"name":"lowest","url":"(.*)",.*/240p >\1/p ; s/"name":"low","url":"(.*)",.*/360p >\1/p ; s/"name":"sd","url":"(.*)",.*/480p >\1/p ; s/"name":"hd","url":"(.*)",.*/720p >\1/p ; s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
+			;;
+		5)
+			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
 			[ -z "$fb_id" ] && return 0
 			refr="https://fembed-hd.com/v/$fb_id"
 			result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
@@ -200,6 +219,7 @@ generate_link() {
 get_video_link() {
 	dpage_url="$1"
 	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	al_links=$(printf "%s" "$al_data" | jq -r "to_entries[$episode] | .value | @tsv" | tr '\t' '\n')
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ; s/.*class="wrapper container-(.*)">/\1/p ; s/.*class=".*videocontent-(.*)">/\1/p ; s/.*data-value="(.*)">.*/\1/p ; s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
@@ -208,9 +228,8 @@ get_video_link() {
 	else
 		i=2
 	fi
-	[ "$quality" != "best" ] && i=3
-	links=$(printf "%s" "$resp" | sed -n '5,$ p')
-	while [ "$i" -ge 1 ] && [ "$i" -le 4 ] && [ -z "$result_links" ];do
+	[ "$quality" != "best" ] && i=4
+	while [ "$i" -ge 1 ] && [ "$i" -le 6 ] && [ -z "$result_links" ];do
 		generate_link "$i"
 		i=$((i + 1))
 	done
