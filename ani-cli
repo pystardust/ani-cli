@@ -184,13 +184,13 @@ generate_link() {
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && return 0
 			lare_token=$(curl -s -A "$agent" "https://streamlare.com/e/$lare_id" | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
-			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" -H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | tr -d '\\' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
+			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" -H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
 			;;
 		4)
 			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			[ -z "$ok_id" ] && return 0
 			refr="https://odnoklassniki.ru/videoembed/$ok_id"
-			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | tr -d '\\' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' | sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ; s/"name":"lowest","url":"(.*)",.*/240p >\1/p ; s/"name":"low","url":"(.*)",.*/360p >\1/p ; s/"name":"sd","url":"(.*)",.*/480p >\1/p ; s/"name":"hd","url":"(.*)",.*/720p >\1/p ; s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
+			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' | sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ; s/"name":"lowest","url":"(.*)",.*/240p >\1/p ; s/"name":"low","url":"(.*)",.*/360p >\1/p ; s/"name":"sd","url":"(.*)",.*/480p >\1/p ; s/"name":"hd","url":"(.*)",.*/720p >\1/p ; s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
 			;;
 		5)
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
@@ -247,7 +247,7 @@ get_video_link() {
 get_video_quality_mp4() {
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2) ;;
+			video_url=$(printf '%s' "$1" | tail -n 1 | cut -d">" -f2) ;;
 		worst)
 			video_url=$(printf '%s' "$1" | head -n 1 | cut -d">" -f2) ;;
 		*)
@@ -255,7 +255,7 @@ get_video_quality_mp4() {
 			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
 				quality=best
-				video_url=$(printf '%s' "$1" | head -n 4 | tail -n 1 | cut -d">" -f2)
+				video_url=$(printf '%s' "$1" | tail -n 1 | cut -d">" -f2)
 			fi
 			;;
 	esac
