@@ -223,7 +223,7 @@ generate_link() {
 get_video_link() {
 	dpage_url="$1"
 	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
-	al_links=$(printf "%s" "$al_data" | sed 's_\[_\n\[_g' | sed -nE 's_\[(.*)\].*_\1_p' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
+	al_links=$(printf "%s" "$al_data" | sed -e 's_:\[_\n_g' -e 's_:"_\n"_g' -e 's_].*__g' | sed '1,2d' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ; s/.*class="wrapper container-(.*)">/\1/p ; s/.*class=".*videocontent-(.*)">/\1/p ; s/.*data-value="(.*)">.*/\1/p ; s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
