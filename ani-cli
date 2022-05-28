@@ -118,31 +118,34 @@ search_anime () {
 		sed -e 's_<li>_\n_g' -e 's_\\__g' | sed -nE 's_.*a href="/v1/(.*)".*title.*_\1_p'
 }
 
-#fetches all the episodes embed links in an anime from both allanime and gogoanime server
+#fetches all the episodes embed links in an anime from gogoanime server
 episode_list () {
-	#curl and extract data from selected query, this one gogoanime's data
 	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
-	#allanime server..
-	ext_id=$(printf "%s" "$data" | tail -1)
+	#extract all embed links of all episode from data
+	select_ep_result=$(printf "%s" "$data" | head -1 | jq -r 'to_entries[] | .value' | sed "1d")
+	first_ep_number=1
+	[ -z "$select_ep_result" ] || last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
+}
+
+#from allanime server
+al_episode_list() {
+	ext_id=$(printf "%s" "$data" | tail -1 | tr -d "[:punct:]|[:alpha:]")
 	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$agent" | jq -r '.data[] | select(.type == "AL").items[].url')
-	if printf "%s" "$selection_id" | grep -q "dub"; then
+	if printf "%s" "$1" | grep -q "dub"; then
 		al_server_link=$(printf "%s" "$al_server_link" | grep "dub")
 	else
 		al_server_link=$(printf "%s" "$al_server_link" | sed '/-dub/d')
 	fi
 	[ -z "$al_server_link" ] || al_data=$(curl -s "${base_url}${al_server_link}" -A "$agent" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
-	#extract all embed links of all episode from data 
-	select_ep_result=$(printf "%s" "$data" | head -1 | jq -r 'to_entries[] | .value' | sed "1d")
-	first_ep_number=1
-	last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
 }
 
 process_hist_entry () {
-	temp_anime_id=$(printf "%s" "$anime_id" | sed 's/[0-9]*.$//')
-	latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id//g")
-	current_ep=$(episode_list "$anime_id" "$temp_anime_id" | head -n 1)
+	temp_anime_id=$(printf "%s" "$anime_id" | sed 's/\t[0-9]*.$//')
+	latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id\t//g")
+	episode_list "$temp_anime_id"
+	current_ep=$last_ep_number
 	if [ -n "$current_ep" ] && [ "$current_ep" -ge "$latest_ep" ]; then
-		printf "%s\n" "$anime_id"
+		printf "%s\n" "$temp_anime_id"
 	fi
 }
 
@@ -183,7 +186,7 @@ generate_link() {
 		3)
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && return 0
-			lare_token=$(curl -s -A "$agent" "https://streamlare.com/e/$lare_id" | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
+			lare_token=$(curl -s -A "$agent" "https://streamlare.com/e/$lare_id" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
 			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" -H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
 			;;
 		4)
@@ -333,6 +336,7 @@ anime_selection () {
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
 	episode_list "$selection_id"
+	al_episode_list
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
@@ -389,7 +393,7 @@ generate_ep_list() {
 ##################
 
 append_history () { # todo: unite this with the temporary histfile writing
-	grep -q "$selection_id" "$logfile" || printf "%s%s\n" "$selection_id" $((episode+1)) >> "$logfile"
+	grep -q "$selection_id" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
 }
 
 # opens selected episodes one-by-one
@@ -414,7 +418,7 @@ open_episode () {
 	fi
 	if [ "$is_download" -eq 0 ]; then
 		# write anime and episode number and save to temporary history
-		sed -E "s/^${selection_id}[0-9]*/${selection_id}$((episode+1))/" "$logfile" > "${logfile}.new"
+		sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
 		[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
 		play_episode
