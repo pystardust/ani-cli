@@ -129,7 +129,7 @@ episode_list () {
 
 #from allanime server
 al_episode_list() {
-	ext_id=$(printf "%s" "$data" | tail -1 | tr -d "[:punct:]|[:alpha:]")
+	ext_id=$(printf "%s" "$1" | tail -1 | tr -d "[:punct:]|[:alpha:]")
 	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$agent" | jq -r '.data[] | select(.type == "AL").items[].url')
 	if printf "%s" "$1" | grep -q "dub"; then
 		al_server_link=$(printf "%s" "$al_server_link" | grep "dub")
@@ -336,7 +336,7 @@ anime_selection () {
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
 	episode_list "$selection_id"
-	al_episode_list
+	al_episode_list "$data"
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
