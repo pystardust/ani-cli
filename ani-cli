@@ -122,9 +122,9 @@ search_anime () {
 episode_list () {
 	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
 	#extract all embed links of all episode from data
-	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed -nE 's_".*":"(.*)".*_\1_p')
+	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
 	first_ep_number=1
-	[ -z "$select_ep_result" ] || last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
+	[ -z "$select_ep_result" ] && last_ep_number=0 || last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
 }
 
 #from allanime server
@@ -159,7 +159,7 @@ search_history () {
 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
 	[ "$one_hist" = 1 ] && select_first=1
 	anime_selection "$search_results"
-	ep_choice_start=$(sed -n -E "s/${selection_id}(.*)/\1/p" "$logfile")
+	ep_choice_start=$(sed -n -E "s/${selection_id}\t(.*)/\1/p" "$logfile")
 }
 
 ##################
