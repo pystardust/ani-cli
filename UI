@@ -40,10 +40,6 @@ update_ui () {
 	fi
 }
 
-get_input() {
-	prompt "$* > "
-}
-
 retry () {
 	err "$*"
 	prompt "> "

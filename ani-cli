@@ -153,8 +153,8 @@ process_hist_entry () {
 
 # compares history with gogoplay, only shows unfinished anime
 search_history () {
-	tput clear
 	[ ! -s "$logfile" ] && die "History is empty"
+	progress "Processing history.."
 	search_results=$(while read -r anime_id; do process_hist_entry & done < "$logfile"; wait)
 	[ -z "$search_results" ] && die "No unwatched episodes"
 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
@@ -324,7 +324,7 @@ process_search () {
 
 # anime-selection menu handling function
 anime_selection () {
-	inf "Results >>"
+	inf "$scrape Results >>"
 	count=1
 	unset selection_list
 	while read -r anime_id; do
@@ -362,7 +362,7 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
-				get_input "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number)" # won't work with \n
+				prompt "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number) > " # won't work with \n
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				[ "$REPLY" = q ] && exit 0
@@ -494,7 +494,7 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
 is_download=0
 PID=0
 quality=best
-scrape=query
+scrape=Query
 debug=0
 download_dir="."
 choice=
@@ -535,7 +535,7 @@ while getopts 'svq:dp:chDUVa:x' OPT; do
 		x)
 			debug=1 ;;
 		c)
-			scrape=history ;;
+			scrape=History ;;
 		v)
 			player_fn="vlc" ;;
 		U)
@@ -564,9 +564,9 @@ fi
 
 base_url="https://animixplay.to"
 case $scrape in
-	query)
+	Query)
 		if [ -z "$*" ]; then
-			get_input "Search Anime"
+			prompt "Search Anime > "
 			query="$REPLY $REPLY2"
 		else
 			if [ -n "$ep_choice_to_start" ]; then
@@ -577,7 +577,7 @@ case $scrape in
 		fi
 		process_search
 		;;
-	history)
+	History)
 		search_history
 		[ "$REPLY" = "q" ] && exit 0
 		;;
