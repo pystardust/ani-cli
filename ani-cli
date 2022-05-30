@@ -68,6 +68,13 @@ die () {
 	exit 1
 }
 
+# tput is part of ncurses which is not installed by default on termux
+command -v tput >/dev/null || tput() {
+	if [ "$1" = 'clear' ]; then
+            printf '\033c'
+	fi
+}
+
 # get the newest version of this script from github and replace it
 update_script () {
 	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
@@ -398,6 +405,7 @@ episode_selection () {
 					err "Episode out of range"
 					continue
 				fi
+				[ "$ep_choice_end" = "" ] && break
 				if [ "$ep_choice_end" -le "$ep_choice_start" ]; then
 					err "Invalid range"
 					continue
