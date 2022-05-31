@@ -244,7 +244,10 @@ get_video_link() {
 	while [ "$i" -ge 1 ] && [ "$i" -le 6 ] && [ -z "$result_links" ];do
 		generate_link "$i"
 		i=$((i + 1))
-		[ "$debug" -eq 1 ] && debug "$refr" "$result_links" && unset result_links
+		if [ "$debug" -eq 1 ]; then
+			debug "$refr" "$result_links"
+			unset result_links
+		fi
 	done
 	[ "$debug" -eq 1 ] && return 0
 	video_links="$result_links"
