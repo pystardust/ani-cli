@@ -117,6 +117,12 @@ Make sure to add the referrer in mpv by opening mpv [(playstore version)](https:
 referrer="https://gogoanime.fi/"
 ```
 
+Make sure to update your packages:
+
+```sh
+pkg up
+```
+
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
