@@ -42,7 +42,7 @@ update_ui () {
 
 retry () {
 	err "$*"
-	prompt "> "
+	prompt
 }
 
 # display an error message to stderr (in red)
@@ -56,7 +56,7 @@ inf () {
 }
 
 progress() {
-	printf "\33[2K\r\033[1;34m$1"
+	printf "\33[2K\r\033[1;34m%s" "$1"
 }
 
 debug () {
@@ -65,7 +65,8 @@ debug () {
 
 # prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
 prompt () {
-	printf "\33[2K\r\033[1;35m%s\033[1;35m%s\033[1;34m\033[0m" "$1" "$2"
+	[ -n "$*" ] && printf "\33[2K\r\033[1;35m%s\n" "$*"
+	printf "\033[1;35m> \033[0m"
 	read -r REPLY REPLY2
 }
 
@@ -79,7 +80,7 @@ selection_menu() {
 	done <<-EOF
 	$*
 	EOF
-	prompt "> "
+	prompt
 }
 
 # displays an even (cyan) line of a menu line with $2 as an indicator in () and $1 as the option

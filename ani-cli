@@ -362,7 +362,7 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
-				prompt "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number) > " # won't work with \n
+				prompt "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number)"
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				[ "$REPLY" = q ] && exit 0
@@ -566,7 +566,7 @@ base_url="https://animixplay.to"
 case $scrape in
 	Query)
 		if [ -z "$*" ]; then
-			prompt "Search Anime > "
+			prompt "Search Anime"
 			query="$REPLY $REPLY2"
 		else
 			if [ -n "$ep_choice_to_start" ]; then
