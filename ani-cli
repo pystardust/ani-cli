@@ -63,7 +63,6 @@ EOF
 
 version_text () {
 	inf "Version: $VERSION"
-	ui_version_text
 }
 
 die () {
@@ -84,7 +83,6 @@ update_script () {
 			die "Can't update script for some reason!"
 		fi
 	fi
-	update_ui
 }
 
 # checks if dependencies are present
@@ -558,10 +556,12 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 			player_fn="vlc" ;;
 		U)
 			update_script
+			update_ui
 			exit 0
 			;;
 		V)
 			version_text
+			ui_version_text
 			exit 0
 			;;
 		*)
