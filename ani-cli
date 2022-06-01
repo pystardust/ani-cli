@@ -47,6 +47,7 @@ help_text () {
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
+	  -f fetch gogoanime direct links only
 	  -x print all video links from all providers to stdout (for debugging purpose)
 
 	Episode selection:
@@ -133,6 +134,7 @@ al_episode_list() {
 	ext_id=$(printf "%s" "$data" | tail -1)
 	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$agent" | sed -nE 's_.*"AL","items":\[(.*)\]\},.*_\1_p' | tr '{|}' '\n' | sed -nE 's_"url":"(.*)",.*title.*_\1_p')
 	[ -z "$al_server_link" ] && return 0
+	progress "(Allanime) Searching Episodes.."
 	if printf "%s" "$selection_id" | grep -q "dub"; then
 		al_server_link=$(printf "%s" "$al_server_link" | grep "dub")
 	else
@@ -154,7 +156,7 @@ process_hist_entry () {
 # compares history with gogoplay, only shows unfinished anime
 search_history () {
 	[ ! -s "$logfile" ] && die "History is empty"
-	progress "Processing history.."
+	progress "Processing $scrape.."
 	search_results=$(while read -r anime_id; do process_hist_entry & done < "$logfile"; wait)
 	[ -z "$search_results" ] && die "No unwatched episodes"
 	one_hist=$(printf '%s\n' "$search_results" | grep -e "$" -c)
@@ -200,7 +202,13 @@ generate_link() {
 			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			refr="https://odnoklassniki.ru/videoembed/$ok_id"
 			[ -z "$ok_id" ] && return 0
-			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' | sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ; s/"name":"lowest","url":"(.*)",.*/240p >\1/p ; s/"name":"low","url":"(.*)",.*/360p >\1/p ; s/"name":"sd","url":"(.*)",.*/480p >\1/p ; s/"name":"hd","url":"(.*)",.*/720p >\1/p ; s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
+			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' |
+				sed -nE 's/"name":"mobile","url":"(.*)",.*/144p >\1/p ;
+						s/"name":"lowest","url":"(.*)",.*/240p >\1/p ;
+						s/"name":"low","url":"(.*)",.*/360p >\1/p ;
+						s/"name":"sd","url":"(.*)",.*/480p >\1/p ;
+						s/"name":"hd","url":"(.*)",.*/720p >\1/p ;
+						s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
 			;;
 		5)
 			progress "Fetching Xstreamcdn links.."
@@ -234,13 +242,18 @@ get_video_link() {
 	al_links=$(printf "%s" "$al_data" | sed -e 's_:\[_\n_g' -e 's_:"_\n"_g' | sed -e 's/].*//g' -e '1,2d' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" |
-		sed -nE 's/.*class="container-(.*)">/\1/p ; s/.*class="wrapper container-(.*)">/\1/p ; s/.*class=".*videocontent-(.*)">/\1/p ; s/.*data-value="(.*)">.*/\1/p ; s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
+		sed -nE 's/.*class="container-(.*)">/\1/p ;
+			s/.*class="wrapper container-(.*)">/\1/p ;
+			s/.*class=".*videocontent-(.*)">/\1/p ;
+			s/.*data-value="(.*)">.*/\1/p ;
+			s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
 	if [ "$is_download" -eq 1 ];then
 		i=1
 	else
 		i=2
 	fi
 	[ "$quality" != "best" ] && i=4
+	[ -n "$fallback" ] && i=6
 	while [ "$i" -ge 1 ] && [ "$i" -le 6 ] && [ -z "$result_links" ];do
 		generate_link "$i"
 		i=$((i + 1))
@@ -313,12 +326,12 @@ append () {
 
 # only lets the user pass in case of a valid search
 process_search () {
-	progress "Searching query.."
+	progress "Searching $scrape.."
 	search_results=$(search_anime "$query")
 	while [ -z "$search_results" ]; do
 		retry 'No search results found'
 		query="$REPLY $REPLY2"
-		progress "Searching query.."
+		progress "Searching $scrape.."
 		search_results=$(search_anime "$query")
 	done
 	anime_selection "$search_results"
@@ -352,9 +365,9 @@ anime_selection () {
 	fi
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
-	progress "Searching Episodes.."
+	progress "(Gogoanime) Searching Episodes.."
 	episode_list "$selection_id"
-	al_episode_list
+	[ -z "$fallback" ] && al_episode_list
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
@@ -512,7 +525,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$(dirname "$0")"/UI || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:x' OPT; do
+while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
 		d)
 			is_download=1 ;;
@@ -537,6 +550,8 @@ while getopts 'svq:dp:chDUVa:x' OPT; do
 			quality=$OPTARG ;;
 		x)
 			debug=1 ;;
+		f)
+			fallback=1 ;;
 		c)
 			scrape=History ;;
 		v)
