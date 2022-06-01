@@ -26,7 +26,7 @@ VERSION="3.0.0"
 #######################
 
 help_text () {
-	while IFS= read -r line; do
+	while read -r line; do
 		printf "%s\n" "$line"
 	done <<-EOF
 
