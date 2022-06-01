@@ -251,13 +251,15 @@ get_video_link() {
 	[ "$is_download" -eq 1 ] && provider=1
 	[ "$quality" != "best" ] && provider=4
 	[ -n "$fallback" ] && provider=6
-	while [ "$provider" -ge 1 ] && [ "$provider" -le 6 ] && [ -z "$result_links" ];do
+	i=0
+	while [ "$i" -lt 6 ] && [ -z "$result_links" ];do
 		generate_link "$provider"
-		provider=$((provider + 1))
+		provider=$((provider % 6 + 1))
 		if [ "$debug" -eq 1 ]; then
 			debug "$refr" "$result_links"
 			unset result_links
 		fi
+		i=$((i+1))
 	done
 	[ "$debug" -eq 1 ] && return 0
 	if printf '%s' "$result_links" | grep -q "m3u8"; then
