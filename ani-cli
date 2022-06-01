@@ -501,7 +501,7 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 
 # default options
 player_fn="mpv" #video player needs to be able to play urls
-agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
+agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0
 quality=best
