@@ -475,8 +475,7 @@ play_episode () {
 			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
 		*)
-			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode"
-			;;
+			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode" ;;
 	esac
 	# Run Command
 	if [ "$auto_play" -eq 0 ]; then
@@ -513,7 +512,6 @@ auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
-
 # create history file and history dir if none found
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
