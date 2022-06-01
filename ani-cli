@@ -227,8 +227,7 @@ generate_link() {
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
-			data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" |
-				sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
+			data=$(curl -A "$agent" -s -H "X-Requested-With:XMLHttpRequest" "https://goload.pro/encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 			result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null |
 				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
 			;;
@@ -247,16 +246,14 @@ get_video_link() {
 			s/.*class=".*videocontent-(.*)">/\1/p ;
 			s/.*data-value="(.*)">.*/\1/p ;
 			s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
-	if [ "$is_download" -eq 1 ];then
-		i=1
-	else
-		i=2
-	fi
-	[ "$quality" != "best" ] && i=4
-	[ -n "$fallback" ] && i=6
-	while [ "$i" -ge 1 ] && [ "$i" -le 6 ] && [ -z "$result_links" ];do
-		generate_link "$i"
-		i=$((i + 1))
+	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
+	provider=2
+	[ "$is_download" -eq 1 ] && provider=1
+	[ "$quality" != "best" ] && provider=4
+	[ -n "$fallback" ] && provider=6
+	while [ "$provider" -ge 1 ] && [ "$provider" -le 6 ] && [ -z "$result_links" ];do
+		generate_link "$provider"
+		provider=$((provider + 1))
 		if [ "$debug" -eq 1 ]; then
 			debug "$refr" "$result_links"
 			unset result_links
@@ -265,7 +262,7 @@ get_video_link() {
 	[ "$debug" -eq 1 ] && return 0
 	video_links="$result_links"
 	unset result_links
-	if printf '%s' "$video_links" | grep -q "m3u8"; then 
+	if printf '%s' "$video_links" | grep -q "m3u8"; then
 		video_url="$video_links"
 		get_video_quality_m3u8
 	else
@@ -292,7 +289,7 @@ get_video_quality_mp4() {
 	printf '%s' "$video_url"
 }
 
-get_video_quality_m3u8() { 
+get_video_quality_m3u8() {
 	m3u8_links_count=$(curl -A "$agent" -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d' | wc -w)
 	case $quality in
 		worst|360)
