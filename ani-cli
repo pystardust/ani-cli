@@ -218,8 +218,14 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
+		6)
+			progress "Fetching Animixplay Direct links.."
+			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$(printf "$id" | base64)" | base64)
+			refr="$base_url"
+			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
+			;;
 		*)
-			progress "Fetching Goload links.."
+			progress "Fetching Goload Direct links.."
 			[ -z "$id" ] && return 0
 			refr="$dpage_url"
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
@@ -252,9 +258,9 @@ get_video_link() {
 	[ "$quality" != "best" ] && provider=4
 	[ -n "$fallback" ] && provider=6
 	i=0
-	while [ "$i" -lt 6 ] && [ -z "$result_links" ];do
+	while [ "$i" -lt 7 ] && [ -z "$result_links" ];do
 		generate_link "$provider"
-		provider=$((provider % 6 + 1))
+		provider=$((provider % 7 + 1))
 		if [ "$debug" -eq 1 ]; then
 			debug "$refr" "$result_links"
 			unset result_links
