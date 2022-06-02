@@ -222,6 +222,7 @@ generate_link() {
 			progress "Fetching Animixplay Direct links.."
 			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$(printf "$id" | base64)" | base64)
 			refr="$base_url"
+			[ -z "$ani_id" ] && return 0
 			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
 			;;
 		*)
