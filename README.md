@@ -114,7 +114,13 @@ pkg install ani-cli
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
 
 ```
-referrer="https:///gogoanime.fi/"
+referrer="https://gogoanime.fi/"
+```
+
+Make sure to update your packages:
+
+```sh
+pkg up
 ```
 
 ## Uninstall
