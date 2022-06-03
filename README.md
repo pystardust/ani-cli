@@ -123,6 +123,12 @@ Make sure to update your packages:
 pkg up
 ```
 
+In the case mpv only plays audio, you can try running this command:
+```sh
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
+```
+
+
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
