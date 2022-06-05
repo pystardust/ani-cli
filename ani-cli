@@ -191,6 +191,7 @@ generate_link() {
 		3)
 			progress "Fetching Streamlare links.."
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
+			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			refr="https://streamlare.com/e/$lare_id"
 			[ -z "$lare_id" ] && return 0
 			lare_token=$(curl -s -A "$agent" "$refr" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
@@ -200,6 +201,7 @@ generate_link() {
 		4)
 			progress "Fetching Okru links.."
 			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
+			[ -z "$ok_id" ] && ok_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			refr="https://odnoklassniki.ru/videoembed/$ok_id"
 			[ -z "$ok_id" ] && return 0
 			result_links="$(curl -s "$refr" | sed -nE 's_.*data-options="([^"]*)".*_\1_p' | sed -e 's/&quot;/"/g' -e 's/\u0026/\&/g' -e 's/amp;//g' | sed 's/\\//g' | sed -nE 's/.*videos":(.*),"metadataE.*/\1/p' | tr '{|}' '\n' |
@@ -228,8 +230,8 @@ generate_link() {
 			;;
 		*)
 			progress "Fetching Goload Direct links.."
+			refr="https://goload.pro"
 			[ -z "$id" ] && return 0
-			refr="$dpage_url"
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
@@ -247,6 +249,7 @@ get_video_link() {
 	dpage_url="$1"
 	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
 	al_links=$(printf "%s" "$al_data" | sed -e 's_:\[_\n_g' -e 's_:"_\n"_g' | sed -e 's/].*//g' -e '1,2d' | sed -n "${episode}p" | tr -d '"' | tr "," "\n")
+	[ -z "$id" ] && id=$(printf "%s" "$al_links" | sed -nE 's/.*id=(.*)&title.*/\1/p')
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ;
