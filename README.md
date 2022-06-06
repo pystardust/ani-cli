@@ -36,7 +36,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
   - [Arch](#Arch)
-  - [Linux & Mac OS](#linux--mac-os)
+  - [Linux](#Linux)
+  - [MacOs](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
@@ -82,7 +83,7 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 *Note that mpv installed through flatpak is not compatible*
 
-### Mac OS
+### MacOS
 
 Install dependencies [(See below)](#Dependencies)
 
@@ -98,9 +99,9 @@ chmod +x "$(brew --prefix)/bin/ani-cli"
 ```sh
 brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 ```
-*Most likely you'll need to install only iina as the rest are probably already there.
-*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.  
- 
+*Most likely you'll need to install only iina as the rest are probably already there.  
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source. 
+
 ### Windows
 
 *Note that the installation instruction below must be done inside 
@@ -135,6 +136,12 @@ Make sure to update your packages:
 ```sh
 pkg up
 ```
+
+In the case mpv only plays audio, you can try running this command:
+```sh
+echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
+```
+
 
 ## Uninstall
 
