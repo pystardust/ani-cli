@@ -71,7 +71,7 @@ yay -S ani-cli
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
-### Linux & Mac OS
+### Linux
 
 Install dependencies [(See below)](#Dependencies)
 
