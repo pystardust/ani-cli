@@ -513,8 +513,8 @@ play_episode () {
 trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
 # default options
-case "$OSTYPE" in
-    darwin*) player_fn="iina";; #MacOS specific
+case "$(uname)" in
+    Darwin*) player_fn="iina";; #MacOS specific
     *)       player_fn="mpv";; #video player needs to be able to play urls
 esac
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
