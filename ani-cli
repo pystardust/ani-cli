@@ -490,7 +490,7 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
         iina)
-            set -- "$player_fn" "$video_url" --no-stdin --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
+            set -- "$player_fn" "$video_url" --no-stdin --keep-running --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
             #printf  "player_fn $player_fn \nvideo_url $video_url \nidx $idx \nrefr $refr \ntrackma_title episode $trackma_title $episode\n\n"
             ;;
 		*)
@@ -518,7 +518,7 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 
 # default options
 case "$OSTYPE" in
-    darwin*) player_fn="iina";; #MacOS speific
+    darwin*) player_fn="iina";; #MacOS specific
     *)       player_fn="mpv";; #video player needs to be able to play urls
 esac 
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
