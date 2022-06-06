@@ -82,11 +82,26 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 *Note that mpv installed through flatpak is not compatible*
 
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
 brew install curl grep aria2 mpv openssl@1.1 ffmpeg git
 ```
+
+### Mac OS
+
+Install dependencies [(See below)](#Dependencies)
+
+```sh
+sudo curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o /usr/local/bin/ani-cli &&
+sudo chmod +x /usr/local/bin/ani-cli
+```
+
+*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
+
+```sh
+brew install curl grep aria2 iina openssl@1.1 ffmpeg git
+```
+
 
 ### Windows
 

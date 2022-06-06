@@ -70,7 +70,7 @@ die () {
 
 # get the newest version of this script from github and replace it
 update_script () {
-	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/dabigblob/ani-cli/master/ani-cli")" || die "Connection error"
 	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		inf "Script is up to date :)"
@@ -391,14 +391,14 @@ episode_selection () {
 				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
-					err "Invalid number(s)"
+                    err "Invalid number(s)"
 					continue
 				fi
 				if [ "$ep_choice_start" -gt "$last_ep_number" ] 2>/dev/null || [ "$ep_choice_end" -gt "$last_ep_number" ] 2>/dev/null || [ "$ep_choice_start" -lt "$first_ep_number" ] 2>/dev/null; then
 					err "Episode out of range"
 					continue
 				fi
-				if [ "$ep_choice_end" -le "$ep_choice_start" ]; then
+ 				if [ -n "$ep_choice_end" ] && [ "$ep_choice_end" -le "$ep_choice_start" ]; then
 					err "Invalid range"
 					continue
 				fi
@@ -490,7 +490,8 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
         iina)
-            set -- "$player_fn" "$video_url" --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
+            set -- "$player_fn" "$video_url" --no-stdin --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
+            #printf  "player_fn $player_fn \nvideo_url $video_url \nidx $idx \nrefr $refr \ntrackma_title episode $trackma_title $episode\n\n"
             ;;
 		*)
 			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode"
@@ -498,10 +499,10 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 	esac
 	# Run Command
 	if [ "$auto_play" -eq 0 ]; then
-		nohup "$@" > /dev/null 2>&1 &
-	else
+	    nohup "$@" > /dev/null 2>&1 &
+    else
 		inf "Currently playing$display_name episode" "$episode/$last_ep_number, Range: $ep_choice_start-$ep_choice_end"
-		"$@" > /dev/null 2>&1
+		"$@" > /dev/null 2>&1 
 		sleep 2
 	fi
 	PID=$!
@@ -516,7 +517,10 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
 # default options
-player_fn="mpv" #video player needs to be able to play urls
+case "$OSTYPE" in
+    darwin*) player_fn="iina";; #MacOS speific
+    *)       player_fn="mpv";; #video player needs to be able to play urls
+esac 
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0"
 is_download=0
 PID=0
