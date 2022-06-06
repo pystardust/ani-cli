@@ -89,10 +89,8 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-bash
 curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o "$(brew --prefix)/bin/ani-cli"
 chmod +x "$(brew --prefix)/bin/ani-cli"
-exit
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
@@ -137,6 +135,12 @@ Make sure to update your packages:
 ```sh
 pkg up
 ```
+
+In the case mpv only plays audio, you can try running this command:
+ ```sh
+ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
+ ```
+ 
 
 ## Uninstall
 
