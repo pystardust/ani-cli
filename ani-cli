@@ -489,6 +489,9 @@ trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++)
 		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
 			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
+        iina)
+            set -- "$player_fn" "$video_url" --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
+            ;;
 		*)
 			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
