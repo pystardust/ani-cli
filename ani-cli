@@ -398,7 +398,7 @@ episode_selection () {
 					err "Episode out of range"
 					continue
 				fi
-				if [ "$ep_choice_end" -le "$ep_choice_start" ]; then
+				if [ -n "$ep_choice_end" ] && [ "$ep_choice_end" -le "$ep_choice_start" ]; then
 					err "Invalid range"
 					continue
 				fi
@@ -485,6 +485,9 @@ play_episode () {
 		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
 			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
 			;;
+        iina)
+            set -- "$player_fn" "$video_url" --no-stdin --keep-running --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
+            ;;
 		*)
 			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode" ;;
 	esac
@@ -510,7 +513,10 @@ play_episode () {
 trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
 # default options
-player_fn="mpv" #video player needs to be able to play urls
+case "$OSTYPE" in
+    darwin*) player_fn="iina";; #MacOS specific
+    *)       player_fn="mpv";; #video player needs to be able to play urls
+esac
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0

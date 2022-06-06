@@ -71,7 +71,7 @@ yay -S ani-cli
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
-### Linux & Mac OS
+### Linux
 
 Install dependencies [(See below)](#Dependencies)
 
@@ -82,11 +82,26 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 *Note that mpv installed through flatpak is not compatible*
 
+### Mac OS
+
+Install dependencies [(See below)](#Dependencies)
+
+Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
+
+```sh
+bash
+curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o "$(brew --prefix)/bin/ani-cli"
+chmod +x "$(brew --prefix)/bin/ani-cli"
+exit
+```
+
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
-brew install curl grep aria2 mpv openssl@1.1 ffmpeg git
+brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 ```
+*Most likely you'll need to install only iina as the rest are probably already there.
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.
 
 ### Windows
 
@@ -123,12 +138,6 @@ Make sure to update your packages:
 pkg up
 ```
 
-In the case mpv only plays audio, you can try running this command:
-```sh
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
-```
-
-
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
@@ -145,6 +154,7 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 - curl
 - openssl
 - mpv - Video Player
+- iina - mpv replacement for MacOS
 - aria2 - Download manager
 - ffmpeg - m3u8 Downloader
 
