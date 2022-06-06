@@ -99,8 +99,8 @@ chmod +x "$(brew --prefix)/bin/ani-cli"
 brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 ```
 *Most likely you'll need to install only iina as the rest are probably already there.
-*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.
-
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.  
+ 
 ### Windows
 
 *Note that the installation instruction below must be done inside 
@@ -135,12 +135,6 @@ Make sure to update your packages:
 ```sh
 pkg up
 ```
-
-In the case mpv only plays audio, you can try running this command:
- ```sh
- echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
- ```
- 
 
 ## Uninstall
 
