@@ -99,8 +99,8 @@ chmod +x "$(brew --prefix)/bin/ani-cli"
 ```sh
 brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 ```
-*Most likely you'll need to install only iina as the rest are probably already there.  
-*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source. 
+*Most likely you'll need to install only iina as the rest are probably already there.*  
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
 
 ### Windows
 
