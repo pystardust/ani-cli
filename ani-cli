@@ -179,10 +179,10 @@ generate_link() {
 		    [ -z "$refr" ] || result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" | sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')";;
 	    2)
 		    dood_id=$(printf "%s" "$links" | sed -n "s_.*dood.*/e/__p")
-		    refr="https://dood.ws/d/$dood_id"
-		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.ws/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+		    refr="https://dood.to/d/$dood_id"
+		    [ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "https://dood.to/d/$dood_id" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
 		    sleep 0.5
-		    [ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.ws${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
+		    [ -z "$dood_link" ] || result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")";;
 	    3)
 		    fb_id=$(printf "%s" "$links" | sed -n "s_.*fembed.*/v/__p")
 		    refr="https://fembed-hd.com/v/$fb_id"
