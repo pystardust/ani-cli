@@ -55,18 +55,21 @@ die () {
 }
 
 # get the newest version of this script from github and replace it
-update_script () {
-	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
-	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
-	if [ -z "$update" ]; then
-		inf "Script is up to date :)"
-	else
-		if printf '%s\n' "$update" | patch "$0" - ; then
-			inf "Script has been updated"
+update () {
+	for i ; do
+		filename="$(printf '%s' "$i" | sed "s/$project_root//")"
+		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/$filename")" || die "Connection error"
+		update="$(printf '%s\n' "$update" | diff -u "$i" -)"
+		if [ -z "$update" ]; then
+			inf "$filename is up to date :)"
 		else
-			die "Can't update script for some reason!"
-		fi
+			if printf '%s\n' "$update" | patch "$i" - ; then
+				inf "$filename has been updated"
+			else
+				die "Can't update $filename for some reason!"
+			fi
 	fi
+	done
 }
 
 # checks if dependencies are present
@@ -454,10 +457,6 @@ open_episode () {
 trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HUP
 
 # default options
-case "$(uname)" in
-	Darwin*) . "$(dirname "$0")"/player_iina || die "No iina player script found";; #MacOS specific
-	*) . "$(dirname "$0")"/player_mpv || die "No mpv player script found";;
-esac
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0
@@ -466,6 +465,11 @@ scrape=Query
 debug=0
 choice=
 auto_play=0
+project_root="$(dirname "$0")"
+case "$(uname)" in
+	Darwin*) . "$project_root/players/player_iina" || die "No iina player script found";; #MacOS specific
+	*) . "$project_root/players/player_mpv" || die "No mpv player script found";;
+esac
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
@@ -473,11 +477,11 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 # source the UI
-. "$(dirname "$0")"/UI || die "No UI file"
+. "$project_root/UI" || die "No UI file"
 
 while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
-		d) . "$(dirname "$0")"/player_download || die "No download player script found" ;;
+		d) . "$project_root/players/player_download" || die "No download player script found" ;;
 		a)
 			ep_choice_to_start=$OPTARG ;;
 		D)
@@ -485,10 +489,10 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 			exit 0
 			;;
 		p)
-			. "$(dirname "$0")"/player_download || die "No download player script found"
+			. "$project_root/players/player_download" || die "No download player script found"
 			download_dir=$OPTARG
 			;;
-		s) . "$(dirname "$0")"/player_syncplay || die "No syncplay player script found";;
+		s) . "$project_root/players/player_syncplay" || die "No syncplay player script found";;
 		q)
 			quality=$OPTARG ;;
 		x)
@@ -498,10 +502,9 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 		c)
 			scrape=History ;;
 		v)
-			. "$(dirname "$0")"/player_vlc || die "No vlc player script found";;
+			. "$project_root/players/player_vlc" || die "No vlc player script found";;
 		U)
-			update_script
-			update_ui
+			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/player_*
 			exit 0
 			;;
 		V)
@@ -516,7 +519,6 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 	esac
 done
 shift $((OPTIND - 1))
-
 progress "Checking dependencies.."
 dep_ch "curl" "sed" "grep" "openssl" $(player_commands)
 
