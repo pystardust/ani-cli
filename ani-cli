@@ -248,7 +248,7 @@ get_video_link() {
 			debug "$refr" "$result_links"
 			unset result_links
 		fi
-		i=$((i+1))
+		: $((i+=1))
 	done
 	[ "$debug" -eq 1 ] && return 0
 	if printf '%s' "$result_links" | grep -q "m3u8"; then
@@ -482,8 +482,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
 		d) . "$project_root/players/player_download" || die "No download player script found" ;;
-		a)
-			ep_choice_to_start=$OPTARG ;;
+		a) ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
@@ -493,16 +492,11 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 			download_dir="$OPTARG"
 			;;
 		s) . "$project_root/players/player_syncplay" || die "No syncplay player script found";;
-		q)
-			quality=$OPTARG ;;
-		x)
-			debug=1 ;;
-		f)
-			fallback=1 ;;
-		c)
-			scrape=History ;;
-		v)
-			. "$project_root/players/player_vlc" || die "No vlc player script found";;
+		q) quality=$OPTARG ;;
+		x) debug=1 ;;
+		f) fallback=1 ;;
+		c) scrape=History ;;
+		v) . "$project_root/players/player_vlc" || die "No vlc player script found";;
 		U)
 			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/players/player_*
 			exit 0

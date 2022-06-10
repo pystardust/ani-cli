@@ -3,7 +3,6 @@
 UI_VERSION="1.0.0"
 UI_NAME="classic"
 
-
 ui_version_text() {
 	inf "UI theme: $UI_NAME"
 	inf "UI Version: $UI_VERSION"
