@@ -7,7 +7,6 @@ player_commands () {
 }
 
 download () {
-	[ "$idx" = "auto" ] && idx=5
 	case $2 in
 		*m3u8*)
 			progress "Fetching Metadata.."
@@ -15,7 +14,7 @@ download () {
 			m3u8_data="$(curl -s "$2")"
 			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
 			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
-			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s_[^/]*$__")
+			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s|[^/]*$||")
 			range=$(printf "%s\n" "$m3u8_data" | wc -l)
 
 			if [ -n "$key_uri" ];then
@@ -24,26 +23,26 @@ download () {
 			fi
 
 			inf "pieces : $range"
-			for i in $(seq $range);do
-				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ $i / $range done" &
-				jobs -p > $jobfile
-				while [ "$(cat $jobfile | wc -w)" -ge 35 ];do jobs > $jobfile;sleep 0.05;done
+			for i in $(seq "$range");do
+				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
+				jobs -p > "$jobfile"
+				while [ "$(wc -w "$jobfile")" -ge 35 ];do jobs > "$jobfile";sleep 0.05;done
 			done
 			wait
 
 			if [ -n "$key_uri" ];then
 				progress "Decrypting and Concatenating pieces into single file.."
-				for i in $tmpdir/*;do
-					cat "$i" | openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts
+				for i in "$tmpdir"/*;do
+					openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts < "$i"
 				done
 			else
 				progress "Concatenating pieces into single file.."
-				cat $tmpdir/* >> video.ts
+				cat "$tmpdir"/* >> video.ts
 			fi
 
-			rm -rdf $tmpdir $jobfile
+			rm -rdf "$tmpdir" "$jobfile"
 			progress "Encoding file to mp4 video.."
-			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/${3}-${4}.mp4"
+			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/$3.mp4"
 			rm -f video.ts
 			;;
 		*)
@@ -63,6 +62,7 @@ play_episode () {
 
 jobfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-jobs"
 download_dir="."
+tmpdir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-temp"
 is_download=1;
 
 # ani-cli download player
