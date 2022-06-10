@@ -1,6 +1,10 @@
 #!/bin/sh
 # License preamble at the end of the file
 
+player_commands () {
+	printf '%s' "mpv"
+}
+
 play_episode () {
 	video_url="$1"; idx="$2"; refr="$3" trackma_title="$4"
 	mpv "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title" > /dev/null 2>&1
