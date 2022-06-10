@@ -81,50 +81,6 @@ dep_ch () {
 	done
 }
 
-download () {
-	[ "$idx" = "auto" ] && idx=5
-	case $2 in
-		*m3u8*)
-			progress "Fetching Metadata.."
-			[ -d "$tmpdir" ] || mkdir "$tmpdir"
-			m3u8_data="$(curl -s "$2")"
-			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
-			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
-			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s_[^/]*$__")
-			range=$(printf "%s\n" "$m3u8_data" | wc -l)
-
-			if [ -n "$key_uri" ];then
-				key=$(curl -s "$key_uri" | od -A n -t x1 | tr -d ' |\n')
-				iv=$(openssl rand -hex 16)
-			fi
-
-			inf "pieces : $range"
-			for i in $(seq $range);do
-				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ $i / $range done" &
-				jobs -p > $jobfile
-				while [ "$(cat $jobfile | wc -w)" -ge 35 ];do jobs > $jobfile;sleep 0.05;done
-			done
-			wait
-
-			if [ -n "$key_uri" ];then
-				progress "Decrypting and Concatenating pieces into single file.."
-				for i in $tmpdir/*;do
-					cat "$i" | openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts
-				done
-			else
-				progress "Concatenating pieces into single file.."
-				cat $tmpdir/* >> video.ts
-			fi
-
-			rm -rdf $tmpdir $jobfile
-			progress "Encoding file to mp4 video.."
-			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/${3}-${4}.mp4"
-			rm -f video.ts
-			;;
-		*)
-			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
-	esac
-}
 
 #############
 # SEARCHING #
@@ -473,34 +429,21 @@ open_episode () {
 		get_video_link "$dpage_link"
 	fi
 	[ "$debug" -eq 1 ] && exit 0
-	if [ "$is_download" -eq 0 ]; then
-		# write anime and episode number and save to temporary history
-		sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
-		[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
-		[ -z "$video_url" ] && die "Video URL not found"
-		trackma_title="$(printf '%s' "$anime_id $episode" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-		if [ "$auto_play" -eq 0 ]; then
-			inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-			play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
-		else
-			inf "Currently playing$selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start/$ep_choice_end"
-			printf "\n"
-			play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
-			sleep 2
-		fi
-		PID=$!
-		# overwrite history with temporary history
-		mv "${logfile}.new" "$logfile"
+	# write anime and episode number and save to temporary history
+	sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
+	[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
+	[ -z "$video_url" ] && die "Video URL not found"
+	trackma_title="$(printf '%s' "$anime_id $episode" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
+	if [ "$auto_play" -eq 0 ]; then
+		play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
 	else
-		mkdir -p "$download_dir"
-		inf "Downloading episode $episode ..."
-		episode=$(printf "%03d" "$episode")
-		if download "$refr" "$video_url" "$anime_id" "$episode"; then
-			inf "Downloaded episode: $episode"
-		else
-			err "Download failed episode: $episode , please retry or check your internet connection"
-		fi
+		printf "\n"
+		play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
+		sleep 2
 	fi
+	PID=$!
+	# overwrite history with temporary history
+	mv "${logfile}.new" "$logfile"
 }
 
 
@@ -522,12 +465,10 @@ PID=0
 quality=best
 scrape=Query
 debug=0
-download_dir="."
 choice=
 auto_play=0
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
-jobfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-jobs"
 tmpdir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-temp"
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # create history file and history dir if none found
@@ -538,10 +479,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
-		d)
-			is_download=1;
-			. "$(dirname "$0")"/player_download || die "No download player script found"
-			;;
+		d) . "$(dirname "$0")"/player_download || die "No download player script found" ;;
 		a)
 			ep_choice_to_start=$OPTARG ;;
 		D)
@@ -549,9 +487,8 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 			exit 0
 			;;
 		p)
-			is_download=1
-			download_dir=$OPTARG
 			. "$(dirname "$0")"/player_download || die "No download player script found"
+			download_dir=$OPTARG
 			;;
 		s) . "$(dirname "$0")"/player_syncplay || die "No syncplay player script found";;
 		q)

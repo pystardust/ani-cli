@@ -5,13 +5,14 @@ player_commands () {
 }
 
 play_episode () {
-	video_url="$1"; refr="$3" trackma_title="$4"
+	video_url="$1"; refr="$2" trackma_title="$3"
+	inf "Currently playing $trackma_title"
 	"$syncplay" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title"
 }
 
 case "$(uname -s)" in
 		Darwin*) syncplay="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-		MINGW*|*Msys) snycplay="/c/Program Files (x86)/Syncplay/Syncplay.exe";;
+		MINGW*|*Msys) syncplay="/c/Program Files (x86)/Syncplay/Syncplay.exe";;
 		*) syncplay="syncplay";;
 esac
 
