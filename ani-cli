@@ -100,20 +100,20 @@ download () {
 
 			inf "pieces : $range"
 			for i in $(seq $range);do
-			    curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ $i / $range done" &
-			    jobs -p > $jobfile
-			    while [ "$(cat $jobfile | wc -w)" -ge 35 ];do jobs > $jobfile;sleep 0.05;done
+				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ $i / $range done" &
+				jobs -p > $jobfile
+				while [ "$(cat $jobfile | wc -w)" -ge 35 ];do jobs > $jobfile;sleep 0.05;done
 			done
 			wait
 
 			if [ -n "$key_uri" ];then
-			    progress "Decrypting and Concatenating pieces into single file.."
-			    for i in $tmpdir/*;do
-				cat "$i" | openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts
-			    done
+				progress "Decrypting and Concatenating pieces into single file.."
+				for i in $tmpdir/*;do
+					cat "$i" | openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts
+				done
 			else
-			    progress "Concatenating pieces into single file.."
-			    cat $tmpdir/* >> video.ts
+				progress "Concatenating pieces into single file.."
+				cat $tmpdir/* >> video.ts
 			fi
 
 			rm -rdf $tmpdir $jobfile
@@ -513,8 +513,8 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 
 # default options
 case "$(uname)" in
-    Darwin*) player_fn="iina"; . "$(dirname "$0")"/player_iina || die "No iina player script found";; #MacOS specific
-    *)       player_fn="mpv"; . "$(dirname "$0")"/player_mpv || die "No mpv player script found";; #video player needs to be able to play urls
+	Darwin*) . "$(dirname "$0")"/player_iina || die "No iina player script found";; #MacOS specific
+	*) . "$(dirname "$0")"/player_mpv || die "No mpv player script found";;
 esac
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
@@ -539,7 +539,9 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
 		d)
-			is_download=1; . "$(dirname "$0")"/player_download || die "No download player script found";;
+			is_download=1;
+			. "$(dirname "$0")"/player_download || die "No download player script found"
+			;;
 		a)
 			ep_choice_to_start=$OPTARG ;;
 		D)
@@ -549,15 +551,9 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 		p)
 			is_download=1
 			download_dir=$OPTARG
+			. "$(dirname "$0")"/player_download || die "No download player script found"
 			;;
-		s)
-			case "$(uname -s)" in
-				Darwin*) player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-				MINGW*|*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
-				*) player_fn="syncplay" ;;
-			esac
-			. "$(dirname "$0")"/player_syncplay || die "No syncplay player script found"
-			;;
+		s) . "$(dirname "$0")"/player_syncplay || die "No syncplay player script found";;
 		q)
 			quality=$OPTARG ;;
 		x)
@@ -567,7 +563,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 		c)
 			scrape=History ;;
 		v)
-			player_fn="vlc" ; . "$(dirname "$0")"/player_vlc || die "No vlc player script found";;
+			. "$(dirname "$0")"/player_vlc || die "No vlc player script found";;
 		U)
 			update_script
 			update_ui
@@ -588,11 +584,6 @@ shift $((OPTIND - 1))
 
 progress "Checking dependencies.."
 dep_ch "curl" "sed" "grep" "openssl" $(player_commands)
-if [ "$is_download" -eq 0 ]; then
-	:
-else
-	dep_ch "aria2c" "ffmpeg"
-fi
 
 base_url="https://animixplay.to"
 case $scrape in
