@@ -57,7 +57,7 @@ die () {
 # get the newest version of this script from github and replace it
 update () {
 	for i ; do
-		filename="$(printf '%s' "$i" | sed "s/$project_root//")"
+		filename="$(printf '%s' "$i" | sed "s_$project_root/__")"
 		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/$filename")" || die "Connection error"
 		update="$(printf '%s\n' "$update" | diff -u "$i" -)"
 		if [ -z "$update" ]; then
@@ -504,7 +504,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 		v)
 			. "$project_root/players/player_vlc" || die "No vlc player script found";;
 		U)
-			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/player_*
+			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/players/player_*
 			exit 0
 			;;
 		V)
