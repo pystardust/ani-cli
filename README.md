@@ -36,7 +36,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
   - [Arch](#Arch)
-  - [Linux & Mac OS](#linux--mac-os)
+  - [Linux](#Linux)
+  - [MacOs](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
@@ -71,7 +72,7 @@ yay -S ani-cli
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
-### Linux & Mac OS
+### Linux
 
 Install dependencies [(See below)](#Dependencies)
 
@@ -82,11 +83,23 @@ sudo chmod +x /usr/local/bin/ani-cli
 
 *Note that mpv installed through flatpak is not compatible*
 
+### MacOS
+
+Install dependencies [(See below)](#Dependencies)
+
+Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
+
+```sh
+curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o "$(brew --prefix)/bin/ani-cli"
+chmod +x "$(brew --prefix)/bin/ani-cli"
+```
+
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
-brew install curl grep aria2 mpv openssl@1.1 ffmpeg git
-```
+brew install curl grep aria2 iina openssl@1.1 ffmpeg git
+``` 
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
 
 ### Windows
 
@@ -132,8 +145,8 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
-* Other Linux: Just remove the thing from path
-* Mac: Just remove the thing from path
+* Other Linux: ```sudo rm /usr/local/bin/ani-cli```
+* Mac: ```rm "$(brew --prefix)/bin/ani-cli"```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
 
@@ -145,6 +158,7 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 - curl
 - openssl
 - mpv - Video Player
+- iina - mpv replacement for MacOS
 - aria2 - Download manager
 - ffmpeg - m3u8 Downloader
 
