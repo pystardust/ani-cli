@@ -1,22 +1,6 @@
 #!/bin/sh
 
-# ani-cli
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-#
-# Project repository: https://github.com/pystardust/ani-cli
-
+# License preamble at the end of the file
 # Version number
 VERSION="3.0.0"
 
@@ -459,7 +443,17 @@ open_episode () {
 		sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
 		[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 		[ -z "$video_url" ] && die "Video URL not found"
-		play_episode
+		trackma_title="$(printf '%s' "$anime_id $episode" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
+		if [ "$auto_play" -eq 0 ]; then
+			inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
+			play_episode "$video_url" "$idx" "$refr" "$trackma_title" "$auto_play"
+		else
+			inf "Currently playing$selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start/$ep_choice_end"
+			printf "\n"
+			play_episode "$video_url" "$idx" "$refr" "$trackma_title" "$auto_play"
+			sleep 2
+		fi
+		PID=$!
 		# overwrite history with temporary history
 		mv "${logfile}.new" "$logfile"
 	else
@@ -472,36 +466,6 @@ open_episode () {
 			err "Download failed episode: $episode , please retry or check your internet connection"
 		fi
 	fi
-}
-
-play_episode () {
-	# Build command
-	trackma_title="$(printf '%s' "$anime_id" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
-	case "$player_fn" in
-		vlc)
-			[ ! "$auto_play" -eq 0 ] && set -- "$@" "--play-and-exit"
-			set -- "$player_fn" "$video_url"  --http-referrer="$refr"
-			;;
-		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
-			set -- "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title $episode"
-			;;
-        iina)
-            set -- "$player_fn" "$video_url" --no-stdin --keep-running --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title $episode"
-            ;;
-		*)
-			set -- "$player_fn" "$video_url" --vid="$idx" --referrer="$refr" --force-media-title="$trackma_title $episode" ;;
-	esac
-	# Run Command
-	if [ "$auto_play" -eq 0 ]; then
-		inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-		nohup "$@" > /dev/null 2>&1 &
-	else
-		inf "Currently playing$selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start/$ep_choice_end"
-		printf "\n"
-		"$@" > /dev/null 2>&1
-		sleep 2
-	fi
-	PID=$!
 }
 
 
@@ -666,3 +630,20 @@ else
 	exit
 fi
 done
+
+# ani-cli
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Project repository: https://github.com/pystardust/ani-cli
