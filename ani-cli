@@ -481,11 +481,11 @@ open_episode () {
 		trackma_title="$(printf '%s' "$anime_id $episode" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
 		if [ "$auto_play" -eq 0 ]; then
 			inf "Currently playing $selection_id episode" "$episode/$last_ep_number"
-			play_episode "$video_url" "$idx" "$refr" "$trackma_title" "$auto_play"
+			play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
 		else
 			inf "Currently playing$selection_id episode" "$episode/$last_ep_number, Range: $ep_choice_start/$ep_choice_end"
 			printf "\n"
-			play_episode "$video_url" "$idx" "$refr" "$trackma_title" "$auto_play"
+			play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
 			sleep 2
 		fi
 		PID=$!
@@ -513,8 +513,8 @@ trap 'printf "\033[0m";[ -f "$logfile".new ] && rm "$logfile".new;exit 1' INT HU
 
 # default options
 case "$(uname)" in
-    Darwin*) player_fn="iina";; #MacOS specific
-    *)       player_fn="mpv";; #video player needs to be able to play urls
+    Darwin*) player_fn="iina"; . "$(dirname "$0")"/player_iina || die "No iina player script found";; #MacOS specific
+    *)       player_fn="mpv"; . "$(dirname "$0")"/player_mpv || die "No mpv player script found";; #video player needs to be able to play urls
 esac
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
@@ -539,7 +539,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 while getopts 'svq:dp:chDUVa:xf' OPT; do
 	case $OPT in
 		d)
-			is_download=1 ;;
+			is_download=1; . "$(dirname "$0")"/player_download || die "No download player script found";;
 		a)
 			ep_choice_to_start=$OPTARG ;;
 		D)
@@ -556,6 +556,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 				MINGW*|*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
 				*) player_fn="syncplay" ;;
 			esac
+			. "$(dirname "$0")"/player_syncplay || die "No syncplay player script found"
 			;;
 		q)
 			quality=$OPTARG ;;
@@ -566,7 +567,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 		c)
 			scrape=History ;;
 		v)
-			player_fn="vlc" ;;
+			player_fn="vlc" ; . "$(dirname "$0")"/player_vlc || die "No vlc player script found";;
 		U)
 			update_script
 			update_ui
@@ -586,9 +587,9 @@ done
 shift $((OPTIND - 1))
 
 progress "Checking dependencies.."
-dep_ch "curl" "sed" "grep" "openssl"
+dep_ch "curl" "sed" "grep" "openssl" $(player_commands)
 if [ "$is_download" -eq 0 ]; then
-	dep_ch "$player_fn"
+	:
 else
 	dep_ch "aria2c" "ffmpeg"
 fi

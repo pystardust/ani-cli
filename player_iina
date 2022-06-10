@@ -1,6 +1,10 @@
 #!/bin/sh
 # License preamble at the end of the file
 
+player_commands () {
+	printf '%s' "iina"
+}
+
 play_episode () {
 	video_url="$1"; idx="$2"; refr="$3" trackma_title="$4"
 	iina "$video_url" --no-stdin --keep-running --mpv-vid="$idx" --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title"
