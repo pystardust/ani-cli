@@ -41,7 +41,7 @@ inf () {
 }
 
 progress() {
-	printf "\33[2K\r\033[1;34m%s" "$1"
+	printf "\33[2K\r\033[1;34m%s\033[0m" "$1"
 }
 
 debug () {

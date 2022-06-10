@@ -81,6 +81,50 @@ dep_ch () {
 	done
 }
 
+#todo: move this where it belongs
+download () {
+	case $2 in
+		*m3u8*)
+			progress "Fetching Metadata.."
+			[ -d "$tmpdir" ] || mkdir "$tmpdir"
+			m3u8_data="$(curl -s "$2")"
+			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
+			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
+			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s|[^/]*$||")
+			range=$(printf "%s\n" "$m3u8_data" | wc -l)
+
+			if [ -n "$key_uri" ];then
+				key=$(curl -s "$key_uri" | od -A n -t x1 | tr -d ' |\n')
+				iv=$(openssl rand -hex 16)
+			fi
+
+			inf "pieces : $range"
+			for i in $(seq "$range");do
+			    curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
+			    jobs -p > "$jobfile"
+			    while [ "$(cat "$jobfile" | wc -w)" -ge 35 ];do jobs > "$jobfile";sleep 0.05;done
+			done
+			wait
+
+			if [ -n "$key_uri" ];then
+			    progress "Decrypting and Concatenating pieces into single file.."
+			    for i in "$tmpdir"/*;do
+				cat "$i" | openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts
+			    done
+			else
+			    progress "Concatenating pieces into single file.."
+			    cat "$tmpdir"/* >> video.ts
+			fi
+
+			rm -rdf "$tmpdir" "$jobfile"
+			progress "Encoding file to mp4 video.."
+			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/${3}-${4}.mp4"
+			rm -f video.ts
+			;;
+		*)
+			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
+	esac
+}
 
 #############
 # SEARCHING #
@@ -89,13 +133,13 @@ dep_ch () {
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '+' )
-	curl -A "$agent" -s "https://v1.w0ltfgqz8y3ygjozgs4v.workers.dev" -X POST -d "q2=$search" |
+	curl -A "$agent" -s "https://v1.ij7p9towl8uj4qafsopjtrjk.workers.dev" -X POST -d "q2=$search" |
 		sed -e 's_<li>_\n_g' -e 's_\\__g' | sed -nE 's_.*a href="/v1/(.*)".*title.*_\1_p'
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
 episode_list () {
-	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p")
+	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p" | tr -d '\r')
 	#extract all embed links of all episode from data
 	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
 	first_ep_number=1
@@ -154,16 +198,6 @@ generate_link() {
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
-			progress "Fetching Doodstream links.."
-			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
-			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
-			refr="https://dood.to/d/$dood_id"
-			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "$refr" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
-			[ -z "$dood_link" ] && return 0
-			sleep .7
-			result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
-			;;
-		3)
 			progress "Fetching Streamlare links.."
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
@@ -172,6 +206,16 @@ generate_link() {
 			lare_token=$(curl -s -A "$agent" "$refr" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
 			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" \
 				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
+			;;
+		3)
+			progress "Fetching Doodstream links.."
+			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
+			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
+			refr="https://dood.to/d/$dood_id"
+			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "$refr" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
+			[ -z "$dood_link" ] && return 0
+			sleep .7
+			result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
 			;;
 		4)
 			progress "Fetching Okru links.."
@@ -235,8 +279,8 @@ get_video_link() {
 	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
 	provider=2
 	[ "$is_download" -eq 1 ] && provider=1
-	[ "$quality" != "best" ] && provider=4
 	[ -n "$fallback" ] && provider=6
+	[ "$quality" != "best" ] && provider=4
 	i=0
 	while [ "$i" -lt 7 ] && [ -z "$result_links" ];do
 		generate_link "$provider"
@@ -249,11 +293,9 @@ get_video_link() {
 	done
 	[ "$debug" -eq 1 ] && return 0
 	if printf '%s' "$result_links" | grep -q "m3u8"; then
-		video_url="$result_links"
-		get_video_quality_m3u8
+		get_video_quality_m3u8 "$result_links"
 	else
 		video_url=$(get_video_quality_mp4 "$result_links")
-		idx=1
 	fi
 	unset result_links
 }
@@ -277,22 +319,23 @@ get_video_quality_mp4() {
 }
 
 get_video_quality_m3u8() {
-	m3u8_links_count=$(curl -A "$agent" -s --referer "$dpage_link" "$video_url" | sed 's/#.*$//' | sed '/^[[:space:]]*$/d' | wc -w)
+	printf '%s' "$1" | grep -qE "manifest.*m3u.*" && video_url=$1 && return 0
+	m3u8_links=$(curl -A "$agent" -s --referer "$dpage_link" "$1")
 	case $quality in
-		worst|360)
-			idx=2 ;;
-		480)
-			idx=3 ;;
-		720)
-			idx=4 ;;
-		1080|best|*)
-			idx="auto" ;;
+		best)
+			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1),/{n;p}" | tr -d '\r') ;;
+		worst)
+			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1),/{n;p}" | tr -d '\r') ;;
+		*)
+			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$quality,/{n;p}")
+			if [ -z "$video_url" ]; then
+				err "Current video quality is not available (defaulting to best quality)"
+				quality=best
+				video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1),/{n;p}" | tr -d '\r')
+			fi
+			;;
 	esac
-	if [ "$idx" -lt 1 ] 2>/dev/null || [ "$idx" -gt "$m3u8_links_count" ] 2>/dev/null; then
-		err "Current video quality is not available (defaulting to best quality)"
-		idx="auto"
-	fi
-	[ "$idx" != "auto" ] 2>/dev/null && printf '%s' "$video_url" | grep -qE "gogocdn.*m3u.*" && idx=$((idx-1))
+	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url"
 }
 
 
