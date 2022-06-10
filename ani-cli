@@ -490,7 +490,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 			;;
 		p)
 			. "$project_root/players/player_download" || die "No download player script found"
-			download_dir=$OPTARG
+			download_dir="$OPTARG"
 			;;
 		s) . "$project_root/players/player_syncplay" || die "No syncplay player script found";;
 		q)
@@ -520,6 +520,7 @@ while getopts 'svq:dp:chDUVa:xf' OPT; do
 done
 shift $((OPTIND - 1))
 progress "Checking dependencies.."
+# shellcheck disable=SC2046
 dep_ch "curl" "sed" "grep" "openssl" $(player_commands)
 
 base_url="https://animixplay.to"

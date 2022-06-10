@@ -61,4 +61,4 @@ play_episode () {
 jobfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-jobs"
 download_dir="."
 tmpdir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-temp"
-is_download=1;
+export is_download=1;
