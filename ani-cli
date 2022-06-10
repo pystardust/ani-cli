@@ -269,7 +269,6 @@ get_video_quality_mp4() {
 			video_url=$(printf '%s' "$1" | grep -i "${quality}p" | head -n 1 | cut -d">" -f2)
 			if [ -z "$video_url" ]; then
 				err "Current video quality is not available (defaulting to best quality)"
-				quality=best
 				video_url=$(printf '%s' "$1" | tail -n 1 | cut -d">" -f2)
 			fi
 			;;
@@ -282,19 +281,18 @@ get_video_quality_m3u8() {
 	m3u8_links=$(curl -A "$agent" -s --referer "$dpage_link" "$1")
 	case $quality in
 		best)
-			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1),/{n;p}" | tr -d '\r') ;;
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1);;
 		worst)
-			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1),/{n;p}" | tr -d '\r') ;;
+			res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | tail -1);;
 		*)
-			video_url=$(printf '%s' "$m3u8_links" | sed -n "/$quality,/{n;p}")
-			if [ -z "$video_url" ]; then
+			res_selector=$quality
+			if printf '%s' "$m3u8_links" | grep "$quality,"; then
 				err "Current video quality is not available (defaulting to best quality)"
-				quality=best
-				video_url=$(printf '%s' "$m3u8_links" | sed -n "/$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1),/{n;p}" | tr -d '\r')
+				res_selector=$(printf "%s" "$m3u8_links" | sed -nE 's_.*RESOLUTION=.*x([^,]*),.*_\1_p' | sort -nr | head -1)
 			fi
 			;;
 	esac
-	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url"
+	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p}" | tr -d '\r')"
 }
 
 
