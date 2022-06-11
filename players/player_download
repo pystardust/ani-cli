@@ -6,6 +6,8 @@ player_commands () {
 
 download () {
 	case $2 in
+		*manifest*m3u8)
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4" ;;
 		*m3u8*)
 			progress "Fetching Metadata.."
 			[ -d "$tmpdir" ] || mkdir "$tmpdir"
@@ -39,12 +41,12 @@ download () {
 			fi
 			# cleanup and encoding
 			rm -rdf "$tmpdir" "$jobfile"
-			progress "Encoding file to mp4 video.."
-			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/$3-$4.mp4"
+			inf "Encoding file to mp4 video.."
+			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/$3.mp4"
 			rm -f video.ts
 			;;
 		*)
-			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "${3}-${4}.mp4" --download-result=hide ;;
+			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "$3.mp4" --download-result=hide ;;
 	esac
 }
 
