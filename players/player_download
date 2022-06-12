@@ -23,7 +23,7 @@ download () {
 			fi
 			# Asyncronously downloading pieces to temporary directory
 			inf "pieces : $range"
-			for i in $(seq "$range");do
+			for i in $(seq "$range"); do
 				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
 				jobs -p > "$jobfile"
 				while [ "$(wc -w "$jobfile" | cut -d' ' -f1)" -ge 35 ];do jobs > "$jobfile";sleep 0.05;done
@@ -32,7 +32,7 @@ download () {
 			# Decrypting and concatenating the pieces
 			if [ -n "$key_uri" ];then
 				progress "Decrypting and Concatenating pieces into single file.."
-				for i in "$tmpdir"/*;do
+				for i in "$tmpdir"/* ; do
 					openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts < "$i"
 				done
 			else

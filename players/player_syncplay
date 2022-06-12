@@ -11,7 +11,7 @@ play_episode () {
 }
 
 case "$(uname -s)" in
-		Darwin*) syncplay="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-		MINGW*|*Msys) syncplay="/c/Program Files (x86)/Syncplay/Syncplay.exe";;
-		*) syncplay="syncplay";;
+	Darwin*) syncplay="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+	MINGW*|*Msys) syncplay="/c/Program Files (x86)/Syncplay/Syncplay.exe";;
+	*) syncplay="syncplay";;
 esac
