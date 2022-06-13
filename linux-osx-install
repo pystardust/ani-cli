@@ -4,7 +4,6 @@ brew_base="$(brew --prefix)"
 [[ -d "${brew_base}" ]] || printf "Your brew bin doesn't exist." && exit 1
 case "$(uname)" in
     Darwin*)
-        # shellcheck disable=CS2312
         rm -rf "${brew_base}/share/ani-cli"
         git clone "$REPO" "${brew_base}/share/ani-cli"
         ln -sf "${brew_base}/share/ani-cli/ani-cli" "${brew_base}/bin/ani-cli"
