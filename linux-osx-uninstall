@@ -1,9 +1,8 @@
 #!/bin/sh
 
-brew_base="$(brew --prefix)"
-
 case "$(uname)" in
     Darwin*)
+        brew_base="$(brew --prefix)"
         rm -rf "${brew_base}/share/ani-cli" "${brew_base}/bin/ani-cli"
         exit 0
         ;;
