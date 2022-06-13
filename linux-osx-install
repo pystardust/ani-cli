@@ -1,0 +1,18 @@
+#!/bin/sh
+
+case "$(uname)" in
+    Darwin*)
+        git clone "https://github.com/pystardust/ani-cli.git" "$(brew --prefix)/share/ani-cli"
+        ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
+        exit 0
+        ;;
+    Linux*)
+        git clone "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli"
+        ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
+        exit 0
+        ;;
+    *)
+        printf "This installer is only for Linux and MacOS. Bye."
+        exit 1
+        ;;
+esac

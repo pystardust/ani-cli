@@ -1,0 +1,16 @@
+#!/bin/sh
+
+case "$(uname)" in
+    Darwin*)
+        rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli"
+        exit 0
+        ;;
+    Linux*)
+        rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+        exit 0
+        ;;
+    *)
+        printf "This uninstaller is only for Linux and MacOS. Bye."
+        exit 1
+        ;;
+esac

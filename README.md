@@ -77,8 +77,7 @@ yay -S ani-cli
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o /usr/local/bin/ani-cli &&
-sudo chmod +x /usr/local/bin/ani-cli
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
 ```
 
 *Note that mpv installed through flatpak is not compatible*
@@ -90,8 +89,7 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o "$(brew --prefix)/bin/ani-cli"
-chmod +x "$(brew --prefix)/bin/ani-cli"
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
