@@ -1,7 +1,8 @@
 #!/bin/sh
-REPO="https://github.com/pystardust/ani-cli.git"
+REPO="https://github.com/dabigblob/ani-cli.git"
 case "$(uname)" in
     Darwin*)
+        # shellcheck disable=2312
         rm -rf "$(brew --prefix)/share/ani-cli"
         git clone "$REPO" "$(brew --prefix)/share/ani-cli"
         ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
