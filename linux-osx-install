@@ -1,8 +1,8 @@
 #!/bin/sh
 REPO="https://github.com/dabigblob/ani-cli.git"
 brew_base="$(brew --prefix)"
-[ -d "${brew_base}" ] || printf "Your brew bin doesn't exist." && exit 0
-case "$(uname)" in
+[ -d "${brew_base}" ] || printf "Your brew bin doesn't exist." && exit 1
+case "$($(uname) || true)" in
     Darwin*)
         rm -rf "${brew_base}/share/ani-cli"
         git clone "$REPO" "${brew_base}/share/ani-cli"
@@ -17,6 +17,6 @@ case "$(uname)" in
         ;;
     *)
         printf "This installer is only for Linux and MacOS. Bye."
-        exit 0
+        exit 1
         ;;
 esac
