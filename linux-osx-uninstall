@@ -1,8 +1,10 @@
 #!/bin/sh
 
+brew_base="$(brew --prefix)"
+[ -d "${brew_base}" ] || printf "Your brew bin doesn't exist." && exit 1
 case "$(uname)" in
     Darwin*)
-        rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli"
+        rm -rf "${brew_base}/share/ani-cli" "${brew_base}/bin/ani-cli"
         exit 0
         ;;
     Linux*)
