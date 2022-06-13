@@ -2,7 +2,7 @@
 REPO="https://github.com/dabigblob/ani-cli.git"
 brew_base="$(brew --prefix)"
 [ -d "${brew_base}" ] || printf "Your brew bin doesn't exist." && exit 1
-case "$($(uname) || true)" in
+case "$(uname)" in
     Darwin*)
         rm -rf "${brew_base}/share/ani-cli"
         git clone "$REPO" "${brew_base}/share/ani-cli"
