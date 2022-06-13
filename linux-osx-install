@@ -1,5 +1,5 @@
 #!/bin/sh
-
+local REPO
 REPO="https://github.com/pystardust/ani-cli.git"
 case "$(uname)" in
     Darwin*)
