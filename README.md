@@ -144,9 +144,13 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 
 * Arch Linux: ```yay -R ani-cli```
 * Other Linux:  
-```curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sudo sh```
+```sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sudo sh
+```
 * Mac:  
-```curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sh```
+```sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sh
+```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
 
