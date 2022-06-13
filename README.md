@@ -89,7 +89,7 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sh
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
