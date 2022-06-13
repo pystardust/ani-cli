@@ -1,0 +1,7 @@
+#!/bin/sh
+
+play_episode () {
+	video_url="$1"; refr="$2" trackma_title="$3"
+	inf "Currently playing $trackma_title"
+	vlc "$video_url"  --http-referrer="$refr" --meta-title "$trackma_title" --play-and-exit
+}

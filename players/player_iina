@@ -1,0 +1,11 @@
+#!/bin/sh
+
+player_commands () {
+	printf '%s' "iina"
+}
+
+play_episode () {
+	video_url="$1"; refr="$2" trackma_title="$3"
+	inf "Currently playing $trackma_title"
+	iina "$video_url" --no-stdin --keep-running --mpv-referrer="$refr" --mpv-force-media-title="$trackma_title"
+}
