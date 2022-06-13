@@ -1,11 +1,13 @@
 #!/bin/sh
 REPO="https://github.com/dabigblob/ani-cli.git"
+brew_base="$(brew --prefix)"
+[[ -d "${brew_base}" ]] || printf "Your brew bin doesn't exist." && exit 1
 case "$(uname)" in
     Darwin*)
         # shellcheck disable=CS2312
-        rm -rf "$(brew --prefix)/share/ani-cli"
-        git clone "$REPO" "$(brew --prefix)/share/ani-cli"
-        ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
+        rm -rf "${brew_base}/share/ani-cli"
+        git clone "$REPO" "${brew_base}/share/ani-cli"
+        ln -sf "${brew_base}/share/ani-cli/ani-cli" "${brew_base}/bin/ani-cli"
         exit 0
         ;;
     Linux*)
