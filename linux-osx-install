@@ -1,6 +1,6 @@
 #!/bin/sh
 
-REPO="https://github.com/dabigblob/ani-cli.git"
+REPO="https://github.com/pystardust/ani-cli.git"
 case "$(uname)" in
     Darwin*)
         rm -rf "$(brew --prefix)/share/ani-cli"
