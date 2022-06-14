@@ -91,7 +91,7 @@ git clone -b "master" "https://github.com/dabigblob/ani-cli.git" "$(brew --prefi
 ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
 ```
 
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
+*To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
 ```sh
 brew install curl grep aria2 iina openssl@1.1 ffmpeg git
