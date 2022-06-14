@@ -129,9 +129,9 @@ referrer="https://gogoanime.fi/"
 ```
 Make sure to update your packages:
 
- ```sh
- pkg up
- ```
+```sh
+pkg up
+```
 
 In the case mpv only plays audio, you can try running this command:
 ```sh
