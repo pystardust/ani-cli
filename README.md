@@ -110,18 +110,12 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-pkg install ani-cli
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/android-install" | sh
 ```
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
 
 ```
 referrer="https://gogoanime.fi/"
-```
-
-Make sure to update your packages:
-
-```sh
-pkg up
 ```
 
 In the case mpv only plays audio, you can try running this command:
@@ -141,7 +135,10 @@ curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uni
 curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sh
 ```
 * Windows: ```scoop uninstall ani-cli```
-* Android: Just remove the thing from path
+* Android:  
+```sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/android-uninstall" | sh
+```
 
 ## Dependencies
 
