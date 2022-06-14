@@ -38,7 +38,6 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
-  - [Arch](#Arch)
   - [Linux](#Linux)
   - [MacOs](#MacOS)
   - [Windows](#Windows)
@@ -62,18 +61,6 @@ curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/hist_transiti
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
-
-### Arch
-
-Also consider ani-cli-git
-
-```sh
-yay -S ani-cli
-```
-
-### Other native packages
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
 ### Linux
 
@@ -145,8 +132,7 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 
 ## Uninstall
 
-* Arch Linux: ```yay -R ani-cli```
-* Other Linux:  
+* Linux:  
 ```sh
 curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sudo sh
 ```
