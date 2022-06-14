@@ -56,7 +56,7 @@ If after this the issue persists then open an issue.
 <br>
 If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/hist_transition.sh" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
 ```
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
@@ -67,7 +67,7 @@ It doesn't work for all anime, but the ones it can't find will print out alongsi
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-install" | sudo sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
 ```
 
 *Note that mpv installed through flatpak is not compatible*
@@ -79,7 +79,7 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-install" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sh
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
@@ -110,7 +110,7 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/android-install" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/android-install" | sh
 ```
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
 
@@ -128,16 +128,16 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 
 * Linux:  
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sudo sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sudo sh
 ```
 * Mac:  
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sh
 ```
 * Windows: ```scoop uninstall ani-cli```
 * Android:  
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/android-uninstall" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/android-uninstall" | sh
 ```
 
 ## Dependencies
