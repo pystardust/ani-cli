@@ -58,7 +58,7 @@ die () {
 update () {
 	for i ; do
 		filename="$(printf '%s' "$i" | sed "s_$project_root/__")"
-		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/$filename")" || die "Connection error"
+		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/$filename")" || die "Connection error"
 		update="$(printf '%s\n' "$update" | diff -u "$i" -)"
 		if [ -z "$update" ]; then
 			inf "$filename is up to date :)"

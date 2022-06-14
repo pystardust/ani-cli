@@ -24,6 +24,9 @@
 <h3 align="center">
 A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
 </h3>
+<h1 align="center">
+	INSTALL FIX FOR LINUX AND MACOS
+</h1>
 	
 <h1 align="center">
 	Showcase
@@ -54,7 +57,7 @@ If after this the issue persists then open an issue.
 <br>
 If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/hist_transition.sh" | sh
 ```
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
@@ -77,7 +80,7 @@ yay -S ani-cli
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-install" | sudo sh
 ```
 
 *Note that mpv installed through flatpak is not compatible*
@@ -89,7 +92,7 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-install" | sh
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
@@ -145,11 +148,11 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 * Arch Linux: ```yay -R ani-cli```
 * Other Linux:  
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sudo sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sudo sh
 ```
 * Mac:  
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sh
+curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/fixed/linux-osx-uninstall" | sh
 ```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
