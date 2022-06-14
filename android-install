@@ -1,0 +1,15 @@
+#!/bin/sh
+REPO="https://github.com/dabigblob/ani-cli.git"
+case "$(uname -o)" in
+    Android*)
+        andr_base="/data/data/com.termux/files/usr"
+        rm -rf "${andr_base}/share/ani-cli"
+        git clone -b "fixed" "$REPO" "${andr_base}/share/ani-cli"
+        ln -sf "${andr_base}/share/ani-cli/ani-cli" "${andr_base}/bin/ani-cli"
+        exit 0
+        ;;
+    *)
+        printf "This installer is only for Android. Bye."
+        exit 1
+        ;;
+esac

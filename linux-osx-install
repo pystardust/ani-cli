@@ -1,16 +1,16 @@
 #!/bin/sh
-REPO="https://github.com/pystardust/ani-cli.git"
+REPO="https://github.com/dabigblob/ani-cli.git"
 case "$(uname)" in
     Darwin*)
         brew_base="$(brew --prefix)"
         rm -rf "${brew_base}/share/ani-cli"
-        git clone "$REPO" "${brew_base}/share/ani-cli"
+        git clone -b "fixed" "$REPO" "${brew_base}/share/ani-cli"
         ln -sf "${brew_base}/share/ani-cli/ani-cli" "${brew_base}/bin/ani-cli"
         exit 0
         ;;
     Linux*)
         rm -rf "/usr/local/share/ani-cli"
-        git clone "$REPO" "/usr/local/share/ani-cli"
+        git clone -b "fixed" "$REPO" "/usr/local/share/ani-cli"
         ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
         exit 0
         ;;
