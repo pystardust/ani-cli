@@ -58,17 +58,26 @@ curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transi
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
-#### We would appreciate if you could read the respective install script before running the install command, reassurance of your system's safety and privacy.
+#### We would appreciate if you could read the respective install script before running the install command, reassurance of your system's safety and privacy.  
+
+How installation works:
+- removal of previous installation
+- downloading the essestial files to the appropriate share/ani-cli/ directory for your OS
+- creating a symbolic link from aforementioned share/ani-cli/ani-cli binary to the appropriate bin/ani-cli
+- watch anime 💪🏻
 
 ### Linux
 
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sudo sh
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
+sudo git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
+sudo ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
 ```
+*Note that while while running the above command, you'll be asked for your password.*
 
-*Note that mpv installed through flatpak is not compatible*
+*Also note that mpv installed through flatpak is not compatible*
 
 ### MacOS
 
@@ -77,7 +86,9 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-install" | sh
+rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$(brew --prefix)/share/ani-cli" && \
+ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
@@ -108,7 +119,9 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/android-install" | sh
+rm -rf "/data/data/com.termux/files/usr/share/ani-cli" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/data/data/com.termux/files/usr/share/ani-cli" && \
+ln -sf "/data/data/com.termux/files/usr/share/ani-cli/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
 ```
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
 
@@ -126,16 +139,16 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 
 * Linux:  
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sudo sh
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
 ```
 * Mac:  
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/linux-osx-uninstall" | sh
+rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli"
 ```
 * Windows: ```scoop uninstall ani-cli```
 * Android:  
 ```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/android-uninstall" | sh
+rm -rf "/data/data/com.termux/files/usr/share/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
 ```
 
 ## Dependencies
