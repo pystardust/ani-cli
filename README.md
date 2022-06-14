@@ -53,7 +53,7 @@ If after this the issue persists then open an issue.
 <br>
 If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
 ```sh
-curl -s "https://raw.githubusercontent.com/dabigblob/ani-cli/master/hist_transition.sh" | sh
+curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
 ```
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
@@ -72,7 +72,7 @@ Install dependencies [(See below)](#Dependencies)
 
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
-sudo git clone -b "master" "https://github.com/dabigblob/ani-cli.git" "/usr/local/share/ani-cli" && \
+sudo git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
 sudo ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
 ```
 *Note that while while running the above command, you'll be asked for your password.*
@@ -87,7 +87,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" && \
-git clone -b "master" "https://github.com/dabigblob/ani-cli.git" "$(brew --prefix)/share/ani-cli" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$(brew --prefix)/share/ani-cli" && \
 ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
 ```
 
@@ -120,7 +120,7 @@ Install termux [(Guide)](https://termux.com/)
 
 ```sh
 rm -rf "/data/data/com.termux/files/usr/share/ani-cli" && \
-git clone -b "master" "https://github.com/dabigblob/ani-cli.git" "/data/data/com.termux/files/usr/share/ani-cli" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/data/data/com.termux/files/usr/share/ani-cli" && \
 ln -sf "/data/data/com.termux/files/usr/share/ani-cli/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
 ```
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
