@@ -58,6 +58,7 @@ curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transi
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
+#### We would appreciate if you could read the respective install script before running the install command, reassurance of your system's safety and privacy.
 
 ### Linux
 
