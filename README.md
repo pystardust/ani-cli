@@ -94,7 +94,8 @@ sudo mkdir /usr/local/bin/players &&
 sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_download -o /usr/local/bin/players/player_download &&
 sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_mpv -o /usr/local/bin/players/player_mpv &&
 sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_syncplay -o /usr/local/bin/players/player_syncplay &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_vlc -o /usr/local/bin/players/player_vlc
+sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_vlc -o /usr/local/bin/players/player_vlc &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_vlc -o /usr/local/bin/players/player_iina
 ```
 
 *Note that mpv installed through flatpak is not compatible*
