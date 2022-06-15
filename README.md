@@ -35,6 +35,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
+  - [Arch](#Arch)
   - [Linux](#Linux)
   - [MacOs](#MacOS)
   - [Windows](#Windows)
@@ -57,13 +58,19 @@ curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transi
 ```
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
-## Install 
+## Install
 
-How installation works:
-- removal of previous installation
-- downloading the essestial files to the appropriate share/ani-cli/ directory for your OS
-- creating a symbolic link from aforementioned share/ani-cli/ani-cli binary to the appropriate bin/ani-cli
-- watch anime 💪🏻
+### Arch
+
+Also consider ani-cli-git
+
+```sh
+yay -S ani-cli
+```
+
+### Other native packages
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
 ### Linux
 
