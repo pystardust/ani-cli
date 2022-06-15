@@ -92,32 +92,30 @@ dep_ch () {
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '+' )
-	curl -A "$agent" -s "https://v1.ij7p9towl8uj4qafsopjtrjk.workers.dev" -X POST -d "q2=$search" |
-		sed -e 's_<li>_\n_g' -e 's_\\__g' | sed -nE 's_.*a href="/v1/(.*)".*title.*_\1_p'
+	curl -A "$agent" -s "https://api.jikan.moe/v3/search/anime?q=$search&limit=15" | 
+	    tr '{|}' '\n' | sed -nE 's|.*mal_id":(.*),"url.*title":"([^"]*)",.*|\1>\2|p'
 }
 
-#fetches all the episodes embed links in an anime from gogoanime server
-episode_list () {
-	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p" | tr -d '\r')
-	#extract all embed links of all episode from data
-	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
+#fetches all the episodes embed links in an anime from both allanime and gogoanime server
+episode_list() {
+	server_links=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$mal_id" -A "$agent" |
+		sed -nE 's_.*"GOGO","items":\[(.*)\]\},.*_\1_p' | tr '{|}' '\n' | sed -nE 's_"url":"(.*)",.*title.*_\1_p')
+	[ -z "$server_links" ] && return 0
+	if [ "$dub" -eq 1 ] ; then
+		server_links=$(printf "%s" "$server_links" | grep "dub")
+	else
+		server_links=$(printf "%s" "$server_links" | sed 's/-dub//')
+	fi
+	al_server_link=$(printf "%s" "$server_links" | sed -nE 's_(/v11/.*)_\1_p' | head -1)
+	gogo_server_link=$(printf "%s" "$server_links" | sed -nE 's_(/v1/.*)_\1_p' | head -1)
+	#from gogoanime server
+	progress "(Gogoanime) Searching Episodes.."
+	[ -z "$gogo_server_link" ] || select_ep_result=$(curl -A "$agent" -s "${base_url}${gogo_server_link}" | sed -nE "s_.*epslistplace.*>(.*)</div>_\1_p" | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
+	#from allanime server
+	progress "(Allanime) Searching Episodes.."
+	[ -z "$al_server_link" ] || al_data=$(curl -s "${base_url}${al_server_link}" -A "$agent" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
 	first_ep_number=1
 	[ -z "$select_ep_result" ] && last_ep_number=0 || last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
-}
-
-#from allanime server
-al_episode_list() {
-	ext_id=$(printf "%s" "$data" | tail -1)
-	al_server_link=$(curl -s -H "x-requested-with:XMLHttpRequest" -X POST "https://animixplay.to/api/search" -d "recomended=$ext_id" -A "$agent" |
-		sed -nE 's_.*"AL","items":\[(.*)\]\},.*_\1_p' | tr '{|}' '\n' | sed -nE 's_"url":"(.*)",.*title.*_\1_p')
-	[ -z "$al_server_link" ] && return 0
-	progress "(Allanime) Searching Episodes.."
-	if printf "%s" "$selection_id" | grep -q "dub"; then
-		al_server_link=$(printf "%s" "$al_server_link" | grep "dub")
-	else
-		al_server_link=$(printf "%s" "$al_server_link" | sed 's/-dub//' | head -1)
-	fi
-	al_data=$(curl -s "${base_url}${al_server_link}" -A "$agent" | sed -nE 's_.*epslistplace.*>(.*)</div>_\1_p')
 }
 
 process_hist_entry () {
@@ -326,7 +324,7 @@ anime_selection () {
 	count=1
 	unset selection_list
 	while read -r anime_id; do
-		displayed_title=$(printf '%s' "$anime_id" | tr '-' ' ')
+		displayed_title=$(printf '%s' "$anime_id" | cut -d'>' -f2)
 		selection_list=$(append "$selection_list" "$displayed_title" "$count")
 		: $((count+=1))
 	done <<-EOF
@@ -347,9 +345,9 @@ anime_selection () {
 	fi
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
-	progress "(Gogoanime) Searching Episodes.."
-	episode_list "$selection_id"
-	al_episode_list
+	mal_id=$(printf '%s' "$selection_id" | cut -d'>' -f1)
+	selection_id=$(printf '%s' "$selection_id" | cut -d'>' -f2)
+	episode_list
 }
 
 # gets episode number from user, makes sure it's in range, skips input if only one episode exists
@@ -434,7 +432,7 @@ open_episode () {
 	sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
 	[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 	[ -z "$video_url" ] && die "Video URL not found"
-	trackma_title="$(printf '%s' "$anime_id Episode $episode" | tr '-' ' ' | awk '{for(i=1;i<=NF;i++){ $i=toupper(substr($i,1,1)) substr($i,2) }}1')"
+	trackma_title="$(printf '%s' "$anime_id Episode $episode")"
 	if [ "$auto_play" -eq 0 ]; then
 		play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
 	else
@@ -459,6 +457,7 @@ trap 'printf "\033[0m";rm -rdf "video.ts" "$tmpdir" "$jobfile" "$logfile".new;ex
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0
+dub=0
 quality=best
 scrape=Query
 debug=0
@@ -478,7 +477,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$project_root/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xf:' OPT; do
+while getopts 'svq:dp:chDUVa:xf:-:' OPT; do
 	case $OPT in
 		d) . "$project_root/players/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -504,6 +503,9 @@ while getopts 'svq:dp:chDUVa:xf:' OPT; do
 			version_text
 			ui_version_text
 			exit 0
+			;;
+		-)
+			[ "$OPTARG" = "dub" ] && dub=1
 			;;
 		*)
 			help_text
