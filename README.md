@@ -133,7 +133,7 @@ mkdir -p "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
 git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$PREFIX/share/ani-cli" && \
 ln -sf "$PREFIX/share/ani-cli/ani-cli" "$PREFIX/bin/ani-cli"
 ```
-Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
+For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
 
 ```
 referrer="https://gogoanime.fi/"
