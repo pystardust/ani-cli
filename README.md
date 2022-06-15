@@ -84,8 +84,6 @@ sudo mkdir -p "/usr/local/share/" "/usr/local/bin/" && \
 sudo git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
 sudo ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
 ```
-*Note that while while running the above command, you'll be asked for your password.*
-
 *Also note that mpv installed through flatpak is not compatible*
 
 ### MacOS
