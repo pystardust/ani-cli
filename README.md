@@ -86,16 +86,16 @@ yay -S ani-cli
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o /usr/local/bin/ani-cli &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/ani-cli -o /usr/local/bin/ani-cli &&
 sudo chmod +x /usr/local/bin/ani-cli &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/UI -o /usr/local/bin/UI &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/UI -o /usr/local/bin/UI &&
 sudo chmod +x /usr/local/bin/UI &&
 sudo mkdir /usr/local/bin/players &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_download -o /usr/local/bin/players/player_download &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_mpv -o /usr/local/bin/players/player_mpv &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_syncplay -o /usr/local/bin/players/player_syncplay &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_vlc -o /usr/local/bin/players/player_vlc &&
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/players/player_vlc -o /usr/local/bin/players/player_iina
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/players/player_download -o /usr/local/bin/players/player_download &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/players/player_mpv -o /usr/local/bin/players/player_mpv &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/players/player_syncplay -o /usr/local/bin/players/player_syncplay &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/players/player_vlc -o /usr/local/bin/players/player_vlc &&
+sudo curl -sL github.com/pystardust/ani-cli/raw/v3/players/player_vlc -o /usr/local/bin/players/player_iina
 ```
 
 *Note that mpv installed through flatpak is not compatible*
