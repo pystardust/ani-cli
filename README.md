@@ -35,7 +35,6 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 
 - [Fixing errors](#Fixing-errors)
 - [Install](#Installation)
-  - [Arch](#Arch)
   - [Linux](#Linux)
   - [MacOs](#MacOS)
   - [Windows](#Windows)
