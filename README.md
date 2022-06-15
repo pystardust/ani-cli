@@ -38,7 +38,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Install](#Install)
   - [Arch](#Arch)
   - [Linux](#Linux)
-  - [Mac OS] (#Mac-OS)
+  - [Mac OS](#Mac-OS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
