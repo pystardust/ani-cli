@@ -290,7 +290,7 @@ get_video_quality_m3u8() {
 			fi
 			;;
 	esac
-	video_url=$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p}" | tr -d '\r')
+	video_url=$(printf '%s' "$m3u8_links" | sed -n "/$res_selector,/{n;p;}" | tr -d '\r')
 	printf "%s" "$m3u8_links" | grep -q "http" || video_url="$(printf "%s" "$1" | sed 's|[^/]*$||')$video_url" || true
 }
 
