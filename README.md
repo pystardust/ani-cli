@@ -88,6 +88,7 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 git clone https://github.com/pystardust/ani-cli.git && cd ani-cli
 chmod +x ani-cli && sudo cp ani-cli /usr/local/bin/ani-cli
+chmod +x UI && sudo cp UI /usr/local/bin/UI
 sudo cp -r players /usr/local/bin/players
 ```
 
