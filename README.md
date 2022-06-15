@@ -22,7 +22,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://animixplay.to/">animixplay.</a>
 </h3>
 	
 <h1 align="center">
@@ -34,10 +34,11 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
+- [New in v3](#New-in-v3)
 - [Install](#Installation)
   - [Arch](#Arch)
   - [Linux](#Linux)
-  - [MacOs](#MacOS)
+  - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
@@ -46,17 +47,26 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
+
 ## Fixing errors
 
 If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>
-If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
-```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
+If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: /usr/bin/players/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
+
+## New in v3
 ```
-It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
+We now scrape animixplay instead of gogoanime, which allows for faster link fetching as well as getting new 
+releases sooner.
+
+New arguments:
+-f select provider to scrape first
+-x print all video links from all providers to stdout (for debugging purpose)
+
+To see a list with all the arguments, use the -h or --help argument
+```
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
@@ -123,11 +133,6 @@ rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
 mkdir -p "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
 git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$PREFIX/share/ani-cli" && \
 ln -sf "$PREFIX/share/ani-cli/ani-cli" "$PREFIX/bin/ani-cli"
-```
-Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
-
-```
-referrer="https://gogoanime.fi/"
 ```
 Make sure to update your packages:
 
