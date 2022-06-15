@@ -103,6 +103,13 @@ brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
 
+*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
+
+```sh
+brew install curl grep aria2 iina openssl@1.1 ffmpeg git
+``` 
+*Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
+
 ### Windows
 
 *Note that the installation instruction below must be done inside 
