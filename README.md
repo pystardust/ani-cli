@@ -59,16 +59,10 @@ curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transi
 It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
+# IMPORTANT: Please uninstall ani-cli before proceeding.
+#### ani-cli V3 has breaking changes and is incompatible with V2's install location. Plasase uninstall before proceeding.
 
-### Arch
-
-Also consider ani-cli-git
-
-```sh
-yay -S ani-cli
-```
-
-### Other native packages
+### Native packages
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
@@ -78,6 +72,7 @@ Install dependencies [(See below)](#Dependencies)
 
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
+sudo mkdir -p "/usr/local/share/" "/usr/local/bin/" && \
 sudo git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
 sudo ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
 ```
@@ -106,17 +101,16 @@ brew install curl grep aria2 iina openssl@1.1 ffmpeg git
 
 ### Windows
 
-*Note that the installation instruction below must be done inside 
-Powershell as **administrator**, not in Command Prompt*
-
-Install scoop [(Guide)](https://scoop.sh/)
-```
-scoop bucket add extras
-mkdir -p "$env:USERPROFILE/.cache"
-scoop install ani-cli -g
-```
-
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
+
+*Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
+
+```sh
+rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
+mkdir -p "/usr/local/share/" "/usr/local/bin/" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
+ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
+```
 
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
 
@@ -125,9 +119,10 @@ scoop install ani-cli -g
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-rm -rf "/data/data/com.termux/files/usr/share/ani-cli" && \
-git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/data/data/com.termux/files/usr/share/ani-cli" && \
-ln -sf "/data/data/com.termux/files/usr/share/ani-cli/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
+rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
+mkdir -p "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
+git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$PREFIX/share/ani-cli" && \
+ln -sf "$PREFIX/share/ani-cli/ani-cli" "$PREFIX/bin/ani-cli"
 ```
 Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
 
@@ -156,7 +151,11 @@ sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli"
 ```
-* Windows: ```scoop uninstall ani-cli```
+* Windows:
+In **Git Bash** run:
+```sh
+rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+```
 * Android:  
 ```sh
 rm -rf "/data/data/com.termux/files/usr/share/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
