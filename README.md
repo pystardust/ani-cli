@@ -50,12 +50,20 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
-<br>
-If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
-```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
+<br>  
+If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: /usr/bin/players/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
+
+## New in v3
+```txt
+We now scrape animixplay instead of gogoanime, which allows for faster link fetching as well as getting new 
+releases sooner.
+
+New arguments:
+-f select provider to scrape first
+-x print all video links from all providers to stdout (for debugging purpose)
+
+To see a list with all the arguments, use the -h or --help argument
 ```
-It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
