@@ -34,7 +34,8 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
-- [Install](#Installation)
+- [New in v3](#New-in-v3)
+- [Install](#Install)
   - [Linux](#Linux)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
