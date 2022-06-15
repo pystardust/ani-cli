@@ -22,7 +22,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://gogoplay5.com">gogoplay.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://animixplay.to/">animixplay.</a>
 </h3>
 	
 <h1 align="center">
@@ -34,10 +34,10 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
-- [Install](#Installation)
+- [New in v3](#New-in-v3)
+- [Install](#Install)
   - [Arch](#Arch)
-  - [Linux](#Linux)
-  - [MacOs](#MacOS)
+  - [Linux and MacOS](#Linux-and-MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
 - [Uninstall](#Uninstall)
@@ -51,12 +51,21 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
+
 <br>
-If you see sed warnings or your history entries have disappeared after updating, then update your history file with the history transition script. 
-```sh
-curl -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/hist_transition.sh" | sh
+If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: /usr/bin/players/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
+
+## New in v3
 ```
-It doesn't work for all anime, but the ones it can't find will print out alongside their episode numbers. In the end clean up: `rm -rf ./ani-cli`
+We now scrape animixplay instead of gogoanime, which allows for faster link fetching as well as getting new 
+releases sooner.
+
+New arguments:
+-f select provider to scrape first
+-x print all video links from all providers to stdout (for debugging purpose)
+
+To see a list with all the arguments, use the -h or --help argument
+```
 
 ## Install
 
@@ -72,29 +81,21 @@ yay -S ani-cli
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
-### Linux
+### Linux and Mac OS
 
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-sudo curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o /usr/local/bin/ani-cli &&
-sudo chmod +x /usr/local/bin/ani-cli
+git clone https://github.com/pystardust/ani-cli.git && cd ani-cli
+chmod +x ani-cli && sudo cp ani-cli /usr/local/bin/ani-cli
+sudo cp -r players /usr/local/bin/players
 ```
 
 *Note that mpv installed through flatpak is not compatible*
 
-### MacOS
+<br>
 
-Install dependencies [(See below)](#Dependencies)
-
-Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
-
-```sh
-curl -sL github.com/pystardust/ani-cli/raw/master/ani-cli -o "$(brew --prefix)/bin/ani-cli"
-chmod +x "$(brew --prefix)/bin/ani-cli"
-```
-
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
+*To install (with [HomeBrew](https://docs.brew.sh/Installation)) the dependencies required on Mac OS, you can run:*
 
 ```sh
 brew install curl grep aria2 iina openssl@1.1 ffmpeg git
@@ -124,11 +125,6 @@ Install termux [(Guide)](https://termux.com/)
 ```sh
 pkg install ani-cli
 ```
-Make sure to add the referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding:
-
-```
-referrer="https://gogoanime.fi/"
-```
 
 Make sure to update your packages:
 
@@ -145,8 +141,7 @@ echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPV
 ## Uninstall
 
 * Arch Linux: ```yay -R ani-cli```
-* Other Linux: ```sudo rm /usr/local/bin/ani-cli```
-* Mac: ```rm "$(brew --prefix)/bin/ani-cli"```
+* Linux and Mac OS: ```sudo rm /usr/local/bin/ani-cli```
 * Windows: ```scoop uninstall ani-cli```
 * Android: Just remove the thing from path
 
