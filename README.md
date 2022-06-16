@@ -127,7 +127,7 @@ Install termux [(Guide)](https://termux.com/)
 
 ```sh
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
-mkdir -p "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
+mkdir -p "$PREFIX/share/" "$PREFIX/bin/" && \
 git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$PREFIX/share/ani-cli" && \
 ln -sf "$PREFIX/share/ani-cli/ani-cli" "$PREFIX/bin/ani-cli"
 ```
