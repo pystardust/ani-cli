@@ -144,20 +144,20 @@ referrer="https://animixplay.to/"
 
 * Linux:  
 ```sh
-sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
+sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* 
 ```
 * Mac:  
 ```sh
-rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/player_*" "$(brew --prefix)/bin/UI"
+rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" $(brew --prefix)/bin/player_*
 ```
 * Windows:
 In **Git Bash** run:
 ```sh
-rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
+rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_*
 ```
 * Android:  
 ```sh
-rm -f "$PREFIX/bin/ani-cli" "$PREFIX/bin/player_*" "$PREFIX/bin/UI"
+rm -f "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" $PREFIX/bin/player_*
 ```
 
 ## Dependencies
