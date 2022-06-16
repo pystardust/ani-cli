@@ -81,7 +81,7 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli UI player_* /usr/local/bin
+sudo cp ani-cli UI player_* /usr/local/bin
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -95,7 +95,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" && \
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli UI player_* $(brew --prefix)
+cp ani-cli UI player_* $(brew --prefix)/bin
 cd .. && rm -rf "./ani-cli"
 ```
 
@@ -114,7 +114,7 @@ brew install --cask iina
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
 
 ```sh
-rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
+rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ani-cli UI player_* /usr/local/bin
 cd .. && rm -rf "./ani-cli"
@@ -130,6 +130,7 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ani-cli player_download player_mpv UI $PREFIX/bin
+cd .. && rm -rf "./ani-cli"
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 ```
 
@@ -143,20 +144,20 @@ referrer="https://animixplay.to/"
 
 * Linux:  
 ```sh
-sudo rm -rf "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
+sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
 ```
 * Mac:  
 ```sh
-rm -rf "$(brew --prefix)/ani-cli" "$(brew --prefix)/player_*" "$(brew --prefix)/UI"
+rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/player_*" "$(brew --prefix)/bin/UI"
 ```
 * Windows:
 In **Git Bash** run:
 ```sh
-rm -rf "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
+rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/player_*" "/usr/local/bin/UI"
 ```
 * Android:  
 ```sh
-rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/bin/player_*" "$PREFIX/bin/UI"
+rm -f "$PREFIX/bin/ani-cli" "$PREFIX/bin/player_*" "$PREFIX/bin/UI"
 ```
 
 ## Dependencies
