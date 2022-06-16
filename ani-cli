@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.0.2"
+VERSION="3.1.0"
 
 
 #######################
@@ -464,10 +464,10 @@ scrape=Query
 debug=0
 choice=
 auto_play=0
-project_root="$(dirname "$0" | sed 's/....$//')/share/ani-cli"
+project_root="$(dirname "$0")"
 case "$(uname)" in
-	Darwin*) . "$project_root/players/player_iina" || die "No iina player script found";; #MacOS specific
-	*) . "$project_root/players/player_mpv" || die "No mpv player script found";;
+	Darwin*) . "$project_root/player_iina" || die "No iina player script found";; #MacOS specific
+	*) . "$project_root/player_mpv" || die "No mpv player script found";;
 esac
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -480,24 +480,24 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 while getopts 'svq:dp:chDUVa:xf:' OPT; do
 	case $OPT in
-		d) . "$project_root/players/player_download" || die "No download player script found" ;;
+		d) . "$project_root/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
 			;;
 		p)
-			. "$project_root/players/player_download" || die "No download player script found"
+			. "$project_root/player_download" || die "No download player script found"
 			download_dir="$OPTARG"
 			;;
-		s) . "$project_root/players/player_syncplay" || die "No syncplay player script found";;
+		s) . "$project_root/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
 		f) select_provider=$OPTARG ;;
 		c) scrape=History ;;
-		v) . "$project_root/players/player_vlc" || die "No vlc player script found";;
+		v) . "$project_root/player_vlc" || die "No vlc player script found";;
 		U)
-			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/players/player_*
+			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/player_*
 			exit 0
 			;;
 		V)
