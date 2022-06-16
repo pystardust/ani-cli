@@ -463,7 +463,7 @@ scrape=Query
 debug=0
 choice=
 auto_play=0
-project_root="$(dirname "$0" | sed 's/....$//')/share/ani-cli"
+project_root="${ANI_ROOT:-$(dirname "$0" | sed -E "s|\/[^\/]+$||")/share}"
 case "$(uname)" in
 	Darwin*) . "$project_root/players/player_iina" || die "No iina player script found";; #MacOS specific
 	*) . "$project_root/players/player_mpv" || die "No mpv player script found";;
