@@ -440,6 +440,7 @@ open_episode () {
 	else
 		printf "\n"
 		play_episode "$video_url" "$refr" "$trackma_title" "$auto_play"
+		wait "$!"
 		sleep 2
 	fi
 	PID=$!
