@@ -79,10 +79,10 @@ To see a list with all the arguments, use the -h or --help argument
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
-sudo mkdir -p "/usr/local/share/" "/usr/local/bin/" && \
-sudo git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
-sudo ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+sudo cp ani-cli UI player_* /usr/local/bin
+cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
 
@@ -94,8 +94,9 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" && \
-git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$(brew --prefix)/share/ani-cli" && \
-ln -sf "$(brew --prefix)/share/ani-cli/ani-cli" "$(brew --prefix)/bin/ani-cli"
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+cp ani-cli UI player_* $(brew --prefix)/bin
+cd .. && rm -rf "./ani-cli"
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
@@ -113,10 +114,10 @@ brew install --cask iina
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
 
 ```sh
-rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" && \
-mkdir -p "/usr/local/share/" "/usr/local/bin/" && \
-git clone -b "master" "https://github.com/pystardust/ani-cli.git" "/usr/local/share/ani-cli" && \
-ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
+rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+cp ani-cli UI player_* /usr/local/bin
+cd .. && rm -rf "./ani-cli"
 ```
 
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
@@ -126,46 +127,37 @@ ln -sf "/usr/local/share/ani-cli/ani-cli" "/usr/local/bin/ani-cli"
 Install termux [(Guide)](https://termux.com/)
 
 ```sh
-rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
-mkdir -p "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" && \
-git clone -b "master" "https://github.com/pystardust/ani-cli.git" "$PREFIX/share/ani-cli" && \
-ln -sf "$PREFIX/share/ani-cli/ani-cli" "$PREFIX/bin/ani-cli"
-```
-For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
-
-```
-referrer="https://gogoanime.fi/"
-```
-Make sure to update your packages:
-
-```sh
-pkg up
-```
-
-In the case mpv only plays audio, you can try running this command:
-```sh
+pkg up -y
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+cp ani-cli player_download player_mpv UI $PREFIX/bin
+cd .. && rm -rf "./ani-cli"
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 ```
 
+For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
+
+```
+referrer="https://animixplay.to/"
+```
 
 ## Uninstall
 
 * Linux:  
 ```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* 
 ```
 * Mac:  
 ```sh
-rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli"
+rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" $(brew --prefix)/bin/player_*
 ```
 * Windows:
 In **Git Bash** run:
 ```sh
-rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+rm -f "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_*
 ```
 * Android:  
 ```sh
-rm -rf "/data/data/com.termux/files/usr/share/ani-cli" "/data/data/com.termux/files/usr/bin/ani-cli"
+rm -f "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" $PREFIX/bin/player_*
 ```
 
 ## Dependencies
