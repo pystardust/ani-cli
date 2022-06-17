@@ -57,7 +57,7 @@ die () {
 # get the newest version of this script from github and replace it
 update () {
 	for i ; do
-		filename="$(printf '%s' "$i" | sed "s_$project_root/__")"
+		filename="$(printf '%s' "$i" | sed "s_$root_dir/__")"
 		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/$filename")" || die "Connection error"
 		update="$(printf '%s\n' "$update" | diff -u "$i" -)"
 		if [ -z "$update" ]; then
@@ -465,10 +465,13 @@ scrape=Query
 debug=0
 choice=
 auto_play=0
-project_root="$(dirname "$0")"
+download_dir="$(pwd)"
+bin_dir="$(dirname "$0")"
+root_dir="$(cd "$bin_dir/.." && pwd)"
+lib_dir="$root_dir/lib"
 case "$(uname)" in
-	Darwin*) . "$project_root/player_iina" || die "No iina player script found";; #MacOS specific
-	*) . "$project_root/player_mpv" || die "No mpv player script found";;
+	Darwin*) . "$lib_dir/player_iina" || die "No iina player script found";; #MacOS specific
+	*) . "$lib_dir/player_mpv" || die "No mpv player script found";;
 esac
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -477,28 +480,28 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 # source the UI
-. "$project_root/UI" || die "No UI file"
+. "$lib_dir/UI" || die "No UI file"
 
 while getopts 'svq:dp:chDUVa:xf:' OPT; do
 	case $OPT in
-		d) . "$project_root/player_download" || die "No download player script found" ;;
+		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
 			;;
 		p)
-			. "$project_root/player_download" || die "No download player script found"
+			. "$lib_dir/player_download" || die "No download player script found"
 			download_dir="$OPTARG"
 			;;
-		s) . "$project_root/player_syncplay" || die "No syncplay player script found";;
+		s) . "$lib_dir/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
 		f) select_provider=$OPTARG ;;
 		c) scrape=History ;;
-		v) . "$project_root/player_vlc" || die "No vlc player script found";;
+		v) . "$lib_dir/player_vlc" || die "No vlc player script found";;
 		U)
-			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/player_*
+			update "$bin_dir/ani-cli" "$lib_dir/UI" "$lib_dir"/player_*
 			exit 0
 			;;
 		V)
