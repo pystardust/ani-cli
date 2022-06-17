@@ -52,7 +52,7 @@ If you encounter "Video url not found" or any breaking issue, then make sure you
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>  
-If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: /usr/bin/players/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
+If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: (...)/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
 
 ## New in v3
 ```txt
@@ -68,20 +68,22 @@ To see a list with all the arguments, use the -h or --help argument
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
-#### ani-cli V3 has breaking changes and is incompatible with V2's install location. Plasase uninstall before proceeding.
+#### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Plasase uninstall before proceeding.
 
 ### Native packages
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
+*Nativ packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
 
 ### Linux
 
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp ani-cli UI player_* /usr/local/bin
+sudo cp ani-cli /usr/local/bin
+sudo cp UI player_* /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -93,9 +95,10 @@ Install dependencies [(See below)](#Dependencies)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" && \
+rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli UI player_* $(brew --prefix)/bin
+cp ani-cli /usr/local/bin 
+cp UI player_* $(brew --prefix)/lib
 cd .. && rm -rf "./ani-cli"
 ```
 
@@ -114,9 +117,10 @@ brew install --cask iina
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
 
 ```sh
-rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli"
+rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli UI player_* /usr/local/bin
+sudo cp ani-cli /usr/local/bin
+sudo cp UI player_* /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
 
@@ -128,8 +132,10 @@ Install termux [(Guide)](https://termux.com/)
 
 ```sh
 pkg up -y
+rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli player_download player_mpv UI $PREFIX/bin
+cp ani-cli "$PREFIX"/bin
+cp player_download player_mpv UI "$PREFIX"/lib
 cd .. && rm -rf "./ani-cli"
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 ```
