@@ -52,7 +52,7 @@ If you encounter "Video url not found" or any breaking issue, then make sure you
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 <br>  
-If after updating you get the following error: ` "/usr/bin/ani-cli: line 470: (...)/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
+If after updating you get a similar error: ` "/usr/bin/ani-cli: line 470: (...)/player_mpv: No such file or directory"` then uninstall and reinstall ani-cli with the installation instructions provided below.
 
 ## New in v3
 ```txt
@@ -83,7 +83,7 @@ Install dependencies [(See below)](#Dependencies)
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 sudo cp ani-cli /usr/local/bin
-sudo cp UI player_* /usr/local/lib
+sudo -a cp /lib/ani-cli /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -98,8 +98,8 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ani-cli /usr/local/bin 
-cp UI player_* $(brew --prefix)/lib
-cd .. && rm -rf "./ani-cli"
+cp -a lib/ani-cli "$(brew --prefix)/lib"
+cd .. && rm -rf ./ani-cli
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
@@ -120,8 +120,8 @@ brew install --cask iina
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 sudo cp ani-cli /usr/local/bin
-sudo cp UI player_* /usr/local/lib
-cd .. && rm -rf "./ani-cli"
+sudo cp -a lib/ani-cli /usr/local/lib
+cd .. && rm -rf ./ani-cli
 ```
 
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
@@ -135,8 +135,8 @@ pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ani-cli "$PREFIX"/bin
-cp player_download player_mpv UI "$PREFIX"/lib
-cd .. && rm -rf "./ani-cli"
+cp -a lib/ani-cli "$PREFIX"/lib
+cd .. && rm -rf ./ani-cli
 echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 ```
 
@@ -150,20 +150,20 @@ referrer="https://animixplay.to/"
 
 * Linux:  
 ```sh
-sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/UI" /usr/local/lib/player_* 
+sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
 ```
 * Mac:  
 ```sh
-rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/UI" $(brew --prefix)/lib/player_*
+rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/ani-cli"
 ```
 * Windows:
 In **Git Bash** run:
 ```sh
-rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/UI" /usr/local/lib/player_*
+rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli"
 ```
 * Android:  
 ```sh
-rm -f "$PREFIX/bin/ani-cli" "$PREFIX/lib/UI" $PREFIX/lib/player_*
+rm -f "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 ```
 
 ## Dependencies

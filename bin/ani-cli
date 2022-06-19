@@ -468,7 +468,7 @@ auto_play=0
 download_dir="$(pwd)"
 bin_dir="$(dirname "$0")"
 root_dir="$(cd "$bin_dir/.." && pwd)"
-lib_dir="$root_dir/lib"
+lib_dir="$root_dir/lib/ani-cli"
 case "$(uname)" in
 	Darwin*) . "$lib_dir/player_iina" || die "No iina player script found";; #MacOS specific
 	*) . "$lib_dir/player_mpv" || die "No mpv player script found";;
