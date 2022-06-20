@@ -120,8 +120,8 @@ brew install --cask iina
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp ani-cli /usr/local/bin
-sudo cp -a lib/ani-cli /usr/local/lib
+cp ani-cli /usr/bin
+cp -a lib/ani-cli /usr/lib
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -154,20 +154,20 @@ referrer="https://animixplay.to/"
 
 * Linux:  
 ```sh
-sudo rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
+sudo rm -rf "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
 ```
 * Mac:  
 ```sh
-rm -f "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/ani-cli"
+rm -rf "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/ani-cli"
 ```
 * Windows:
-In **Git Bash** run:
+In **Git Bash** run (as administrator):
 ```sh
-rm -f "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli"
+rm -rf "/usr/bin/ani-cli" "/usr/lib/ani-cli"
 ```
 * Android:  
 ```sh
-rm -f "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
+rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 ```
 
 ## Dependencies
