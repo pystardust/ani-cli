@@ -60,7 +60,7 @@ We now scrape animixplay instead of gogoanime, which allows for faster link fetc
 releases sooner.
 
 New arguments:
--f select provider to scrape first
+-f [1-7] select provider to scrape first
 -x print all video links from all providers to stdout (for debugging purpose)
 
 To see a list with all the arguments, use the -h or --help argument
@@ -138,8 +138,11 @@ git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ani-cli "$PREFIX"/bin
 cp -a lib/ani-cli "$PREFIX"/lib
 cd .. && rm -rf ./ani-cli
-echo 'am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity' > $PREFIX/bin/mpv
 ```
+
+Note : Vlc Android now works too ;)
+
+For Android only, the script automatically checks and defaults to streamlare and moves all referrer required providers at the bottom..
 
 For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
 
