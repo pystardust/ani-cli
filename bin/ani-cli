@@ -161,7 +161,7 @@ generate_link() {
 			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
 			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
 			refr="https://dood.pm/e/$dood_id"
-			[ -z "$dood_id" ] || dood_md5=$(curl -A "$agent" -s "$refr" | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
+			[ -z "$dood_id" ] || dood_md5=$(curl -A "$agent" -s "$refr" --max-time 10 | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
 			[ -z "$dood_md5" ] && return 0
 			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
 			;;
