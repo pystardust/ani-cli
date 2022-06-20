@@ -15,8 +15,8 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  ${0##*/} [-s] [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  ${0##*/} [-s] [-v] [-q <quality>] -c
+	  ${0##*/} [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-f <provider_no.>]
+	  ${0##*/} [-s] [-v] [-x] [-q <quality>] -c
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
@@ -31,7 +31,7 @@ help_text () {
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
-	  -f select provider to scrape first
+	  -f select provider to scrape first [1-7]
 	  -x print all video links from all providers to stdout (for debugging purpose)
 
 	Episode selection:
@@ -163,7 +163,7 @@ generate_link() {
 			refr="https://dood.pm/e/$dood_id"
 			[ -z "$dood_id" ] || dood_md5=$(curl -A "$agent" -s "$refr" | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
 			[ -z "$dood_md5" ] && return 0
-			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr")doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4)&expiry=$(date +%s)000"
+			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
 			;;
 		3)
 			progress "Fetching Streamlare links.."
