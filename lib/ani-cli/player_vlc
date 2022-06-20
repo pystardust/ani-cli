@@ -1,5 +1,12 @@
 #!/bin/sh
 
+player_commands () {
+	if ! uname -a | grep -qE '[Aa]ndroid';then
+		printf '%s' "vlc"
+	fi
+}
+
+
 play_episode () {
 	video_url="$1"; refr="$2" trackma_title="$3"
 	inf "Currently playing $trackma_title"
