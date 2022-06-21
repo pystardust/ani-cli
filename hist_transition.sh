@@ -32,7 +32,7 @@ update_entry () {
 		err "Can't find ${query}, you'll have to add this to your history manually (by playing it). You have episode ${history_ep_number} coming up."
 		return 0
 	fi
-	printf "\033[1;32mFound Match for $query >> $search_result\n"
+	printf "\033[1;32mFound Match for %s >> %s\n" "$query" "$search_result"
 	printf "%s\t%s\n" "$search_result" "$history_ep_number" >> "${histfile}.new"
 }
 
