@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.1.0"
+VERSION="3.2.0"
 
 
 #######################
@@ -15,8 +15,8 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  ${0##*/} [-s] [-v] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>]
-	  ${0##*/} [-s] [-v] [-q <quality>] -c
+	  ${0##*/} [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-f <provider_no.>]
+	  ${0##*/} [-s] [-v] [-x] [-q <quality>] -c
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
@@ -31,7 +31,7 @@ help_text () {
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
-	  -f select provider to scrape first
+	  -f select provider to scrape first [1-7]
 	  -x print all video links from all providers to stdout (for debugging purpose)
 
 	Episode selection:
@@ -57,7 +57,7 @@ die () {
 # get the newest version of this script from github and replace it
 update () {
 	for i ; do
-		filename="$(printf '%s' "$i" | sed "s_$project_root/__")"
+		filename="$(printf '%s' "$i" | sed "s_$root_dir/__")"
 		update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/$filename")" || die "Connection error"
 		update="$(printf '%s\n' "$update" | diff -u "$i" -)"
 		if [ -z "$update" ]; then
@@ -92,8 +92,8 @@ dep_ch () {
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '+' )
-	curl -s -X POST -A "$agent" "https://cachecow.eu/api/search" -d "qfast=$search" | 
-		sed -e 's/\\//g' -e 's_</li>_\n_g' | sed -nE 's_.*href="/v1/([^"]*)" title.*_\1_p'
+	curl -s -X POST -A "$agent" "$base_url/api/search/v1" -d "q2=$search" | 
+		sed -e 's_</li>_\n_g' -e 's/\\//g' | sed -nE 's_.*a href="/v1/([^"]*)".*_\1_p'
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
@@ -157,6 +157,15 @@ generate_link() {
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
+			progress "Fetching Doodstream links.."
+			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
+			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
+			refr="https://dood.pm/e/$dood_id"
+			[ -z "$dood_id" ] || dood_md5=$(curl -A "$agent" -s "$refr" --max-time 10 | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
+			[ -z "$dood_md5" ] && return 0
+			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
+			;;
+		3)
 			progress "Fetching Streamlare links.."
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
@@ -165,16 +174,6 @@ generate_link() {
 			lare_token=$(curl -s -A "$agent" "$refr" -L | sed -nE 's/.*csrf-token.*content="(.*)">/\1/p')
 			[ -z "$lare_token" ] || result_links="$(curl -s -A "$agent" -H "x-requested-with:XMLHttpRequest" -X POST "https://streamlare.com/api/video/download/get" -d "{\"id\":\"$lare_id\"}" \
 				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
-			;;
-		3)
-			progress "Fetching Doodstream links.."
-			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
-			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
-			refr="https://dood.to/d/$dood_id"
-			[ -z "$dood_id" ] || dood_link=$(curl -A "$agent" -s "$refr" | sed -nE 's/<a href="(.*)" class="btn.*justify.*/\1/p')
-			[ -z "$dood_link" ] && return 0
-			sleep .7
-			result_links="$(curl -A "$agent" -s "https://dood.to${dood_link}" | sed -nE "s/.*window.open.*'(.*)',.*/\1/p")"
 			;;
 		4)
 			progress "Fetching Okru links.."
@@ -238,6 +237,7 @@ get_video_link() {
 	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
 	provider=2
 	[ "$is_download" -eq 1 ] && provider=1
+	uname -a | grep -qE '[Aa]ndroid' && provider=3
 	[ "$quality" != "best" ] && provider=4
 	[ -n "$select_provider" ] && provider="$select_provider"
 	i=0
@@ -465,10 +465,13 @@ scrape=Query
 debug=0
 choice=
 auto_play=0
-project_root="$(dirname "$0")"
+download_dir="$(pwd)"
+bin_dir="$(dirname "$0")"
+root_dir="$(cd "$bin_dir/.." && pwd)"
+lib_dir="$root_dir/lib/ani-cli"
 case "$(uname)" in
-	Darwin*) . "$project_root/player_iina" || die "No iina player script found";; #MacOS specific
-	*) . "$project_root/player_mpv" || die "No mpv player script found";;
+	Darwin*) . "$lib_dir/player_iina" || die "No iina player script found";; #MacOS specific
+	*) . "$lib_dir/player_mpv" || die "No mpv player script found";;
 esac
 # history file path
 logfile="${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts"
@@ -477,28 +480,28 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 # source the UI
-. "$project_root/UI" || die "No UI file"
+. "$lib_dir/UI" || die "No UI file"
 
 while getopts 'svq:dp:chDUVa:xf:' OPT; do
 	case $OPT in
-		d) . "$project_root/player_download" || die "No download player script found" ;;
+		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
 		D)
 			: > "$logfile"
 			exit 0
 			;;
 		p)
-			. "$project_root/player_download" || die "No download player script found"
+			. "$lib_dir/player_download" || die "No download player script found"
 			download_dir="$OPTARG"
 			;;
-		s) . "$project_root/player_syncplay" || die "No syncplay player script found";;
+		s) . "$lib_dir/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
 		f) select_provider=$OPTARG ;;
 		c) scrape=History ;;
-		v) . "$project_root/player_vlc" || die "No vlc player script found";;
+		v) . "$lib_dir/player_vlc" || die "No vlc player script found";;
 		U)
-			update "$project_root/ani-cli" "$project_root/UI" "$project_root"/player_*
+			update "$bin_dir/ani-cli" "$lib_dir/UI" "$lib_dir"/player_*
 			exit 0
 			;;
 		V)
