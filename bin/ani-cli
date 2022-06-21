@@ -122,11 +122,11 @@ al_episode_list() {
 
 process_hist_entry () {
 	temp_anime_id=$(printf "%s" "$anime_id" | sed 's/\t[0-9]*.$//')
-	latest_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id\t//g")
+	current_ep=$(printf "%s" "$anime_id" | sed "s/$temp_anime_id\t//g")
 	episode_list "$temp_anime_id"
-	current_ep=$last_ep_number
-	if [ -n "$current_ep" ] && [ "$current_ep" -ge "$latest_ep" ]; then
-		printf "%s\n" "$temp_anime_id"
+	latest_ep=$last_ep_number
+	if [ -n "$latest_ep" ] && [ "$latest_ep" -ge "$current_ep" ]; then
+		printf "%s : %s / %s\n" "$temp_anime_id" "$current_ep" "$latest_ep"
 	fi
 }
 
@@ -346,7 +346,7 @@ anime_selection () {
 		done
 	fi
 	# Select respective anime_id
-	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
+	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p" | cut -d':' -f1 | tr -d ' ')"
 	progress "(Gogoanime) Searching Episodes.."
 	episode_list "$selection_id"
 	al_episode_list
