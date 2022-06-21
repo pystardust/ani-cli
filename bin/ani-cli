@@ -236,8 +236,8 @@ get_video_link() {
 			s/.*data-status="1".*data-video="(.*)">.*/\1/p')"
 	# providers: Doodstream for default, mp4upload for downloading. For best quality use okru, for fallback use goload. Then it's a round robin of which links are returned.
 	provider=2
-	[ "$is_download" -eq 1 ] && provider=1
 	uname -a | grep -qE '[Aa]ndroid' && provider=3
+	[ "$is_download" -eq 1 ] && provider=1
 	[ "$quality" != "best" ] && provider=4
 	[ -n "$select_provider" ] && provider="$select_provider"
 	i=0
