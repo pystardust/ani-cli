@@ -66,6 +66,8 @@ New arguments:
 To see a list with all the arguments, use the -h or --help argument
 ```
 
+For more info on providers, please refer to [this](https://github.com/pystardust/ani-cli/discussions/786) discussion
+
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
 #### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Plasase uninstall before proceeding.
@@ -83,7 +85,7 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp ani-cli /usr/local/bin
+sudo cp bin/ani-cli /usr/local/bin
 sudo cp -a /lib/ani-cli /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
@@ -98,7 +100,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli /usr/local/bin 
+cp bin/ani-cli /usr/local/bin 
 cp -a lib/ani-cli "$(brew --prefix)/lib"
 cd .. && rm -rf ./ani-cli
 ```
@@ -120,7 +122,7 @@ brew install --cask iina
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli /usr/bin
+cp bin/ani-cli /usr/bin
 cp -a lib/ani-cli /usr/lib
 cd .. && rm -rf ./ani-cli
 ```
@@ -135,7 +137,7 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ani-cli "$PREFIX"/bin
+cp bin/ani-cli "$PREFIX"/bin
 cp -a lib/ani-cli "$PREFIX"/lib
 cd .. && rm -rf ./ani-cli
 ```
