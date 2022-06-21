@@ -346,7 +346,7 @@ anime_selection () {
 		done
 	fi
 	# Select respective anime_id
-	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p")"
+	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p" | cut -d':' -f1 | tr -d ' ')"
 	progress "(Gogoanime) Searching Episodes.."
 	episode_list "$selection_id"
 	al_episode_list
