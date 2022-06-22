@@ -86,7 +86,7 @@ Install dependencies [(See below)](#Dependencies)
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 sudo cp bin/ani-cli /usr/local/bin
-sudo cp -a /lib/ani-cli /usr/local/lib
+sudo cp -a lib/ani-cli /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
