@@ -85,8 +85,8 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp bin/ani-cli /usr/local/bin
-sudo cp -a lib/ani-cli /usr/local/lib
+sudo cp ./bin/ani-cli /usr/local/bin
+sudo cp -a ./lib/ani-cli /usr/local/lib
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -100,8 +100,8 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli /usr/local/bin 
-cp -a lib/ani-cli "$(brew --prefix)/lib"
+cp ./bin/ani-cli "$(brew --prefix)"/bin 
+cp -a ./lib/ani-cli "$(brew --prefix)/lib"
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -122,8 +122,8 @@ brew install --cask iina
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli /usr/bin
-cp -a lib/ani-cli /usr/lib
+cp ./bin/ani-cli /usr/bin
+cp -a ./lib/ani-cli /usr/lib
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -137,8 +137,8 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli "$PREFIX"/bin
-cp -a lib/ani-cli "$PREFIX"/lib
+cp ./bin/ani-cli "$PREFIX"/bin
+cp -a ./lib/ani-cli "$PREFIX"/lib
 cd .. && rm -rf ./ani-cli
 ```
 
