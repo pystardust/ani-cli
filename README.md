@@ -75,6 +75,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 ### Native packages
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/derisis13/ani-cli/package/ani-cli/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/derisis13/ani-cli/package/ani-cli/)
 
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
 
