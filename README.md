@@ -37,6 +37,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [New in v3](#New-in-v3)
 - [Install](#Install)
   - [Linux](#Linux)
+  - [Debian](#Debian)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
