@@ -94,6 +94,15 @@ cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
 
+### Debian
+
+```
+curl -s --compressed "https://Wiener234.github.io/ani-cli-ppa/KEY.gpg" | sudo apt-key add -
+sudo curl -s --compressed -o /etc/apt/sources.list.d/ani-cli-debian.list "https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list"
+sudo apt update
+```
+
+
 ### MacOS
 
 Install dependencies [(See below)](#Dependencies)
