@@ -98,8 +98,8 @@ cd .. && rm -rf "./ani-cli"
 ### Debian
 
 ```
-curl -s --compressed "https://Wiener234.github.io/ani-cli-ppa/KEY.gpg" | sudo apt-key add -
-sudo curl -s --compressed -o /etc/apt/sources.list.d/ani-cli-debian.list "https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list"
+wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
+wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
 sudo apt update
 ```
 
