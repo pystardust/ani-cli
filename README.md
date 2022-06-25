@@ -70,7 +70,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
-#### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Plasase uninstall before proceeding.
+#### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Please uninstall before proceeding.
 
 ### Native packages
 
