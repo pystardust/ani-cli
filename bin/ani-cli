@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.2.0"
+VERSION="3.2.1"
 
 
 #######################
@@ -91,9 +91,9 @@ dep_ch () {
 
 # gets anime names along with its id for search term
 search_anime () {
-	search=$(printf '%s' "$1" | tr ' ' '+' )
-	curl -s -X POST -A "$agent" "$base_url/api/search/v1" -d "q2=$search" | 
-		sed -e 's_</li>_\n_g' -e 's/\\//g' | sed -nE 's_.*a href="/v1/([^"]*)".*_\1_p'
+	search=$(printf '%s' "$1" | tr ' ' '-' )
+	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
+		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*_\1_p'
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
