@@ -29,6 +29,7 @@ help_text () {
 	  -c continue watching anime from history
 	  -h show helptext
 	  -D delete history
+	  -u load UI
 	  -U fetch update from github
 	  -V print version number and exit
 	  -f select provider to scrape first [1-7]
@@ -482,7 +483,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$lib_dir/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xf:' OPT; do
+while getopts 'svq:dp:chDUVa:xf:u:' OPT; do
 	case $OPT in
 		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -504,6 +505,7 @@ while getopts 'svq:dp:chDUVa:xf:' OPT; do
 			update "$bin_dir/ani-cli" "$lib_dir/UI" "$lib_dir"/player_*
 			exit 0
 			;;
+		u) . "$lib_dir/UI_$OPTARG" || die "No UI_$OPTARG script found" ;;
 		V)
 			version_text
 			ui_version_text

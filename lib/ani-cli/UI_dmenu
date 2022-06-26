@@ -1,0 +1,30 @@
+#!/bin/sh
+
+UI_NAME="dmenu <- $UI_NAME"
+UI_VERSION="1.0.0"
+
+dep_ch "dmenu" || true
+
+# prompts the user with message in $1-2 ($1 in blue, $2 in magenta) and saves the input to the variables in $REPLY and $REPLY2
+prompt () {
+	choice=$(printf '' | dmenu -p "$*" | sed -E 's/ +/\n/')
+	[ -z "$choice" ] && exit 0
+	REPLY=$(printf '%s' "$choice" | sed -n 1p)
+	REPLY2=$(printf '%s' "$choice" | sed -n 2p)
+
+	[ -n "$*" ] && printf "\33[2K\r\033[1;35m%s\n" "$*"
+	printf "\033[1;35m> \033[0m%s\n" "$REPLY $REPLY2"
+}
+
+selection_menu() {
+	if [ -n "$PID" ]; then
+		wait "$PID"
+		PID=
+	fi
+	choice=$(printf '%s' "$*" | sed 's/[^ ]* //' | dmenu -l 10)
+	[ -z "$choice" ] && exit 0
+	REPLY=$(printf '%s' "$*" | grep -F "$choice" | sed 's/ .*//')
+	REPLY2=
+
+	printf "\033[1;35m> \033[0m%s\n" "$choice"
+}
