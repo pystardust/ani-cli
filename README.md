@@ -38,6 +38,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [Install](#Install)
   - [Linux](#Linux)
   - [Debian](#Debian)
+  - [Fedora](#Fedora)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
@@ -77,9 +78,6 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
 
-Fedora Copr
-[![Copr build status](https://copr.fedorainfracloud.org/coprs/derisis13/ani-cli/package/ani-cli/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/derisis13/ani-cli/)
-
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
 
 ### Linux
@@ -103,6 +101,20 @@ wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee
 sudo apt update
 ```
 
+### Fedora
+
+To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
+To be able to install syncplay, you'll need to enable this copr repo: https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/
+
+There are currently two packages for Fedora: `ani-cli` which is a minimal installation that can only use mpv and `ani-cli-full` which contains all the functionality (note that vlc and syncplay are still optional dependencies).
+
+To install ani-cli or ani-cli-full:
+```sh
+sudo dnf copr enable derisis13/ani-cli
+sudo dnf install ani-cli      # only for ani-cli
+sudo dnf install ani-cli-full # only for ani-cli-full
+```
+*If for your distro uses rpm and you would like to see a native package, open an issue.*
 
 ### MacOS
 
