@@ -39,6 +39,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [Linux](#Linux)
    - [Debian](#Debian)
    - [Fedora](#Fedora)
+   - [Arch](#Arch)
    - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
@@ -105,6 +106,14 @@ sudo dnf install ani-cli      # only for ani-cli
 sudo dnf install ani-cli-full # only for ani-cli-full
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
+
+### Arch
+
+Also consider ani-cli-git
+
+```sh
+yay -S ani-cli
+```
 
 ### Installing from source
 
