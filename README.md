@@ -37,8 +37,9 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [New in v3](#New-in-v3)
 - [Install](#Install)
   - [Linux](#Linux)
-  - [Debian](#Debian)
-  - [Fedora](#Fedora)
+   - [Debian](#Debian)
+   - [Fedora](#Fedora)
+   - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
@@ -82,17 +83,6 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ### Linux
 
-Install dependencies [(See below)](#Dependencies)
-
-```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp bin/ani-cli /usr/local/bin
-sudo cp -a /lib/ani-cli /usr/local/lib
-cd .. && rm -rf "./ani-cli"
-```
-*Also note that mpv installed through flatpak is not compatible*
-
 ### Debian
 
 ```
@@ -115,6 +105,20 @@ sudo dnf install ani-cli      # only for ani-cli
 sudo dnf install ani-cli-full # only for ani-cli-full
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
+
+### Installing from source
+
+Install dependencies [(See below)](#Dependencies)
+
+```sh
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+sudo cp bin/ani-cli /usr/local/bin
+sudo cp -a /lib/ani-cli /usr/local/lib
+cd .. && rm -rf "./ani-cli"
+```
+*Also note that mpv installed through flatpak is not compatible*
+
 
 ### MacOS
 
