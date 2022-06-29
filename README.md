@@ -171,6 +171,15 @@ cd .. && rm -rf ./ani-cli
 
 Install termux [(Guide)](https://termux.com/)
 
+#### Termux package
+
+```sh
+pkg up -y
+pkg install ani-cli
+```
+
+#### From source
+
 ```sh
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
