@@ -201,6 +201,24 @@ referrer="https://animixplay.to/"
 
 ## Uninstall
 
+* .deb:
+```
+sudo apt remove ani-cli
+# to remove the repository from apt:
+sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
+```
+* .rpm
+```
+sudo dnf remove ani-cli      # for ani-cli
+sudo dnf remove ani-cli-full # for ani-cli-full
+# disable the repo in dnf
+dnf copr disable derisis13/ani-cli
+```
+You might want to uninstall RPM fusion if you don't use it otherwise
+* AUR:
+```
+yay -R ani-cli
+```
 * Linux:  
 ```sh
 sudo rm -rf "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
@@ -214,7 +232,11 @@ In **Git Bash** run (as administrator):
 ```sh
 rm -rf "/usr/bin/ani-cli" "/usr/lib/ani-cli"
 ```
-* Android:  
+* Termux package
+```
+pkg remove ani-cli
+```
+* Android:
 ```sh
 rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 ```
