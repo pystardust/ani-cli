@@ -547,7 +547,6 @@ open_selection
 ########
 
 while : ; do
-if [ -z "$select_first" ]; then
 	auto_play=0
 	unset menu
 	unset options
@@ -584,10 +583,6 @@ if [ -z "$select_first" ]; then
 	generate_ep_list
 	append_history
 	open_selection
-else
-	wait $!
-	exit
-fi
 done
 
 # ani-cli
