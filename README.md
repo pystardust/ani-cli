@@ -90,6 +90,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
 sudo apt update
+sudo apt install ani-cli
 ```
 
 ### Fedora
