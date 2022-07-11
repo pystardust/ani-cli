@@ -46,7 +46,7 @@ download () {
 			rm -f video.ts
 			;;
 		*)	
-			axel -a -k -n 20 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
+			axel -a -k -n 30 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
 			#aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 --referer="$1" "$2" --dir="$download_dir" -o "$3.mp4" --download-result=hide ;;
 	esac
 }
