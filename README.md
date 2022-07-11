@@ -108,7 +108,7 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
 ```sh
-brew install curl grep aria2 openssl@1.1 ffmpeg git && \
+brew install curl grep axel openssl@1.1 ffmpeg git && \
 brew install --cask iina
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
@@ -181,7 +181,7 @@ rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 - openssl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
-- aria2 - Download manager
+- axel - Download manager
 - ffmpeg - m3u8 Downloader
 
 ## Homies 
