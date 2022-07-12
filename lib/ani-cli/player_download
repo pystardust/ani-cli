@@ -1,7 +1,7 @@
 #!/bin/sh
 
 player_commands () {
-	printf '%s %s' "ffmpeg" "aria2c"
+	printf '%s %s' "ffmpeg" "axel"
 }
 
 download () {

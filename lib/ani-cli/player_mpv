@@ -8,7 +8,7 @@ player_commands () {
 
 play_episode () {
 	video_url="$1"; refr="$2" trackma_title="$3"
-	inf "Currently playing $trackma_title"
+	inf "Currently playing $trackma_title ($provider_name)"
 	if uname -a | grep -qE '[Aa]ndroid';then
 		am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n is.xyz.mpv/.MPVActivity > /dev/null 2>&1 &
 	else
