@@ -149,8 +149,7 @@ search_history () {
 generate_link() {
 	case $1 in
 		1)
-			provider_name='Mp4upload'
-			progress "Fetching $provider_name link.."
+			progress "Fetching Mp4upload links.."
 			refr=$(printf "%s" "$al_links" | grep "mp4upload")
 			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
 			[ -z "$refr" ] && return 0
@@ -158,8 +157,7 @@ generate_link() {
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
-			provider_name='Doodstream'
-			progress "Fetching $provider_name link.."
+			progress "Fetching Doodstream links.."
 			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
 			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
 			refr="https://dood.pm/e/$dood_id"
@@ -168,8 +166,7 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
 			;;
 		3)
-			provider_name='Streamlare'
-			progress "Fetching $provider_name link.."
+			progress "Fetching Streamlare links.."
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			refr="https://streamlare.com/e/$lare_id"
@@ -179,8 +176,7 @@ generate_link() {
 				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
 			;;
 		4)
-			provider_name='Okru'
-			progress "Fetching $provider_name links.."
+			progress "Fetching Okru links.."
 			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			[ -z "$ok_id" ] && ok_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			refr="https://odnoklassniki.ru/videoembed/$ok_id"
@@ -194,8 +190,7 @@ generate_link() {
 						s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
 			;;
 		5)
-			provider_name='Xstreamcdn'
-			progress "Fetching $provider_name links.."
+			progress "Fetching Xstreamcdn links.."
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
 			refr="https://fembed-hd.com/v/$fb_id"
 			[ -z "$fb_id" ] && return 0
@@ -203,8 +198,7 @@ generate_link() {
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
 		6)
-			provider_name='Animixplay'
-			progress "Fetching $provider_name Direct link.."
+			progress "Fetching Animixplay Direct links.."
 			refr="$base_url"
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
@@ -212,8 +206,7 @@ generate_link() {
 			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
 			;;
 		*)
-			provider_name='Gogoanime'
-			progress "Fetching $provider_name Direct link.."
+			progress "Fetching Goload Direct links.."
 			refr="https://goload.pro"
 			[ -z "$id" ] && return 0
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
@@ -346,6 +339,7 @@ anime_selection () {
 		selection_list=$(append "$selection_list" "exit" "q")
 		selection_menu "$selection_list"
 		choice="$REPLY"
+    [ -z "$choice" ] && choice=1
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
 			retry "Invalid choice entered"
@@ -367,11 +361,12 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
+        last_ep_number=$(printf '%s' "$last_ep_number"|tr -d "[:space:]")
 				prompt "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number)"
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				[ "$REPLY" = q ] && exit 0
-				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
+				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number" || [ -z "$ep_choice_start" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
 					err "Invalid number(s)"
@@ -468,7 +463,6 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0
 quality=best
-provider_name=""
 scrape=Query
 debug=0
 choice=
