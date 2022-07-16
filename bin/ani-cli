@@ -330,7 +330,11 @@ process_search () {
 
 # anime-selection menu handling function
 anime_selection () {
-	inf "$scrape Results >>"
+	if [ "$fzf" -eq 0 ];then
+		inf "$scrape Results >>"
+	else
+		progress ""
+	fi
 	count=1
 	unset selection_list
 	while read -r anime_id; do
@@ -344,15 +348,15 @@ anime_selection () {
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		selection_list=$(append "$selection_list" "exit" "q")
-    if [ "$fzf" -eq 1 ]; then
-      choice=$(selection_menu_fzf "$selection_list")
-      [ -z "$choice" ] && exit 0
-    else
-      selection_menu "$selection_list"
-      choice="$REPLY"
-      [ -z "$choice" ] && choice=1
-    fi
+		selection_list=$(append "$selection_list" "quit" "q")
+	if [ "$fzf" -eq 1 ]; then
+		choice=$(selection_menu_fzf ". $scrape Results>>" "$selection_list")
+		[ -z "$choice" ] && exit 0
+	else
+		selection_menu "$selection_list"
+		choice="$REPLY"
+		[ -z "$choice" ] && choice=1
+	fi
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
 			retry "Invalid choice entered"
@@ -499,7 +503,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$lib_dir/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xr:f' OPT; do
+while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 	case $OPT in
 		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -511,6 +515,7 @@ while getopts 'svq:dp:chDUVa:xr:f' OPT; do
 			. "$lib_dir/player_download" || die "No download player script found"
 			download_dir="$OPTARG"
 			;;
+		n) scrape=New ;;
 		s) . "$lib_dir/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
@@ -551,6 +556,15 @@ if [ "$scrape" = "Query" ];then
 		query="$*"
 	fi
 	process_search
+elif [ "$scrape" = "New" ];then
+	progress ""
+	selection_id="$(curl -s "https://animixplay.to/rss.xml" | sed -nE 's_.*link.*animixplay.to/v1/([^<]*)<.*_\1_p' | sed -e 's_/ep_ episode _g' -e 's/-/ /g' | fzf)"
+	ep=$(printf "$selection_id" | sed 's_.*episode __')
+	selection_id=$(printf "$selection_id" | sed 's_ episode.*__' | tr ' ' '-')
+	episode_list "$selection_id"
+	auto_play=0
+	open_episode "$selection_id" "$ep"
+	exit 0
 else
 	search_history
 	[ "$REPLY" = "q" ] && exit 0
@@ -572,9 +586,15 @@ while : ; do
 	[ "$episode" -ne "$first_ep_number" ] && menu=$(append "$menu" 'previous' 'p')
 	menu=$(append "$menu" 'replay' 'r')
 	[ "$first_ep_number" -ne "$last_ep_number" ] && menu=$(append "$menu" 'select' 's')
-	menu=$(append "$menu" 'exit' 'q')
-	selection_menu "$menu"
-		choice="$REPLY"
+	menu=$(append "$menu" 'quit' 'q')
+	if [ "$fzf" -eq 1 ];then
+		progress ""
+		choice="$(selection_menu_fzf ". Menu>>" "$menu")"
+		[ -z "$choice" ] && exit 0
+	else
+		selection_menu "$menu"
+			choice="$REPLY"
+	fi
 	case $choice in
 		n|'')
 			ep_choice_start=$((episode + 1))
