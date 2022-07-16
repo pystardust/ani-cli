@@ -57,3 +57,8 @@ selection_menu() {
 	EOF
 	prompt
 }
+
+selection_menu_fzf() {
+  printf "%s" "$selection_list" | grep -v "q exit" | fzf --height=30% --border -1 --cycle --with-nth 2.. | cut -f1 -d' '
+}
+

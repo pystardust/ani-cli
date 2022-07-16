@@ -344,8 +344,12 @@ anime_selection () {
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
 		selection_list=$(append "$selection_list" "exit" "q")
-		selection_menu "$selection_list"
-		choice="$REPLY"
+    if [ "$fzf" -eq 1 ]; then
+      choice=$(selection_menu_fzf "$selection_list")
+    else
+      selection_menu "$selection_list"
+      choice="$REPLY"
+    fi
     [ -z "$choice" ] && choice=1
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
@@ -474,6 +478,7 @@ provider_name=""
 scrape=Query
 debug=0
 choice=
+fzf=0
 auto_play=0
 download_dir="$(pwd)"
 bin_dir="$(dirname "$0")"
@@ -492,7 +497,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$lib_dir/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xf:' OPT; do
+while getopts 'svq:dp:chDUVa:xf:F' OPT; do
 	case $OPT in
 		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -508,6 +513,7 @@ while getopts 'svq:dp:chDUVa:xf:' OPT; do
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
 		f) select_provider=$OPTARG ;;
+    F) fzf=1 ;;
 		c) scrape=History ;;
 		v) . "$lib_dir/player_vlc" || die "No vlc player script found";;
 		U)
@@ -568,7 +574,7 @@ while : ; do
 	selection_menu "$menu"
 		choice="$REPLY"
 	case $choice in
-		n)
+		n|'')
 			ep_choice_start=$((episode + 1))
 			unset ep_choice_end
 			;;
