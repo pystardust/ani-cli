@@ -149,7 +149,8 @@ search_history () {
 generate_link() {
 	case $1 in
 		1)
-			progress "Fetching Mp4upload links.."
+			provider_name='Mp4upload'
+			progress "Fetching $provider_name link.."
 			refr=$(printf "%s" "$al_links" | grep "mp4upload")
 			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
 			[ -z "$refr" ] && return 0
@@ -157,7 +158,8 @@ generate_link() {
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
 			;;
 		2)
-			progress "Fetching Doodstream links.."
+			provider_name='Doodstream'
+			progress "Fetching $provider_name link.."
 			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
 			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
 			refr="https://dood.pm/e/$dood_id"
@@ -166,7 +168,8 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s "https://dood.pm${dood_md5}" -e "$refr" || true)doodstream?token=$(printf "%s" "$dood_md5" | cut -d'/' -f4 || true)&expiry=$(date +%s)000"
 			;;
 		3)
-			progress "Fetching Streamlare links.."
+			provider_name='Streamlare'
+			progress "Fetching $provider_name link.."
 			lare_id=$(printf "%s" "$al_links" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			[ -z "$lare_id" ] && lare_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*streamlare.*/e/(.*)_\1_p')
 			refr="https://streamlare.com/e/$lare_id"
@@ -176,7 +179,8 @@ generate_link() {
 				-H "x-csrf-token:$lare_token" -H "content-type:application/json;charset=UTF-8" | sed 's/\\//g' | sed -nE 's/.*url":"([^"]*)".*/\1/p')"
 			;;
 		4)
-			progress "Fetching Okru links.."
+			provider_name='Okru'
+			progress "Fetching $provider_name links.."
 			ok_id=$(printf "%s" "$al_links" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			[ -z "$ok_id" ] && ok_id=$(printf "%s" "$dpage_url" | sed -nE 's_.*ok.*videoembed/(.*)_\1_p')
 			refr="https://odnoklassniki.ru/videoembed/$ok_id"
@@ -190,7 +194,8 @@ generate_link() {
 						s/"name":"full","url":"(.*)",.*/1080p >\1/p')"
 			;;
 		5)
-			progress "Fetching Xstreamcdn links.."
+			provider_name='Xstreamcdn'
+			progress "Fetching $provider_name links.."
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
 			refr="https://fembed-hd.com/v/$fb_id"
 			[ -z "$fb_id" ] && return 0
@@ -198,7 +203,8 @@ generate_link() {
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
 		6)
-			progress "Fetching Animixplay Direct links.."
+			provider_name='Animixplay'
+			progress "Fetching $provider_name Direct link.."
 			refr="$base_url"
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
@@ -206,7 +212,8 @@ generate_link() {
 			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
 			;;
 		*)
-			progress "Fetching Goload Direct links.."
+			provider_name='Gogoanime'
+			progress "Fetching $provider_name Direct link.."
 			refr="https://goload.pro"
 			[ -z "$id" ] && return 0
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
@@ -463,6 +470,7 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 is_download=0
 PID=0
 quality=best
+provider_name=""
 scrape=Query
 debug=0
 choice=
