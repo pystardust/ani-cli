@@ -13,6 +13,6 @@ play_episode () {
 	if uname -a | grep -qE '[Aa]ndroid';then
 		am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$trackma_title" > /dev/null 2>&1 &
 	else
-		vlc "$video_url"  --http-referrer="$refr" --meta-title "$trackma_title" --play-and-exit &> /dev/null & ## Redirect all output to /dev/null to make selection menu remain visible
+		nohup vlc "$video_url"  --http-referrer="$refr" --meta-title "$trackma_title" --play-and-exit > /dev/null 2&>1 & ## Redirect all output to /dev/null to make selection menu remain visible
 	fi
 }
