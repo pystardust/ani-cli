@@ -15,14 +15,15 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  ${0##*/} [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-f <provider_no.>]
-	  ${0##*/} [-s] [-v] [-x] [-q <quality>] -c
+	  ${0##*/} [-f] [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-r <provider_no.>]
+	  ${0##*/} [-f] [-s] [-v] [-x] [-q <quality>] -c
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
 	  -v use VLC as the media player
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -s watch anime together with friends, using Syncplay (works with mpv only)
+    -f use fzf for anime selection
 	  -a specify episode to watch
 	  -d download episode
 	  -p download episode to specified directory
@@ -31,7 +32,7 @@ help_text () {
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
-	  -f select provider to scrape first [1-7]
+	  -r select provider to scrape first [1-7]
 	  -x print all video links from all providers to stdout (for debugging purpose)
 
 	Episode selection:
@@ -346,11 +347,12 @@ anime_selection () {
 		selection_list=$(append "$selection_list" "exit" "q")
     if [ "$fzf" -eq 1 ]; then
       choice=$(selection_menu_fzf "$selection_list")
+      [ -z "$choice" ] && exit 0
     else
       selection_menu "$selection_list"
       choice="$REPLY"
+      [ -z "$choice" ] && choice=1
     fi
-    [ -z "$choice" ] && choice=1
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
 			retry "Invalid choice entered"
@@ -497,7 +499,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$lib_dir/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xf:F' OPT; do
+while getopts 'svq:dp:chDUVa:xr:f' OPT; do
 	case $OPT in
 		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -512,8 +514,8 @@ while getopts 'svq:dp:chDUVa:xf:F' OPT; do
 		s) . "$lib_dir/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
-		f) select_provider=$OPTARG ;;
-    F) fzf=1 ;;
+		r) select_provider=$OPTARG ;;
+    f) fzf=1 ;;
 		c) scrape=History ;;
 		v) . "$lib_dir/player_vlc" || die "No vlc player script found";;
 		U)
