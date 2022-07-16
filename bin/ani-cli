@@ -559,8 +559,8 @@ if [ "$scrape" = "Query" ];then
 elif [ "$scrape" = "New" ];then
 	progress ""
 	selection_id="$(curl -s "https://animixplay.to/rss.xml" | sed -nE 's_.*link.*animixplay.to/v1/([^<]*)<.*_\1_p' | sed -e 's_/ep_ episode _g' -e 's/-/ /g' | fzf)"
-	ep=$(printf "$selection_id" | sed 's_.*episode __')
-	selection_id=$(printf "$selection_id" | sed 's_ episode.*__' | tr ' ' '-')
+	ep=$(printf "%s" "$selection_id" | sed 's_.*episode __')
+	selection_id=$(printf "%s" "$selection_id" | sed 's_ episode.*__' | tr ' ' '-')
 	episode_list "$selection_id"
 	auto_play=0
 	open_episode "$selection_id" "$ep"
