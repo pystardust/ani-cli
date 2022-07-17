@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.2.2"
+VERSION="3.2.3"
 
 
 #######################
@@ -15,14 +15,15 @@ help_text () {
 	done <<-EOF
 
 	Usage:
-	  ${0##*/} [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-f <provider_no.>]
-	  ${0##*/} [-s] [-v] [-x] [-q <quality>] -c
+	  ${0##*/} [-f] [-s] [-v] [-x] [-q <quality>] [-a <episode>] [-d | -p <download_dir>] [<query>] [-r <provider_no.>]
+	  ${0##*/} [-f] [-s] [-v] [-x] [-q <quality>] -c
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
 	  -v use VLC as the media player
 	  -q set video quality (best|worst|360|480|720|1080)
 	  -s watch anime together with friends, using Syncplay (works with mpv only)
+	  -f use fzf for anime selection
 	  -a specify episode to watch
 	  -d download episode
 	  -p download episode to specified directory
@@ -31,7 +32,7 @@ help_text () {
 	  -D delete history
 	  -U fetch update from github
 	  -V print version number and exit
-	  -f select provider to scrape first [1-7]
+	  -r select provider to scrape first [1-7]
 	  -x print all video links from all providers to stdout (for debugging purpose)
 
 	Episode selection:
@@ -327,7 +328,11 @@ process_search () {
 
 # anime-selection menu handling function
 anime_selection () {
-	inf "$scrape Results >>"
+	if [ "$fzf" -eq 0 ];then
+		inf "$scrape Results >>"
+	else
+		progress ""
+	fi
 	count=1
 	unset selection_list
 	while read -r anime_id; do
@@ -341,9 +346,15 @@ anime_selection () {
 		tput clear
 		choice=1
 	elif [ -z "$ep_choice_to_start" ] || { [ -n "$ep_choice_to_start" ] && [ -z "$select_first" ]; }; then
-		selection_list=$(append "$selection_list" "exit" "q")
+		selection_list=$(append "$selection_list" "quit" "q")
+	if [ "$fzf" -eq 1 ]; then
+		choice=$(selection_menu_fzf ". $scrape Results>>" "$selection_list")
+		[ -z "$choice" ] && exit 0
+	else
 		selection_menu "$selection_list"
 		choice="$REPLY"
+		[ -z "$choice" ] && choice=1
+	fi
 		while ! [ "$choice" -eq "$choice" ] 2>/dev/null || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ] || [ "$choice" = " " ]; do
 			[ "$choice" = "q" ] && exit 0
 			retry "Invalid choice entered"
@@ -365,11 +376,12 @@ episode_selection () {
 		if [ -z "$ep_choice_to_start" ]; then
 			# if branches, because order matters this time
 			while : ; do
+        last_ep_number=$(printf '%s' "$last_ep_number"|tr -d "[:space:]")
 				prompt "To specify a range, use: start_number end_number (Episodes: $first_ep_number-$last_ep_number)"
 				ep_choice_start="$REPLY"
 				ep_choice_end="$REPLY2"
 				[ "$REPLY" = q ] && exit 0
-				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number"
+				[ "$ep_choice_start" = "-1" ] && ep_choice_start="$last_ep_number" || [ -z "$ep_choice_start" ] && ep_choice_start="$last_ep_number"
 				[ "$ep_choice_end" = "-1" ] && ep_choice_end="$last_ep_number"
 				if ! [ "$ep_choice_start" -eq "$ep_choice_start" ] 2>/dev/null || { [ -n "$ep_choice_end" ] && ! [ "$ep_choice_end" -eq "$ep_choice_end" ] 2>/dev/null; }; then
 					err "Invalid number(s)"
@@ -470,6 +482,7 @@ provider_name=""
 scrape=Query
 debug=0
 choice=
+fzf=0
 auto_play=0
 download_dir="$(pwd)"
 bin_dir="$(dirname "$0")"
@@ -488,7 +501,7 @@ logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 # source the UI
 . "$lib_dir/UI" || die "No UI file"
 
-while getopts 'svq:dp:chDUVa:xf:' OPT; do
+while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 	case $OPT in
 		d) . "$lib_dir/player_download" || die "No download player script found" ;;
 		a) ep_choice_to_start=$OPTARG ;;
@@ -500,10 +513,12 @@ while getopts 'svq:dp:chDUVa:xf:' OPT; do
 			. "$lib_dir/player_download" || die "No download player script found"
 			download_dir="$OPTARG"
 			;;
+		n) scrape=New ;;
 		s) . "$lib_dir/player_syncplay" || die "No syncplay player script found";;
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
-		f) select_provider=$OPTARG ;;
+		r) select_provider=$OPTARG ;;
+    f) fzf=1 ;;
 		c) scrape=History ;;
 		v) . "$lib_dir/player_vlc" || die "No vlc player script found";;
 		U)
@@ -539,6 +554,15 @@ if [ "$scrape" = "Query" ];then
 		query="$*"
 	fi
 	process_search
+elif [ "$scrape" = "New" ];then
+	progress ""
+	selection_id="$(curl -s "https://animixplay.to/rss.xml" | sed -nE 's_.*link.*animixplay.to/v1/([^<]*)<.*_\1_p' | sed -e 's_/ep_ episode _g' -e 's/-/ /g' | fzf)"
+	ep=$(printf "%s" "$selection_id" | sed 's_.*episode __')
+	selection_id=$(printf "%s" "$selection_id" | sed 's_ episode.*__' | tr ' ' '-')
+	episode_list "$selection_id"
+	auto_play=0
+	open_episode "$selection_id" "$ep"
+	exit 0
 else
 	search_history
 	[ "$REPLY" = "q" ] && exit 0
@@ -560,11 +584,17 @@ while : ; do
 	[ "$episode" -ne "$first_ep_number" ] && menu=$(append "$menu" 'previous' 'p')
 	menu=$(append "$menu" 'replay' 'r')
 	[ "$first_ep_number" -ne "$last_ep_number" ] && menu=$(append "$menu" 'select' 's')
-	menu=$(append "$menu" 'exit' 'q')
-	selection_menu "$menu"
-		choice="$REPLY"
+	menu=$(append "$menu" 'quit' 'q')
+	if [ "$fzf" -eq 1 ];then
+		progress ""
+		choice="$(selection_menu_fzf ". Menu>>" "$menu")"
+		[ -z "$choice" ] && exit 0
+	else
+		selection_menu "$menu"
+			choice="$REPLY"
+	fi
 	case $choice in
-		n)
+		n|'')
 			ep_choice_start=$((episode + 1))
 			unset ep_choice_end
 			;;

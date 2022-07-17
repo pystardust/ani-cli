@@ -18,6 +18,12 @@ err () {
 	printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
 }
 
+#display error message and exit
+die () {
+	err "$*"
+	exit 1
+}
+
 # display an informational message (first argument in green, second in magenta)
 inf () {
 	printf "\33[2K\r\033[1;35m%s \033[1;35m%s\033[0m\n" "$1" "$2"
@@ -57,3 +63,8 @@ selection_menu() {
 	EOF
 	prompt
 }
+
+selection_menu_fzf() {
+	printf "%s\n%s" "$1" "$2" | fzf --height=30% --border -1 --layout=reverse --header-first --header-lines=1 --cycle --with-nth 2.. | cut -f1 -d' '
+}
+
