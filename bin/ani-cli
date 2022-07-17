@@ -78,8 +78,6 @@ dep_ch () {
 	for dep; do
 		if ! command -v "$dep" >/dev/null ; then
 			err "Program \"$dep\" not found. Please install it."
-			#axel is in the package axel
-			[ "$dep" = "axel" ] && err "To install aria2c, Type <your_package_manager> axel"
 			die
 		fi
 	done
