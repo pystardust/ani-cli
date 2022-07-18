@@ -415,7 +415,7 @@ anime_selection () {
 	fi
 	# Select respective anime_id
 	selection_id="$(printf "%s" "$search_results" | sed -n "${choice}p" | cut -d':' -f1 | tr -d ' ')"
-	progress "(Gogoanime) Searching Episodes.."
+	progress "Searching Episodes.."
 	episode_list "$selection_id"
 }
 
@@ -600,7 +600,7 @@ while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 		q) quality=$OPTARG ;;
 		x) debug=1 ;;
 		r) select_provider=$OPTARG ;;
-    f) fzf=1 ;;
+		f) fzf=1 ;;
 		c) scrape=History ;;
 		v) player_fn='vlc';;
 		V)
@@ -639,7 +639,8 @@ if [ "$scrape" = "Query" ];then
 	process_search
 elif [ "$scrape" = "New" ];then
 	progress ""
-	selection_id="$(curl -s "https://animixplay.to/rss.xml" | sed -nE 's_.*link.*animixplay.to/v1/([^<]*)<.*_\1_p' | sed -e 's_/ep_ episode _g' -e 's/-/ /g' | fzf)"
+	selection_id="$(curl -s "https://animixplay.to/rss.xml" | sed -nE 's_.*link.*animixplay.to/v1/([^<]*)<.*_\1_p' | sed -e 's_/ep_ episode _g' -e 's/-/ /g' | fzf --height=30% --border -1 --layout=reverse --cycle)"
+	[ -z "$selection_id" ] && die "No anime Selected"
 	ep=$(printf "%s" "$selection_id" | sed 's_.*episode __')
 	selection_id=$(printf "%s" "$selection_id" | sed 's_ episode.*__' | tr ' ' '-')
 	episode_list "$selection_id"
@@ -648,7 +649,6 @@ elif [ "$scrape" = "New" ];then
 	exit 0
 else
 	search_history
-	[ "$REPLY" = "q" ] && exit 0
 fi
 
 generate_ep_list
