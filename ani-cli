@@ -232,8 +232,7 @@ generate_link() {
 		1)
 			provider_name='Mp4upload'
 			progress "Fetching $provider_name link.."
-			refr=$(printf "%s" "$al_links" | grep "mp4upload")
-			[ -z "$refr" ] && refr=$(printf "%s" "$resp" | grep "mp4upload")
+			refr=$(printf "%s" "$resp" | grep "mp4upload")
 			[ -z "$refr" ] && return 0
 			result_links="$(curl -A "$agent" -s "$refr" -H "DNT: 1" -L |
 				sed -nE 's_.*embed\|(.*)\|.*blank.*\|(.*)\|(.*)\|(.*)\|(.*)\|src.*_https://\1.mp4upload.com:\5/d/\4/\3.\2_p')"
@@ -241,8 +240,7 @@ generate_link() {
 		2)
 			provider_name='Doodstream'
 			progress "Fetching $provider_name link.."
-			dood_id=$(printf "%s" "$al_links" | sed -n "s_.*dood.*/e/__p")
-			[ -z "$dood_id" ] && dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
+			dood_id=$(printf "%s" "$resp" | sed -n "s_.*dood.*/e/__p")
 			refr="https://dood.pm/e/$dood_id"
 			[ -z "$dood_id" ] || dood_md5=$(curl -A "$agent" -s "$refr" --max-time 10 | sed -nE "s|.*'(.*pass_md5.*)', func.*|\1|p")
 			[ -z "$dood_md5" ] && return 0
@@ -532,7 +530,7 @@ play_episode () {
 			if uname -a | grep -qE '[Aa]ndroid';then
 				am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$trackma_title" > /dev/null 2>&1 &
 			else
-				nohup "$player_fn" "$video_url"  --http-referrer="$refr" --meta-title "$trackma_title" --play-and-exit > /dev/null 2&>1 &
+				nohup "$player_fn" "$video_url"  --http-referrer="$refr" --meta-title "$trackma_title" --play-and-exit > /dev/null 2>&1 &
 			fi
 			;;
 		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
