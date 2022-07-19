@@ -61,7 +61,7 @@ releases sooner.
 
 New arguments:
 -f use fzf for anime selection
--r [1-7] select provider to scrape first
+-r [1-3] select provider to scrape first
 -x print all video links from all providers to stdout (for debugging purpose)
 
 To see a list with all the arguments, use the -h or --help argument
@@ -71,7 +71,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
-#### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Please uninstall before proceeding.
+#### ani-cli V3.3 has breaking changes and is incompatible with previous versions install location. Please uninstall before proceeding.
 
 ### Native packages
 
@@ -86,8 +86,7 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp ./bin/ani-cli /usr/local/bin
-sudo cp -a ./lib/ani-cli /usr/local/lib
+sudo cp ./ani-cli /usr/local/bin
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -101,8 +100,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./bin/ani-cli "$(brew --prefix)"/bin 
-cp -a ./lib/ani-cli "$(brew --prefix)/lib"
+cp ./ani-cli "$(brew --prefix)"/bin 
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -123,8 +121,7 @@ brew install --cask iina
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./bin/ani-cli /usr/bin
-cp -a ./lib/ani-cli /usr/lib
+cp ./ani-cli /usr/bin
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -138,16 +135,13 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./bin/ani-cli "$PREFIX"/bin
-cp -a ./lib/ani-cli "$PREFIX"/lib
+cp ./ani-cli "$PREFIX"/bin
 cd .. && rm -rf ./ani-cli
 ```
 
 Note : Vlc Android now works too ;)
 
-For Android only, the script automatically checks and defaults to streamlare and moves all referrer required providers at the bottom..
-
-For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
+You need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
 
 ```
 referrer="https://animixplay.to/"
@@ -157,20 +151,20 @@ referrer="https://animixplay.to/"
 
 * Linux:  
 ```sh
-sudo rm -rf "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
+sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:  
 ```sh
-rm -rf "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/ani-cli"
+rm "$(brew --prefix)/bin/ani-cli"
 ```
 * Windows:
 In **Git Bash** run (as administrator):
 ```sh
-rm -rf "/usr/bin/ani-cli" "/usr/lib/ani-cli"
+rm "/usr/bin/ani-cli"
 ```
 * Android:  
 ```sh
-rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
+rm "$PREFIX/bin/ani-cli"
 ```
 
 ## Dependencies
