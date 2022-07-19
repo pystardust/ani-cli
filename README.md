@@ -61,7 +61,7 @@ releases sooner.
 
 New arguments:
 -f use fzf for anime selection
--r [1-7] select provider to scrape first
+-r [1-3] select provider to scrape first
 -x print all video links from all providers to stdout (for debugging purpose)
 
 To see a list with all the arguments, use the -h or --help argument
@@ -141,9 +141,7 @@ cd .. && rm -rf ./ani-cli
 
 Note : Vlc Android now works too ;)
 
-For Android only, the script automatically checks and defaults to streamlare and moves all referrer required providers at the bottom..
-
-For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
+You need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
 
 ```
 referrer="https://animixplay.to/"
