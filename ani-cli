@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.3.0"
+VERSION="3.3.1"
 
 
 #######################
@@ -194,9 +194,7 @@ search_anime () {
 
 #fetches all the episodes embed links in an anime from gogoanime server
 episode_list () {
-	data=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s/.*malid = '(.*)';/\1/p ; s_.*epslistplace.*>(.*)</div>_\1_p" | tr -d '\r')
-	#extract all embed links of all episode from data
-	select_ep_result=$(printf "%s" "$data" | head -1 | tr "," "\n" | sed '/extra/d' | sed -nE 's_".*":"(.*)".*_\1_p')
+	select_ep_result=$(curl -A "$agent" -s "$base_url/v1/$1" | sed -nE "s_.*epslistplace.*>(.*)</div>_\1_p" | tr "," "\n" | sed -e '/extra/d' -e '/PV/d' | sed -nE 's_".*":"(.*)".*_\1_p')
 	first_ep_number=1
 	[ -z "$select_ep_result" ] && last_ep_number=0 || last_ep_number=$(printf "%s\n" "$select_ep_result" | wc -l)
 }
@@ -267,7 +265,7 @@ generate_link() {
 # chooses the link for the set quality
 get_video_link() {
 	dpage_url="$1"
-	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=(.*)&title.*/\1/p')
+	id=$(printf "%s" "$dpage_url" | sed -nE 's/.*id=([^&]*)&.*/\1/p')
 	#multiple sed are used (regex seperated by ';') for extracting only required data from response of embed url
 	resp="$(curl -A "$agent" -s "https://goload.pro/streaming.php?id=$id" |
 		sed -nE 's/.*class="container-(.*)">/\1/p ;
@@ -599,7 +597,7 @@ dep_ch "curl" "sed" "grep" "openssl" || true
 
 if [ "$player_fn" = "download" ];then
     dep_ch "ffmpeg" "axel"
-else
+elif ! (uname -a | grep -qE '[Aa]ndroid');then
     dep_ch "$player_fn"
 fi
 
@@ -648,7 +646,7 @@ while : ; do
 	if [ "$fzf" -eq 1 ];then
 		progress ""
 		choice="$(selection_menu_fzf ". Menu>>" "$menu")"
-		[ -z "$choice" ] && exit 0
+		[ -z "$choice" ] && die "No anime Selected"
 	else
 		selection_menu "$menu"
 			choice="$REPLY"
