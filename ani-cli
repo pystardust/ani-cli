@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.3.1"
+VERSION="3.3.2"
 
 
 #######################
@@ -137,45 +137,8 @@ dep_ch () {
 
 download () {
 	case $2 in
-		*manifest*m3u8*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4" ;;
 		*m3u8*)
-			progress "Fetching Metadata.."
-			[ -d "$tmpdir" ] || mkdir "$tmpdir"
-			m3u8_data="$(curl -s "$2")"
-			key_uri="$(printf "%s" "$m3u8_data" | sed -nE 's/^#EXT-X-KEY.*URI="([^"]*)"/\1/p')"
-			m3u8_data="$(printf "%s" "$m3u8_data" | sed "/#/d")"
-			printf "%s" "$m3u8_data" | grep -q "http" || relative_url=$(printf "%s" "$2" | sed "s|[^/]*$||")
-			range=$(printf "%s\n" "$m3u8_data" | wc -l)
-			# Getting and 'decrypting' encryption key
-			if [ -n "$key_uri" ];then
-				key=$(curl -s "$key_uri" | od -A n -t x1 | tr -d ' |\n')
-				iv=$(openssl rand -hex 16)
-			fi
-			# Asyncronously downloading pieces to temporary directory
-			inf "pieces : $range"
-			for i in $(seq "$range"); do
-				curl -s "${relative_url}$(printf "%s" "$m3u8_data" | sed -n "${i}p")" > "$tmpdir/$(printf "%04d" "$i").ts" && printf "\033[2K\r \033[1;32m✓ %s / %s done" "$i" "$range" &
-				jobs -p > "$jobfile"
-				while [ "$(wc -l "$jobfile" | cut -d' ' -f1)" -ge 35 ];do jobs > "$jobfile";sleep 0.05;done
-			done
-			wait
-			# Decrypting and concatenating the pieces
-			if [ -n "$key_uri" ];then
-				progress "Decrypting and Concatenating pieces into single file.."
-				for i in "$tmpdir"/* ; do
-					openssl enc -aes128 -d -K "$key" -iv "$iv" -nopad >> video.ts < "$i"
-				done
-			else
-				progress "Concatenating pieces into single file.."
-				cat "$tmpdir"/* >> video.ts
-			fi
-			# cleanup and encoding
-			rm -rdf "$tmpdir" "$jobfile"
-			inf "Encoding file to mp4 video.."
-			ffmpeg -loglevel error -stats -i "video.ts" -c copy "$download_dir/$3.mp4"
-			rm -f video.ts
-			;;
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4" ;;
 		*)	
 			axel -a -k -n 30 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
 	esac
@@ -189,7 +152,7 @@ download () {
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
-		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*_\1_p'
+		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
@@ -527,13 +490,12 @@ play_episode () {
 ############
 
 # clears the colors and deletes temporary logfile when exited using SIGINT
-trap 'printf "\033[0m";rm -rdf "video.ts" "$tmpdir" "$jobfile" "$logfile".new;exit 1' INT HUP
+trap 'printf "\033[0m";rm -f "$logfile".new;exit 1' INT HUP
 
 # default options
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 PID=0
 quality=best
-provider_name=""
 scrape=Query
 debug=0
 choice=
@@ -547,8 +509,6 @@ esac
 # history file path
 logdir="${XDG_CACHE_HOME:-$HOME/.cache}"
 logfile="$logdir/ani-hsts"
-jobfile="$logdir/ani-jobs"
-tmpdir="$logdir/ani-temp"
 # create history file and history dir if none found
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
