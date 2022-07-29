@@ -37,6 +37,10 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 - [New in v3](#New-in-v3)
 - [Install](#Install)
   - [Linux](#Linux)
+   - [Debian](#Debian)
+   - [Fedora](#Fedora)
+   - [Arch](#Arch)
+   - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
@@ -81,6 +85,40 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ### Linux
 
+### Debian
+
+```
+wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
+wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
+sudo apt update
+sudo apt install ani-cli
+```
+
+### Fedora
+
+To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
+To be able to install syncplay, you'll need to enable this copr repo: https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/
+
+There are currently two packages for Fedora: `ani-cli` which is a minimal installation that can only use mpv and `ani-cli-full` which contains all the functionality (note that vlc and syncplay are still optional dependencies).
+
+To install ani-cli or ani-cli-full:
+```sh
+sudo dnf copr enable derisis13/ani-cli
+sudo dnf install ani-cli      # only for ani-cli
+sudo dnf install ani-cli-full # only for ani-cli-full
+```
+*If for your distro uses rpm and you would like to see a native package, open an issue.*
+
+### Arch
+
+Also consider ani-cli-git
+
+```sh
+yay -S ani-cli
+```
+
+### Installing from source
+
 Install dependencies [(See below)](#Dependencies)
 
 ```sh
@@ -90,6 +128,7 @@ sudo cp ./ani-cli /usr/local/bin
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
+
 
 ### MacOS
 
@@ -131,6 +170,15 @@ cd .. && rm -rf ./ani-cli
 
 Install termux [(Guide)](https://termux.com/)
 
+#### Termux package
+
+```sh
+pkg up -y
+pkg install ani-cli
+```
+
+#### From source
+
 ```sh
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
@@ -149,6 +197,24 @@ referrer="https://animixplay.to/"
 
 ## Uninstall
 
+* .deb:
+```
+sudo apt remove ani-cli
+# to remove the repository from apt:
+sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
+```
+* .rpm
+```
+sudo dnf remove ani-cli      # for ani-cli
+sudo dnf remove ani-cli-full # for ani-cli-full
+# disable the repo in dnf
+dnf copr disable derisis13/ani-cli
+```
+You might want to uninstall RPM fusion if you don't use it otherwise
+* AUR:
+```
+yay -R ani-cli
+```
 * Linux:  
 ```sh
 sudo rm "/usr/local/bin/ani-cli"
@@ -162,7 +228,11 @@ In **Git Bash** run (as administrator):
 ```sh
 rm "/usr/bin/ani-cli"
 ```
-* Android:  
+* Termux package
+```
+pkg remove ani-cli
+```
+* Android:
 ```sh
 rm "$PREFIX/bin/ani-cli"
 ```
