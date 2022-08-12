@@ -96,15 +96,12 @@ sudo apt install ani-cli
 ### Fedora
 
 To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
-To be able to install syncplay, you'll need to enable this copr repo: https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/
+To be able to install syncplay, you'll need to enable this copr repo (instructions included): https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/.
 
-There are currently two packages for Fedora: `ani-cli` which is a minimal installation that can only use mpv and `ani-cli-full` which contains all the functionality (note that vlc and syncplay are still optional dependencies).
-
-To install ani-cli or ani-cli-full:
+To install ani-cli:
 ```sh
 sudo dnf copr enable derisis13/ani-cli
-sudo dnf install ani-cli      # only for ani-cli
-sudo dnf install ani-cli-full # only for ani-cli-full
+sudo dnf install ani-cli
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
 
@@ -146,6 +143,8 @@ cd .. && rm -rf ./ani-cli
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
+[todo]: <> (brew package instructions)
+
 ```sh
 brew install curl grep aria2 openssl@1.1 ffmpeg git && \
 brew install --cask iina
@@ -153,6 +152,8 @@ brew install --cask iina
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
 
 ### Windows
+
+[todo]: <> (Scoop installation and notation of dependencies having to been installed trough scoop)
 
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
