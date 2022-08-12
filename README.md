@@ -188,3 +188,4 @@ rm "$PREFIX/bin/ani-cli"
 * [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/tv shows in the cli (work in progress) (Python/Shell)
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
+* [tv-cli](https://github.com/Spaxly/tv-cli): Watch live TV in the cli (Shell)
