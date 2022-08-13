@@ -20,20 +20,21 @@ help_text () {
 	  ${0##*/} -h | -D | -U | -V
 
 	Options:
-	  -v use VLC as the media player
-	  -q set video quality (best|worst|360|480|720|1080)
-	  -s watch anime together with friends, using Syncplay (works with mpv only)
+	  -v --vlc use VLC as the media player
+	  -q --qualityset video quality (best|worst|360|480|720|1080)
+	  -s --syncplay watch anime together with friends, using Syncplay (works with mpv only)
 	  -f use fzf for anime selection
-	  -a specify episode to watch
-	  -d download episode
-	  -p download episode to specified directory
-	  -c continue watching anime from history
-	  -h show helptext
-	  -D delete history
-	  -U fetch update from github
-	  -V print version number and exit
-	  -r select provider to scrape first [1-3]
-	  -x print all video links from all providers to stdout (for debugging purpose)
+	  -a --episode specify episode to watch
+	  -d --download download episode
+	  -p --download-dir download episode to specified directory
+	  -c --continue continue watching anime from history
+	  -h --help show helptext
+	  -D --history delete history
+	  -U --update fetch update from github
+	  -V --versionprint version number and exit
+	  -r --provider select provider to scrape first [1-3]
+	  -x --debug print all video links from all providers to stdout (for debugging purpose)
+	  -C --dub select dub/sub versions of anime
 
 	Episode selection:
 	  Multiple episodes can be chosen given a range
@@ -306,16 +307,40 @@ append () {
 
 # only lets the user pass in case of a valid search
 process_search () {
-	progress "Searching $scrape.."
-	search_results=$(search_anime "$query")
-	while [ -z "$search_results" ]; do
-		retry 'No search results found'
-		query="$REPLY $REPLY2"
-		progress "Searching $scrape.."
-		search_results=$(search_anime "$query")
-	done
-	anime_selection "$search_results"
-	episode_selection
+	if [ "$sub_dub" -eq 0 ];then
+	   progress "Searching $scrape.."
+	   search_results=$(search_anime "$query")
+	   while [ -z "$search_results" ]; do
+		   retry 'No search results found'
+   	       query="$REPLY $REPLY2"
+		   progress "Searching $scrape.."
+		   search_results=$(search_anime "$query")
+	   done
+	   anime_selection "$search_results"
+	   episode_selection
+
+	else
+		printf "\33[2K\r\033[1;35mFind anime with DUB/SUB? \n\033[1;33m1)Dub \n\033[1;36m2)Sub \n\033[1;33m3)Both\n \33[2K\r\033[1;35m> "
+		read answ
+		case $answ in
+			1)progress "Searching $scrape.."
+			search_results=$(search_anime "$query" | sed -n "/.*dub/ p")
+			;;
+			2)progress "Searching $scrape.."
+			search_results=$(search_anime "$query" | sed "/.*dub/ d")
+			;;
+			3)progress "Searching $scrape.."
+			search_results=$(search_anime "$query")
+			;;
+			*)clear
+			err "Invalid choice entered"
+			process_search
+			;;
+		esac
+		anime_selection "$search_results"
+		episode_selection
+
+	fi
 }
 
 # anime-selection menu handling function
@@ -501,6 +526,7 @@ debug=0
 choice=
 fzf=0
 auto_play=0
+sub_dub=0
 download_dir="$(pwd)"
 case "$(uname)" in
 	Darwin*) player_fn='iina';;
@@ -513,8 +539,46 @@ logfile="$logdir/ani-hsts"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
-while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
-	case $OPT in
+for arg in "$@";do
+	shift
+	case "$arg" in
+		'--dub') sub_dub=1 ;;
+		'--vlc') player_fn='vlc';;
+		'--quality') quality=$OPTARG ;;
+		'--syncplay')
+			case "$(uname -s)" in
+				Darwin*) player_fn="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+				MINGW*|*Msys) player_fn="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+				*) player_fn="syncplay" ;;
+			esac
+			;;
+		'--episode') ep_choice_to_start=$OPTARG ;;
+		'--download') player_fn='download' ;;
+		'--download-dir')
+			player_fn='download'
+			download_dir="$OPTARG"
+			;;
+		'--continue') scrape=History ;;
+		'--help') help_text
+				  exit 1
+				  ;;
+		'--history')
+			: > "$logfile"
+			exit 0
+			;;
+		'--update') update_script ;;
+		'--version')
+			version_text
+			exit 0
+			;;
+		'--provider') select_provider=$OPTARG ;;
+		'--debug') 
+	esac
+		done
+
+
+while getopts 'svq:dp:cChDUVa:xr:fn:' OPT;do
+	case $1 in
 		d) player_fn='download' ;;
 		a) ep_choice_to_start=$OPTARG ;;
 		U) update_script ;;
@@ -544,6 +608,8 @@ while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 			version_text
 			exit 0
 			;;
+		C) sub_dub=1
+		   ;;
 		*)
 			help_text
 			exit 1
@@ -563,7 +629,7 @@ fi
 
 base_url="https://animixplay.to"
 if [ "$scrape" = "Query" ];then
-	if [ -z "$*" ]; then
+   if [ -z "$*" ]; then #maybe add CLEAR here?
 		prompt "Search Anime"
 		query="$REPLY $REPLY2"
 	else
