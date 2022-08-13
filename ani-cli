@@ -34,7 +34,7 @@ help_text () {
 	  -V print version number and exit
 	  -r select provider to scrape first [1-3]
 	  -x print all video links from all providers to stdout (for debugging purpose)
-	  -C select dub/sub versions of anime
+	  -C --dub select dub/sub versions of anime
 
 	Episode selection:
 	  Multiple episodes can be chosen given a range
@@ -578,7 +578,7 @@ while getopts 'svq:dp:cChDUVa:xr:fn:' OPT;do
 			version_text
 			exit 0
 			;;
-		C|--dub) sub_dub=1
+		C) sub_dub=1
 		   ;;
 		*)
 			help_text
