@@ -306,11 +306,27 @@ append () {
 
 # only lets the user pass in case of a valid search
 process_search () {
-	progress "Searching $scrape.."
-	search_results=$(search_anime "$query")
+	printf "\33[2K\r\033[1;35mFind anime with DUB/SUB? \n\033[1;33m1)Dub \n\033[1;36m2)Sub \n\033[1;33m3)Both\n \33[2K\r\033[1;35m> "
+	read answ
+	case $answ in
+		1)progress "Searching $scrape.."
+		  search_results=$(search_anime "$query" | sed -n "/.*dub/ p")
+		  ;;
+		2)progress "Searching $scrape.."
+		  search_results=$(search_anime "$query" | sed "/.*dub/ d")
+		  ;;
+		3)progress "Searching $scrape.."
+		  search_results=$(search_anime "$query")
+		  ;;
+		*)clear
+		  err "Invalid choice entered"
+		  process_search
+		  ;;
+	esac
+
 	while [ -z "$search_results" ]; do
 		retry 'No search results found'
-		query="$REPLY $REPLY2"
+   	    query="$REPLY $REPLY2"
 		progress "Searching $scrape.."
 		search_results=$(search_anime "$query")
 	done
@@ -563,7 +579,7 @@ fi
 
 base_url="https://animixplay.to"
 if [ "$scrape" = "Query" ];then
-	if [ -z "$*" ]; then
+   if [ -z "$*" ]; then #maybe add CLEAR here?
 		prompt "Search Anime"
 		query="$REPLY $REPLY2"
 	else
