@@ -34,7 +34,7 @@ help_text () {
 	  -V print version number and exit
 	  -r select provider to scrape first [1-3]
 	  -x print all video links from all providers to stdout (for debugging purpose)
-	  -ds select dub/sub versions of anime
+	  -C select dub/sub versions of anime
 
 	Episode selection:
 	  Multiple episodes can be chosen given a range
