@@ -539,8 +539,16 @@ logfile="$logdir/ani-hsts"
 [ -d "$logdir" ] || mkdir "$logdir"
 [ -f "$logfile" ] || : > "$logfile"
 
-while getopts 'svq:dp:cChDUVa:xr:fn' OPT; do
-	case $OPT in
+for arg in "$@";do
+	shift
+	case "$arg" in
+		'--dub') sub_dub=1
+	esac
+		done
+
+
+while getopts 'svq:dp:cChDUVa:xr:fn:' OPT;do
+	case $1 in
 		d) player_fn='download' ;;
 		a) ep_choice_to_start=$OPTARG ;;
 		U) update_script ;;
@@ -570,7 +578,7 @@ while getopts 'svq:dp:cChDUVa:xr:fn' OPT; do
 			version_text
 			exit 0
 			;;
-		C) sub_dub=1
+		C|--dub) sub_dub=1
 		   ;;
 		*)
 			help_text
