@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.3.2"
+VERSION="3.3.3"
 
 
 #######################
@@ -140,7 +140,7 @@ download () {
 		*m3u8*)
 			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4" ;;
 		*)	
-			axel -a -k -n 30 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
+			axel -a -k -n 10 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
 	esac
 }
 
