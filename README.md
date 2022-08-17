@@ -13,9 +13,6 @@
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
-<a href="https://github.com/RaynardGerraldo"><img src="https://img.shields.io/badge/maintainer-RayGL-blue"></a>
-<br>
-<a href="https://github.com/71zenith"><img src="https://img.shields.io/badge/maintainer-71zenith-blue"></a>
 <a href="https://github.com/justchokingaround"><img src="https://img.shields.io/badge/maintainer-justchokingaround-blue"></a>
 <a href="https://github.com/Derisis13"><img src="https://img.shields.io/badge/maintainer-Derisis13-blue"></a>
 
@@ -64,7 +61,8 @@ We now scrape animixplay instead of gogoanime, which allows for faster link fetc
 releases sooner.
 
 New arguments:
--f [1-7] select provider to scrape first
+-f use fzf for anime selection
+-r [1-3] select provider to scrape first
 -x print all video links from all providers to stdout (for debugging purpose)
 
 To see a list with all the arguments, use the -h or --help argument
@@ -74,7 +72,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ## Install
 # IMPORTANT: Please uninstall ani-cli before proceeding.
-#### ani-cli V3.2 has breaking changes and is incompatible with previous versions install location. Plasase uninstall before proceeding.
+#### ani-cli V3.3 has breaking changes and is incompatible with previous versions install location. Please uninstall before proceeding.
 
 ### Native packages
 
@@ -120,8 +118,7 @@ Install dependencies [(See below)](#Dependencies)
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp bin/ani-cli /usr/local/bin
-sudo cp -a /lib/ani-cli /usr/local/lib
+sudo cp ./ani-cli /usr/local/bin
 cd .. && rm -rf "./ani-cli"
 ```
 *Also note that mpv installed through flatpak is not compatible*
@@ -136,8 +133,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 ```sh
 rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli /usr/local/bin 
-cp -a lib/ani-cli "$(brew --prefix)/lib"
+cp ./ani-cli "$(brew --prefix)"/bin 
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -146,7 +142,7 @@ cd .. && rm -rf ./ani-cli
 [todo]: <> (brew package instructions)
 
 ```sh
-brew install curl grep aria2 openssl@1.1 ffmpeg git && \
+brew install curl grep axel openssl@1.1 ffmpeg git && \
 brew install --cask iina
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
@@ -162,8 +158,7 @@ brew install --cask iina
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli /usr/bin
-cp -a lib/ani-cli /usr/lib
+cp ./ani-cli /usr/bin
 cd .. && rm -rf ./ani-cli
 ```
 
@@ -186,16 +181,13 @@ pkg install ani-cli
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp bin/ani-cli "$PREFIX"/bin
-cp -a lib/ani-cli "$PREFIX"/lib
+cp ./ani-cli "$PREFIX"/bin
 cd .. && rm -rf ./ani-cli
 ```
 
 Note : Vlc Android now works too ;)
 
-For Android only, the script automatically checks and defaults to streamlare and moves all referrer required providers at the bottom..
-
-For doodstream to work you need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
+You need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
 
 ```
 referrer="https://animixplay.to/"
@@ -223,16 +215,16 @@ yay -R ani-cli
 ```
 * Linux:  
 ```sh
-sudo rm -rf "/usr/local/bin/ani-cli" "/usr/local/lib/ani-cli" 
+sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:  
 ```sh
-rm -rf "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/lib/ani-cli"
+rm "$(brew --prefix)/bin/ani-cli"
 ```
 * Windows:
 In **Git Bash** run (as administrator):
 ```sh
-rm -rf "/usr/bin/ani-cli" "/usr/lib/ani-cli"
+rm "/usr/bin/ani-cli"
 ```
 * Termux package
 ```
@@ -240,7 +232,7 @@ pkg remove ani-cli
 ```
 * Android:
 ```sh
-rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
+rm "$PREFIX/bin/ani-cli"
 ```
 
 ## Dependencies
@@ -252,8 +244,9 @@ rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 - openssl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
-- aria2 - Download manager
+- axel - Download manager
 - ffmpeg - m3u8 Downloader
+- fzf (optional)
 
 ## Homies 
 
@@ -262,6 +255,9 @@ rm -rf "$PREFIX/bin/ani-cli" "$PREFIX/lib/ani-cli"
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [kaa.si-cli](https://github.com/Soviena/kaa.si-cli): Stream anime from kaa.si and sync with anilist (Python)
+* [lobster](https://github.com/justchokingaround/lobster): Life action movies and series fom the terminal (Shell)
 * [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
+* [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/tv shows in the cli (work in progress) (Python/Shell)
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
+* [tv-cli](https://github.com/Spaxly/tv-cli): Watch live TV in the cli (Shell)
