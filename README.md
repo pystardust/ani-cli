@@ -82,7 +82,7 @@ For more info on providers, please refer to [this](https://github.com/pystardust
 
 ### Linux
 
-### Debian
+#### Debian
 
 ```
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
@@ -91,7 +91,7 @@ sudo apt update
 sudo apt install ani-cli
 ```
 
-### Fedora
+#### Fedora
 
 To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
 To be able to install syncplay, you'll need to enable this copr repo (instructions included): https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/.
@@ -103,7 +103,7 @@ sudo dnf install ani-cli
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
 
-### Arch
+#### Arch
 
 Also consider ani-cli-git
 
@@ -111,7 +111,7 @@ Also consider ani-cli-git
 yay -S ani-cli
 ```
 
-### Installing from source
+#### Installing from source
 
 Install dependencies [(See below)](#Dependencies)
 
