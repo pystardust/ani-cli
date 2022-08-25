@@ -218,6 +218,10 @@ You might want to uninstall RPM fusion if you don't use it otherwise
 ```
 yay -R ani-cli
 ```
+* Scoop:
+```sh
+scoop uninstall ani-cli
+```
 * Linux:  
 ```sh
 sudo rm "/usr/local/bin/ani-cli"
