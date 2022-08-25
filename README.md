@@ -149,12 +149,18 @@ brew install --cask iina
 
 ### Windows
 
-[todo]: <> (Scoop installation and notation of dependencies having to been installed trough scoop)
-
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
 
+#### Scoop bucket
+
+```sh
+scoop bucket add extras
+scoop install ani-cli
+```
+
+#### From source
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
