@@ -204,7 +204,6 @@ sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-de
 * .rpm
 ```
 sudo dnf remove ani-cli      # for ani-cli
-sudo dnf remove ani-cli-full # for ani-cli-full
 # disable the repo in dnf
 dnf copr disable derisis13/ani-cli
 ```
