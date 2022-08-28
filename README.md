@@ -111,6 +111,14 @@ Also consider ani-cli-git
 yay -S ani-cli
 ```
 
+#### OpenSuse Tumbleweed
+
+First you need to add the ani-cli copr repo, then install the package:
+
+```sh
+zypper addrepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+zypper install ani-cli
+```
 
 #### Installing from source
 
@@ -139,8 +147,6 @@ cd .. && rm -rf ./ani-cli
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
-
-[todo]: <> (brew package instructions)
 
 ```sh
 brew install curl grep axel openssl@1.1 ffmpeg git && \
@@ -207,19 +213,24 @@ referrer="https://animixplay.to/"
 
 ## Uninstall
 
-* .deb:
+* apt:
 ```
 sudo apt remove ani-cli
 # to remove the repository from apt:
 sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
 ```
-* .rpm
+* dnf:
 ```
 sudo dnf remove ani-cli      # for ani-cli
 # disable the repo in dnf
 dnf copr disable derisis13/ani-cli
 ```
 You might want to uninstall RPM fusion if you don't use it otherwise
+* zypper:
+```sh
+zypper remove ani-cli
+zypper removerepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+```
 * AUR:
 ```
 yay -R ani-cli
