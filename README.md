@@ -111,6 +111,7 @@ Also consider ani-cli-git
 yay -S ani-cli
 ```
 
+
 #### Installing from source
 
 Install dependencies [(See below)](#Dependencies)
@@ -152,6 +153,11 @@ brew install --cask iina
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
+
+mpv is not added to $PATH automatically when installed and thus the script is unable to use it. You either have to do this manually, or install it via scoop (recommended):
+```sh
+scoop install mpv
+```
 
 #### Scoop bucket
 
