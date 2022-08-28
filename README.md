@@ -105,11 +105,11 @@ sudo dnf install ani-cli
 
 #### Arch
 
-Also consider ani-cli-git
-
+Build and install from the AUR: 
 ```sh
 yay -S ani-cli
 ```
+Also consider ani-cli-git
 
 #### OpenSuse Tumbleweed
 
@@ -119,6 +119,7 @@ First you need to add the ani-cli copr repo, then install the package:
 zypper addrepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
 zypper install ani-cli
 ```
+*Note: package is noarch, so any architecture should work, even though the repo is labled x86-64*
 
 #### Installing from source
 
