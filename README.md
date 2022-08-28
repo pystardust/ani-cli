@@ -37,6 +37,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
    - [Debian](#Debian)
    - [Fedora](#Fedora)
    - [Arch](#Arch)
+   - [OpenSuse Tumbleweed](#OpenSuse-Tumbleweed)
    - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
