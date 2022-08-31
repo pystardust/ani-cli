@@ -37,6 +37,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
    - [Debian](#Debian)
    - [Fedora](#Fedora)
    - [Arch](#Arch)
+   - [OpenSuse Tumbleweed](#OpenSuse-Tumbleweed)
    - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
@@ -105,11 +106,21 @@ sudo dnf install ani-cli
 
 #### Arch
 
-Also consider ani-cli-git
-
+Build and install from the AUR: 
 ```sh
 yay -S ani-cli
 ```
+Also consider ani-cli-git
+
+#### OpenSuse Tumbleweed
+
+First you need to add the ani-cli copr repo, then install the package:
+
+```sh
+zypper addrepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+zypper install ani-cli
+```
+*Note: package is noarch, so any architecture should work, even though the repo is labled x86-64*
 
 #### Installing from source
 
@@ -139,8 +150,6 @@ cd .. && rm -rf ./ani-cli
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
-[todo]: <> (brew package instructions)
-
 ```sh
 brew install curl grep axel openssl@1.1 ffmpeg git && \
 brew install --cask iina
@@ -149,12 +158,23 @@ brew install --cask iina
 
 ### Windows
 
-[todo]: <> (Scoop installation and notation of dependencies having to been installed trough scoop)
-
 *Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
 
 *Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
 
+mpv is not added to $PATH automatically when installed and thus the script is unable to use it. You either have to do this manually, or install it via scoop (recommended):
+```sh
+scoop install mpv
+```
+
+#### Scoop bucket
+
+```sh
+scoop bucket add extras
+scoop install ani-cli
+```
+
+#### From source
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
@@ -195,23 +215,31 @@ referrer="https://animixplay.to/"
 
 ## Uninstall
 
-* .deb:
+* apt:
 ```
 sudo apt remove ani-cli
 # to remove the repository from apt:
 sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
 ```
-* .rpm
+* dnf:
 ```
 sudo dnf remove ani-cli      # for ani-cli
-sudo dnf remove ani-cli-full # for ani-cli-full
 # disable the repo in dnf
 dnf copr disable derisis13/ani-cli
 ```
 You might want to uninstall RPM fusion if you don't use it otherwise
+* zypper:
+```sh
+zypper remove ani-cli
+zypper removerepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+```
 * AUR:
 ```
 yay -R ani-cli
+```
+* Scoop:
+```sh
+scoop uninstall ani-cli
 ```
 * Linux:  
 ```sh
