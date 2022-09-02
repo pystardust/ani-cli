@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 # License preamble at the end of the file
 # Version number
@@ -552,7 +552,6 @@ while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 done
 shift $((OPTIND - 1))
 progress "Checking dependencies.."
-# shellcheck disable=SC2046
 dep_ch "curl" "sed" "grep" "openssl" || true
 
 if [ "$player_fn" = "download" ];then
