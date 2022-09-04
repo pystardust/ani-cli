@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.3.3"
+VERSION="3.3.4"
 
 
 #######################
@@ -474,7 +474,7 @@ play_episode () {
 			fi
 			;;
 		"syncplay"|"/Applications/Syncplay.app/Contents/MacOS/syncplay"|"/c/Program Files (x86)/Syncplay/Syncplay.exe")
-			nohup "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title" & ;;
+			nohup "$player_fn" "$video_url" -- --referrer="$refr" --force-media-title="$trackma_title" > /dev/null 2>&1 & ;;
 		*)
 			if uname -a | grep -qE '[Aa]ndroid';then
 				am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n is.xyz.mpv/.MPVActivity > /dev/null 2>&1 &
