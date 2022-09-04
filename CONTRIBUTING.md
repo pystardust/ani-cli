@@ -20,3 +20,7 @@
 - Take part in troubleshooting and testing
 - Star the repo
 - Follow the maintainers
+
+## Architecture
+
+![spec](https://github.com/pystardust/ani-cli/blob/spec/.assets/ani-cli-spec.png)
