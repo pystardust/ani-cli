@@ -152,6 +152,7 @@ download () {
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
+		# shellcheck disable=SC2016
 		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
 }
 
