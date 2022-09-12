@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.4.0"
+VERSION="3.4.1"
 
 
 #######################
@@ -542,6 +542,10 @@ while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 		v) player_fn='vlc';;
 		V)
 			version_text
+			exit 0
+			;;
+		h)
+			help_text
 			exit 0
 			;;
 		*)
