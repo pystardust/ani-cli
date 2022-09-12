@@ -61,7 +61,7 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 ### Native packages
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=3.0)](https://repology.org/project/ani-cli/versions)
 
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
 
