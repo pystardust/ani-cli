@@ -99,7 +99,7 @@ Also consider ani-cli-git
 #### OpenSuse Tumbleweed and Leap
 
 On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
-You can find instructions on this [here](https://en.opensuse.org/Additional_package_repositories#Packman)
+You can find instructions on this [here](https://en.opensuse.org/Additional_package_repositories#Packman).
 
 To add the ani-cli copr repo, update then install ani-cli run (on both versions):
 ```sh
@@ -222,7 +222,7 @@ You might want to uninstall RPM fusion if you don't use it otherwise
 zypper remove ani-cli
 zypper removerepo ani-cli
 ```
-You might want to remove `packman-essentials` if you don't need it otherwise.
+You might want to remove `packman-essentials` if you don't need it otherwise
 * AUR:
 ```
 yay -R ani-cli
