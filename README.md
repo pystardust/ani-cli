@@ -37,7 +37,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
    - [Debian](#Debian)
    - [Fedora](#Fedora)
    - [Arch](#Arch)
-   - [OpenSuse Tumbleweed](#OpenSuse-Tumbleweed)
+   - [OpenSuse Tumbleweed and Leap](#OpenSuse-Tumbleweed-and-Leap)
    - [From source](#Installing-from-source)
   - [MacOS](#MacOS)
   - [Windows](#Windows)
@@ -96,14 +96,19 @@ yay -S ani-cli
 ```
 Also consider ani-cli-git
 
-#### OpenSuse Tumbleweed
+#### OpenSuse Tumbleweed and Leap
 
-First you need to add the ani-cli copr repo, then install the package:
+On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
+You can find instructions on this [here](https://en.opensuse.org/Additional_package_repositories#Packman)
 
+To add the ani-cli copr repo, update then install ani-cli run (on both versions):
 ```sh
-zypper addrepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+zypper addrepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/ ani-cli
+zypper dup
 zypper install ani-cli
 ```
+You'll get a warning about `Signature verification failed [4-Signatures public key is not available]` but this can be ignored from the prompt.
+
 *Note: package is noarch, so any architecture should work, even though the repo is labled x86-64*
 
 #### Installing from source
@@ -215,8 +220,9 @@ You might want to uninstall RPM fusion if you don't use it otherwise
 * zypper:
 ```sh
 zypper remove ani-cli
-zypper removerepo https://download.copr.fedorainfracloud.org/results/derisis13/ani-cli/opensuse-tumbleweed-x86_64/
+zypper removerepo ani-cli
 ```
+You might want to remove `packman-essentials` if you don't need it otherwise.
 * AUR:
 ```
 yay -R ani-cli
