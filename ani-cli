@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.4.1"
+VERSION="3.4.2"
 
 
 #######################
@@ -151,7 +151,7 @@ download () {
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
+	curl -s "https://gogoanime.dk//search.html?keyword=$search" -L |
 		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
 }
 
