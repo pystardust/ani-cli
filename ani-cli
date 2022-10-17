@@ -190,7 +190,7 @@ search_history () {
 
 generate_link() {
 	case $1 in
-		1)
+		2)
 			provider_name='Xstreamcdn'
 			progress "Fetching $provider_name links.."
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
@@ -199,7 +199,7 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
-		2)
+		1)
 			provider_name='Animixplay'
 			progress "Fetching $provider_name Direct link.."
 			refr="$base_url"
