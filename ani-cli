@@ -425,7 +425,7 @@ open_episode () {
 	# decrypting url
 	dpage_link=$(printf "%s" "$select_ep_result" | sed -n "${episode}p")
 	if [ -z "$dpage_link" ];then
-		err "Episode doesn't exist!!"
+		die "Episode doesn't exist!!"
 	else
 		get_video_link "$dpage_link"
 	fi
