@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.4.3"
+VERSION="3.4.4"
 
 
 #######################
@@ -431,7 +431,7 @@ open_episode () {
 	fi
 	[ "$debug" -eq 1 ] && exit 0
 	# write anime and episode number and save to temporary history
-	grep -q "$selection_id" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
+	grep -q -- "$selection_id" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
 	sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
 	[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 	[ -z "$video_url" ] && die "Video URL not found"
