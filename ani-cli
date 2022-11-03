@@ -206,7 +206,7 @@ generate_link() {
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
 			second_enc_id=$(printf "%s" "$enc_id" | base64)
-			increment_char=$(printf "%s" "$enc_id" | sed -e 's/=//g' -e 's/.*\(.\)$/\1/' | tr "0-9a-z" "1-9a-z_")
+			increment_char=$(printf "%s" "$enc_id" | sed -e 's/=//g' -e 's/.*\(.\)$/\1/' | tr "0-9a-zA-Z" "1-9a-zA-Z_")
 			new_enc_id=$(printf "%s" "$enc_id" | sed -e 's/=//g' -e "s/\(.*\).$/\1$increment_char/")
 			ani_id=$(printf "cW9%sMVFhzM0dyVTh3ZTlP%s" "$new_enc_id" "$second_enc_id")
 			result_links="$(curl -s "$base_url/api/${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
