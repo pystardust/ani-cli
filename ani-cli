@@ -206,7 +206,7 @@ generate_link() {
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
 			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$enc_id" | base64)
-			result_links="$(curl -s "$base_url/api/cW9${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
+			result_links="$(curl -s "$base_url/api/cW9${ani_id}" -A "$agent" -I | sed -nE 's_location: https?://[^#]*#([^#]*).*_\1_p' | base64 --decode)"
 			;;
 		*)
 			provider_name='Gogoanime'
