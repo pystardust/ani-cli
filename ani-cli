@@ -2,7 +2,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.4.4"
+VERSION="3.4.5"
 
 
 #######################
@@ -103,7 +103,7 @@ selection_menu() {
 }
 
 selection_menu_fzf() {
-	printf "%s\n%s" "$1" "$2" | fzf --height=30% --border -1 --layout=reverse --header-first --header-lines=1 --cycle --with-nth 2.. | cut -f1 -d' '
+	printf "%s\n%s" "$1" "$2" | fzf --height=30% --border -1 --layout=reverse --header-first --header-lines=1 --cycle --with-nth 2.. | cut -d\  -f1
 }
 
 version_text () {
@@ -152,7 +152,7 @@ download () {
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
 	curl -s "https://gogoanime.dk//search.html?keyword=$search" -L |
-		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
+		sed -nE "s_^[[:space:]]*<a href=\"/category/([^\"]*)\" title.*\">\$_\1_p"
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
@@ -206,7 +206,7 @@ generate_link() {
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
 			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$enc_id" | base64)
-			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
+			result_links="$(curl -s "$base_url/api/cW9${ani_id}" -A "$agent" -I | sed -nE 's_[L|l]ocation: https?://[^#]*#([^#]*).*_\1_p' | base64 --decode)"
 			;;
 		*)
 			provider_name='Gogoanime'
@@ -216,11 +216,11 @@ generate_link() {
 			secret_key=$(printf "%s" "$resp" | sed -n '2p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			iv=$(printf "%s" "$resp" | sed -n '3p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
 			second_key=$(printf "%s" "$resp" | sed -n '4p' | tr -d "\n" | od -A n -t x1 | tr -d " |\n")
-			token=$(printf "%s" "$resp" | head -1 | base64 -d | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
+			token=$(printf "%s" "$resp" | head -1 | base64 --decode | openssl enc -d -aes256 -K "$secret_key" -iv "$iv" | sed -nE 's/.*&(token.*)/\1/p')
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
 			data=$(curl -A "$agent" -sL -H "X-Requested-With:XMLHttpRequest" "${gogohd_url}encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
-			result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null |
-				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
+			result_links="$(printf '%s' "$data" | base64 --decode 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null |
+				tr -d \\\\ | sed -nE "s_.*file\":\"([^\"]*)\".*source.*_\1_p")"
 			;;
 	esac
 }
