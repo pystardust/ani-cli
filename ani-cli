@@ -1,5 +1,12 @@
 #!/bin/sh
 
+#---
+#dependencies:
+#  curl.se: ^7.8
+#  openssl.org: ^1.1
+#  ffmpeg.org: ^5.1
+#---
+
 # License preamble at the end of the file
 # Version number
 VERSION="3.4.6"
