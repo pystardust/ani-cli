@@ -138,8 +138,7 @@ dep_ch () {
 download () {
 	case $2 in
 		*m3u8*)
-			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4"
-			;;
+			ffmpeg -loglevel error -stats -referer "$1" -i "$2" -c copy "$download_dir/$3.mp4" ;;
 		*)	
 			axel -a -k -n 10 --header=Referer:"$1" "$2" -o "$download_dir/$3.mp4" ;;
 	esac
