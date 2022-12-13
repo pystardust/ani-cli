@@ -9,7 +9,7 @@
 
 # License preamble at the end of the file
 # Version number
-VERSION="3.4.6"
+VERSION="3.4.7"
 
 
 #######################
@@ -532,6 +532,9 @@ while getopts 'svq:dp:chDUVa:xr:fn' OPT; do
 		p)
 			player_fn='download'
 			download_dir="$OPTARG"
+			if [ ! -d "$download_dir" ] ; then
+				mkdir -p "$download_dir" || die "Couldn't create $download_dir"
+			fi
 			;;
 		n) scrape=New ;;
 		s)
