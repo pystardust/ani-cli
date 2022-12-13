@@ -1,5 +1,12 @@
 #!/bin/sh
 
+#---
+#dependencies:
+#  curl.se: ^7.8
+#  openssl.org: ^1.1
+#  ffmpeg.org: ^5.1
+#---
+
 # License preamble at the end of the file
 # Version number
 VERSION="3.4.7"
@@ -103,7 +110,7 @@ selection_menu() {
 }
 
 selection_menu_fzf() {
-	printf "%s\n%s" "$1" "$2" | fzf --height=30% --border -1 --layout=reverse --header-first --header-lines=1 --cycle --with-nth 2.. | cut -f1 -d' '
+	printf "%s\n%s" "$1" "$2" | fzf --height=30% --border -1 --layout=reverse --header-first --header-lines=1 --cycle --with-nth 2.. | cut -d\  -f1
 }
 
 version_text () {
@@ -151,8 +158,8 @@ download () {
 # gets anime names along with its id for search term
 search_anime () {
 	search=$(printf '%s' "$1" | tr ' ' '-' )
-	curl -s "https://gogoanime.lu//search.html?keyword=$search" -L |
-		sed -nE 's_^[[:space:]]*<a href="/category/([^"]*)" title.*">$_\1_p'
+	curl -s "https://gogoanime.dk//search.html?keyword=$search" -L |
+		sed -nE "s_^[[:space:]]*<a href=\"/category/([^\"]*)\" title.*\">\$_\1_p"
 }
 
 #fetches all the episodes embed links in an anime from gogoanime server
@@ -190,7 +197,7 @@ search_history () {
 
 generate_link() {
 	case $1 in
-		1)
+		2)
 			provider_name='Xstreamcdn'
 			progress "Fetching $provider_name links.."
 			fb_id=$(printf "%s" "$resp" | sed -n "s_.*fembed.*/v/__p")
@@ -199,14 +206,14 @@ generate_link() {
 			result_links="$(curl -A "$agent" -s -X POST "https://fembed-hd.com/api/source/$fb_id" -H "x-requested-with:XMLHttpRequest" |
 				sed -e 's/\\//g' -e 's/.*data"://' | tr "}" "\n" | sed -nE 's/.*file":"(.*)","label":"(.*)","type.*/\2>\1/p')"
 			;;
-		2)
+		1)
 			provider_name='Animixplay'
 			progress "Fetching $provider_name Direct link.."
 			refr="$base_url"
 			[ -z "$id" ] && return 0
 			enc_id=$(printf "%s" "$id" | base64)
 			ani_id=$(printf "%sLTXs3GrU8we9O%s" "$id" "$enc_id" | base64)
-			result_links="$(curl -s "$base_url/api/live${ani_id}" -A "$agent" -I | sed -nE 's_location: (.*)_\1_p' | cut -d"#" -f2 | base64 -d)"
+			result_links="$(curl -s "$base_url/api/cW9${ani_id}" -A "$agent" -I | sed -nE 's_[L|l]ocation: https?://[^#]*#([^#]*).*_\1_p' | base64 -d)"
 			;;
 		*)
 			provider_name='Gogoanime'
@@ -220,7 +227,7 @@ generate_link() {
 			ajax=$(printf '%s' "$id" | openssl enc -e -aes256 -K "$secret_key" -iv "$iv" -a)
 			data=$(curl -A "$agent" -sL -H "X-Requested-With:XMLHttpRequest" "${gogohd_url}encrypt-ajax.php?id=${ajax}&alias=${id}&${token}" | sed -e 's/{"data":"//' -e 's/"}/\n/' -e 's/\\//g')
 			result_links="$(printf '%s' "$data" | base64 -d 2>/dev/null | openssl enc -d -aes256 -K "$second_key" -iv "$iv" 2>/dev/null |
-				sed -e 's/\].*/\]/' -e 's/\\//g' | grep -Eo 'https:\/\/[-a-zA-Z0-9@:%._\+~#=][a-zA-Z0-9][-a-zA-Z0-9@:%_\+.~#?&\/\/=]*')"
+				tr -d \\\\ | sed -nE "s_.*file\":\"([^\"]*)\".*source.*_\1_p")"
 			;;
 	esac
 }
@@ -425,13 +432,13 @@ open_episode () {
 	# decrypting url
 	dpage_link=$(printf "%s" "$select_ep_result" | sed -n "${episode}p")
 	if [ -z "$dpage_link" ];then
-		err "Episode doesn't exist!!"
+		die "Episode doesn't exist!!"
 	else
 		get_video_link "$dpage_link"
 	fi
 	[ "$debug" -eq 1 ] && exit 0
 	# write anime and episode number and save to temporary history
-	grep -q "$selection_id" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
+	grep -q -- "$selection_id" "$logfile" || printf "%s\t%s\n" "$selection_id" $((episode+1)) >> "$logfile"
 	sed -E "s/^${selection_id}\t[0-9]*/${selection_id}\t$((episode+1))/" "$logfile" > "${logfile}.new"
 	[ ! "$PID" = "0" ] && kill "$PID" >/dev/null 2>&1
 	[ -z "$video_url" ] && die "Video URL not found"
