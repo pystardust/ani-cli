@@ -1,0 +1,88 @@
+.TH "ANI-CLI" "1" "December 2022" "ani-cli" "User Commands"
+.SH NAME
+ani-cli \- watch anime from the commandline
+.SH SYNOPSIS
+.B ani-cli
+[\fI\,OPTIONS\/\fR]
+.SH DESCRIPTION
+A shell script to browse and search anime from the command-line.
+.PD 0
+.P
+.PD
+This tool scrapes the site animixplay.
+.PD 0
+.P
+.PD
+\f[B]ani-cli\f[R] without options defaults to the mpv media player.
+.SH OPTIONS
+.TP
+\fB\-a\fR \fI\,<episode>\/\fR
+Specify the episode number to watch.
+.TP
+\fB\-c\fR
+continue watching anime from history.
+.TP
+\fB\-d\fR
+download episode.
+.TP
+\fB\-D\fR
+delete history.
+.TP
+\fB\-f\fR
+use fzf for anime selection.
+.TP
+\fB\-h\fR
+Show summary of options.
+.TP
+\fB\-p\fR \fI\,DIRECTORY\/\fR
+download episode to the specified DIRECTORY.
+.TP
+\fB\-q\fR \fI\,<best|worst|360|480|720|1080>\/\fR
+set the video quality.
+.TP
+\fB\-r\fR
+select provider to scrape first.
+.TP
+\fB\-s\fR
+watch anime together with friends, using Syncplay (works with mpv only).
+.TP
+\fB\-U\fR
+fetch update from github.
+.TP
+\fB\-v\fR
+use VLC as the media player.
+.TP
+\fB\-V\fR
+print version number and exit.
+.TP
+\fB\-x\fR
+print all video links from all providers to stdout (for debugging
+purpose).
+.SH EPISODE SELECTION
+.PP
+Episode selection: Multiple episodes can be chosen given a range Choose
+episode [1-13]: 1 6 This would choose episodes 1 2 3 4 5 6 To select the
+last episode use -1
+.PP
+When selecting non-interactively, the first result will be selected, if
+anime is passed
+.SH BUGS
+.PP
+Use the GitHub issue tracker:
+https://github.com/pystardust/ani-cli/issues
+.SH COPYRIGHT
+.PP
+ani-cli is licensed under the GNU General Public License v3.0
+.PP
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+.PP
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+.PP
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
