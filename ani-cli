@@ -1,73 +1,113 @@
 #!/bin/sh
 
-#search the query and give results
-search_anime(){
-	query=$(printf "%s" "$*" | sed 's/ /%20/g')
-	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$query%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2(\3 episode)/p"
+use_external_menu=0
+
+launcher() {
+	[ "$use_external_menu" = "0" ] && fzf --prompt "$1"
+	[ "$use_external_menu" = "1" ] && external_menu "$1"
 }
 
-#get the episodes list of the selected anime
-episodes_list(){
+external_menu() {
+	rofi -dmenu -i -width 1500 -p "$1"
+}
+
+nth() {
+	stdin=$(cat -)
+	[ -z "$stdin" ] && return 1
+	line_count="$(printf "%s" "$stdin" | wc -l)"
+	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
+	line=$(printf "%s" "$stdin" | sed 's/.*\t//' | launcher "")
+	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
+}
+
+# search the query and give results
+search_anime() {
+	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2 (\3 episode)/p"
+}
+
+# get the episodes list of the selected anime
+episodes_list() {
 	curl -s "https://allanime.site/anime/$*" -A "$agent" | sed 's/\\//g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's/,/\n/g;s/"//g'
 }
 
-#get the embed urls of the selected episode
-embed_urls(){
-	curl -s "https://allanime.site/watch/$id/$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's/\\u002F/\//g;s/\\//g' | sed -nE 's_.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*_\2 :\1_p'
+# get the embed urls of the selected episode
+embed_urls() {
+	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+	curl -s "https://allanime.site/watch/$id/$allanime_title/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's/\\u002F/\//g;s/\\//g' | sed -nE 's_.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*_\2 :\1_p'
 }
 
-#extract the video links from reponse of embed urls
-get_links(){
-	curl -s "$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p'
+# innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
+provider_init() {
+	provider_name=$1
+	provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
 }
 
-#generates links based on given provider
-generate_link(){
+# generates links based on given provider
+generate_link() {
 	case $1 in
-		1)
-			#vrv,wixmp(default)(m3u8)(multi)
-			provider_name='vrv|wixmp'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Default :/p' | head -1 | cut -d':' -f2)
-			;;
-		2)
-			#pstatic(default backup)(mp4)(multi)
-			provider_name='pstatic'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Default B :/p' | head -1 | cut -d':' -f2)
-			;;
-		3)
-			#sharepoint(mp4)(single)
-			provider_name='sharepoint'
-			provider_id=$(printf "%s" "$resp" | sed -n '/S-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
-		4)
-			#usercloud(mp4)(single)
-			provider_name='usercloud'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Uv-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
-		*)
-			#gogoanime(m3u8)(multi)
-			provider_name='gogoanime'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Luf-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
+	1)
+		# vrv,wixmp(default)(m3u8)(multi)
+		provider_init 'vrv|wixmp' '/Default :/p' ;;
+	2)
+		# pstatic(default backup)(mp4)(multi)
+		provider_init 'pstatic' '/Default B :/p' ;;
+	3)
+		# sharepoint(mp4)(single)
+		provider_init 'sharepoint' '/S-mp4 :/p' ;;
+	4)
+		# usercloud(mp4)(single)
+		provider_init 'usercloud' '/Uv-mp4 :/p' ;;
+	*)
+		# gogoanime(m3u8)(multi)
+		provider_init 'gogoanime' '/Luf-mp4 :/p' ;;
 	esac
-	#logic yet to implement
+	# logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
-	[ -z "$provider_id" ] || get_links "$provider_id"
+	[ -n "$provider_id" ] && get_links "$provider_id"
 }
 
-#main
-menu='fzf --layout=reverse --border --height=15'
+# extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
+get_links() {
+	series_link="$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')"
+	episode_link="$(curl -s "$series_link" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p')"	
+	case "$episode_link" in
+	*v.vrv.co*)
+		extract_link=$(printf "%s" "$episode_link" | grep "$subtitle" | cut -d'>' -f2)
+		curl -s "$extract_link" | sed 's/^#.*x//g;s/,.*/p/g;/^#/d;$!N;s/\n/ >/;s/\/index-v1-a1\.m3u8//g' | sort -nr
+		;;
+	*repackager.wixmp.com*)
+		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's_repackager.wixmp.com/__g;s_\.urlset.*__g')
+		for j in $(printf "%s" "$episode_link" | sed -nE 's_.*/,([^/]*),/mp4.*_\1_p' | sed 's/,/\n/g'); do
+			printf "%s >%s\n" "$j" "$extract_link" | sed "s_,[^/]*_${j}_g"
+		done | sort -nr
+		;;
+	*)
+		printf "%s" "$episode_link"
+		;;
+	esac
+}
+
+# main
+
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
-result=$(search_anime "$*" | $menu --with-nth=2..)
+subtitle="en-US"
+query="$*"
+while [ -z "$query" ]; do
+	printf "Search anime\n>> "
+	read -r query
+done
+query=$(printf "%s" "$query" | sed "s/ /%20/g")
+anime_list=$(search_anime "$query")
+result=$(printf "%s" "$anime_list" | nth) || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
-ep_no=$(episodes_list "$id" | $menu)
+ep_no=$(episodes_list "$id" | nth) || exit 1
 resp=$(embed_urls)
 provider=1
 i=0
-while [ "$i" -lt 5 ];do
+while [ "$i" -lt 5 ]; do
 	generate_link "$provider"
 	provider=$((provider % 5 + 1))
-	: $((i+=1))
+	: $((i += 1))
 done
