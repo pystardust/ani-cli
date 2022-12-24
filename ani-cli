@@ -1,54 +1,72 @@
 #!/bin/sh
 
+use_external_menu=0
+
+launcher() {
+	[ "$use_external_menu" = "0" ] && fzf --prompt "$1"
+	[ "$use_external_menu" = "1" ] && external_menu "$1"
+}
+
+external_menu() {
+	rofi -dmenu -i -width 1500 -p "$1"
+}
+
+nth() {
+	stdin=$(cat)
+	[ -z "$stdin" ] && return 1
+	[ "$(echo "$stdin" | wc -l)" -eq 1 ] && echo "$stdin" && return 0
+	line=$(echo "$stdin" | awk -F '\t' "{ print NR, $1 }" | launcher "" | cut -d\  -f1)
+	[ -n "$line" ] && echo "$stdin" | sed "${line}q;d" || exit 1
+}
+
 #search the query and give results
-search_anime(){
-	query=$(printf "%s" "$*" | sed 's/ /%20/g')
-	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$query%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2(\3 episode)/p"
+search_anime() {
+	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$query%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2 (\3 episode)/p"
 }
 
 #get the episodes list of the selected anime
-episodes_list(){
+episodes_list() {
 	curl -s "https://allanime.site/anime/$*" -A "$agent" | sed 's/\\//g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's/,/\n/g;s/"//g'
 }
 
 #get the embed urls of the selected episode
-embed_urls(){
+embed_urls() {
 	curl -s "https://allanime.site/watch/$id/$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's/\\u002F/\//g;s/\\//g' | sed -nE 's_.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*_\2 :\1_p'
 }
 
 #extract the video links from reponse of embed urls
-get_links(){
+get_links() {
 	curl -s "$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p'
 }
 
 #generates links based on given provider
-generate_link(){
+generate_link() {
 	case $1 in
-		1)
-			#vrv,wixmp(default)(m3u8)(multi)
-			provider_name='vrv|wixmp'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Default :/p' | head -1 | cut -d':' -f2)
-			;;
-		2)
-			#pstatic(default backup)(mp4)(multi)
-			provider_name='pstatic'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Default B :/p' | head -1 | cut -d':' -f2)
-			;;
-		3)
-			#sharepoint(mp4)(single)
-			provider_name='sharepoint'
-			provider_id=$(printf "%s" "$resp" | sed -n '/S-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
-		4)
-			#usercloud(mp4)(single)
-			provider_name='usercloud'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Uv-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
-		*)
-			#gogoanime(m3u8)(multi)
-			provider_name='gogoanime'
-			provider_id=$(printf "%s" "$resp" | sed -n '/Luf-mp4 :/p' | head -1 | cut -d':' -f2)
-			;;
+	1)
+		#vrv,wixmp(default)(m3u8)(multi)
+		provider_name='vrv|wixmp'
+		provider_id=$(printf "%s" "$resp" | sed -n '/Default :/p' | head -1 | cut -d':' -f2)
+		;;
+	2)
+		#pstatic(default backup)(mp4)(multi)
+		provider_name='pstatic'
+		provider_id=$(printf "%s" "$resp" | sed -n '/Default B :/p' | head -1 | cut -d':' -f2)
+		;;
+	3)
+		#sharepoint(mp4)(single)
+		provider_name='sharepoint'
+		provider_id=$(printf "%s" "$resp" | sed -n '/S-mp4 :/p' | head -1 | cut -d':' -f2)
+		;;
+	4)
+		#usercloud(mp4)(single)
+		provider_name='usercloud'
+		provider_id=$(printf "%s" "$resp" | sed -n '/Uv-mp4 :/p' | head -1 | cut -d':' -f2)
+		;;
+	*)
+		#gogoanime(m3u8)(multi)
+		provider_name='gogoanime'
+		provider_id=$(printf "%s" "$resp" | sed -n '/Luf-mp4 :/p' | head -1 | cut -d':' -f2)
+		;;
 	esac
 	#logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
@@ -56,18 +74,21 @@ generate_link(){
 }
 
 #main
-menu='fzf --layout=reverse --border --height=15'
+
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
-result=$(search_anime "$*" | $menu --with-nth=2..)
+[ -z "$*" ] && printf ">> " && read -r query || query=$*
+query=$(echo "$query" | sed "s/ /%20/g")
+anime_list=$(search_anime "$*")
+result=$(printf "%s" "$anime_list" | nth "\$2")
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
-ep_no=$(episodes_list "$id" | $menu)
+ep_no=$(episodes_list "$id" | nth "\$2")
 resp=$(embed_urls)
 provider=1
 i=0
-while [ "$i" -lt 5 ];do
+while [ "$i" -lt 5 ]; do
 	generate_link "$provider"
 	provider=$((provider % 5 + 1))
-	: $((i+=1))
+	: $((i += 1))
 done
