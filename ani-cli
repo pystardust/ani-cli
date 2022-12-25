@@ -70,13 +70,28 @@ generate_link() {
 	esac
 	#logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
-	[ -z "$provider_id" ] || get_links "$provider_id"
+	[ -z "$provider_id" ] || m3u8_to_mp4 "$(get_links "$provider_id")"
+}
+
+m3u8_to_mp4(){
+	if printf "%s" "$1" | grep -q "v.vrv.co";then
+		extract_link=$(printf "%s" "$1" | grep "$subtitle" | cut -d'>' -f2)
+		curl -s "$extract_link" | sed 's/^#.*x//g;s/,.*/p/g;/^#/d;$!N;s/\n/ >/;s/\/index-v1-a1\.m3u8//g' | sort -nr
+	elif printf "%s" "$1" | grep -q "repackager.wixmp.com";then
+		extract_link=$(printf "%s" "$1" | cut -d'>' -f2 | sed 's_repackager.wixmp.com/__g;s_\.urlset.*__g')
+		for j in $(printf "%s" "$1" | sed -nE 's_.*/,([^/]*),/mp4.*_\1_p' | sed 's/,/\n/g');do
+			printf "%s >%s\n" "$j" "$extract_link" | sed "s_,[^/]*_${j}_g"
+		done | sort -nr
+	else
+		printf "%s" "$1"
+	fi
 }
 
 #main
 
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
+subtitle="en-US"
 [ -z "$*" ] && printf ">> " && read -r query || query=$*
 query=$(printf "%s" "$query" | sed "s/ /%20/g")
 anime_list=$(search_anime "$*")
