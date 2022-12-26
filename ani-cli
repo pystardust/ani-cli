@@ -73,7 +73,7 @@ get_links() {
 	case "$episode_link" in
 	*v.vrv.co*)
 		extract_link=$(printf "%s" "$episode_link" | grep "$subtitle" | cut -d'>' -f2)
-		curl -s "$extract_link" | sed 's/^# .*x//g;s/,.*/p/g;/^#/d;$!N;s/\n/ >/;s/\/index-v1-a1\.m3u8//g' | sort -nr
+		curl -s "$extract_link" | sed 's/^#.*x//g;s/,.*/p/g;/^#/d;$!N;s/\n/ >/;s/\/index-v1-a1\.m3u8//g' | sort -nr
 		;;
 	*repackager.wixmp.com*)
 		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's_repackager.wixmp.com/__g;s_\.urlset.*__g')
@@ -92,7 +92,11 @@ get_links() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
-[ -z "$*" ] && printf ">> " && read -r query || query=$*
+query=$*
+while [ -z "$query" ]; do
+	printf "Search anime\n>> "
+	read -r query
+done
 query=$(printf "%s" "$query" | sed "s/ /%20/g")
 anime_list=$(search_anime "$*")
 result=$(printf "%s" "$anime_list" | nth) || exit 1
