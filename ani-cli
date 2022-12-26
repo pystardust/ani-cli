@@ -32,12 +32,8 @@ episodes_list() {
 
 # get the embed urls of the selected episode
 embed_urls() {
-	curl -s "https://allanime.site/watch/$id/$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's/\\u002F/\//g;s/\\//g' | sed -nE 's_.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*_\2 :\1_p'
-}
-
-# extract the video links from reponse of embed urls
-get_links() {
-	curl -s "$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p'
+	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+	curl -s "https://allanime.site/watch/$id/$allanime_title/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's/\\u002F/\//g;s/\\//g' | sed -nE 's_.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*_\2 :\1_p'
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -67,23 +63,26 @@ generate_link() {
 	esac
 	# logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
-	[ -z "$provider_id" ] || m3u8_to_mp4 "$(get_links "$provider_id")"
+	[ -n "$provider_id" ] && get_links "$provider_id"
 }
 
-m3u8_to_mp4() {
-	case "$1" in
+# extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
+get_links() {
+	series_link="$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')"
+	episode_link="$(curl -s "$series_link" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p')"	
+	case "$episode_link" in
 	*v.vrv.co*)
-		extract_link=$(printf "%s" "$1" | grep "$subtitle" | cut -d'>' -f2)
+		extract_link=$(printf "%s" "$episode_link" | grep "$subtitle" | cut -d'>' -f2)
 		curl -s "$extract_link" | sed 's/^# .*x//g;s/,.*/p/g;/^#/d;$!N;s/\n/ >/;s/\/index-v1-a1\.m3u8//g' | sort -nr
 		;;
 	*repackager.wixmp.com*)
-		extract_link=$(printf "%s" "$1" | cut -d'>' -f2 | sed 's_repackager.wixmp.com/__g;s_\.urlset.*__g')
-		for j in $(printf "%s" "$1" | sed -nE 's_.*/,([^/]*),/mp4.*_\1_p' | sed 's/,/\n/g'); do
+		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's_repackager.wixmp.com/__g;s_\.urlset.*__g')
+		for j in $(printf "%s" "$episode_link" | sed -nE 's_.*/,([^/]*),/mp4.*_\1_p' | sed 's/,/\n/g'); do
 			printf "%s >%s\n" "$j" "$extract_link" | sed "s_,[^/]*_${j}_g"
 		done | sort -nr
 		;;
 	*)
-		printf "%s" "$1"
+		printf "%s" "$episode_link"
 		;;
 	esac
 }
