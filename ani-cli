@@ -3,12 +3,12 @@
 use_external_menu=0
 
 launcher() {
-	[ "$use_external_menu" = "0" ] && fzf --prompt "$1"
-	[ "$use_external_menu" = "1" ] && external_menu "$1"
+	[ "$use_external_menu" = "0" ] && fzf --prompt "$*"
+	[ "$use_external_menu" = "1" ] && external_menu "$*"
 }
 
 external_menu() {
-	rofi -dmenu -i -width 1500 -p "$1"
+	rofi -dmenu -i -width 1500 -p "$*"
 }
 
 nth() {
@@ -16,7 +16,7 @@ nth() {
 	[ -z "$stdin" ] && return 1
 	line_count="$(printf "%s" "$stdin" | wc -l)"
 	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
-	line=$(printf "%s" "$stdin" | sed 's/.*\t//' | launcher "")
+	line=$(printf "%s" "$stdin" | sed 's/.*\t//' | launcher "$*")
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
 }
 
@@ -88,61 +88,66 @@ get_links() {
 }
 
 # todo
+# intent: player_function is set at program start, then the matching branch has the neccesary setup and the command.
+# player_function can be a player program, download or debug.
 play_episode () {
-	printf "%s\n\r%s\n\r%s\n\r" "$title" "$id" "$ep_no"
+	case "$player_function" in
+		debug)
+			provider=1
+			i=0
+			while [ "$i" -lt 5 ]; do
+				generate_link "$provider"
+				provider=$((provider % 5 + 1))
+				: $((i += 1))
+			done
+			;;
+		mpv|iina)
+			;;
+		vlc)
+			;;
+		syncplay)
+			;;
+		download)
+			;;
+	esac
 }
 
 # main
-
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
 query="$*"
-debug_mode=1
+player_function="debug"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
 done
 query=$(printf "%s" "$query" | sed "s/ /%20/g")
 anime_list=$(search_anime "$query")
-result=$(printf "%s" "$anime_list" | nth) || exit 1
+result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
-ep_no=$(episodes_list "$id" | nth) || exit 1
+ep_list=$(episodes_list "$id")
+ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 resp=$(embed_urls)
-if [ "$debug_mode" -ne 0 ]; then
-	provider=1
-	i=0
-	while [ "$i" -lt 5 ]; do
-		generate_link "$provider"
-		provider=$((provider % 5 + 1))
-		: $((i += 1))
-	done
-else
+
+play_episode
+while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... ") ; do
+	case "$cmd" in
+		previous)
+			ep_no=$(printf "%s" "$ep_list" | grep -w -C 1 "$ep_no") 2>/dev/null || printf "Episode not available\n" && exit 0
+			;;
+		replay)
+			;;
+		next)
+			ep_no=$(printf "%s" "$ep_list" | grep -w -C -1 "$ep_no") 2>/dev/null || printf "Episode not available\n" && exit 0
+			;;
+		select)
+			ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
+			;;
+		quit)
+			exit 0
+			;;
+	esac
 	play_episode
-	while : ; do
-		cmd=$(printf "next\nreplay\nprevious\nselect\nquit" | nth) || exit 1
-		case "$cmd" in
-			previous) # previous
-				ep_no="$((ep_no - 1))"
-				;;
-			replay) 
-				;;
-			next)
-				ep_no="$((ep_no + 1))"
-				;;
-			select)
-				printf "Select episode\n\r>> "
-				read -r ep_no
-				;;
-			quit)
-				exit 0 
-				;;
-			*)
-				printf "invalid input"
-				continue
-				;;
-		esac
-		play_episode
-	done
-fi
+done
