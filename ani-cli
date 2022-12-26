@@ -20,6 +20,11 @@ nth() {
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
 }
 
+die() {
+	printf "%s\n" "$*" >&2
+	exit 1
+}
+
 # search the query and give results
 search_anime() {
 	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2 (\3 episode)/p"
@@ -47,19 +52,24 @@ generate_link() {
 	case $1 in
 	1)
 		# vrv,wixmp(default)(m3u8)(multi)
-		provider_init 'vrv|wixmp' '/Default :/p' ;;
+		provider_init 'vrv|wixmp' '/Default :/p'
+		;;
 	2)
 		# pstatic(default backup)(mp4)(multi)
-		provider_init 'pstatic' '/Default B :/p' ;;
+		provider_init 'pstatic' '/Default B :/p'
+		;;
 	3)
 		# sharepoint(mp4)(single)
-		provider_init 'sharepoint' '/S-mp4 :/p' ;;
+		provider_init 'sharepoint' '/S-mp4 :/p'
+		;;
 	4)
 		# usercloud(mp4)(single)
-		provider_init 'usercloud' '/Uv-mp4 :/p' ;;
+		provider_init 'usercloud' '/Uv-mp4 :/p'
+		;;
 	*)
 		# gogoanime(m3u8)(multi)
-		provider_init 'gogoanime' '/Luf-mp4 :/p' ;;
+		provider_init 'gogoanime' '/Luf-mp4 :/p'
+		;;
 	esac
 	# logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
@@ -69,7 +79,7 @@ generate_link() {
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
 	series_link="$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')"
-	episode_link="$(curl -s "$series_link" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p')"	
+	episode_link="$(curl -s "$series_link" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p')"
 	case "$episode_link" in
 	*v.vrv.co*)
 		extract_link=$(printf "%s" "$episode_link" | grep "$subtitle" | cut -d'>' -f2)
@@ -90,29 +100,24 @@ get_links() {
 # todo
 # intent: player_function is set at program start, then the matching branch has the neccesary setup and the command.
 # player_function can be a player program, download or debug.
-play_episode () {
+play_episode() {
 	case "$player_function" in
-		debug)
-			provider=1
-			i=0
-			while [ "$i" -lt 5 ]; do
-				generate_link "$provider"
-				provider=$((provider % 5 + 1))
-				: $((i += 1))
-			done
-			;;
-		mpv|iina)
-			;;
-		vlc)
-			;;
-		syncplay)
-			;;
-		download)
-			;;
-		*)
-			printf "Invalid player function"
-			exit 1
-			;;
+	debug)
+		provider=1
+		i=0
+		while [ "$i" -lt 5 ]; do
+			generate_link "$provider"
+			provider=$((provider % 5 + 1))
+			: $((i += 1))
+		done
+		;;
+	mpv | iina) ;;
+	vlc) ;;
+	syncplay) ;;
+	download) ;;
+	*)
+		die "Invalid player function"
+		;;
 	esac
 }
 
@@ -136,22 +141,39 @@ ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 resp=$(embed_urls)
 
 play_episode
-while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... ") ; do
+while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
-		previous)
-			ep_no=$(printf "%s" "$ep_list" | grep -w -C 1 "$ep_no") 2>/dev/null || printf "Episode not available\n" && exit 0
-			;;
-		replay)
-			;;
-		next)
-			ep_no=$(printf "%s" "$ep_list" | grep -w -C -1 "$ep_no") 2>/dev/null || printf "Episode not available\n" && exit 0
-			;;
-		select)
-			ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
-			;;
-		*)
-			exit 0
-			;;
+	previous)
+		ep_no=$(printf "%s" "$ep_list" | grep -w "$((ep_no - 1))") 2>/dev/null || die "Episode not available"
+		;;
+	replay) ;;
+	next)
+		ep_no=$(printf "%s\n" "$ep_list" | grep -w "$((ep_no + 1))") 2>/dev/null || die "Episode not available"
+		;;
+	select)
+		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
+		;;
+	*)
+		exit 0
+		;;
 	esac
+	resp=$(embed_urls)
 	play_episode
 done
+
+# ani-cli
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+# Project repository: https://github.com/pystardust/ani-cli
