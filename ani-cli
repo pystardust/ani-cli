@@ -22,7 +22,7 @@ nth() {
 
 # search the query and give results
 search_anime() {
-	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$query%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2 (\3 episode)/p"
+	curl -s "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Afalse%2C%22allowUnknown%22%3Afalse%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A26%2C%22page%22%3A1%2C%22translationType%22%3A%22sub%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's/Show/\n/g' | sed -nE "s/.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*/\1\t\2 (\3 episode)/p"
 }
 
 # get the episodes list of the selected anime
@@ -92,13 +92,13 @@ get_links() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
-query=$*
+query="$*"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
 done
 query=$(printf "%s" "$query" | sed "s/ /%20/g")
-anime_list=$(search_anime "$*")
+anime_list=$(search_anime "$query")
 result=$(printf "%s" "$anime_list" | nth) || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
