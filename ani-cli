@@ -12,9 +12,10 @@ external_menu() {
 }
 
 nth() {
-	stdin=$(cat)
+	stdin=$(cat -)
 	[ -z "$stdin" ] && return 1
-	[ "$(printf "%s" "$stdin" | wc -l)" -eq 1 ] && printf "%s" "$stdin" && return 0
+	line_count="$(printf "%s" "$stdin" | wc -l)"
+	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
 	line=$(printf "%s" "$stdin" | sed 's/.*\t//' | launcher "")
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
 }
@@ -95,10 +96,10 @@ subtitle="en-US"
 [ -z "$*" ] && printf ">> " && read -r query || query=$*
 query=$(printf "%s" "$query" | sed "s/ /%20/g")
 anime_list=$(search_anime "$*")
-result=$(printf "%s" "$anime_list" | nth)
+result=$(printf "%s" "$anime_list" | nth) || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
-ep_no=$(episodes_list "$id" | nth)
+ep_no=$(episodes_list "$id" | nth) || exit 1
 resp=$(embed_urls)
 provider=1
 i=0
