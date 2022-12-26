@@ -87,12 +87,18 @@ get_links() {
 	esac
 }
 
+# todo
+play_episode () {
+	printf "%s\n\r%s\n\r%s\n\r" "$title" "$id" "$ep_no"
+}
+
 # main
 
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
 query="$*"
+debug_mode=1
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
@@ -104,10 +110,39 @@ title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
 ep_no=$(episodes_list "$id" | nth) || exit 1
 resp=$(embed_urls)
-provider=1
-i=0
-while [ "$i" -lt 5 ]; do
-	generate_link "$provider"
-	provider=$((provider % 5 + 1))
-	: $((i += 1))
-done
+if [ "$debug_mode" -ne 0 ]; then
+	provider=1
+	i=0
+	while [ "$i" -lt 5 ]; do
+		generate_link "$provider"
+		provider=$((provider % 5 + 1))
+		: $((i += 1))
+	done
+else
+	play_episode
+	while : ; do
+		cmd=$(printf "next\nreplay\nprevious\nselect\nquit" | nth) || exit 1
+		case "$cmd" in
+			previous) # previous
+				ep_no="$((ep_no - 1))"
+				;;
+			replay) 
+				;;
+			next)
+				ep_no="$((ep_no + 1))"
+				;;
+			select)
+				printf "Select episode\n\r>> "
+				read -r ep_no
+				;;
+			quit)
+				exit 0 
+				;;
+			*)
+				printf "invalid input"
+				continue
+				;;
+		esac
+		play_episode
+	done
+fi
