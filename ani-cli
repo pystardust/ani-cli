@@ -39,34 +39,30 @@ get_links() {
 	curl -s "$(printf "%s" "https://blog.allanime.pro/apivtwo/clock.json?id=$*" | sed 's/\\u002F/\//g')" -A "$agent" | sed 's/},{/\n/g' | sed -nE 's_.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*_\2 >\1_p'
 }
 
+#innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
+provider_init() {
+	provider_name=$1
+	provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
+}
+
 #generates links based on given provider
 generate_link() {
 	case $1 in
 	1)
 		#vrv,wixmp(default)(m3u8)(multi)
-		provider_name='vrv|wixmp'
-		provider_id=$(printf "%s" "$resp" | sed -n '/Default :/p' | head -1 | cut -d':' -f2)
-		;;
+		provider_init 'vrv|wixmp' '/Default :/p' ;;
 	2)
 		#pstatic(default backup)(mp4)(multi)
-		provider_name='pstatic'
-		provider_id=$(printf "%s" "$resp" | sed -n '/Default B :/p' | head -1 | cut -d':' -f2)
-		;;
+		provider_init 'pstatic' '/Default B :/p' ;;
 	3)
 		#sharepoint(mp4)(single)
-		provider_name='sharepoint'
-		provider_id=$(printf "%s" "$resp" | sed -n '/S-mp4 :/p' | head -1 | cut -d':' -f2)
-		;;
+		provider_init 'sharepoint' '/S-mp4 :/p' ;;
 	4)
 		#usercloud(mp4)(single)
-		provider_name='usercloud'
-		provider_id=$(printf "%s" "$resp" | sed -n '/Uv-mp4 :/p' | head -1 | cut -d':' -f2)
-		;;
+		provider_init 'usercloud' '/Uv-mp4 :/p' ;;
 	*)
 		#gogoanime(m3u8)(multi)
-		provider_name='gogoanime'
-		provider_id=$(printf "%s" "$resp" | sed -n '/Luf-mp4 :/p' | head -1 | cut -d':' -f2)
-		;;
+		provider_init 'gogoanime' '/Luf-mp4 :/p' ;;
 	esac
 	#logic yet to implement
 	printf "\n\nFetching %s Links\n" "$provider_name"
