@@ -109,6 +109,10 @@ play_episode () {
 			;;
 		download)
 			;;
+		*)
+			printf "Invalid player function"
+			exit 1
+			;;
 	esac
 }
 
@@ -145,7 +149,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode
 		select)
 			ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 			;;
-		quit)
+		*)
 			exit 0
 			;;
 	esac
