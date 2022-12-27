@@ -133,6 +133,7 @@ play_episode() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
+
 query="$*"
 player_function="debug"
 while [ -z "$query" ]; do
@@ -145,18 +146,18 @@ result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
+
 ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 resp=$(embed_urls)
-
 play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | grep -w "$((ep_no - 1))") 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s" "$ep_list" | grep -w -A 1 "$ep_no" | tail -n1) 2>/dev/null || die "Episode not available"
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | grep -w "$((ep_no + 1))") 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s\n" "$ep_list" | grep -w -B 1 "$ep_no" | head -n1) 2>/dev/null || die "Episode not available"
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
