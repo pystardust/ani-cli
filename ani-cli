@@ -21,7 +21,7 @@ nth() {
 }
 
 die() {
-	printf "%s\n" "$*" >&2
+	printf "%s\n" "$*" 1>&2
 	exit 1
 }
 
@@ -102,7 +102,7 @@ get_links() {
 		printf "%s" "$episode_link"
 		;;
 	esac
-	printf "Fetching %s Links\n" "$provider_name" >&2
+	printf "Fetching %s Links\n" "$provider_name" 1>&2
 }
 
 select_quality () {
@@ -117,7 +117,7 @@ select_quality () {
 		result=$(cat "$cache_dir"/* | grep "$1")
 		;;
 	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" >&2 && result=$(cat "$cache_dir"/* | head -n1)
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(cat "$cache_dir"/* | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
