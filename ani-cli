@@ -196,11 +196,11 @@ play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | grep -w -A 1 "$ep_no" | tail -n1) 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s" "$ep_list" | sed "\$\!N;/\n${ep_no}$/P;D") 2>/dev/null
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | grep -w -B 1 "$ep_no" | head -n1) 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s\n" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
