@@ -21,7 +21,7 @@ nth() {
 }
 
 die() {
-	printf "%s\n" "$*" >&2
+	printf "%s\n" "$*" 1>&2
 	exit 1
 }
 
@@ -102,6 +102,7 @@ get_links() {
 		printf "%s" "$episode_link"
 		;;
 	esac
+	printf "Fetching %s Links\n" "$provider_name" 1>&2
 }
 
 select_quality () {
@@ -117,7 +118,7 @@ select_quality () {
 		result=$(printf "%s" "$links" | grep -m 1 "$1")
 		;;
 	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(printf "%s" "$links" | head -n1)
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(cat "$cache_dir"/* | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
@@ -134,7 +135,6 @@ play_episode() {
 	i=0
 	while [ "$i" -lt 5 ]; do		
 		generate_link "$provider" > "$cache_dir"/"$i" &
-		printf "Fetching %s Links\n" "$provider_name"
 		provider=$((provider % 5 + 1))
 		: $((i += 1))
 	done
@@ -149,10 +149,18 @@ play_episode() {
 		cat "$cache_dir"/*
 		printf "Selected link:\n%s\n" "$episode"
 		;;
-	mpv | iina) ;;
-	vlc) ;;
-	syncplay) ;;
-	download) ;;
+	mpv | iina)
+		"$player_function" "$episode"
+		;;
+	vlc)
+		"$player_function" "$episode"
+		;;
+	syncplay)
+		"$player_function" "$episode"
+		;;
+	download)
+		aria2c "$episode"
+		;;
 	*)
 		die "Invalid player function"
 		;;
@@ -171,7 +179,7 @@ log_dir="${XDG_STATE_HOME:-~/.local/state}/ani-cli"
 
 
 query="$*"
-player_function="debug"
+player_function="mpv"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
@@ -189,11 +197,11 @@ play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | grep -w -A 1 "$ep_no" | tail -n1) 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s" "$ep_list" | sed "\$\!N;/\n${ep_no}$/P;D") 2>/dev/null
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | grep -w -B 1 "$ep_no" | head -n1) 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s\n" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
