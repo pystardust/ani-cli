@@ -102,6 +102,7 @@ get_links() {
 		printf "%s" "$episode_link"
 		;;
 	esac
+	printf "Fetching %s Links\n" "$provider_name" >&2
 }
 
 select_quality () {
@@ -116,7 +117,7 @@ select_quality () {
 		result=$(cat "$cache_dir"/* | grep "$1")
 		;;
 	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" && result=$(cat "$cache_dir"/* | head -n1)
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" >&2 && result=$(cat "$cache_dir"/* | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
@@ -133,7 +134,6 @@ play_episode() {
 	i=0
 	while [ "$i" -lt 5 ]; do		
 		generate_link "$provider" > "$cache_dir"/"$i" &
-		printf "Fetching %s Links\n" "$provider_name"
 		provider=$((provider % 5 + 1))
 		: $((i += 1))
 	done
@@ -148,10 +148,18 @@ play_episode() {
 		cat "$cache_dir"/*
 		printf "Selected link:\n%s\n" "$episode"
 		;;
-	mpv | iina) ;;
-	vlc) ;;
-	syncplay) ;;
-	download) ;;
+	mpv | iina)
+		"$player_function" "$episode"
+		;;
+	vlc)
+		"$player_function" "$episode"
+		;;
+	syncplay)
+		"$player_function" "$episode"
+		;;
+	download)
+		aria2c "$episode"
+		;;
 	*)
 		die "Invalid player function"
 		;;
@@ -170,7 +178,7 @@ log_dir="${XDG_STATE_HOME:-~/.local/state}/ani-cli"
 
 
 query="$*"
-player_function="debug"
+player_function="mpv"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
