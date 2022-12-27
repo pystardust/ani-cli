@@ -104,6 +104,22 @@ get_links() {
 	esac
 }
 
+select_quality () {
+	case "$1" in
+	best)
+		result=$(cat "$cache_dir"/* | head -n1)
+		;;
+	worst)
+		result=$(cat "$cache_dir"/* | tail -n1)
+		;;
+	*)
+		result=$(cat "$cache_dir"/* | grep "$1")
+		;;
+	esac
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" && result=$(cat "$cache_dir"/* | head -n1)
+	printf "%s" "$result" | cut -d'>' -f2
+}
+
 # todo
 # intent: player_function is set at program start, then the matching branch has the neccesary setup and the command.
 # player_function can be a player program, download or debug.
@@ -115,16 +131,22 @@ play_episode() {
 	# generate links into sequential files
 	provider=1
 	i=0
-	while [ "$i" -lt 5 ]; do
+	while [ "$i" -lt 5 ]; do		
 		generate_link "$provider" > "$cache_dir"/"$i" &
+		printf "Fetching %s Links\n" "$provider_name"
 		provider=$((provider % 5 + 1))
 		: $((i += 1))
 	done
 	wait
+	# select the link with matching quality
+	episode=$(select_quality "$quality")
+	[ -z "$episode" ] && die "Episode not released!"
 	#play the episode
 	case "$player_function" in
 	debug)
+		printf "All links:\n"
 		cat "$cache_dir"/*
+		printf "Selected link:\n%s\n" "$episode"
 		;;
 	mpv | iina) ;;
 	vlc) ;;
@@ -140,6 +162,7 @@ play_episode() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
+quality="best"
 cache_dir="${XDG_CACHE_HOME:-~/.cache}/ani-cli"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 log_dir="${XDG_STATE_HOME:-~/.local/state}/ani-cli"
