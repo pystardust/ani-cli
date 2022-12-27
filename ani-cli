@@ -72,7 +72,6 @@ generate_link() {
 		;;
 	esac
 	# logic yet to implement
-	printf "\n\nFetching %s Links\n" "$provider_name"
 	[ -n "$provider_id" ] && get_links "$provider_id"
 }
 
@@ -109,15 +108,23 @@ get_links() {
 # intent: player_function is set at program start, then the matching branch has the neccesary setup and the command.
 # player_function can be a player program, download or debug.
 play_episode() {
+	# clear cache
+	for file in "$cache_dir"/*; do
+		: > "$file"
+	done
+	# generate links into sequential files
+	provider=1
+	i=0
+	while [ "$i" -lt 5 ]; do
+		generate_link "$provider" > "$cache_dir"/"$i" &
+		provider=$((provider % 5 + 1))
+		: $((i += 1))
+	done
+	wait
+	#play the episode
 	case "$player_function" in
 	debug)
-		provider=1
-		i=0
-		while [ "$i" -lt 5 ]; do
-			generate_link "$provider"
-			provider=$((provider % 5 + 1))
-			: $((i += 1))
-		done
+		cat "$cache_dir"/*
 		;;
 	mpv | iina) ;;
 	vlc) ;;
@@ -133,6 +140,12 @@ play_episode() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
+cache_dir="${XDG_CACHE_HOME:-~/.cache}/ani-cli"
+[ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
+log_dir="${XDG_STATE_HOME:-~/.local/state}/ani-cli"
+[ ! -d "$log_dir" ] && mkdir -p "$log_dir"
+
+
 query="$*"
 player_function="debug"
 while [ -z "$query" ]; do
@@ -145,18 +158,18 @@ result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 title=$(printf "%s" "$result" | cut -f2)
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
+
 ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 resp=$(embed_urls)
-
 play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | grep -w "$((ep_no - 1))") 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s" "$ep_list" | grep -w -A 1 "$ep_no" | tail -n1) 2>/dev/null || die "Episode not available"
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | grep -w "$((ep_no + 1))") 2>/dev/null || die "Episode not available"
+		ep_no=$(printf "%s\n" "$ep_list" | grep -w -B 1 "$ep_no" | head -n1) 2>/dev/null || die "Episode not available"
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
