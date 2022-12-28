@@ -171,9 +171,9 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
 quality="best"
-cache_dir="${XDG_CACHE_HOME:-~/.cache}/ani-cli"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
-log_dir="${XDG_STATE_HOME:-~/.local/state}/ani-cli"
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli"
 [ ! -d "$log_dir" ] && mkdir -p "$log_dir"
 
 
@@ -196,11 +196,11 @@ play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | sed "\$\!N;/\n${ep_no}$/P;D") 2>/dev/null
+		ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+		ep_no=$(printf "%s\n" "$ep_list" | sed -n "/^${ep_no}$/{g;1\!p;};h") 2>/dev/null
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
