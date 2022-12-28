@@ -158,13 +158,13 @@ play_episode() {
 		printf "Selected link:\n%s\n" "$episode"
 		;;
 	mpv | iina)
-		"$player_function" "$episode"
+		nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null &
 		;;
 	vlc)
-		"$player_function" "$episode"
+		nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null &
 		;;
 	syncplay)
-		"$player_function" "$episode"
+		nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" > /dev/null &
 		;;
 	download)
 		"$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}"
