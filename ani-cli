@@ -108,9 +108,17 @@ select_quality () {
 	case "$1" in
 	best)
 		result=$(cat "$cache_dir"/* | head -n1)
+		for qual in 1080 720 480 360 240 144; do
+			result_fixed=$(cat "$cache_dir"/* | grep -m 1 "$qual")
+			[ -n "$result_in" ] && result="$result_fixed" && break
+		done
 		;;
 	worst)
 		result=$(cat "$cache_dir"/* | tail -n1)
+		for qual in 144 270 360 480 720 1080; do
+			result_fixed=$(cat "$cache_dir"/* | grep -m 1 "$qual")
+			[ -n "$result_in" ] && result="$result_fixed" && break
+		done
 		;;
 	*)
 		result=$(cat "$cache_dir"/* | grep -m 1 "$1")
@@ -179,7 +187,7 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
 download_dir="."
-quality="best"
+quality="1080"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli"
