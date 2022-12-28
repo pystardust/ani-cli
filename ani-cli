@@ -187,15 +187,14 @@ agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
 download_dir="."
-quality="1080"
+quality="best"
+player_function="debug"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli"
 [ ! -d "$log_dir" ] && mkdir -p "$log_dir"
 
-
 query="$*"
-player_function="debug"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
