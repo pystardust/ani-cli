@@ -37,7 +37,6 @@ episodes_list() {
 
 # get the embed urls of the selected episode
 embed_urls() {
-	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	curl -s "https://allanime.site/watch/$id/$allanime_title/episode-$ep_no-$mode" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p'
 }
 
@@ -122,6 +121,15 @@ select_quality () {
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
+download () {
+	case $1 in
+		*m3u8*)
+			ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
+		*)
+			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+	esac
+}
+
 # todo
 # intent: player_function is set at program start, then the matching branch has the neccesary setup and the command.
 # player_function can be a player program, download or debug.
@@ -159,7 +167,7 @@ play_episode() {
 		"$player_function" "$episode"
 		;;
 	download)
-		aria2c "$episode"
+		"$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}"
 		;;
 	*)
 		die "Invalid player function"
@@ -171,6 +179,7 @@ play_episode() {
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
 mode="sub"
 subtitle="en-US"
+download_dir="."
 quality="best"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
@@ -188,6 +197,7 @@ query=$(printf "%s" "$query" | sed "s| |%20|g")
 anime_list=$(search_anime "$query")
 result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 title=$(printf "%s" "$result" | cut -f2)
+allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
 
@@ -201,7 +211,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s\n" "$ep_list" | sed -n "/^${ep_no}$/{g;1\!p;};h") 2>/dev/null
+		ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
 		;;
 	select)
 		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
@@ -210,6 +220,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode
 		exit 0
 		;;
 	esac
+	[ -z "$ep_no" ] && die "Out of range"
 	resp=$(embed_urls)
 	play_episode
 done
