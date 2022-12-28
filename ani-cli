@@ -98,7 +98,7 @@ get_links() {
 		fi
 		;;
 	*)
-		printf "%s" "$episode_link"
+		[ -n "$episode_link" ] && printf "%s\n" "$episode_link"
 		;;
 	esac
 	printf "Fetching %s Links\n" "$provider_name" 1>&2
@@ -113,7 +113,7 @@ select_quality () {
 		result=$(cat "$cache_dir"/* | tail -n1)
 		;;
 	*)
-		result=$(cat "$cache_dir"/* | grep "$1")
+		result=$(cat "$cache_dir"/* | grep -m 1 "$1")
 		;;
 	esac
 	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(cat "$cache_dir"/* | head -n1)
@@ -187,7 +187,7 @@ log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli"
 
 
 query="$*"
-player_function="mpv"
+player_function="debug"
 while [ -z "$query" ]; do
 	printf "Search anime\n>> "
 	read -r query
