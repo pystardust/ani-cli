@@ -94,7 +94,7 @@ generate_link() {
 }
 
 select_quality () {
-	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r)
+	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
 	case "$1" in
 	best)
 		result=$(printf "%s" "$links" | head -n1)
