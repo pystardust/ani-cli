@@ -34,7 +34,7 @@ get_links() {
 	episode_link="$(curl -s "https://blog.allanime.pro/apivtwo/clock.json?id=$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p')"
 	case "$episode_link" in
 	*v.vrv.co*)
-		extract_link=$(printf "%s" "$episode_link" | grep "$subtitle" | cut -d'>' -f2)
+		extract_link=$(printf "%s" "$episode_link" | grep "$media_locale" | cut -d'>' -f2)
 		curl -s "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; s|\/index-v1-a1\.m3u8||g' | sort -nr
 		;;
 	*repackager.wixmp.com*)
@@ -182,16 +182,16 @@ play_episode() {
 
 # setup
 agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
-mode="sub"
-subtitle="en-US"
-download_dir="."
-quality="best"
-player_function="debug"
-use_external_menu=0
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli"
+mode="${ANI_CLI_MODE:-sub}"
+media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
+download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
+quality="${ANI_CLI_QUALITY:-best}"
+player_function="${ANI_CLI_PLAYER:-debug}"
+use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
-log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli"
-[ ! -d "$log_dir" ] && mkdir -p "$log_dir"
+hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
+[ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 # searching
 query="$*"
 while [ -z "$query" ]; do
