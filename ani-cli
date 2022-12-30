@@ -94,26 +94,19 @@ generate_link() {
 }
 
 select_quality () {
+	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r)
 	case "$1" in
 	best)
-		result=$(cat "$cache_dir"/* | head -n1)
-		for qual in 1080 720 480 360 240 144; do
-			result_fixed=$(cat "$cache_dir"/* | grep -m 1 "$qual")
-			[ -n "$result_in" ] && result="$result_fixed" && break
-		done
+		result=$(printf "%s" "$links" | head -n1)
 		;;
 	worst)
-		result=$(cat "$cache_dir"/* | tail -n1)
-		for qual in 144 270 360 480 720 1080; do
-			result_fixed=$(cat "$cache_dir"/* | grep -m 1 "$qual")
-			[ -n "$result_in" ] && result="$result_fixed" && break
-		done
+		result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1)
 		;;
 	*)
-		result=$(cat "$cache_dir"/* | grep -m 1 "$1")
+		result=$(printf "%s" "$links" | grep -m 1 "$1")
 		;;
 	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(cat "$cache_dir"/* | head -n1)
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(printf "%s" "$links" | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
