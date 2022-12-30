@@ -4,7 +4,7 @@
 # UI
 
 external_menu() {
-	rofi -dmenu -i -width 1500 -p "$*"
+	rofi -sort -dmenu -i -width 1500 -p "$*"
 }
 
 launcher() {
@@ -143,10 +143,10 @@ episodes_list() {
 
 download () {
 	case $1 in
-		*m3u8*)
-			ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-		*)
-			aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+	*m3u8*)
+		ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
+	*)
+		aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
 	esac
 }
 
@@ -160,13 +160,13 @@ play_episode() {
 		printf "Selected link:\n%s\n" "$episode"
 		;;
 	mpv | iina)
-		nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null &
+		nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 &
 		;;
 	vlc)
-		nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null &
+		nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 &
 		;;
 	syncplay)
-		nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" > /dev/null &
+		nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" > /dev/null 2>&1 &
 		;;
 	download)
 		"$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}"
@@ -175,6 +175,7 @@ play_episode() {
 		die "Invalid player function"
 		;;
 	esac
+	[ "$use_external_menu" = "1" ] && wait
 }
 
 
@@ -192,6 +193,7 @@ cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
+
 # searching
 query="$*"
 while [ -z "$query" ]; do
@@ -206,19 +208,20 @@ allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
 ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
+
 # playback & loop
 play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous)
-		ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+		ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{n;p;}") 2>/dev/null
 		;;
 	replay) ;;
 	next)
-		ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
+		ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{g;1!p;};h") 2>/dev/null
 		;;
 	select)
-		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
+		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
 		;;
 	*)
 		exit 0
