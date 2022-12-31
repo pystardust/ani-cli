@@ -64,9 +64,7 @@ get_links() {
 			curl -s "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
 		fi
 		;;
-	*)
-		[ -n "$episode_link" ] && printf "%s\n" "$episode_link"
-		;;
+	*) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
 	esac
 	printf "Fetching %s Links\n" "$provider_name" 1>&2
 }
@@ -80,26 +78,11 @@ provider_init() {
 # generates links based on given provider
 generate_link() {
 	case $1 in
-	1)
-		# vrv,wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-		provider_init 'vrv|wixmp' '/Default :/p'
-		;;
-	2)
-		# pstatic(default backup)(mp4)(multi)
-		provider_init 'pstatic' '/Default B :/p'
-		;;
-	3)
-		# sharepoint(mp4)(single)
-		provider_init 'sharepoint' '/S-mp4 :/p'
-		;;
-	4)
-		# usercloud(mp4)(single)
-		provider_init 'usercloud' '/Uv-mp4 :/p'
-		;;
-	*)
-		# gogoanime(m3u8)(multi)
-		provider_init 'gogoanime' '/Luf-mp4 :/p'
-		;;
+	1) provider_init 'vrv|wixmp' '/Default :/p' ;;	# vrv,wixmp(default)(m3u8)(multi) -> (mp4)(multi)
+	2) provider_init 'pstatic' '/Default B :/p' ;;	# pstatic(default backup)(mp4)(multi)
+	3) provider_init 'sharepoint' '/S-mp4 :/p' ;;		# sharepoint(mp4)(single)
+	4) provider_init 'usercloud' '/Uv-mp4 :/p' ;;		# usercloud(mp4)(single)
+	*) provider_init 'gogoanime' '/Luf-mp4 :/p' ;;	# gogoanime(m3u8)(multi)
 	esac
 	# logic yet to implement
 	[ -n "$provider_id" ] && get_links "$provider_id"
@@ -108,15 +91,9 @@ generate_link() {
 select_quality () {
 	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
 	case "$1" in
-	best)
-		result=$(printf "%s" "$links" | head -n1)
-		;;
-	worst)
-		result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1)
-		;;
-	*)
-		result=$(printf "%s" "$links" | grep -m 1 "$1")
-		;;
+	best) result=$(printf "%s" "$links" | head -n1) ;;
+	worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
+	*) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
 	esac
 	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(printf "%s" "$links" | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
@@ -155,37 +132,20 @@ episodes_list() {
 
 download () {
 	case $1 in
-	*m3u8*)
-		ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-	*)
-		aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+	*m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
+	*) aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
 	esac
 }
 
 play_episode() {
 	get_episode_url
-	#play the episode
 	case "$player_function" in
-	debug)
-		printf "All links:\n"
-		cat "$cache_dir"/*
-		printf "Selected link:\n%s\n" "$episode"
-		;;
-	mpv | iina)
-		nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 &
-		;;
-	vlc)
-		nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 &
-		;;
-	syncplay)
-		nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" > /dev/null 2>&1 &
-		;;
-	download)
-		"$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}"
-		;;
-	*)
-		die "Invalid player function"
-		;;
+	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+	mpv | iina) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 & ;;
+	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" > /dev/null 2>&1 & ;;
+	syncplay) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" > /dev/null 2>&1 & ;;
+	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+	*) die "Invalid player function" ;;
 	esac
 	[ "$use_external_menu" = "1" ] && wait
 }
@@ -209,49 +169,27 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while getopts ":vdsq:c-:" option ; do
 	case "$option" in
-	v)
-		player_function=vlc
-		;;
-	d)
-		player_function=download
-		;;
-	s)
-		player_function=syncplay
-		;;
-	c)
-		search=history
-		;;
-	q)
-		quality="$OPTARG"
-		;;
+	v) player_function=vlc ;;
+	d) player_function=download ;;
+	s) player_function=syncplay ;;
+	c) search=history ;;
+	q) quality="$OPTARG" ;;
 	-)
 		case "$OPTARG" in
-		version)
-			version_info
-			;;
-		help)
-			help_info
-			;;
-		update)
-			update_script
-			;;
-		*)
-			die "Unknown option!"
-			;;
+		version) version_info ;;
+		help) help_info ;;
+		update) update_script ;;
+		*) die "Unknown option!" ;;
 		esac
 		;;
-	*)
-		die "Unknown option!"
-		;;
+	*) die "Unknown option!" ;;
 	esac
 done
 shift $(( OPTIND - 1 ))
 
 # searching
 case "$search" in
-history)
-	die "Not implemented yet!"
-	;;
+history) die "Not implemented yet!" ;;
 *)
 	query="$*"
 	while [ -z "$query" ]; do
@@ -273,19 +211,11 @@ ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
-	previous)
-		ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{n;p;}") 2>/dev/null
-		;;
+	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{n;p;}") 2>/dev/null ;;
 	replay) ;;
-	next)
-		ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{g;1!p;};h") 2>/dev/null
-		;;
-	select)
-		ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
-		;;
-	*)
-		exit 0
-		;;
+	next) ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{g;1!p;};h") 2>/dev/null ;;
+	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") ;;
+	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
 	play_episode
