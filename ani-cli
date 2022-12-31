@@ -26,6 +26,18 @@ die() {
 	exit 1
 }
 
+help_info () {
+	die "To be implemented"
+}
+
+version_info () {
+	die "To be implemented"
+}
+
+update_script () {
+	die "To be implemented"
+}
+
 
 # SCRAPING
 
@@ -193,16 +205,64 @@ cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
+search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+
+while getopts ":vdsq:c-:" option ; do
+	case "$option" in
+	v)
+		player_function=vlc
+		;;
+	d)
+		player_function=download
+		;;
+	s)
+		player_function=syncplay
+		;;
+	c)
+		search=history
+		;;
+	q)
+		quality="$OPTARG"
+		;;
+	-)
+		case "$OPTARG" in
+		version)
+			version_info
+			;;
+		help)
+			help_info
+			;;
+		update)
+			update_script
+			;;
+		*)
+			die "Unknown option!"
+			;;
+		esac
+		;;
+	*)
+		die "Unknown option!"
+		;;
+	esac
+done
+shift $(( OPTIND - 1 ))
 
 # searching
-query="$*"
-while [ -z "$query" ]; do
-	printf "Search anime\n>> "
-	read -r query
-done
-query=$(printf "%s" "$query" | sed "s| |%20|g")
-anime_list=$(search_anime "$query")
-result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
+case "$search" in
+history)
+	die "Not implemented yet!"
+	;;
+*)
+	query="$*"
+	while [ -z "$query" ]; do
+		printf "Search anime\n>> "
+		read -r query
+	done
+	query=$(printf "%s" "$query" | sed "s| |%20|g")
+	anime_list=$(search_anime "$query")
+	result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
+	;;
+esac
 title=$(printf "%s" "$result" | cut -f2)
 allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 id=$(printf "%s" "$result" | cut -f1)
