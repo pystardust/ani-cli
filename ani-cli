@@ -107,7 +107,6 @@ generate_link() {
 }
 
 select_quality () {
-	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
 	case "$1" in
 	best) result=$(printf "%s" "$links" | head -n1) ;;
 	worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
@@ -131,6 +130,7 @@ get_episode_url() {
 	done
 	wait
 	# select the link with matching quality
+	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
 	episode=$(select_quality "$quality")
 	[ -z "$episode" ] && die "Episode not released!"
 }
