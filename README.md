@@ -259,12 +259,13 @@ rm "$PREFIX/bin/ani-cli"
 - sed
 - awk
 - curl
+- wget
 - openssl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
-- axel - Download manager
+- aria2c - Download manager
 - ffmpeg - m3u8 Downloader
-- fzf (optional)
+- fzf - User interface
 
 ## Homies 
 
