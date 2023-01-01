@@ -198,6 +198,7 @@ history) die "Not implemented yet!" ;;
 	done
 	query=$(printf "%s" "$query" | sed "s| |%20|g")
 	anime_list=$(search_anime "$query")
+	[ -z "$anime_list" ] && die "No results found!"
 	result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 	;;
 esac
