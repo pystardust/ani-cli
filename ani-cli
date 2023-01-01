@@ -1,5 +1,6 @@
 #!/bin/sh
 
+version_number="4.0"
 
 # UI
 
@@ -27,11 +28,28 @@ die() {
 }
 
 help_info () {
-	die "To be implemented"
+	help_text="\
+ani-cli version $version_number
+
+Usage: 
+ani-cli [-v|-d|-s -q <quality> -c] 
+ani-cli [--version|--help|--update]
+  -v : use VLC as media player
+  -d : download instead of streaming
+  -s : use syncplay as media player
+  -q <quality> : set preferred quality
+  -c : get query from history (continue)
+  --version : print version number and exit
+  --help: print this and exit
+  --update: update the script from github and exit (this might require administrative privileges)\
+"
+	printf "%s\n" "$help_text"
+	exit 0
 }
 
 version_info () {
-	die "To be implemented"
+	printf "%s\n" "$version_number"
+	exit 0
 }
 
 update_script () {
