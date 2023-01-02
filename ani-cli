@@ -56,6 +56,15 @@ update_script() {
 	die "To be implemented"
 }
 
+# checks if dependencies are present
+dep_ch() {
+	for dep; do
+		if ! command -v "$dep" >/dev/null; then
+			die "Program \"$dep\" not found. Please install it."
+		fi
+	done
+}
+
 # SCRAPING
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
@@ -196,6 +205,13 @@ while [ $# -gt 0 ]; do
 	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift && search="$query" ;;
 	esac
 done
+printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+dep_ch "wget" "sed" "grep" || true
+if [ "$player_function" = "download" ]; then
+	dep_ch "ffmpeg" "aria2c"
+elif ! (uname -a | grep -qE '[Aa]ndroid'); then
+	[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "$player_function"
+fi
 
 # searching
 case "$search" in
@@ -211,6 +227,8 @@ history) die "Not implemented yet!" ;;
 	result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
 	;;
 esac
+# moves the cursor up one line and clears that line
+tput cuu1 && tput el
 title=$(printf "%s" "$result" | cut -f2)
 allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 id=$(printf "%s" "$result" | cut -f1)
