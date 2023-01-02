@@ -192,7 +192,7 @@ play_episode() {
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
 	mpv | iina) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	syncplay) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	*) die "Invalid player function" ;;
 	esac
@@ -207,7 +207,10 @@ mode="${ANI_CLI_MODE:-sub}"
 media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
-player_function="${ANI_CLI_PLAYER:-debug}"
+case "$(uname)" in
+	Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
+	*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;
+esac
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
@@ -218,7 +221,14 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--vlc) player_function=vlc && shift ;;
-	-s | --syncplay) player_function=syncplay && shift ;;
+	-s | --syncplay)
+		case "$(uname -s)" in
+			Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+			MINGW*|*Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+			*) player_function="syncplay" ;;
+		esac
+		shift
+		;;
 	-q | --quality) quality="$2" && shift 2 ;;
 	-c | --continue) search=history && shift ;;
 	-d | --download) player_function=download && shift ;;
@@ -226,7 +236,7 @@ while [ $# -gt 0 ]; do
 	-h | --help) help_info && exit 0 ;;
 	-e | --episode) ep_no="$2" && shift 2 ;;
 	-u | -U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift && search="$query" ;;
+	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift ;;
 	esac
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
