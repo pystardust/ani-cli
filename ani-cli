@@ -28,23 +28,36 @@ die() {
 }
 
 help_info() {
-	help_text="\
-ani-cli version $version_number
+	printf "
+    Usage: 
+    %s [options] [query]
+    %s [query] [options]
+    %s [options] [query] [options]
 
-Usage: 
-ani-cli [-v|-d|-s -q <quality> -c] 
-ani-cli [--version|--help|--update]
-  -v : use VLC as media player
-  -d : download instead of streaming
-  -s : use syncplay as media player
-  -q <quality> : set preferred quality
-  -c : get query from history (continue)
-  --version : print version number and exit
-  --help: print this and exit
-  --update: update the script from github and exit (this might require administrative privileges)\
-"
-	printf "%s\n" "$help_text"
-	exit 0
+    Options:
+      -c, --continue
+        Continue watching from history
+      -d, --download
+        Download the video instead of playing it
+      -s, --syncplay
+        Use Syncplay to watch with friends
+      -q, --quality
+        Specify the video quality
+      --vlc
+        Use VLC to play the video
+      -v, -V, --version
+        Show the version of the script
+      -h, --help
+        Show this help message and exit
+      -e, --episode
+        Specify the number of episodes to watch
+      -u, -U, --update
+        Update the script
+    Some example usages:
+      %s -q 720p banana fish
+      %s -d -e 2 cyberpunk edgerunners
+      %s --vlc cyberpunk edgerunners -q 1080p -e 4
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
 }
 
 version_info() {
@@ -53,7 +66,18 @@ version_info() {
 }
 
 update_script() {
-	die "To be implemented"
+	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
+	if [ -z "$update" ]; then
+		printf "Script is up to date :)\n"
+	else
+		if printf '%s\n' "$update" | patch "$0" -; then
+			printf "Script has been updated\n"
+		else
+			die "Can't update for some reason!"
+		fi
+	fi
+	exit 0
 }
 
 # checks if dependencies are present
@@ -168,7 +192,7 @@ play_episode() {
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
 	mpv | iina) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	syncplay) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	*) die "Invalid player function" ;;
 	esac
@@ -183,7 +207,10 @@ mode="${ANI_CLI_MODE:-sub}"
 media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
-player_function="${ANI_CLI_PLAYER:-debug}"
+case "$(uname)" in
+	Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
+	*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;
+esac
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
@@ -194,15 +221,22 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--vlc) player_function=vlc && shift ;;
-	-d) player_function=download && shift ;;
-	-s) player_function=syncplay && shift ;;
-	-c) search=history && shift ;;
-	-q) quality="$2" && shift 2 ;;
+	-s | --syncplay)
+		case "$(uname -s)" in
+			Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+			MINGW*|*Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+			*) player_function="syncplay" ;;
+		esac
+		shift
+		;;
+	-q | --quality) quality="$2" && shift 2 ;;
+	-c | --continue) search=history && shift ;;
+	-d | --download) player_function=download && shift ;;
 	-v | -V | --version) version_info ;;
-	-h | --help) help_info ;;
-	-e | --episodes) ep_no="$2" && shift 2 ;;
+	-h | --help) help_info && exit 0 ;;
+	-e | --episode) ep_no="$2" && shift 2 ;;
 	-u | -U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift && search="$query" ;;
+	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift ;;
 	esac
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
