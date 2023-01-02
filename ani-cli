@@ -200,7 +200,7 @@ while [ $# -gt 0 ]; do
 	-q) quality="$2" && shift 2 ;;
 	-v | -V | --version) version_info ;;
 	-h | --help) help_info ;;
-	-e | --episodes) episodes="$2" && shift 2 ;;
+	-e | --episodes) ep_no="$2" && shift 2 ;;
 	-u | -U | --update) update_script ;;
 	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift && search="$query" ;;
 	esac
@@ -233,7 +233,8 @@ title=$(printf "%s" "$result" | cut -f2)
 allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
-ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
+[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
+[ -z "$ep_no" ] && exit 1
 
 # playback & loop
 play_episode
