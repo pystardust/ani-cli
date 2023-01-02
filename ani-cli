@@ -192,21 +192,13 @@ play_episode() {
 	get_episode_url
 	case "$player_function" in
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-	mpv | iina) is_mpv_from_flatpak ;;
+	'flatpak run io.mpv.Mpv' | mpv | iina) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	*) die "Invalid player function" ;;
 	esac
 	[ "$use_external_menu" = "1" ] && wait
-}
-
-is_mpv_from_flatpak(){
-    if uname -a | grep -q 'steamdeck';then
-        flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 &
-    else
-        nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 &
-    fi
 }
 
 # MAIN
@@ -219,7 +211,11 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname)" in
 	Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
-	*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;
+	*) if uname -a | grep -q 'steamdeck';then
+        player_function="flatpak run io.mpv.Mpv"
+    else
+        player_function="${ANI_CLI_PLAYER:-mpv}"
+    fi ;;
 esac
 
 
