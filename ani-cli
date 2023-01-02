@@ -203,7 +203,7 @@ play_episode() {
 
 is_mpv_from_flatpak(){
     if uname -a | grep -q 'steamdeck';then
-        flatpack run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 &
+        flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 &
     else
         nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 &
     fi
