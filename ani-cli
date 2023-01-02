@@ -230,9 +230,9 @@ ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") || exit 1
 play_episode
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
-	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{n;p;}") 2>/dev/null ;;
+	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
 	replay) ;;
-	next) ep_no=$(printf "%s" "$ep_list" | sed -n "|^${ep_no}$|{g;1!p;};h") 2>/dev/null ;;
+	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") ;;
 	*) exit 0 ;;
 	esac
