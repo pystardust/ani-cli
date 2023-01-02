@@ -28,23 +28,36 @@ die() {
 }
 
 help_info() {
-	help_text="\
-ani-cli version $version_number
+	printf "
+    Usage: 
+    %s [options] [query]
+    %s [query] [options]
+    %s [options] [query] [options]
 
-Usage: 
-ani-cli [-v|-d|-s -q <quality> -c] 
-ani-cli [--version|--help|--update]
-  -v : use VLC as media player
-  -d : download instead of streaming
-  -s : use syncplay as media player
-  -q <quality> : set preferred quality
-  -c : get query from history (continue)
-  --version : print version number and exit
-  --help: print this and exit
-  --update: update the script from github and exit (this might require administrative privileges)\
-"
-	printf "%s\n" "$help_text"
-	exit 0
+    Options:
+      -c, --continue
+        Continue watching from history
+      -d, --download
+        Download the video instead of playing it
+      -s, --syncplay
+        Use Syncplay to watch with friends
+      -q, --quality
+        Specify the video quality
+      --vlc
+        Use VLC to play the video
+      -v, -V, --version
+        Show the version of the script
+      -h, --help
+        Show this help message and exit
+      -e, --episode
+        Specify the number of episodes to watch
+      -u, -U, --update
+        Update the script
+    Some example usages:
+      %s -q 720p banana fish
+      %s -d -e 2 cyberpunk edgerunners
+      %s --vlc cyberpunk edgerunners -q 1080p -e 4
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
 }
 
 version_info() {
@@ -56,10 +69,10 @@ update_script() {
 	update="$(curl -A "$agent" -s "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
 	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
-		inf "Script is up to date :)"
+		printf "Script is up to date :)\n"
 	else
 		if printf '%s\n' "$update" | patch "$0" -; then
-			inf "Script has been updated"
+			printf "Script has been update\n"
 		else
 			die "Can't update for some reason!"
 		fi
@@ -205,13 +218,13 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--vlc) player_function=vlc && shift ;;
-	-d) player_function=download && shift ;;
-	-s) player_function=syncplay && shift ;;
-	-c) search=history && shift ;;
-	-q) quality="$2" && shift 2 ;;
+	-s | --syncplay) player_function=syncplay && shift ;;
+	-q | --quality) quality="$2" && shift 2 ;;
+	-c | --continue) search=history && shift ;;
+	-d | --download) player_function=download && shift ;;
 	-v | -V | --version) version_info ;;
-	-h | --help) help_info ;;
-	-e | --episodes) ep_no="$2" && shift 2 ;;
+	-h | --help) help_info && exit 0 ;;
+	-e | --episode) ep_no="$2" && shift 2 ;;
 	-u | -U | --update) update_script ;;
 	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift && search="$query" ;;
 	esac
