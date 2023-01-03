@@ -212,7 +212,7 @@ quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname)" in
 	Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
 	*) if uname -a | grep -q 'steamdeck';then
-        player_function=flatpak\ run\ io.mpv.Mpv
+        player_function="$(echo "flatpak run io.mpv.Mpv")"
     else
         player_function="${ANI_CLI_PLAYER:-mpv}"
     fi ;;
