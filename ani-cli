@@ -89,9 +89,9 @@ dep_ch() {
 	done
 }
 
-if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
-			    die "Program \"$dep\" not found. Please install it."
-fi
+#if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
+#			    die "Program \"$dep\" not found. Please install it."
+#fi
 
 
 
