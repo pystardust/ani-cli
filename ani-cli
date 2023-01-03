@@ -84,12 +84,16 @@ update_script() {
 dep_ch() {
 	for dep; do
 		if ! command -v "$dep" >/dev/null; then
-		    if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
-			    die "Program \"$dep\" not found. Please install it."
-            fi
+            die "Program \"$dep\" not found. Please install it."
         fi
 	done
 }
+
+if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
+			    die "Program \"$dep\" not found. Please install it."
+fi
+
+
 
 # SCRAPING
 
@@ -252,6 +256,8 @@ printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "wget" "sed" "grep" || true
 if [ "$player_function" = "download" ]; then
 	dep_ch "ffmpeg" "aria2c"
+elif ( uname -a | grep -q 'steamdeck');then
+    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "flatpak run io.mpv.Mpv"
 elif ! (uname -a | grep -qE '[Aa]ndroid'); then
 	[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "$player_function"
 fi
