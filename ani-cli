@@ -45,6 +45,8 @@ help_info() {
         Specify the video quality
       --vlc
         Use VLC to play the video
+      --flatpak_mpv
+        Use the mvp from flatpak
       -v, -V, --version
         Show the version of the script
       -h, --help
@@ -240,7 +242,8 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--vlc) player_function=vlc && shift ;;
-	-s | --syncplay)
+    --flatpak_mpv) player_function=flatpak_mpv && shift;;
+    -s | --syncplay)
 		case "$(uname -s)" in
 			Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
 			MINGW*|*Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
@@ -262,8 +265,8 @@ printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "wget" "sed" "grep" || true
 if [ "$player_function" = "download" ]; then
 	dep_ch "ffmpeg" "aria2c"
-elif ( uname -a | grep -q 'steamdeck');then
-    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "flatpak run io.mpv.Mpv"
+elif ( uname -a | grep -q 'steamdeck' ) || [ "$player_function" = "flatpak_mpv" ] ;then
+    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "flatpak" && dep_ch "flatpak run io.mpv.Mpv"
 elif ! (uname -a | grep -qE '[Aa]ndroid'); then
 	[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "$player_function"
 fi
