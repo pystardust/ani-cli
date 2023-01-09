@@ -101,7 +101,7 @@ dep_ch() {
 #                die "Program \"$dep\" not found. Please install it."
 #            fi
         
-    done
+	done
 }
 
 
