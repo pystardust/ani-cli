@@ -84,9 +84,8 @@ update_script() {
 dep_ch() {
 	for dep; do
 		if ! command -v "$dep" >/dev/null; then
-			if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
-				die "Program \"$dep\" not found. Please install it."
-			fi
+			[ "$player_function" = "flatpak_mpv" ] && ! flatpak info io.mpv.Mpv 2>&1 | grep -q 'error' && continue
+			die "Program \"$dep\" not found. Please install it."
 		fi
 	done
 }
