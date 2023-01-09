@@ -85,22 +85,11 @@ update_script() {
 # checks if dependencies are present
 dep_ch() {
 	for dep; do
-        if ! ( command -v "$dep" >/dev/null ) && ! [ "$dep" = "flatpak run io.mpv.Mpv" ]; then
-            die "Program \"$dep\" not found. Please install it."
-        fi
-        if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
-            die "Program \"$dep\" not found. Please install it."
-        fi
 
-
-#            if [ "$dep" = "flatpak run io.mpv.Mpv" ]; then
-#                if flatpak info io.mpv.Mpv 2>&1 | grep -q 'error'; then
-#                    die "Program \"$dep\" not found. Please install it."
-#                fi
-#            else
-#                die "Program \"$dep\" not found. Please install it."
-#            fi
-        
+		if ! command -v "$dep" >/dev/null; then
+			[ "$player_function" = "flatpak_mpv" ] && ! flatpak info io.mpv.Mpv 2>&1 | grep -q 'error' && continue
+			die "Program \"$dep\" not found. Please install it."
+		fi
 	done
 }
 
@@ -206,9 +195,11 @@ play_episode() {
 	get_episode_url
 	case "$player_function" in
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-	mpv | iina) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-    flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-    vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+up "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	mpv) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	*) die "Invalid player function" ;;
@@ -225,14 +216,13 @@ media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname)" in
-	Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
-	*) if uname -a | grep -q 'steamdeck';then
-        player_function="${ANI_CLI_PLAYER:-flatpak_mpv}"
-    else
-        player_function="${ANI_CLI_PLAYER:-mpv}"
-    fi ;;
+Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
+*) if uname -a | grep -q 'steamdeck'; then
+	player_function="${ANI_CLI_PLAYER:-flatpak_mpv}"
+else
+	player_function="${ANI_CLI_PLAYER:-mpv}"
+fi ;;
 esac
-
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
@@ -247,9 +237,9 @@ while [ $# -gt 0 ]; do
     --flatpak_mpv) player_function=flatpak_mpv && shift;;
     -s | --syncplay)
 		case "$(uname -s)" in
-			Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-			MINGW*|*Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
-			*) player_function="syncplay" ;;
+		Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+		MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+		*) player_function="syncplay" ;;
 		esac
 		shift
 		;;
