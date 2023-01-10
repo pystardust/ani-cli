@@ -239,7 +239,7 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 ```
 
-##### Install aria2 (for --download):
+##### Install [aria2](https://github.com/aria2/aria2) (for --download):
 
 ```
 mkdir ~/.aria2
