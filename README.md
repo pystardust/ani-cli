@@ -206,9 +206,9 @@ referrer="https://animixplay.to/"
 
 #### Copypaste script:
 
-1. switch to Desktop mode:
-2. open `Konsole`
-3. Copy the script and paste it in the CLI
+* Switch to Desktop mode ("STEAM" Button > Power > Switch to Desktop)
+* Open `Konsole` (Steam Deck Icon in bottom left corner > Konsole)
+* Copy the script and paste it in the CLI
 
 ```
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
@@ -256,7 +256,9 @@ cp ~/.ani-cli/ani-cli ~/.local/bin/
 
 ```
 
-Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.
+##### Optional: add desktop entry (todo)
+
+*Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.*
 
 ## Uninstall
 
@@ -307,6 +309,10 @@ pkg remove ani-cli
 * Android:
 ```sh
 rm "$PREFIX/bin/ani-cli"
+```
+* Steam Deck
+```
+todo
 ```
 
 ## Dependencies
