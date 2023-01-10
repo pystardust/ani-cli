@@ -72,7 +72,7 @@ update_script() {
 		printf "Script is up to date :)\n"
 	else
 		if printf '%s\n' "$update" | patch "$0" -; then
-			printf "Script has been update\n"
+			printf "Script has been updated\n"
 		else
 			die "Can't update for some reason!"
 		fi
