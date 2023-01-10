@@ -167,7 +167,7 @@ get_episode_url() {
 
 # search the query and give results
 search_anime() {
-	wget -q -O - "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Atrue%2C%22allowUnknown%22%3Atrue%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A40%2C%22page%22%3A1%2C%22translationType%22%3A%22$mode%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -U "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*\"$mode\":([1-9][^,]*).*|\1\t\2 (\3 episode)|p"
+	wget -q -O - "https://allanime.site/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Atrue%2C%22allowUnknown%22%3Atrue%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A40%2C%22page%22%3A1%2C%22translationType%22%3A%22$mode%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -U "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.*)\",\"english.*\"$mode\":([1-9][^,]*).*|\1\t\2 (\3 episode)|p" | sed 's/\\//g;s/"//g'
 }
 
 # get the episodes list of the selected anime
@@ -187,16 +187,16 @@ download() {
 play_episode() {
 	get_episode_url
 	case "$player_function" in
-		debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-		mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-		android_vlc) nohup  am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-		iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-		download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-		*) nohup "$player_function" >/dev/null 2>&1 & ;;
+	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+	mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+	android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+	*) nohup "$player_function" >/dev/null 2>&1 & ;;
 	esac
 	[ "$use_external_menu" = "1" ] && wait
 }
@@ -210,11 +210,11 @@ media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-	*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;; # mac OS
-	*ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;; # Android OS (termux)
-	*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
-	*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
-	*) player_function="${ANI_CLI_PLAYER:-mpv}" ;; # Linux OS
+*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
+*ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
+*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
+*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
+*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -226,11 +226,11 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-	-v | --vlc) 
+	-v | --vlc)
 		case "$(uname -a)" in
-			*ndroid*) player_function="android_vlc" ;;
-			MINGW*)	player_function="vlc.exe" ;;
-			*)	player_function="vlc" ;;
+		*ndroid*) player_function="android_vlc" ;;
+		MINGW*) player_function="vlc.exe" ;;
+		*) player_function="vlc" ;;
 		esac
 		shift
 		;;
@@ -253,16 +253,16 @@ while [ $# -gt 0 ]; do
 	esac
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
-dep_ch "wget" "sed" "grep" || true
+dep_ch "wget" "sed" "grep" "fzf" || true
 case "$player_function" in
-	debug) ;;
-	download) dep_ch "ffmpeg" "aria2c" ;;
-	flatpak*) 
-		dep_ch "flatpak"
-		flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
-		;;
-	android*) printf "Dependency checking of players on Android is disabled\n" ;;
-	*) dep_ch "$player_function" ;;
+debug) ;;
+download) dep_ch "ffmpeg" "aria2c" ;;
+flatpak*)
+	dep_ch "flatpak"
+	flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
+	;;
+android*) printf "Dependency checking of players on Android is disabled\n" ;;
+*) dep_ch "$player_function" ;;
 esac
 
 # searching
@@ -270,8 +270,11 @@ case "$search" in
 history) die "Not implemented yet!" ;;
 *)
 	while [ -z "$query" ]; do
-		printf "Search anime\n>> "
-		read -r query
+		if [ "$use_external_menu" = "0" ]; then 
+			printf "Search anime: " && read -r query
+		else
+			query=$(printf "" | external_menu "Search anime: ")
+		fi
 	done
 	query=$(printf "%s" "$query" | sed "s| |%20|g")
 	anime_list=$(search_anime "$query")
