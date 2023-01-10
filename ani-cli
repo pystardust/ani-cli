@@ -43,15 +43,15 @@ help_info() {
         Use Syncplay to watch with friends
       -q, --quality
         Specify the video quality
-      --vlc
+      -v, --vlc
         Use VLC to play the video
-      -v, -V, --version
+      -V, --version
         Show the version of the script
       -h, --help
         Show this help message and exit
       -e, --episode
         Specify the number of episodes to watch
-      -u, -U, --update
+      -U, --update
         Update the script
     Some example usages:
       %s -q 720p banana fish
@@ -190,16 +190,16 @@ download() {
 play_episode() {
 	get_episode_url
 	case "$player_function" in
-	    debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-	    mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	    android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-	    android_vlc) nohup  am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-	    iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	    flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	    vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	    *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-	    download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-	    *) nohup "$player_function" >/dev/null 2>&1 & ;;
+		debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+		mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+		android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+		android_vlc) nohup  am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+		iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+		flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+		vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+		*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+		download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+		*) nohup "$player_function" >/dev/null 2>&1 & ;;
 	esac
 	[ "$use_external_menu" = "1" ] && wait
 }
@@ -213,11 +213,11 @@ media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;; # mac OS
-*ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;; # Android OS
-*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
-*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
-*) player_function="${ANI_CLI_PLAYER:-mpv}" ;; # Linux OS
+	*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;; # mac OS
+	*ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;; # Android OS (termux)
+	*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
+	*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+	*) player_function="${ANI_CLI_PLAYER:-mpv}" ;; # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -229,7 +229,7 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--vlc) 
+	-v | --vlc) 
 		case "$(uname -a)" in
 			*ndroid*) player_function="android_vlc" ;;
 			MINGW*)	player_function="vlc.exe" ;;
@@ -248,10 +248,10 @@ while [ $# -gt 0 ]; do
 	-q | --quality) quality="$2" && shift 2 ;;
 	-c | --continue) search=history && shift ;;
 	-d | --download) player_function=download && shift ;;
-	-v | -V | --version) version_info ;;
+	-V | --version) version_info ;;
 	-h | --help) help_info && exit 0 ;;
 	-e | --episode) ep_no="$2" && shift 2 ;;
-	-u | -U | --update) update_script ;;
+	-U | --update) update_script ;;
 	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift ;;
 	esac
 done
