@@ -202,7 +202,7 @@ You need to add any referrer in mpv by opening mpv [(playstore version)](https:/
 referrer="https://animixplay.to/"
 ```
 
-### Steam Deck(draft)
+### Steam Deck (draft) (not tested yet)
 
 #### Copypaste script:
 
