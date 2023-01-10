@@ -202,6 +202,62 @@ You need to add any referrer in mpv by opening mpv [(playstore version)](https:/
 referrer="https://animixplay.to/"
 ```
 
+### Steam Deck(draft)
+
+#### Copypaste script:
+
+1. switch to Desktop mode:
+2. open `Konsole`
+3. Copy the script and paste it in the CLI
+
+```
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+
+mkdir ~/.aria2
+wget -O ~/.aria2/aria2-1.36.0.tar.gz https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
+tar xzf ~/.aria2/aria2-1.36.0.tar.gz -C ~/.local/bin/
+
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+
+flatpak install io.mpv.Mpv
+
+```
+#### Installation in steps:
+
+##### Install mpv (Flatpak version)
+
+```
+flatpak install io.mpv.Mpv
+```
+
+##### Install [fzf](https://github.com/junegunn/fzf): 
+
+```
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+```
+
+##### Install aria2 (for --download):
+
+```
+mkdir ~/.aria2
+wget -O ~/.aria2/aria2-1.36.0.tar.gz https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
+tar xzf ~/.aria2/aria2-1.36.0.tar.gz -C ~/.local/bin/
+
+```
+
+##### Install ani-cli:
+
+```
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+
+```
+
+Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.
+
 ## Uninstall
 
 * apt:
