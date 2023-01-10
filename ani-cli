@@ -98,7 +98,7 @@ get_links() {
 	case "$episode_link" in
 	*v.vrv.co*)
 		extract_link=$(printf "%s" "$episode_link" | grep "$media_locale" | cut -d'>' -f2)
-		wget -q -O - "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; s|\/index-v1-a1\.m3u8||g' | sort -nr
+		wget -q -O - "$extract_link" -U "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; s|\/index-v1-a1\.m3u8||g' | sort -nr
 		;;
 	*repackager.wixmp.com*)
 		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
