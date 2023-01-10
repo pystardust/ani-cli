@@ -257,7 +257,7 @@ cp ~/.ani-cli/ani-cli ~/.local/bin/
 ```
 *Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.*
 
-##### Optional: add desktop entry: (todo)
+##### Optional: add desktop entry:
 
 ```
 touch ~/.local/share/applications/ani-cli.desktop
@@ -322,13 +322,13 @@ rm "$PREFIX/bin/ani-cli"
 ```
 * Steam Deck
 ```
-rm ~/.local/bin/ani-cli
+rm "~/.local/bin/ani-cli"
 ```
 optionally: remove dependencies:
 ```
-rm ~/.local/bin/aria2
-rm -rf ~/.aria2
-rm -rf ~/.fzf
+rm "~/.local/bin/aria2"
+rm -rf "~/.aria2"
+rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 
 ```
