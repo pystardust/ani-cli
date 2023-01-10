@@ -253,7 +253,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
-dep_ch "wget" "sed" "grep" || true
+dep_ch "wget" "sed" "grep" "fzf" || true
 case "$player_function" in
 debug) ;;
 download) dep_ch "ffmpeg" "aria2c" ;;
