@@ -191,13 +191,15 @@ play_episode() {
 	get_episode_url
 	case "$player_function" in
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-	mpv) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	mpv|mpv.exe) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	mpv_android) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+	vlc_android) nohup  am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	vlc) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-	*) die "Invalid player function" ;;
+	*) nohup $player_function >/dev/null 2>&1 & ;;
 	esac
 	[ "$use_external_menu" = "1" ] && wait
 }
@@ -210,13 +212,12 @@ mode="${ANI_CLI_MODE:-sub}"
 media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
-case "$(uname)" in
-Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;
-*) if uname -a | grep -q 'steamdeck'; then
-	player_function="${ANI_CLI_PLAYER:-flatpak_mpv}"
-else
-	player_function="${ANI_CLI_PLAYER:-mpv}"
-fi ;;
+case "$(uname -a)" in
+*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;; # mac OS
+*ndroid*) player_function="${ANI_CLI_PLAYER:-mpv_android}" ;; # Android OS
+*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
+*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+*) player_function="${ANI_CLI_PLAYER:-mpv}" ;; # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
