@@ -266,7 +266,7 @@ Encoding=UTF-8
 Version=4.0
 Type=Application
 Exec=konsole -e ani-cli
-Name=Siril' > ~/.local/share/applications/ani-cli.desktop
+Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
 
 ```
 
