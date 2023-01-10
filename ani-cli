@@ -83,10 +83,7 @@ update_script() {
 # checks if dependencies are present
 dep_ch() {
 	for dep; do
-		if ! command -v "$dep" >/dev/null; then
-			[ "$player_function" = "flatpak_mpv" ] && ! flatpak info io.mpv.Mpv 2>&1 | grep -q 'error' && continue
-			die "Program \"$dep\" not found. Please install it."
-		fi
+		command -v "$dep" >/dev/null || die "Program \"$dep\" not found. Please install it."
 	done
 }
 
@@ -257,11 +254,16 @@ while [ $# -gt 0 ]; do
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "wget" "sed" "grep" || true
-if [ "$player_function" = "download" ]; then
-	dep_ch "ffmpeg" "aria2c"
-elif ! (uname -a | grep -qE '[Aa]ndroid'); then
-	[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && dep_ch "$player_function"
-fi
+case "$player_function" in
+	debug) ;;
+	download) dep_ch "ffmpeg" "aria2c" ;;
+	flatpak*) 
+		dep_ch "flatpak"
+		flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
+		;;
+	android*) printf "Dependency checking of players on Android is disabled\n" ;;
+	*) dep_ch "$player_function" ;;
+esac
 
 # searching
 case "$search" in
