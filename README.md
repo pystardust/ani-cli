@@ -265,7 +265,7 @@ echo '[Desktop Entry]
 Encoding=UTF-8
 Version=4.0
 Type=Application
-Exec=ani-cli
+Exec=konsole -e ani-cli
 Name=Siril' > ~/.local/share/applications/ani-cli.desktop
 
 ```
