@@ -269,7 +269,8 @@ esac
 case "$search" in
 history) die "Not implemented yet!" ;;
 *)
-	[ "$use_external_menu" = "1" ] && query=$(echo "" | external_menu "Search anime: ")
+	[ -z "$query" ] && [ "$use_external_menu" = "1" ] && query=$(echo "" | external_menu "Search anime: ")
+	[ -z "$query" ] && [ "$use_external_menu" = "1" ] && exit 1
 	while [ -z "$query" ]; do
 		[ "$use_external_menu" = "0" ] && printf "Search anime: " && read -r query
 	done
