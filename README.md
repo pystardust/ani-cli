@@ -226,7 +226,7 @@ flatpak install io.mpv.Mpv
 ```
 #### Installation in steps:
 
-##### Install mpv (Flatpak version)
+##### Install mpv (Flatpak version):
 
 ```
 flatpak install io.mpv.Mpv
@@ -255,10 +255,20 @@ git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 
 ```
-
-##### Optional: add desktop entry (todo)
-
 *Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.*
+
+##### Optional: add desktop entry: (todo)
+
+```
+touch ~/.local/share/applications/ani-cli.desktop
+echo '[Desktop Entry]
+Encoding=UTF-8
+Version=4.0
+Type=Application
+Exec=ani-cli
+Name=Siril' > ~/.local/share/applications/ani-cli.desktop
+
+```
 
 ## Uninstall
 
@@ -312,7 +322,15 @@ rm "$PREFIX/bin/ani-cli"
 ```
 * Steam Deck
 ```
-todo
+rm ~/.local/bin/ani-cli
+```
+optionally: remove dependencies:
+```
+rm ~/.local/bin/aria2
+rm -rf ~/.aria2
+rm -rf ~/.fzf
+flatpak uninstall io.mpv.Mpv
+
 ```
 
 ## Dependencies
