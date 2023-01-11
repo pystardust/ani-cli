@@ -42,6 +42,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
+  - [Steam Deck](#steam-deck)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
 - [Homies](#Homies)
@@ -202,7 +203,7 @@ You need to add any referrer in mpv by opening mpv [(playstore version)](https:/
 referrer="https://animixplay.to/"
 ```
 
-### Steam Deck (draft) 
+### Steam Deck
 
 #### Copypaste script:
 
@@ -226,7 +227,6 @@ cp ~/.ani-cli/ani-cli ~/.fzf/bin/
 chmod +x .fzf/bin/ani-cli
 
 flatpak install io.mpv.Mpv
-
 ```
 press enter("A" button on Steam Deck) on questions
 
@@ -263,7 +263,6 @@ git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cd ~/.ani-cli && git checkout v4 && cd ~ 
 cp ~/.ani-cli/ani-cli ~/.fzf/bin/
 chmod +x .fzf/bin/ani-cli
-
 ```
 *Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.*
 
@@ -277,7 +276,6 @@ Version=4.0
 Type=Application
 Exec=konsole -e ani-cli
 Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
-
 ```
 
 ## Uninstall
@@ -339,7 +337,6 @@ optionally: remove dependencies:
 rm -rf "~/.aria2"
 rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
-
 ```
 *Note: ani-cli is located in `~/.fzf/bin`, by deleting `~/.fzf` you will delete ani-cli too
 
