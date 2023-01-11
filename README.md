@@ -282,7 +282,7 @@ The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming 
 In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 *Note: Konsole window size bugs out if launched from "Gaming Mode".*
-*Note: this is not working the way it should yeti.*
+*Note: this is not working the way it should yet.*
 
 ## Uninstall
 
