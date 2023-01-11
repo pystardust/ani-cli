@@ -341,6 +341,7 @@ rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 
 ```
+*Note: ani-cli is located in `~/.fzf/bin`, by deleting `~/.fzf` you will delete ani-cli too
 
 ## Dependencies
 
