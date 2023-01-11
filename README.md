@@ -207,9 +207,9 @@ referrer="https://animixplay.to/"
 
 #### Copypaste script:
 
-* Switch to Desktop mode ("STEAM" Button > Power > Switch to Desktop)
-* Open `Konsole` (Steam Deck Icon in bottom left corner > Konsole)
-* Copy the script and paste it in the CLI
+* Switch to Desktop mode (`STEAM` Button > Power > Switch to Desktop)
+* Open `Konsole` (Steam Deck Icon in bottom left corner > System > Konsole)
+* Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck) 
 
 ```
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
@@ -237,6 +237,7 @@ press enter("A" button on Steam Deck) on questions
 ```
 flatpak install io.mpv.Mpv
 ```
+press enter("A" button on Steam Deck) on questions
 
 ##### Install [fzf](https://github.com/junegunn/fzf): 
 
@@ -277,6 +278,7 @@ Type=Application
 Exec=konsole -e ani-cli
 Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
 ```
+
 
 ## Uninstall
 
@@ -353,6 +355,7 @@ flatpak uninstall io.mpv.Mpv
 - aria2c - Download manager
 - ffmpeg - m3u8 Downloader
 - fzf - User interface
+
 
 ## Homies 
 
