@@ -332,11 +332,10 @@ rm "$PREFIX/bin/ani-cli"
 ```
 * Steam Deck
 ```
-rm "~/.local/bin/ani-cli"
+rm "~/.fzf/bin/ani-cli"
 ```
 optionally: remove dependencies:
 ```
-rm "~/.local/bin/aria2"
 rm -rf "~/.aria2"
 rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
