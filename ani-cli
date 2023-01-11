@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 version_number="4.0"
 
@@ -39,6 +39,8 @@ help_info() {
         Continue watching from history
       -d, --download
         Download the video instead of playing it
+      -f, --downloadseason
+        Download the whole selected season
       -s, --syncplay
         Use Syncplay to watch with friends
       -q, --quality
@@ -201,6 +203,16 @@ play_episode() {
 	[ "$use_external_menu" = "1" ] && wait
 }
 
+download_season() {
+	while IFS= read -r line;
+	do
+		printf "We're downloading episode $line of ${title}\n"
+		ep_no="$line"
+		play_episode
+	done <<< "$ep_list_reverse"
+	exit
+}
+
 # MAIN
 
 # setup
@@ -245,6 +257,7 @@ while [ $# -gt 0 ]; do
 	-q | --quality) quality="$2" && shift 2 ;;
 	-c | --continue) search=history && shift ;;
 	-d | --download) player_function=download && shift ;;
+	-f | --downloadseason) player_function=download && downloadseason=true && shift ;;
 	-V | --version) version_info ;;
 	-h | --help) help_info && exit 0 ;;
 	-e | --episode) ep_no="$2" && shift 2 ;;
@@ -288,6 +301,12 @@ title=$(printf "%s" "$result" | cut -f2)
 allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 id=$(printf "%s" "$result" | cut -f1)
 ep_list=$(episodes_list "$id")
+
+# reverse the list order to start with episode 1 and not the last one
+ep_list_reverse="$(printf "$ep_list" | sed 'x;1!H;$!d;x')"
+# download full season if that was asked
+[ ! -z "$downloadseason" ] && download_season
+
 [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
 [ -z "$ep_no" ] && exit 1
 
