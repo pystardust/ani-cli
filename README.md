@@ -249,10 +249,10 @@ press enter on questions
 
 ```
 mkdir ~/.aria2c
-wget -O ~/.aria2c/aria2-1.36.0.tar.gz https://github.com/aria2/aria2/releases/download/release-1.36.0/aria2-1.36.0.tar.gz
-tar xzf ~/.aria2c/aria2-1.36.0.tar.gz -C ~/.local/bin/
+wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
+mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x .local/bin/aria2c
-
 ```
 
 ##### Install ani-cli:
