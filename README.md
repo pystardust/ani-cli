@@ -260,6 +260,7 @@ chmod +x .fzf/bin/aria2c
 
 ```
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cd ~/.ani-cli && git checkout v4 && cd ~ 
 cp ~/.ani-cli/ani-cli ~/.fzf/bin/
 chmod +x .fzf/bin/ani-cli
 
