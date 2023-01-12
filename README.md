@@ -212,19 +212,22 @@ referrer="https://animixplay.to/"
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck) 
 
 ```
+mkdir ~/.local/bin
+echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | cut -d '/' -f 3)rc" 
+
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 
 mkdir ~/.aria2c
 wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.fzf/bin/
-chmod +x .fzf/bin/aria2c
+mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+chmod +x ~/.local/bin/aria2c
 
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cd ~/.ani-cli && git checkout v4 && cd ~ 
-cp ~/.ani-cli/ani-cli ~/.fzf/bin/
-chmod +x .fzf/bin/ani-cli
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+chmod +x ~/.local/bin/ani-cli
 
 flatpak install io.mpv.Mpv
 ```
@@ -247,14 +250,21 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ```
 press enter("A" button on Steam Deck) on questions
 
-##### Install [aria2](https://github.com/aria2/aria2) (for --download):
+##### Make a ~/.local/bin folder if doesnt exist and add it to $PATH
+
+```
+mkdir ~/.local/bin
+echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | cut -d '/' -f 3)rc" 
+```
+
+##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
 
 ```
 mkdir ~/.aria2c
 wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.fzf/bin/
-chmod +x .fzf/bin/aria2c
+mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+chmod +x ~/.local/bin/aria2c
 ```
 
 ##### Install ani-cli:
@@ -262,8 +272,8 @@ chmod +x .fzf/bin/aria2c
 ```
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cd ~/.ani-cli && git checkout v4 && cd ~ 
-cp ~/.ani-cli/ani-cli ~/.fzf/bin/
-chmod +x .fzf/bin/ani-cli
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+chmod +x ~/.local/bin/ani-cli
 ```
 *Note: packman/AUR installation does work, but it would be wiped with the next SteamOS update.*
 
