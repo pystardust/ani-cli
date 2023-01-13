@@ -261,12 +261,20 @@ while [ $# -gt 0 ]; do
 		esac
 		shift
 		;;
-	-q | --quality) quality="$2" && shift 2 ;;
+	-q | --quality) 
+		[ $# -lt 2 ] && die "missing argument!"
+		quality="$2"
+		shift 2 
+		;;
 	-c | --continue) search=history && shift ;;
 	-d | --download) player_function=download && shift ;;
 	-V | --version) version_info ;;
 	-h | --help) help_info && exit 0 ;;
-	-e | --episode) ep_no="$2" && shift 2 ;;
+	-e | --episode)
+		[ $# -lt 2 ] && die "missing argument!"
+		ep_no="$2"
+		shift 2
+		;;
 	-U | --update) update_script ;;
 	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift ;;
 	esac
