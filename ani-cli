@@ -177,6 +177,22 @@ episodes_list() {
 
 # PLAYING
 
+process_hist_entry() {
+	ep_list=$(episodes_list "$id")
+	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
+	[ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+}
+
+update_history() {
+	if grep -q -- "$id" "$histfile"; then
+		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" > "${histfile}.new"
+	else
+		cp "$histfile" "${histfile}.new"
+		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >> "${histfile}.new"
+	fi
+	mv "${histfile}.new" "$histfile"
+}
+
 download() {
 	case $1 in
 	*m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
@@ -198,6 +214,7 @@ play_episode() {
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	*) nohup "$player_function" >/dev/null 2>&1 & ;;
 	esac
+	update_history
 	[ "$use_external_menu" = "1" ] && wait
 }
 
@@ -222,6 +239,8 @@ cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
+histfile="$hist_dir/ani-hsts"
+[ ! -f "$histfile" ] && : > "$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
@@ -267,7 +286,20 @@ esac
 
 # searching
 case "$search" in
-history) die "Not implemented yet!" ;;
+history)
+	anime_list=$(while read -r ep_no id title; do process_hist_entry & done < "$histfile")
+	wait
+	[ -z "$anime_list" ] && die "No unwatched series in histroy!"
+	result=$(printf "%s" "$anime_list" | nth "Select anime: " | cut -f1)
+	result=$(grep "$result" "$histfile")
+	read -r ep_no id title <<-EOF
+	$result
+	EOF
+	ep_list=$(episodes_list "$id")
+	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
+	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+	tput cuu1 && tput el
+	;;
 *)
 	while [ -z "$query" ]; do
 		if [ "$use_external_menu" = "0" ]; then 
@@ -280,16 +312,16 @@ history) die "Not implemented yet!" ;;
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
 	result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
+	# moves the cursor up one line and clears that line
+	tput cuu1 && tput el
+	title=$(printf "%s" "$result" | cut -f2)
+	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+	id=$(printf "%s" "$result" | cut -f1)
+	ep_list=$(episodes_list "$id")
+	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
+	[ -z "$ep_no" ] && exit 1
 	;;
 esac
-# moves the cursor up one line and clears that line
-tput cuu1 && tput el
-title=$(printf "%s" "$result" | cut -f2)
-allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
-id=$(printf "%s" "$result" | cut -f1)
-ep_list=$(episodes_list "$id")
-[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
-[ -z "$ep_no" ] && exit 1
 
 # playback & loop
 play_episode
