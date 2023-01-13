@@ -142,7 +142,7 @@ select_quality() {
 	worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
 	*) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
 	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(cat "$cache_dir"/* | head -n1)
+	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(printf "%s" "$links" | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
 
