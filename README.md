@@ -226,7 +226,7 @@ cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
-cd ~/.ani-cli && git checkout v4 && cd ~ 
+cd ~/.ani-cli && git checkout v4 && cd
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 chmod +x ~/.local/bin/ani-cli
 
@@ -272,7 +272,7 @@ chmod +x ~/.local/bin/aria2c
 
 ```
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
-cd ~/.ani-cli && git checkout v4 && cd ~ 
+cd ~/.ani-cli && git checkout v4 && cd 
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 chmod +x ~/.local/bin/ani-cli
 ```
@@ -280,7 +280,6 @@ chmod +x ~/.local/bin/ani-cli
 ##### Optional: add desktop entry:
 
 ```
-touch ~/.local/share/applications/ani-cli.desktop
 echo '[Desktop Entry]
 Encoding=UTF-8
 Version=4.0
@@ -347,6 +346,7 @@ rm "$PREFIX/bin/ani-cli"
 * Steam Deck
 ```
 rm "~/.local/bin/ani-cli"
+rm ~/.ani-cli
 ```
 optionally: remove dependencies:
 ```
