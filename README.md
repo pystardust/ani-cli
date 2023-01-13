@@ -221,7 +221,7 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 mkdir ~/.aria2c
 wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
@@ -263,7 +263,7 @@ echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | cut -d '/' -f 3)
 mkdir ~/.aria2c
 wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-mv ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 ```
 
