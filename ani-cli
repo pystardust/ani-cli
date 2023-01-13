@@ -51,6 +51,8 @@ help_info() {
         Show this help message and exit
       -e, --episode
         Specify the number of episodes to watch
+      --dub
+        play dubbed version
       -U, --update
         Update the script
     Some example usages:
@@ -58,6 +60,7 @@ help_info() {
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
     \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+	exit 0
 }
 
 version_info() {
@@ -251,7 +254,6 @@ while [ $# -gt 0 ]; do
 		MINGW*) player_function="vlc.exe" ;;
 		*) player_function="vlc" ;;
 		esac
-		shift
 		;;
 	-s | --syncplay)
 		case "$(uname -s)" in
@@ -259,25 +261,26 @@ while [ $# -gt 0 ]; do
 		MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
 		*) player_function="syncplay" ;;
 		esac
-		shift
 		;;
 	-q | --quality) 
 		[ $# -lt 2 ] && die "missing argument!"
 		quality="$2"
-		shift 2 
+		shift
 		;;
-	-c | --continue) search=history && shift ;;
-	-d | --download) player_function=download && shift ;;
+	-c | --continue) search=history ;;
+	-d | --download) player_function=download ;;
 	-V | --version) version_info ;;
-	-h | --help) help_info && exit 0 ;;
+	-h | --help) help_info;;
 	-e | --episode)
 		[ $# -lt 2 ] && die "missing argument!"
 		ep_no="$2"
-		shift 2
+		shift
 		;;
+	--dub) mode="dub" ;;
 	-U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" && shift ;;
+	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" ;;
 	esac
+	shift
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "wget" "sed" "grep" "fzf" || true
