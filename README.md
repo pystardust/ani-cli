@@ -213,7 +213,7 @@ referrer="https://animixplay.to/"
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck) 
 
 ```
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | cut -d '/' -f 3)rc" 
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc" 
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
@@ -253,7 +253,7 @@ press enter("A" button on Steam Deck) on questions
 ##### Make a ~/.local/bin folder if doesnt exist and add it to $PATH
 
 ```
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | cut -d '/' -f 3)rc" 
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"  
 ```
 
 ##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
@@ -270,7 +270,7 @@ chmod +x ~/.local/bin/aria2c
 
 ```
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
-cd ~/.ani-cli && git checkout v4 && cd 
+cd ~/.ani-cli && git checkout v4 && cd - 
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 chmod +x ~/.local/bin/ani-cli
 ```
