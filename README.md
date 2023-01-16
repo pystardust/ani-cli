@@ -344,7 +344,7 @@ rm "$PREFIX/bin/ani-cli"
 * Steam Deck
 ```
 rm "~/.local/bin/ani-cli"
-rm ~/.ani-cli
+rm -rf ~/.ani-cli
 ```
 optionally: remove dependencies:
 ```
