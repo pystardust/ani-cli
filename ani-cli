@@ -337,8 +337,8 @@ esac
 # playback & loop
 play() {
 	if printf "%s" "$ep_no" | grep -qE "^[0-9]+([^0-9][0-9]+)*$"; then
-		start=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f1 2>/dev/null)
-		end=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f2 2>/dev/null)
+		start=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f1)
+		end=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f2)
 	fi
 	if [ "$(printf "%s\n" "$ep_no" | wc -l)" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
