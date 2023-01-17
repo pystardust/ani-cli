@@ -5,12 +5,13 @@ version_number="4.0"
 # UI
 
 external_menu() {
-	rofi -sort -dmenu -i -width 1500 -p "$*"
+	rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
 }
 
 launcher() {
-	[ "$use_external_menu" = "0" ] && fzf --prompt "$*"
-	[ "$use_external_menu" = "1" ] && external_menu "$*"
+	[ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
+	[ "$use_external_menu" = "0" ] && fzf "$1" --reverse --prompt "$2"
+	[ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
 nth() {
@@ -18,7 +19,10 @@ nth() {
 	[ -z "$stdin" ] && return 1
 	line_count="$(printf "%s\n" "$stdin" | wc -l)"
 	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
-	line=$(printf "%s" "$stdin" | sed 's|.*\t||' | launcher "$*")
+	prompt="$1"
+	multi_flag=""
+	[ $# -ne 1 ] && shift && multi_flag="$1"
+	line=$(printf "%s" "$stdin" | sed 's|.*\t||' | launcher "$multi_flag" "$prompt")
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
 }
 
@@ -49,7 +53,7 @@ help_info() {
         Show the version of the script
       -h, --help
         Show this help message and exit
-      -e, --episode
+      -e, --episode, -r, --range
         Specify the number of episodes to watch
       --dub
         play dubbed version
@@ -59,7 +63,9 @@ help_info() {
       %s -q 720p banana fish
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+      %s blue lock -e 5-6
+      %s -e \"5 6\" blue lock
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
 	exit 0
 }
 
@@ -188,10 +194,10 @@ process_hist_entry() {
 
 update_history() {
 	if grep -q -- "$id" "$histfile"; then
-		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" > "${histfile}.new"
+		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" >"${histfile}.new"
 	else
 		cp "$histfile" "${histfile}.new"
-		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >> "${histfile}.new"
+		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
 	fi
 	mv "${histfile}.new" "$histfile"
 }
@@ -238,12 +244,14 @@ case "$(uname -a)" in
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-m"}}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-multi-select"}}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
-[ ! -f "$histfile" ] && : > "$histfile"
+[ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
@@ -262,7 +270,7 @@ while [ $# -gt 0 ]; do
 		*) player_function="syncplay" ;;
 		esac
 		;;
-	-q | --quality) 
+	-q | --quality)
 		[ $# -lt 2 ] && die "missing argument!"
 		quality="$2"
 		shift
@@ -270,8 +278,8 @@ while [ $# -gt 0 ]; do
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
 	-V | --version) version_info ;;
-	-h | --help) help_info;;
-	-e | --episode)
+	-h | --help) help_info ;;
+	-e | --episode | -r | --range)
 		[ $# -lt 2 ] && die "missing argument!"
 		ep_no="$2"
 		shift
@@ -298,13 +306,13 @@ esac
 # searching
 case "$search" in
 history)
-	anime_list=$(while read -r ep_no id title; do process_hist_entry & done < "$histfile")
+	anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
 	wait
 	[ -z "$anime_list" ] && die "No unwatched series in histroy!"
 	result=$(printf "%s" "$anime_list" | nth "Select anime: " | cut -f1)
 	result=$(grep "$result" "$histfile")
 	read -r ep_no id title <<-EOF
-	$result
+		$result
 	EOF
 	ep_list=$(episodes_list "$id")
 	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
@@ -313,7 +321,7 @@ history)
 	;;
 *)
 	while [ -z "$query" ]; do
-		if [ "$use_external_menu" = "0" ]; then 
+		if [ "$use_external_menu" = "0" ]; then
 			printf "Search anime: " && read -r query
 		else
 			query=$(printf "" | external_menu "Search anime: ")
@@ -329,13 +337,35 @@ history)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
 	ep_list=$(episodes_list "$id")
-	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
+	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
 	[ -z "$ep_no" ] && exit 1
 	;;
 esac
 
 # playback & loop
-play_episode
+play() {
+	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
+	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
+	[ -z "$start" ] || [ -z "$end" ] && unset start end
+	line_count=$(printf "%s\n" "$ep_no" | wc -l)
+	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
+		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
+		[ -z "$range" ] && die "Invalid range!"
+		for i in $range; do
+			ep_no=$i
+			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+			play_episode
+			tput clear
+		done
+	else
+		play_episode
+	fi
+}
+play
+[ "$player_function" = "download" ] && exit 0
+
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
@@ -345,7 +375,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode
 	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
-	play_episode
+	play
 done
 
 # ani-cli
