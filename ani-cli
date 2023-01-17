@@ -5,11 +5,11 @@ version_number="4.0"
 # UI
 
 external_menu() {
-	rofi -sort -dmenu -i -width 1500 -p "$*"
+	rofi -multi-select -sort -dmenu -i -width 1500 -p "$*"
 }
 
 launcher() {
-	[ "$use_external_menu" = "0" ] && fzf --prompt "$*"
+	[ "$use_external_menu" = "0" ] && fzf --multi --prompt "$*"
 	[ "$use_external_menu" = "1" ] && external_menu "$*"
 }
 
@@ -188,10 +188,10 @@ process_hist_entry() {
 
 update_history() {
 	if grep -q -- "$id" "$histfile"; then
-		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" > "${histfile}.new"
+		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" >"${histfile}.new"
 	else
 		cp "$histfile" "${histfile}.new"
-		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >> "${histfile}.new"
+		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
 	fi
 	mv "${histfile}.new" "$histfile"
 }
@@ -243,7 +243,7 @@ cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
-[ ! -f "$histfile" ] && : > "$histfile"
+[ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
@@ -262,7 +262,7 @@ while [ $# -gt 0 ]; do
 		*) player_function="syncplay" ;;
 		esac
 		;;
-	-q | --quality) 
+	-q | --quality)
 		[ $# -lt 2 ] && die "missing argument!"
 		quality="$2"
 		shift
@@ -270,7 +270,7 @@ while [ $# -gt 0 ]; do
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
 	-V | --version) version_info ;;
-	-h | --help) help_info;;
+	-h | --help) help_info ;;
 	-e | --episode)
 		[ $# -lt 2 ] && die "missing argument!"
 		ep_no="$2"
@@ -298,13 +298,13 @@ esac
 # searching
 case "$search" in
 history)
-	anime_list=$(while read -r ep_no id title; do process_hist_entry & done < "$histfile")
+	anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
 	wait
 	[ -z "$anime_list" ] && die "No unwatched series in histroy!"
 	result=$(printf "%s" "$anime_list" | nth "Select anime: " | cut -f1)
 	result=$(grep "$result" "$histfile")
 	read -r ep_no id title <<-EOF
-	$result
+		$result
 	EOF
 	ep_list=$(episodes_list "$id")
 	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
@@ -313,7 +313,7 @@ history)
 	;;
 *)
 	while [ -z "$query" ]; do
-		if [ "$use_external_menu" = "0" ]; then 
+		if [ "$use_external_menu" = "0" ]; then
 			printf "Search anime: " && read -r query
 		else
 			query=$(printf "" | external_menu "Search anime: ")
@@ -335,7 +335,27 @@ history)
 esac
 
 # playback & loop
-play_episode
+play() {
+	if printf "%s" "$ep_no" | grep -qE "^[0-9]+([^0-9][0-9]+)*$"; then
+		start=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f1 2>/dev/null)
+		end=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f2 2>/dev/null)
+	fi
+	if [ "$(printf "%s\n" "$ep_no" | wc -l)" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
+		range=$(printf "%s\n" "$ep_list" | sed -n '/'"${end}"'/,/'"${start}"'/p' | sed '1!G;h;$!d')
+		for i in $range; do
+			ep_no=$i
+			play_episode
+			tput clear
+		done
+	else
+		play_episode
+	fi
+}
+play
+[ "$player_function" = "download" ] && exit 0
+
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
@@ -345,7 +365,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode
 	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
-	play_episode
+	play
 done
 
 # ani-cli
