@@ -5,12 +5,13 @@ version_number="4.0"
 # UI
 
 external_menu() {
-	rofi -multi-select -sort -dmenu -i -width 1500 -p "$*"
+	rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
 }
 
 launcher() {
-	[ "$use_external_menu" = "0" ] && fzf --multi --prompt "$*"
-	[ "$use_external_menu" = "1" ] && external_menu "$*"
+	[ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
+	[ "$use_external_menu" = "0" ] && fzf "$1" --reverse --prompt "$2"
+	[ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
 nth() {
@@ -18,7 +19,10 @@ nth() {
 	[ -z "$stdin" ] && return 1
 	line_count="$(printf "%s\n" "$stdin" | wc -l)"
 	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
-	line=$(printf "%s" "$stdin" | sed 's|.*\t||' | launcher "$*")
+	prompt="$1"
+	multi_flag=""
+	[ $# -ne 1 ] && shift && multi_flag="$1"
+	line=$(printf "%s" "$stdin" | sed 's|.*\t||' | launcher "$multi_flag" "$prompt")
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
 }
 
@@ -238,6 +242,8 @@ case "$(uname -a)" in
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-m"}}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-multi-select"}}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
@@ -329,17 +335,16 @@ history)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
 	ep_list=$(episodes_list "$id")
-	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ")
+	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
 	[ -z "$ep_no" ] && exit 1
 	;;
 esac
 
 # playback & loop
 play() {
-	if printf "%s" "$ep_no" | grep -qE "^[0-9]+([^0-9][0-9]+)*$"; then
-		start=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f1 2>/dev/null)
-		end=$(printf "%s" "$ep_no" | cut -d"$(printf "%s" "$ep_no" | grep -oE '[^0-9]')" -f2 2>/dev/null)
-	fi
+	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
+	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
+	[ -z "$start" ] || [ -z "$end" ] && unset start end
 	if [ "$(printf "%s\n" "$ep_no" | wc -l)" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
 		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
