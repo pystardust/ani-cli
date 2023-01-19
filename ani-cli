@@ -53,7 +53,7 @@ help_info() {
         Show the version of the script
       -h, --help
         Show this help message and exit
-      -e, --episode
+      -e, --episode, -r, --range
         Specify the number of episodes to watch
       --dub
         play dubbed version
@@ -63,7 +63,9 @@ help_info() {
       %s -q 720p banana fish
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+      %s blue lock -e 5-6
+      %s -e "5 6" blue lock
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
 	exit 0
 }
 
@@ -277,7 +279,7 @@ while [ $# -gt 0 ]; do
 	-d | --download) player_function=download ;;
 	-V | --version) version_info ;;
 	-h | --help) help_info ;;
-	-e | --episode)
+	-e | --episode | -r | --range)
 		[ $# -lt 2 ] && die "missing argument!"
 		ep_no="$2"
 		shift
