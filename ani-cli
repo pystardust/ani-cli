@@ -351,9 +351,11 @@ play() {
 	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
 		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
-		range=$(printf "%s\n" "$ep_list" | sed -n '/'"${end}"'/,/'"${start}"'/p' | sed '1!G;h;$!d')
+		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
+		[ -z "$range" ] && die "Invalid range!"
 		for i in $range; do
 			ep_no=$i
+			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
 			play_episode
 			tput clear
 		done
