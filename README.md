@@ -43,6 +43,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
+  - [Steam Deck](#steam-deck)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
 - [Homies](#Homies)
@@ -203,6 +204,93 @@ You need to add any referrer in mpv by opening mpv [(playstore version)](https:/
 referrer="https://animixplay.to/"
 ```
 
+### Steam Deck
+
+#### Copypaste script:
+
+* Switch to Desktop mode (`STEAM` Button > Power > Switch to Desktop)
+* Open `Konsole` (Steam Deck Icon in bottom left corner > System > Konsole)
+* Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck) 
+
+```
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc" 
+
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+
+mkdir ~/.aria2c
+wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+chmod +x ~/.local/bin/aria2c
+
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cd ~/.ani-cli && git checkout v4 && cd
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+chmod +x ~/.local/bin/ani-cli
+
+flatpak install io.mpv.Mpv
+```
+press enter("A" button on Steam Deck) on questions
+
+#### Installation in steps:
+
+##### Install mpv (Flatpak version):
+
+```
+flatpak install io.mpv.Mpv
+```
+press enter("A" button on Steam Deck) on questions
+
+##### Install [fzf](https://github.com/junegunn/fzf): 
+
+```
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+```
+press enter("A" button on Steam Deck) on questions
+
+##### Make a ~/.local/bin folder if doesnt exist and add it to $PATH
+
+```
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"  
+```
+
+##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
+
+```
+mkdir ~/.aria2c
+wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+chmod +x ~/.local/bin/aria2c
+```
+
+##### Install ani-cli:
+
+```
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cd ~/.ani-cli && git checkout v4 && cd - 
+cp ~/.ani-cli/ani-cli ~/.local/bin/
+chmod +x ~/.local/bin/ani-cli
+```
+
+##### Optional: add desktop entry:
+
+```
+echo '[Desktop Entry]
+Encoding=UTF-8
+Version=4.0
+Type=Application
+Exec=konsole -e ani-cli
+Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
+```
+The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming Mode"
+In Steam Desktop app:
+`Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
+*Note: Konsole window size bugs out if launched from "Gaming Mode".*
+*Note: this is not working the way it should yet.*
+
 ## Uninstall
 
 * apt:
@@ -253,6 +341,18 @@ pkg remove ani-cli
 ```sh
 rm "$PREFIX/bin/ani-cli"
 ```
+* Steam Deck
+```
+rm "~/.local/bin/ani-cli"
+rm -rf ~/.ani-cli
+```
+optionally: remove dependencies:
+```
+rm ~/.local/bin/aria2c
+rm -rf "~/.aria2"
+rm -rf "~/.fzf"
+flatpak uninstall io.mpv.Mpv
+```
 
 ## Dependencies
 
@@ -267,6 +367,7 @@ rm "$PREFIX/bin/ani-cli"
 - aria2c - Download manager
 - ffmpeg - m3u8 Downloader
 - fzf - User interface
+
 
 ## Homies 
 
