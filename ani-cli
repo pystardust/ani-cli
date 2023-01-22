@@ -204,24 +204,24 @@ update_history() {
 
 download() {
 	case $1 in
-		*m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-		*) aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+	*m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
+	*) aria2c --check-certificate=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
 	esac
 }
 
 play_episode() {
 	get_episode_url
 	case "$player_function" in
-		debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-		mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-		android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-		iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-		*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-		download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-		*) nohup "$player_function" >/dev/null 2>&1 & ;;
+	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+	mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+	android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+	*) nohup "$player_function" >/dev/null 2>&1 & ;;
 	esac
 	update_history
 	[ "$use_external_menu" = "1" ] && wait
@@ -243,9 +243,13 @@ case "$(uname -a)" in
 *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
-[ -t 0 ] && use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}" || use_external_menu="${ANI_CLI_EXTERNAL_MENU:-1}"
-[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
-[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
+if [ -t 0 ]; then
+	use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+	multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-m"}}"
+else
+	use_external_menu="${ANI_CLI_EXTERNAL_MENU:-1}"
+	multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-multi-select"}}"
+fi
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
@@ -293,14 +297,14 @@ done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "wget" "sed" "grep" "fzf" || true
 case "$player_function" in
-	debug) ;;
-	download) dep_ch "ffmpeg" "aria2c" ;;
-	flatpak*)
-		dep_ch "flatpak"
-		flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
+debug) ;;
+download) dep_ch "ffmpeg" "aria2c" ;;
+flatpak*)
+	dep_ch "flatpak"
+	flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
 	;;
-	android*) printf "Dependency checking of players on Android is disabled\n" ;;
-	*) dep_ch "$player_function" ;;
+android*) printf "Dependency checking of players on Android is disabled\n" ;;
+*) dep_ch "$player_function" ;;
 esac
 
 # searching
@@ -369,11 +373,11 @@ play
 
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
-		previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-		replay) ;;
-		next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-		select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
-		*) exit 0 ;;
+	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+	replay) ;;
+	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
+	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
 	play
