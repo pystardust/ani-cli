@@ -141,7 +141,6 @@ generate_link() {
 	4) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
 	*) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
 	esac
-	# logic yet to implement
 	[ -n "$provider_id" ] && get_links "$provider_id"
 }
 
@@ -227,6 +226,28 @@ play_episode() {
 	[ "$use_external_menu" = "1" ] && wait
 }
 
+play() {
+	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
+	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
+	[ -z "$start" ] || [ -z "$end" ] && unset start end
+	line_count=$(printf "%s\n" "$ep_no" | wc -l)
+	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
+		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
+		[ -z "$range" ] && die "Invalid range!"
+		for i in $range; do
+			tput clear
+			ep_no=$i
+			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+			play_episode
+		done
+	else
+		play_episode
+	fi
+}
+
+
 # MAIN
 
 # setup
@@ -303,7 +324,7 @@ flatpak*)
 	dep_ch "flatpak"
 	flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
 	;;
-android*) printf "Dependency checking of players on Android is disabled\n" ;;
+android*) printf "Checking of players on Android is disabled\n" ;;
 *) dep_ch "$player_function" ;;
 esac
 
@@ -336,8 +357,6 @@ history)
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
 	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
-	# moves the cursor up one line and clears that line
-	tput cuu1 && tput el
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
@@ -347,29 +366,12 @@ history)
 	;;
 esac
 
+# moves the cursor up one line and clears that line
+tput cuu1 && tput el
+
 # playback & loop
-play() {
-	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
-	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
-	[ -z "$start" ] || [ -z "$end" ] && unset start end
-	line_count=$(printf "%s\n" "$ep_no" | wc -l)
-	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
-		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
-		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
-		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
-		[ -z "$range" ] && die "Invalid range!"
-		for i in $range; do
-			tput clear
-			ep_no=$i
-			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
-			play_episode
-		done
-	else
-		play_episode
-	fi
-}
 play
-[ "$player_function" = "download" ] && exit 0
+[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
