@@ -154,14 +154,13 @@ brew install --cask iina
 
 ### Windows
 
-*Make sure git bash is installed [(Install)](https://git-scm.com/download/win)*
+*ani-cli needs a posix shell and the current way is git bash. Unfortunately fzf can't run in git bash's default terminal. The solution is to use git bash in windows terminal*
 
-*Note that the installation instruction below must be done inside **Git Bash**, not in Command Prompt or Powershell*
+First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=de-at&gl=at&rtc=1)
 
-mpv is not added to $PATH automatically when installed and thus the script is unable to use it. You either have to do this manually, or install it via scoop (recommended):
-```sh
-scoop install mpv
-```
+Then make sure git bash is installed. [(Install)](https://git-scm.com/download/win) It needs to be added to windows terminal [(Instructions)](https://stackoverflow.com/questions/56839307/adding-git-bash-to-the-new-windows-terminal)
+
+The following steps and ani-cli need to be run from git bash in windows terminal. 
 
 #### Scoop bucket
 
@@ -178,7 +177,9 @@ cp ani-cli/ani-cli /usr/bin
 rm -rf /ani-cli
 ```
 
-*Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
+#### Dependencies
+
+All dependencies can be installed with scoop (from the extras bucket), however some users experienced that installed programs aren't always added to the path. If this happens installing from winget instead usually works.
 
 ### Android
 
@@ -201,13 +202,7 @@ cp ani-cli/ani-cli "$PREFIX"/bin
 rm -rf /ani-cli
 ```
 
-Note : Vlc Android now works too ;)
-
-You need to add any referrer in mpv by opening mpv [(playstore version)](https://play.google.com/store/apps/details?id=is.xyz.mpv), going into Settings -> Advanced -> Edit mpv.conf and adding (for example):
-
-```
-referrer="https://animixplay.to/"
-```
+For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
 ### Steam Deck
 
