@@ -18,16 +18,16 @@ nth() {
 	stdin=$(cat -)
 	[ -z "$stdin" ] && return 1
 	line_count="$(printf "%s\n" "$stdin" | wc -l)"
-	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" && return 0
+	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
 	prompt="$1"
 	multi_flag=""
 	[ $# -ne 1 ] && shift && multi_flag="$1"
-	line=$(printf "%s" "$stdin" | sed 's|.*\t||' | launcher "$multi_flag" "$prompt")
-	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" || exit 1
+	line=$(printf "%s" "$stdin" | cut -f1,3 --output-delimiter " " | launcher "$multi_flag" "$prompt" | cut -d " " -f 2-)
+	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" | cut -f2,3 || exit 1
 }
 
 die() {
-	printf "%s\n" "$*" 1>&2
+	printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
 	exit 1
 }
 
@@ -141,7 +141,6 @@ generate_link() {
 	4) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
 	*) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
 	esac
-	# logic yet to implement
 	[ -n "$provider_id" ] && get_links "$provider_id"
 }
 
@@ -227,6 +226,28 @@ play_episode() {
 	[ "$use_external_menu" = "1" ] && wait
 }
 
+play() {
+	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
+	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
+	[ -z "$start" ] || [ -z "$end" ] && unset start end
+	line_count=$(printf "%s\n" "$ep_no" | wc -l)
+	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
+		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
+		[ -z "$range" ] && die "Invalid range!"
+		for i in $range; do
+			tput clear
+			ep_no=$i
+			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+			play_episode
+		done
+	else
+		play_episode
+	fi
+}
+
+
 # MAIN
 
 # setup
@@ -243,9 +264,9 @@ case "$(uname -a)" in
 *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
-[ -t 0 ] && use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}" || use_external_menu="${ANI_CLI_EXTERNAL_MENU:-1}"
-[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-m"}}"
-[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-multi-select"}}"
+use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
 [ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
@@ -286,7 +307,7 @@ while [ $# -gt 0 ]; do
 		;;
 	--dub) mode="dub" ;;
 	-U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s/^ //;s/ /%20/g")" ;;
+	*) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |%20|g")" ;;
 	esac
 	shift
 done
@@ -299,7 +320,7 @@ flatpak*)
 	dep_ch "flatpak"
 	flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
 	;;
-android*) printf "Dependency checking of players on Android is disabled\n" ;;
+android*) printf "Checking of players on Android is disabled\n" ;;
 *) dep_ch "$player_function" ;;
 esac
 
@@ -309,7 +330,8 @@ history)
 	anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
 	wait
 	[ -z "$anime_list" ] && die "No unwatched series in histroy!"
-	result=$(printf "%s" "$anime_list" | nth "Select anime: " | cut -f1)
+	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
+	[ -z "$result" ] && exit 1
 	result=$(grep "$result" "$histfile")
 	read -r ep_no id title <<-EOF
 		$result
@@ -330,9 +352,7 @@ history)
 	query=$(printf "%s" "$query" | sed "s| |%20|g")
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
-	result=$(printf "%s" "$anime_list" | nth "Select anime: ") || exit 1
-	# moves the cursor up one line and clears that line
-	tput cuu1 && tput el
+	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
@@ -342,36 +362,19 @@ history)
 	;;
 esac
 
+# moves the cursor up one line and clears that line
+tput cuu1 && tput el
+
 # playback & loop
-play() {
-	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
-	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
-	[ -z "$start" ] || [ -z "$end" ] && unset start end
-	line_count=$(printf "%s\n" "$ep_no" | wc -l)
-	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
-		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
-		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
-		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
-		[ -z "$range" ] && die "Invalid range!"
-		for i in $range; do
-			ep_no=$i
-			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
-			play_episode
-			tput clear
-		done
-	else
-		play_episode
-	fi
-}
 play
-[ "$player_function" = "download" ] && exit 0
+[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
 while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
 	replay) ;;
 	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: ") ;;
+	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
 	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
