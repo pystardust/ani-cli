@@ -76,7 +76,7 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 #### Debian
 
-```
+```sh
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
 sudo apt update
@@ -101,7 +101,7 @@ Build and install from the AUR:
 ```sh
 yay -S ani-cli
 ```
-Also consider ani-cli-git
+Also consider `ani-cli-git`
 
 #### OpenSuse Tumbleweed and Leap
 
@@ -116,7 +116,7 @@ zypper install ani-cli
 ```
 You'll get a warning about `Signature verification failed [4-Signatures public key is not available]` but this can be ignored from the prompt.
 
-*Note: package is noarch, so any architecture should work, even though the repo is labled x86-64*
+*Note: package is noarch, so any architecture should work, even though the repo is labelled x86-64*
 
 #### Installing from source
 
@@ -124,9 +124,9 @@ Install dependencies [(See below)](#Dependencies)
 
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-sudo cp ./ani-cli /usr/local/bin
-cd .. && rm -rf "./ani-cli"
+git clone "https://github.com/pystardust/ani-cli.git"
+sudo cp ani-cli/ani-cli /usr/local/bin
+rm -rf ani-cli
 ```
 
 ### MacOS
@@ -145,7 +145,7 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
 ```sh
-brew install curl grep axel openssl@1.1 ffmpeg git && \
+brew install wget grep aria2 ffmpeg git && \
 brew install --cask iina
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
@@ -171,9 +171,9 @@ scoop install ani-cli
 #### From source
 ```sh
 rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./ani-cli /usr/bin
-cd .. && rm -rf ./ani-cli
+git clone "https://github.com/pystardust/ani-cli.git"
+cp ani-cli/ani-cli /usr/bin
+rm -rf /ani-cli
 ```
 
 *Run ani-cli in Git Bash (Running it in cmd or powershell may or may not work)*
@@ -194,9 +194,9 @@ pkg install ani-cli
 ```sh
 pkg up -y
 rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./ani-cli "$PREFIX"/bin
-cd .. && rm -rf ./ani-cli
+git clone "https://github.com/pystardust/ani-cli.git"
+cp ani-cli/ani-cli "$PREFIX"/bin
+rm -rf /ani-cli
 ```
 
 Note : Vlc Android now works too ;)
@@ -215,7 +215,7 @@ referrer="https://animixplay.to/"
 * Open `Konsole` (Steam Deck Icon in bottom left corner > System > Konsole)
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck) 
 
-```
+```sh
 [ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc" 
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
@@ -228,9 +228,7 @@ cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
-cd ~/.ani-cli && git checkout v4 && cd
 cp ~/.ani-cli/ani-cli ~/.local/bin/
-chmod +x ~/.local/bin/ani-cli
 
 flatpak install io.mpv.Mpv
 ```
@@ -240,28 +238,28 @@ press enter("A" button on Steam Deck) on questions
 
 ##### Install mpv (Flatpak version):
 
-```
+```sh
 flatpak install io.mpv.Mpv
 ```
 press enter("A" button on Steam Deck) on questions
 
 ##### Install [fzf](https://github.com/junegunn/fzf): 
 
-```
+```sh
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 ```
 press enter("A" button on Steam Deck) on questions
 
-##### Make a ~/.local/bin folder if doesnt exist and add it to $PATH
+##### Make a ~/.local/bin folder if doesn't exist and add it to $PATH
 
-```
+```sh
 [ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"  
 ```
 
 ##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
 
-```
+```sh
 mkdir ~/.aria2c
 wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
@@ -271,11 +269,9 @@ chmod +x ~/.local/bin/aria2c
 
 ##### Install ani-cli:
 
-```
+```sh
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
-cd ~/.ani-cli && git checkout v4 && cd - 
 cp ~/.ani-cli/ani-cli ~/.local/bin/
-chmod +x ~/.local/bin/ani-cli
 ```
 
 ##### Optional: add desktop entry:
@@ -297,13 +293,13 @@ In Steam Desktop app:
 ## Uninstall
 
 * apt:
-```
+```sh
 sudo apt remove ani-cli
-# to remove the repository from apt:
+# to remove the repository from apt
 sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
 ```
 * dnf:
-```
+```sh
 sudo dnf remove ani-cli      # for ani-cli
 # disable the repo in dnf
 dnf copr disable derisis13/ani-cli
@@ -316,7 +312,7 @@ zypper removerepo ani-cli
 ```
 You might want to remove `packman-essentials` if you don't need it otherwise
 * AUR:
-```
+```sh
 yay -R ani-cli
 ```
 * Scoop:
@@ -337,7 +333,7 @@ In **Git Bash** run (as administrator):
 rm "/usr/bin/ani-cli"
 ```
 * Termux package
-```
+```sh
 pkg remove ani-cli
 ```
 * Android:
@@ -345,12 +341,12 @@ pkg remove ani-cli
 rm "$PREFIX/bin/ani-cli"
 ```
 * Steam Deck
-```
+```sh
 rm "~/.local/bin/ani-cli"
 rm -rf ~/.ani-cli
 ```
 optionally: remove dependencies:
-```
+```sh
 rm ~/.local/bin/aria2c
 rm -rf "~/.aria2"
 rm -rf "~/.fzf"
@@ -361,19 +357,17 @@ flatpak uninstall io.mpv.Mpv
 
 - grep
 - sed
-- awk
-- curl
 - wget
-- openssl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
 - aria2c - Download manager
 - ffmpeg - m3u8 Downloader
 - fzf - User interface
 
-## Homies 
+## Homies
 
-* [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: animixplay, 9anime...) (Python)
+* [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allanime, zoro ... (Python)
+* [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
 * [anime-helper-shell](https://github.com/Atreyagaurav/anime-helper-shell): A python shell for searching, watching, and downloading anime (Python)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
