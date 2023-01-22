@@ -147,7 +147,7 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
 ```sh
-brew install wget grep aria2 ffmpeg git && \
+brew install wget grep aria2 ffmpeg git fzf && \
 brew install --cask iina
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
