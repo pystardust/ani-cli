@@ -9,7 +9,6 @@
 <h1 align="center">
 <a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://pnggrid.com/wp-content/uploads/2021/05/Discord-Logo-Square-1024x1024.png" width="80"></a>
-<a href="https://nightly.revolt.chat/invite/4FKHbs78"><img src="https://developers.revolt.chat/img/logo.png" width="80"></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
@@ -20,7 +19,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://animixplay.to/">animixplay.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allanime.site/">allanime.</a>
 </h3>
 	
 <h1 align="center">
@@ -32,7 +31,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
-- [New in v3](#New-in-v3)
+- [New in v4](#New-in-v4)
 - [Install](#Install)
   - [Linux](#Linux)
    - [Debian](#Debian)
@@ -43,7 +42,7 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
   - [MacOS](#MacOS)
   - [Windows](#Windows)
   - [Android](#Android)
-  - [Steam Deck](#steam-deck)
+  - [Steam Deck](#Steam-deck)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
 - [Homies](#Homies)
@@ -56,6 +55,12 @@ If you encounter "Video url not found" or any breaking issue, then make sure you
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 
+## New in v4
+
+V4 was a complete rewrite, which is why it took so long.
+
+The user interface is now powered by [fzf](https://github.com/junegunn/fzf), tho it may be changed to [gum](https://github.com/charmbracelet/gum) in an upcoming version.
+
 ## Install
 
 #### Users of V3.2 or the v3.2.x series should uninstall before upgrading
@@ -63,7 +68,7 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 ### Native packages
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=3.0)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
 
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
 
@@ -123,8 +128,6 @@ git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 sudo cp ./ani-cli /usr/local/bin
 cd .. && rm -rf "./ani-cli"
 ```
-*Also note that mpv installed through flatpak is not compatible*
-
 
 ### MacOS
 
@@ -367,7 +370,6 @@ flatpak uninstall io.mpv.Mpv
 - aria2c - Download manager
 - ffmpeg - m3u8 Downloader
 - fzf - User interface
-
 
 ## Homies 
 
