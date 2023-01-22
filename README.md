@@ -55,6 +55,8 @@ If you encounter "Video url not found" or any breaking issue, then make sure you
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 
+History has been reworked and relocated. We're working on a transition script, please be patient. Old history can be viewed with `less ${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts`
+
 ## New in v4
 
 V4 was a complete rewrite, which is why it took so long.
