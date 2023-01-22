@@ -243,7 +243,7 @@ case "$(uname -a)" in
 *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
-use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+[ -t 0 ] && use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}" || use_external_menu="${ANI_CLI_EXTERNAL_MENU:-1}"
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-m"}}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-${multi_selection_flag:-"-multi-select"}}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
