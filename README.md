@@ -16,6 +16,8 @@
 <a href="https://github.com/Derisis13"><img src="https://img.shields.io/badge/maintainer-Derisis13-blue"></a>
 <a href="https://github.com/71zenith"><img src="https://img.shields.io/badge/maintainer-71zenith-blue"></a>
 
+(Ray died of ligma :sob:)
+
 </p>
 
 <h3 align="center">
