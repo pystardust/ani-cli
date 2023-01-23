@@ -31,7 +31,6 @@ https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-
 ## Table of Contents
 
 - [Fixing errors](#Fixing-errors)
-- [New in v4](#New-in-v4)
 - [Install](#Install)
   - [Linux](#Linux)
    - [Debian](#Debian)
@@ -56,12 +55,6 @@ If you encounter "Video url not found" or any breaking issue, then make sure you
 If after this the issue persists then open an issue.
 
 History has been reworked and relocated. We're working on a transition script, please be patient. Old history can be viewed with `less ${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts`
-
-## New in v4
-
-V4 was a complete rewrite, which is why it took so long.
-
-The user interface is now powered by [fzf](https://github.com/junegunn/fzf), tho it may be changed to [gum](https://github.com/charmbracelet/gum) in an upcoming version.
 
 ## Install
 
