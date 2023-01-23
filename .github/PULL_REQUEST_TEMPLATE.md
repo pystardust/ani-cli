@@ -14,16 +14,21 @@
 
 - [ ] any anime playing
 - [ ] bumped version
+---
 - [ ] next, prev and replay work
-- [ ] quality works
-- [ ] downloads work
-- [ ] quality works with downloads
-- [ ] select episode -a works
-- [ ] vlc -v and syncplay -s work
-- [ ] autoplay, aka range selection, works
-- [ ] history and -c work
-- [ ] sub and dub both work
+- [ ] `-c` history and continue work
+- [ ] `-d` downloads work
+- [ ] `-s` syncplay works
+- [ ] `-q` quality works
+- [ ] `-v` vlc works
+- [ ] `-e` select episode works
+- [ ] `-r` range selection works
+- [ ] `--dub` both work
 - [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
+---
+- [ ] `-h` help info is up to date
+- [ ] Readme is up to date
+- [ ] Man page is up to date
 
 ## Additional Testcases
 
