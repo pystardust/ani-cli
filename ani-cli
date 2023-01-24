@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.0.0"
+version_number="4.0.1"
 
 # UI
 
@@ -22,8 +22,8 @@ nth() {
 	prompt="$1"
 	multi_flag=""
 	[ $# -ne 1 ] && shift && multi_flag="$1"
-	line=$(printf "%s" "$stdin" | cut -f1,3 --output-delimiter " " | launcher "$multi_flag" "$prompt" | cut -d " " -f 2-)
-	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "${line}$" | cut -f2,3 || exit 1
+	line=$(printf "%s" "$stdin" | cut -f1,3 --output-delimiter " " | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "^${line}" | cut -f2,3 || exit 1
 }
 
 die() {
@@ -227,11 +227,11 @@ play_episode() {
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | sed "s/[^0-9]*\([0-9]*\).*/\1/")
-	end=$(printf "%s" "$ep_no" | sed "s/[^0-9]*[0-9]*[^0-9]*\([0-9]*\).*/\1/")
-	[ -z "$start" ] || [ -z "$end" ] && unset start end
+	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(.5)?")
+	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(.5)?$")
+	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l)
-	if [ "$line_count" != 1 ] || [ -n "$start" ] || [ -n "$end" ]; then
+	if [ "$line_count" != 1 ] || [ -n "$start" ] ; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
 		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
 		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
