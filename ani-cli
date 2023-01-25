@@ -329,7 +329,7 @@ case "$search" in
 history)
 	anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
 	wait
-	[ -z "$anime_list" ] && die "No unwatched series in histroy!"
+	[ -z "$anime_list" ] && die "No unwatched series in history!"
 	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
 	[ -z "$result" ] && exit 1
 	result=$(grep "$result" "$histfile")
