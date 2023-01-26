@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.0.1"
+version_number="4.0.3"
 
 # UI
 
@@ -22,8 +22,8 @@ nth() {
 	prompt="$1"
 	multi_flag=""
 	[ $# -ne 1 ] && shift && multi_flag="$1"
-	line=$(printf "%s" "$stdin" | cut -f1,3 --output-delimiter " " | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
-	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "^${line}" | cut -f2,3 || exit 1
+	line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+	[ -n "$line" ] && printf "%s" "$stdin" | grep -E '^'"${line}"'($|\s)' | cut -f2,3 || exit 1
 }
 
 die() {
@@ -100,11 +100,10 @@ dep_ch() {
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-	episode_link="$(wget -q -O - "https://blog.allanime.pro/apivtwo/clock.json?id=$*" -U "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p')"
+	episode_link="$(wget -q -O - "https://blog.allanime.pro/apivtwo/clock.json?id=$*" -U "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
 	case "$episode_link" in
-	*v.vrv.co*)
-		extract_link=$(printf "%s" "$episode_link" | grep "$media_locale" | cut -d'>' -f2)
-		wget -q -O - "$extract_link" -U "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; s|\/index-v1-a1\.m3u8||g' | sort -nr
+	*crunchyroll*)
+		wget -q -O - "$episode_link" -U "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
 		;;
 	*repackager.wixmp.com*)
 		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
@@ -135,10 +134,11 @@ provider_init() {
 # generates links based on given provider
 generate_link() {
 	case $1 in
-	1) provider_init 'vrv|wixmp' '/Default :/p' ;; # vrv,wixmp(default)(m3u8)(multi) -> (mp4)(multi)
+	1) provider_init 'wixmp' '/Default :/p' ;; # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
 	2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
-	3) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
-	4) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
+	3) provider_init 'vrv' '/Ac :/p' ;; # vrv(crunchyroll)(m3u8)(multi)
+	4) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
+	5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
 	*) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
 	esac
 	[ -n "$provider_id" ] && get_links "$provider_id"
@@ -157,13 +157,13 @@ select_quality() {
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
 	# get the embed urls of the selected episode
-	resp=$(wget -q -O - "https://allanime.site/watch/$id/$allanime_title/episode-$ep_no-$mode" -U "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+	resp=$(wget -q -O - "https://allanime.site/watch/$id/episode-$ep_no-$mode" -U "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
 	# generate links into sequential files
 	provider=1
 	i=0
-	while [ "$i" -lt 5 ]; do
+	while [ "$i" -lt 6 ]; do
 		generate_link "$provider" >"$cache_dir"/"$i" &
-		provider=$((provider % 5 + 1))
+		provider=$((provider % 6 + 1))
 		: $((i += 1))
 	done
 	wait
@@ -217,18 +217,19 @@ play_episode() {
 	android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	vlc*) nohup "$player_function" --video-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+	vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
 	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-	*) nohup "$player_function" >/dev/null 2>&1 & ;;
+	catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
+	*) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
 	esac
 	update_history
-	[ "$use_external_menu" = "1" ] && wait
+	wait
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(.[0-9])?")
-	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(.[0-9])?$")
+	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(\.[0-9])?")
+	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(\.[0-9])?$")
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l)
 	if [ "$line_count" != 1 ] || [ -n "$start" ] ; then
@@ -251,9 +252,9 @@ play() {
 # MAIN
 
 # setup
-agent="Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/100.0"
+firefox_version=$(shuf -i '106-109' -n1)
+agent="Mozilla/5.0 (X11; Linux x86_64; rv:${firefox_version}.0) Gecko/20100101 Firefox/${firefox_version}.0"
 mode="${ANI_CLI_MODE:-sub}"
-media_locale="${ANI_CLI_MEDIA_LOCALE:-en-US}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
