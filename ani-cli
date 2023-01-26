@@ -221,7 +221,7 @@ play_episode() {
 	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
 	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
 	catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
-	*) nohup "$player_function" >/dev/null 2>&1 & ;;
+	*) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
 	esac
 	update_history
 	[ "$use_external_menu" = "1" ] && wait
