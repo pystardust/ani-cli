@@ -22,7 +22,7 @@ nth() {
 	prompt="$1"
 	multi_flag=""
 	[ $# -ne 1 ] && shift && multi_flag="$1"
-	line=$(printf "%s" "$stdin" | cut -f1,3 | sed 's/\t/ /g' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+	line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
 	[ -n "$line" ] && printf "%s" "$stdin" | grep -E '^'"${line}"'($|\s)' | cut -f2,3 || exit 1
 }
 
