@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.0.2"
+version_number="4.0.1"
 
 # UI
 
@@ -23,7 +23,7 @@ nth() {
 	multi_flag=""
 	[ $# -ne 1 ] && shift && multi_flag="$1"
 	line=$(printf "%s" "$stdin" | cut -f1,3 --output-delimiter " " | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
-	[ -n "$line" ] && printf "%s" "$stdin" | grep -E "^${line}($|[^.])" | cut -f2,3 || exit 1
+	[ -n "$line" ] && printf "%s" "$stdin" | grep -w "^${line}" | cut -f2,3 || exit 1
 }
 
 die() {
@@ -227,8 +227,8 @@ play_episode() {
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(\.[0-9])?")
-	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(\.[0-9])?$")
+	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(.[0-9])?")
+	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(.[0-9])?$")
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l)
 	if [ "$line_count" != 1 ] || [ -n "$start" ] ; then
