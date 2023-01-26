@@ -365,6 +365,6 @@ flatpak uninstall io.mpv.Mpv
 * [lobster](https://github.com/justchokingaround/lobster): Life action movies and series fom the terminal (Shell)
 * [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
-* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/tv shows in the cli (work in progress) (Python/Shell)
+* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
 * [tv-cli](https://github.com/Spaxly/tv-cli): Watch live TV in the cli (Shell)
