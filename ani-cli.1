@@ -54,9 +54,6 @@ ani-cli v4 uses environment variables to control unstable/untested and niche fea
 \fBANI_CLI_MODE\fR
 Controls the scraped media's mode, valid options are sub or dub. Default is sub.
 .TP
-\fBANI_CLI_MEDIA_LOCALE\fR
-Controls the scraped media's locale, check allanime for valid options. Default is en-US.
-.TP
 \fBANI_CLI_DOWNLOAD_DIR\fR
 Controls the directory where files are downloaded. Default is the current dir.
 .TP
@@ -64,7 +61,7 @@ Controls the directory where files are downloaded. Default is the current dir.
 Controls the scraped media's quality, check allanime for valid options or set to worst/best. Default is best.
 .TP
 \fBANI_CLI_PLAYER\fR
-Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), flatpak_mpv (for flatpak) or any player that can play urls. For defaults see working without arguments.
+Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), flatpak_mpv (for flatpak), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
 .TP
 \fBANI_CLI_EXTERNAL_MENU\fR
 Controls the frontend of ani-cli. Can be 0 (uses fzf) or 1 (uses rofi dmenu). Default is 0.
