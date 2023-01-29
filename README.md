@@ -71,6 +71,8 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 #### Debian
 
+Wget is replaced with wget2 to ensure compatibility with all Debian releases.
+
 ```sh
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
 wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
@@ -347,7 +349,7 @@ flatpak uninstall io.mpv.Mpv
 
 - grep
 - sed
-- wget
+- wget (v.1.21.3)
 - mpv - Video Player
 - iina - mpv replacement for MacOS
 - aria2c - Download manager
