@@ -252,7 +252,6 @@ play() {
 # MAIN
 
 # setup
-firefox_version=$(shuf -i '106-109' -n1)
 agent="Mozilla/5.0 (Windows NT 6.1; Win64; rv:109.0) Gecko/20100101 Firefox/109.0"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
