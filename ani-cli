@@ -267,6 +267,7 @@ case "$(uname -a)" in
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+[ -t 0 ] || use_external_menu=1
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
