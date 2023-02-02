@@ -43,6 +43,8 @@ help_info() {
         Continue watching from history
       -d, --download
         Download the video instead of playing it
+      -D, --delete
+        Delete history
       -s, --syncplay
         Use Syncplay to watch with friends
       -q, --quality
@@ -298,6 +300,10 @@ while [ $# -gt 0 ]; do
 		;;
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
+	-D | --delete)
+		: > "$histfile"
+		exit 0
+		;;
 	-V | --version) version_info ;;
 	-h | --help) help_info ;;
 	-e | --episode | -r | --range)
