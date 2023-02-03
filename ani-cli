@@ -383,6 +383,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext\nchange_quality" | nth 
 	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
 	change_quality) episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
+	quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
 	episode=$(printf "%s" "$episode" | cut -d'>' -f2);;
 	*) exit 0 ;;
 	esac
