@@ -211,7 +211,7 @@ download() {
 }
 
 play_episode() {
-	get_episode_url
+	[ -z "$episode" ] && get_episode_url
 	case "$player_function" in
 	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
 	mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
@@ -242,6 +242,7 @@ play() {
 		for i in $range; do
 			tput clear
 			ep_no=$i
+			unset episode
 			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
 			play_episode
 		done
@@ -376,16 +377,20 @@ tput cuu1 && tput el
 play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
-while cmd=$(printf "next\nreplay\nprevious\nselect\nquit" | nth "Playing episode $ep_no of $title... "); do
+while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
 	replay) ;;
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
+	change_quality) episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
+	quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
+	episode=$(printf "%s" "$episode" | cut -d'>' -f2);;
 	*) exit 0 ;;
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
 	play
+	unset episode
 done
 
 # ani-cli
