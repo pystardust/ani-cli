@@ -137,8 +137,8 @@ provider_init() {
 generate_link() {
 	case $1 in
 	1) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
-	2) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
-	3) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
+	2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
+	3) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
 	4) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
 	5) provider_init 'vrv' '/Ac :/p' ;; # vrv(crunchyroll)(m3u8)(multi)
 	*) provider_init 'wixmp' '/Default :/p' ;; # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
