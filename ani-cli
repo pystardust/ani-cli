@@ -242,6 +242,7 @@ play() {
 		for i in $range; do
 			tput clear
 			ep_no=$i
+			unset episode
 			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
 			play_episode
 		done
@@ -389,7 +390,7 @@ while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext\nchange_quality" | nth 
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
 	play
-	episode=
+	unset episode
 done
 
 # ani-cli
