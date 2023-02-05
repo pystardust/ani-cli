@@ -235,8 +235,8 @@ play() {
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l)
 	if [ "$line_count" != 1 ] || [ -n "$start" ] ; then
-		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
-		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
 		range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
 		[ -z "$range" ] && die "Invalid range!"
 		for i in $range; do
