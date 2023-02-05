@@ -352,6 +352,7 @@ history)
 *)
 	while [ -z "$query" ]; do
 		if [ "$use_external_menu" = "0" ]; then
+			clear
 			printf "Search anime: " && read -r query
 		else
 			query=$(: | external_menu "" "Search anime:")
@@ -359,7 +360,12 @@ history)
 	done
 	query=$(printf "%s" "$query" | sed "s| |%20|g")
 	anime_list=$(search_anime "$query")
-	[ -z "$anime_list" ] && die "No results found!"
+	while [ -z "$anime_list" ]; do
+		clear
+		printf "Search anime: " && read -r query
+		search_anime "$query"
+		anime_list=$(search_anime "$query")
+	done
 	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
