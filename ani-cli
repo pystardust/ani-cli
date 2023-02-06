@@ -182,14 +182,14 @@ search_anime() {
 
 # get the episodes list of the selected anime
 episodes_list() {
-	wget -q -O - "https://allanime.site/anime/$*" -U "$agent" | sed 's|\\||g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g'
+	wget -q -O - "https://allanime.site/anime/$*" -U "$agent" | sed 's|\\||g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
 
 process_hist_entry() {
 	ep_list=$(episodes_list "$id")
-	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
+	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
 	[ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
@@ -235,9 +235,9 @@ play() {
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l)
 	if [ "$line_count" != 1 ] || [ -n "$start" ] ; then
-		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | tail -n1)
-		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | head -n1)
-		range=$(printf "%s\n" "$ep_list" | sed '1!G;h;$!d' | sed -nE "/^${start}\$/,/^${end}\$/p")
+		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
+		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
+		range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
 		[ -z "$range" ] && die "Invalid range!"
 		for i in $range; do
 			tput clear
@@ -345,7 +345,7 @@ history)
 		$result
 	EOF
 	ep_list=$(episodes_list "$id")
-	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null
+	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	tput cuu1 && tput el
 	;;
@@ -381,11 +381,11 @@ tput cuu1 && tput el
 play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
-while cmd=$(printf "quit\nselect\nprevious\nreplay\nnext\nchange_quality" | nth "Playing episode $ep_no of $title... "); do
+while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
-	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
 	replay) ;;
-	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
 	change_quality) episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
 	quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
