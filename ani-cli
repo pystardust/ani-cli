@@ -355,15 +355,14 @@ history)
 			printf "Search anime: " && read -r query
 		else
 			query=$(: | external_menu "" "Search anime:")
-		fi
-	done
-	query=$(printf "%s" "$query" | sed "s| |%20|g")
-	anime_list=$(search_anime "$query")
-	while [ -z "$anime_list" ]; do
-		printf "Search anime: " && read -r query
-		search_anime "$query"
-		query=$(printf "%s" "$query" | sed "s| |%20|g")
-		anime_list=$(search_anime "$query")
+		fi 
+		while [ -z $anime_list ]; do
+			
+			printf "Search anime: " && read -r query
+			query=$(printf "%s" "$query" | sed "s| |%20|g")
+			search_anime "$query"
+			anime_list=$(search_anime "$query")
+		done
 	done
 	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
 	title=$(printf "%s" "$result" | cut -f2)
