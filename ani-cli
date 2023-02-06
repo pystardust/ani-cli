@@ -156,7 +156,7 @@ select_quality() {
 	printf "%s" "$result" | cut -d'>' -f2
 }
 search_loop(){
-	while [ -z $anime_list ]; do
+	while [ -z "$anime_list" ]; do
 		printf "Search anime: " && read -r query
 		query=$(printf "%s" "$query" | sed "s| |%20|g")
 		search_anime "$query"
