@@ -155,7 +155,14 @@ select_quality() {
 	[ -z "$result" ] && printf "Specified quality not found, defaulting to best" 1>&2 && result=$(printf "%s" "$links" | head -n1)
 	printf "%s" "$result" | cut -d'>' -f2
 }
-
+search_loop(){
+	while [ -z $anime_list ]; do
+		printf "Search anime: " && read -r query
+		query=$(printf "%s" "$query" | sed "s| |%20|g")
+		search_anime "$query"
+		anime_list=$(search_anime "$query")
+	done
+}
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
 	# get the embed urls of the selected episode
@@ -352,17 +359,12 @@ history)
 *)
 	while [ -z "$query" ]; do
 		if [ "$use_external_menu" = "0" ]; then
-			while [ -z $anime_list ]; do
-				printf "Search anime: " && read -r query
-				query=$(printf "%s" "$query" | sed "s| |%20|g")
-				search_anime "$query"
-				anime_list=$(search_anime "$query")
-			done
-
+			search_loop
 		else
 			query=$(: | external_menu "" "Search anime:")
 		fi
 	done
+	search_loop
 	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
