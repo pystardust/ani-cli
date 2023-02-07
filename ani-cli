@@ -156,11 +156,12 @@ select_quality() {
 	printf "%s" "$result" | cut -d'>' -f2
 }
 search_loop(){
-	while [ -z "$anime_list" ]; do
-		printf "Search anime: " && read -r query
+	while [ -z $anime_list ]; do
 		query=$(printf "%s" "$query" | sed "s| |%20|g")
-		search_anime "$query"
 		anime_list=$(search_anime "$query")
+		if [ -z $anime_list ]; then
+			printf "Search anime: " && read -r query 
+		fi
 	done
 }
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
@@ -359,7 +360,7 @@ history)
 *)
 	while [ -z "$query" ]; do
 		if [ "$use_external_menu" = "0" ]; then
-			search_loop
+			printf "Search anime: " && read -r query
 		else
 			query=$(: | external_menu "" "Search anime:")
 		fi
