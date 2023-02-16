@@ -225,6 +225,8 @@ play_episode() {
 	catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
 	*) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
 	esac
+	replay="$episode"
+	unset episode
 	update_history
 	wait
 }
@@ -242,7 +244,6 @@ play() {
 		for i in $range; do
 			tput clear
 			ep_no=$i
-			unset episode
 			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
 			play_episode
 		done
@@ -379,7 +380,7 @@ play
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-	replay) ;;
+	replay) episode="$replay";;
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
 	change_quality)
@@ -391,7 +392,6 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
 	esac
 	[ -z "$ep_no" ] && die "Out of range"
 	play
-	unset episode
 done
 
 # ani-cli
