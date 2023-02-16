@@ -353,7 +353,7 @@ history)
 		if [ "$use_external_menu" = "0" ]; then
 			printf "Search anime: " && read -r query
 		else
-			query=$(: | external_menu "" "Search anime:")
+			query=$(: | external_menu "" "Search anime: ")
 		fi
 	done
 	query=$(printf "%s" "$query" | sed "s| |%20|g")
