@@ -19,7 +19,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allanime.site/">allanime.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allanime.co/">allanime.</a>
 </h3>
 	
 <h1 align="center">
@@ -71,11 +71,9 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 #### Debian
 
-Wget is replaced with wget2 to ensure compatibility with all Debian releases.
-
 ```sh
-wget -qO- https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
-wget -qO- https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
+curl -s https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
+curl -s https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
 sudo apt update
 sudo apt install ani-cli
 ```
@@ -142,7 +140,7 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:* 
 
 ```sh
-brew install wget grep aria2 ffmpeg git fzf && \
+brew install curl grep aria2 ffmpeg git fzf && \
 brew install --cask iina
 ``` 
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*  
@@ -214,7 +212,7 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 
 mkdir ~/.aria2c
-wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
+curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
 cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
@@ -253,7 +251,7 @@ press enter("A" button on Steam Deck) on questions
 
 ```sh
 mkdir ~/.aria2c
-wget -O ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
+curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
 cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
@@ -349,7 +347,7 @@ flatpak uninstall io.mpv.Mpv
 
 - grep
 - sed
-- wget (v.1.21.3)
+- curl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
 - aria2c - Download manager
@@ -365,7 +363,6 @@ flatpak uninstall io.mpv.Mpv
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [kaa.si-cli](https://github.com/Soviena/kaa.si-cli): Stream anime from kaa.si and sync with anilist (Python)
 * [lobster](https://github.com/justchokingaround/lobster): Life action movies and series fom the terminal (Shell)
-* [manga-cli](https://github.com/7USTIN/manga-cli): Read manga in the cli (Shell)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
