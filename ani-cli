@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.1.0"
+version_number="4.1.1"
 
 # UI
 
@@ -77,7 +77,7 @@ version_info() {
 }
 
 update_script() {
-	update="$(curl -s --cipher "AES256-SHA256" --tls-max "1.2" -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+	update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
 	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
 	if [ -z "$update" ]; then
 		printf "Script is up to date :)\n"
@@ -380,7 +380,7 @@ play
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
 	case "$cmd" in
 	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-	replay) episode="$replay";;
+	replay) episode="$replay" ;;
 	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
 	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
 	change_quality)
