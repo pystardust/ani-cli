@@ -177,12 +177,12 @@ get_episode_url() {
 
 # search the query and give results
 search_anime() {
-	curl --cipher AES256-SHA256 -sA "$agent" -G 'https://api.allanime.to/allanimeapi' --data-urlencode "variables={\"search\":{\"allowAdult\":true,\"allowUnknown\":true,\"query\":\"$*\"},\"limit\":26,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" -d 'extensions={"persistedQuery":{"version":1,"sha256Hash":"c4305f3918591071dfecd081da12243725364f6b7dd92072df09d915e390b1b7"}}' | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.*)\",\"english.*\"$mode\":([1-9][^,]*).*|\1\t\2 (\3 episode)|p" | sed 's/\\//g;s/"//g'
+	curl --cipher AES256-SHA256 -sA "$agent" -G 'https://api.allanime.to/allanimeapi' -d "variables={\"search\":{\"allowAdult\":true,\"allowUnknown\":true,\"query\":\"$*\"},\"limit\":26,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" -d 'extensions={"persistedQuery":{"version":1,"sha256Hash":"c4305f3918591071dfecd081da12243725364f6b7dd92072df09d915e390b1b7"}}' | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.*)\",\"english.*\"$mode\":([1-9][^,]*).*|\1\t\2 (\3 episode)|p" | sed 's/\\//g;s/"//g'
 }
 
 # get the episodes list of the selected anime
 episodes_list() {
-	curl --cipher AES256-SHA256 -sA "$agent" -G 'https://api.allanime.to/allanimeapi' --data-urlencode "variables={\"_id\":\"$*\"}" -d 'extensions={"persistedQuery":{"version":1,"sha256Hash":"259ae45c19ceff2f855215bb82d377fe7b0ab661f9abcd41538bda935e9cb299"}}' | sed 's|\\||g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
+	curl --cipher AES256-SHA256 -sA "$agent" -G 'https://api.allanime.to/allanimeapi' -d "variables={\"_id\":\"$*\"}" -d 'extensions={"persistedQuery":{"version":1,"sha256Hash":"259ae45c19ceff2f855215bb82d377fe7b0ab661f9abcd41538bda935e9cb299"}}' | sed 's|\\||g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
