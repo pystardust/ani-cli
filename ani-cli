@@ -238,8 +238,8 @@ play_episode() {
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(\.[0-9])?")
-	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(\.[0-9])?$")
+	start=$(printf "%s" "$ep_no" | grep -Eo '^[0-9]+(\.[0-9])?')
+	end=$(printf "%s" "$ep_no" | grep -E '(-1|[0-9]+(\.[0-9])?)$')
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
 	if [ "$line_count" != 1 ] || [ -n "$start" ]; then
@@ -307,6 +307,7 @@ while [ $# -gt 0 ]; do
 		quality="$2"
 		shift
 		;;
+	-S | --select-first) select_first=1 ;;
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
 	-D | --delete)
@@ -367,7 +368,9 @@ history)
 	query=$(printf "%s" "$query" | sed "s| |+|g")
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
-	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
+	[ "$select_first" = 1 ] && result=$(printf "%s" "$anime_list" | head -n1)
+	[ -z "$select_first" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
+	[ -z "$result" ] && exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
