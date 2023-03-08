@@ -47,6 +47,8 @@ help_info() {
         Delete history
       -s, --syncplay
         Use Syncplay to watch with friends
+      -S, --select-first
+        Select the first entry
       -q, --quality
         Specify the video quality
       -v, --vlc
