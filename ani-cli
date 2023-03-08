@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.1.4"
+version_number="4.2.0"
 
 # UI
 
