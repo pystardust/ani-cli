@@ -241,8 +241,9 @@ play_episode() {
 
 play() {
 	start=$(printf "%s" "$ep_no" | grep -Eo '^[0-9]+(\.[0-9])?')
-	end=$(printf "%s" "$ep_no" | grep -E '(-1|[0-9]+(\.[0-9])?)$')
+	end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9])?)$')
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
+	[ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
 	line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
 	if [ "$line_count" != 1 ] || [ -n "$start" ]; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
