@@ -47,8 +47,8 @@ help_info() {
         Delete history
       -s, --syncplay
         Use Syncplay to watch with friends
-      -S, --select-first
-        Select the first entry
+      -S, --select-nth
+        Select nth entry
       -q, --quality
         Specify the video quality
       -v, --vlc
@@ -311,7 +311,11 @@ while [ $# -gt 0 ]; do
 		quality="$2"
 		shift
 		;;
-	-S | --select-first) select_first=1 ;;
+	-S | --select-nth)
+		[ $# -lt 2 ] && die "missing argument!"
+		index="$2"
+		shift
+		;;
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
 	-D | --delete)
@@ -372,8 +376,8 @@ history)
 	query=$(printf "%s" "$query" | sed "s| |+|g")
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
-	[ "$select_first" = 1 ] && result=$(printf "%s" "$anime_list" | head -n1)
-	[ -z "$select_first" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
+	[ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+	[ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
 	[ -z "$result" ] && exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
