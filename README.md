@@ -26,7 +26,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 	Showcase
 </h1>
 
-https://user-images.githubusercontent.com/44473782/160729779-41fe207c-b5aa-4fed-87db-313c83caf6bb.mp4
+[ani-cli-demo.webm](https://user-images.githubusercontent.com/44473782/224679247-0856e652-f187-4865-bbcf-5a8e5cf830da.webm)
 
 ## Table of Contents
 
