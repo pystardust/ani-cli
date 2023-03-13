@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.1.4"
+version_number="4.2.0"
 
 # UI
 
@@ -47,6 +47,8 @@ help_info() {
         Delete history
       -s, --syncplay
         Use Syncplay to watch with friends
+      -S, --select-nth
+        Select nth entry
       -q, --quality
         Specify the video quality
       -v, --vlc
@@ -159,7 +161,9 @@ select_quality() {
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
 	# get the embed urls of the selected episode
-	resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://api.${allanime_base}/allanimeapi?variables=%7B%22showId%22%3A%22$id%22%2C%22translationType%22%3A%22$mode%22%2C%22countryOrigin%22%3A%22ALL%22%2C%22episodeString%22%3A%22$ep_no%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%221f0a5d6c9ce6cd3127ee4efd304349345b0737fbf5ec33a60bbc3d18e3bb7c61%22%7D%7D" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+	episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
+
+	resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
 	# generate links into sequential files
 	provider=1
 	i=0
@@ -177,12 +181,16 @@ get_episode_url() {
 
 # search the query and give results
 search_anime() {
-	curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://api.${allanime_base}/allanimeapi?variables=%7B%22search%22%3A%7B%22allowAdult%22%3Atrue%2C%22allowUnknown%22%3Atrue%2C%22query%22%3A%22$*%22%7D%2C%22limit%22%3A40%2C%22page%22%3A1%2C%22translationType%22%3A%22$mode%22%2C%22countryOrigin%22%3A%22ALL%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%229c7a8bc1e095a34f2972699e8105f7aaf9082c6e1ccd56eab99c2f1a971152c6%22%7D%7D" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.*)\",\"english.*\"$mode\":([1-9][^,]*).*|\1\t\2 (\3 episode)|p" | sed 's/\\//g;s/"//g'
+	search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
+
+	curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
 episodes_list() {
-	curl -e "https://${allanime_base}" -s "https://api.${allanime_base}/allanimeapi?variables=%7B%22_id%22%3A%22$*%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22f73a8347df0e3e794f8955a18de6e85ac25dfc6b74af8ad613edf87bb446a854%22%7D%7D" -A "$agent" | sed 's|\\||g' | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
+	episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
+
+	curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
@@ -232,9 +240,11 @@ play_episode() {
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo "^[0-9]+(\.[0-9])?")
-	end=$(printf "%s" "$ep_no" | grep -Eo "[0-9]+(\.[0-9])?$")
+	start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9])?)')
+	end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9])?)$')
+	[ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
+	[ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
 	line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
 	if [ "$line_count" != 1 ] || [ -n "$start" ]; then
 		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
@@ -301,6 +311,11 @@ while [ $# -gt 0 ]; do
 		quality="$2"
 		shift
 		;;
+	-S | --select-nth)
+		[ $# -lt 2 ] && die "missing argument!"
+		index="$2"
+		shift
+		;;
 	-c | --continue) search=history ;;
 	-d | --download) player_function=download ;;
 	-D | --delete)
@@ -316,7 +331,7 @@ while [ $# -gt 0 ]; do
 		;;
 	--dub) mode="dub" ;;
 	-U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |%20|g")" ;;
+	*) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
 	esac
 	shift
 done
@@ -358,10 +373,12 @@ history)
 			query=$(: | external_menu "" "Search anime: ")
 		fi
 	done
-	query=$(printf "%s" "$query" | sed "s| |%20|g")
+	query=$(printf "%s" "$query" | sed "s| |+|g")
 	anime_list=$(search_anime "$query")
 	[ -z "$anime_list" ] && die "No results found!"
-	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ") || exit 1
+	[ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+	[ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
+	[ -z "$result" ] && exit 1
 	title=$(printf "%s" "$result" | cut -f2)
 	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
 	id=$(printf "%s" "$result" | cut -f1)
