@@ -240,8 +240,8 @@ play_episode() {
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9])?)')
-	end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9])?)$')
+	start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+	end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
 	[ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
 	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
 	[ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
