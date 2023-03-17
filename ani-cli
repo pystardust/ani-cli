@@ -110,6 +110,7 @@ get_links() {
 		curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
 		;;
 	*repackager.wixmp.com*)
+		curl -s -X HEAD "$(printf '%s' "$episode_link" | cut -d'>' -f2)" || return 0
 		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
 		for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
 			printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
