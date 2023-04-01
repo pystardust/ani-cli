@@ -98,6 +98,19 @@ yay -S ani-cli
 ```
 Also consider `ani-cli-git`
 
+#### Gentoo
+
+Build and install from the GURU:
+```sh
+sudo eselect repository enable guru
+sudo emaint sync -r guru
+sudo emerge -a ani-cli
+```
+Consider using the 9999 ebuild.
+```sh
+sudo emerge -a =app-misc/ani-cli-9999
+```
+
 #### OpenSuse Tumbleweed and Leap
 
 On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
