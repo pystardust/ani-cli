@@ -69,12 +69,9 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 ### Linux
 
-#### Debian
+#### Debian unstable
 
 ```sh
-curl -s https://Wiener234.github.io/ani-cli-ppa/KEY.gpg | sudo tee /etc/apt/trusted.gpg.d/ani-cli.asc
-curl -s https://Wiener234.github.io/ani-cli-ppa/ani-cli-debian.list | sudo tee /etc/apt/sources.list.d/ani-cli-debian.list
-sudo apt update
 sudo apt install ani-cli
 ```
 
