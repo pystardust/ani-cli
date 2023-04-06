@@ -368,12 +368,10 @@ flatpak uninstall io.mpv.Mpv
 
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allanime, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
-* [anime-helper-shell](https://github.com/Atreyagaurav/anime-helper-shell): A python shell for searching, watching, and downloading anime (Python)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
-* [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
-* [kaa.si-cli](https://github.com/Soviena/kaa.si-cli): Stream anime from kaa.si and sync with anilist (Python)
-* [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
-* [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
-* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
-* [tv-cli](https://github.com/Spaxly/tv-cli): Watch live TV in the cli (Shell)
+* [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
+* [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
+* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
+* [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
+* [redqu](https://github.com/port19x/redqu):  A media centric reddit client 
