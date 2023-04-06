@@ -33,7 +33,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#Fixing-errors)
 - [Install](#Install)
   - [Linux](#Linux)
-   - [Debian](#Debian unstable)
+   - [Debian](#Debian-unstable)
    - [Fedora](#Fedora)
    - [Arch](#Arch)
    - [OpenSuse Tumbleweed and Leap](#OpenSuse-Tumbleweed-and-Leap)
