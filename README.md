@@ -374,4 +374,4 @@ flatpak uninstall io.mpv.Mpv
 * [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
-* [redqu](https://github.com/port19x/redqu):  A media centric reddit client 
+* [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
