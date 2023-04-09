@@ -1,38 +1,38 @@
 #!/bin/sh
 
-version_number="4.2.1"
+version_number="4.2.2"
 
 # UI
 
 external_menu() {
-	rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
+    rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
 }
 
 launcher() {
-	[ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
-	[ "$use_external_menu" = "0" ] && fzf "$1" --reverse --prompt "$2"
-	[ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
+    [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
+    [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --prompt "$2"
+    [ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
 nth() {
-	stdin=$(cat -)
-	[ -z "$stdin" ] && return 1
-	line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
-	[ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
-	prompt="$1"
-	multi_flag=""
-	[ $# -ne 1 ] && shift && multi_flag="$1"
-	line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
-	[ -n "$line" ] && printf "%s" "$stdin" | grep -E '^'"${line}"'($|\s)' | cut -f2,3 || exit 1
+    stdin=$(cat -)
+    [ -z "$stdin" ] && return 1
+    line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
+    [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
+    prompt="$1"
+    multi_flag=""
+    [ $# -ne 1 ] && shift && multi_flag="$1"
+    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+    [ -n "$line" ] && printf "%s" "$stdin" | grep -E '^'"${line}"'($|\s)' | cut -f2,3 || exit 1
 }
 
 die() {
-	printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
-	exit 1
+    printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
+    exit 1
 }
 
 help_info() {
-	printf "
+    printf "
     Usage:
     %s [options] [query]
     %s [query] [options]
@@ -70,196 +70,196 @@ help_info() {
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
     \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
-	exit 0
+    exit 0
 }
 
 version_info() {
-	printf "%s\n" "$version_number"
-	exit 0
+    printf "%s\n" "$version_number"
+    exit 0
 }
 
 update_script() {
-	update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
-	update="$(printf '%s\n' "$update" | diff -u "$0" -)"
-	if [ -z "$update" ]; then
-		printf "Script is up to date :)\n"
-	else
-		if printf '%s\n' "$update" | patch "$0" -; then
-			printf "Script has been updated\n"
-		else
-			die "Can't update for some reason!"
-		fi
-	fi
-	exit 0
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+    update="$(printf '%s\n' "$update" | diff -u "$0" -)"
+    if [ -z "$update" ]; then
+        printf "Script is up to date :)\n"
+    else
+        if printf '%s\n' "$update" | patch "$0" -; then
+            printf "Script has been updated\n"
+        else
+            die "Can't update for some reason!"
+        fi
+    fi
+    exit 0
 }
 
 # checks if dependencies are present
 dep_ch() {
-	for dep; do
-		command -v "$dep" >/dev/null || die "Program \"$dep\" not found. Please install it."
-	done
+    for dep; do
+        command -v "$dep" >/dev/null || die "Program \"$dep\" not found. Please install it."
+    done
 }
 
 # SCRAPING
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-	episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com/apivtwo/clock.json?id=$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
-	case "$episode_link" in
-	*crunchyroll*)
-		curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
-		;;
-	*repackager.wixmp.com*)
-		extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
-		for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
-			printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
-		done | sort -nr
-		;;
-	*//cache.* | *gofcdn.com*)
-		if printf "%s" "$episode_link" | head -1 | grep -q "original.m3u"; then
-			printf "%s" "$episode_link"
-		else
-			extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
-			relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-			curl -e "https://${allanime_base}/" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
-		fi
-		;;
-	*) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
-	esac
-	printf "Fetching %s Links\n" "$provider_name" 1>&2
+    episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com/apivtwo/clock.json?id=$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    case "$episode_link" in
+        *crunchyroll*)
+            curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
+            ;;
+        *repackager.wixmp.com*)
+            extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
+            for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
+                printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
+            done | sort -nr
+            ;;
+        *//cache.* | *gofcdn.com*)
+            if printf "%s" "$episode_link" | head -1 | grep -q "original.m3u"; then
+                printf "%s" "$episode_link"
+            else
+                extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
+                relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
+                curl -e "https://${allanime_base}/" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
+            fi
+            ;;
+        *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
+    esac
+    printf "Fetching %s Links\n" "$provider_name" 1>&2
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
 provider_init() {
-	provider_name=$1
-	provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
+    provider_name=$1
+    provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
 }
 
 # generates links based on given provider
 generate_link() {
-	case $1 in
-	1) provider_init 'wixmp' '/Default :/p' ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-	2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
-	3) provider_init 'vrv' '/Ac :/p' ;;            # vrv(crunchyroll)(m3u8)(multi)
-	4) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
-	5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
-	*) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
-	esac
-	[ -n "$provider_id" ] && get_links "$provider_id"
+    case $1 in
+        1) provider_init 'wixmp' '/Default :/p' ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
+        2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
+        3) provider_init 'vrv' '/Ac :/p' ;;            # vrv(crunchyroll)(m3u8)(multi)
+        4) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
+        5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
+        *) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
+    esac
+    [ -n "$provider_id" ] && get_links "$provider_id"
 }
 
 select_quality() {
-	case "$1" in
-	best) result=$(printf "%s" "$links" | head -n1) ;;
-	worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
-	*) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
-	esac
-	[ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
-	printf "%s" "$result" | cut -d'>' -f2
+    case "$1" in
+        best) result=$(printf "%s" "$links" | head -n1) ;;
+        worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
+        *) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
+    esac
+    [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
+    printf "%s" "$result" | cut -d'>' -f2
 }
 
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
-	# get the embed urls of the selected episode
-	episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
+    # get the embed urls of the selected episode
+    episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
 
-	resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
-	# generate links into sequential files
-	provider=1
-	i=0
-	while [ "$i" -lt 6 ]; do
-		generate_link "$provider" >"$cache_dir"/"$i" &
-		provider=$((provider % 6 + 1))
-		: $((i += 1))
-	done
-	wait
-	# select the link with matching quality
-	links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
-	episode=$(select_quality "$quality")
-	[ -z "$episode" ] && die "Episode not released!"
+    resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    # generate links into sequential files
+    provider=1
+    i=0
+    while [ "$i" -lt 6 ]; do
+        generate_link "$provider" >"$cache_dir"/"$i" &
+        provider=$((provider % 6 + 1))
+        : $((i += 1))
+    done
+    wait
+    # select the link with matching quality
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
+    episode=$(select_quality "$quality")
+    [ -z "$episode" ] && die "Episode not released!"
 }
 
 # search the query and give results
 search_anime() {
-	search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
+    search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
 
-	curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+    curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
 episodes_list() {
-	episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
+    episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
 
-	curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
+    curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
 
 process_hist_entry() {
-	ep_list=$(episodes_list "$id")
-	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-	[ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+    ep_list=$(episodes_list "$id")
+    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
 update_history() {
-	if grep -q -- "$id" "$histfile"; then
-		sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" >"${histfile}.new"
-	else
-		cp "$histfile" "${histfile}.new"
-		printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
-	fi
-	mv "${histfile}.new" "$histfile"
+    if grep -q -- "$id" "$histfile"; then
+        sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" >"${histfile}.new"
+    else
+        cp "$histfile" "${histfile}.new"
+        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
+    fi
+    mv "${histfile}.new" "$histfile"
 }
 
 download() {
-	case $1 in
-	*m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-	*) aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
-	esac
+    case $1 in
+        *m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
+        *) aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+    esac
 }
 
 play_episode() {
-	[ -z "$episode" ] && get_episode_url
-	case "$player_function" in
-	debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-	mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-	android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-	iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-	*yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-	download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
-	catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
-	*) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
-	esac
-	replay="$episode"
-	unset episode
-	update_history
-	wait
+    [ -z "$episode" ] && get_episode_url
+    case "$player_function" in
+        debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+        mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+        download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+        catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
+        *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
+    esac
+    replay="$episode"
+    unset episode
+    update_history
+    wait
 }
 
 play() {
-	start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
-	end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-	[ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
-	[ -z "$end" ] || [ "$end" = "$start" ] && unset start end
-	[ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
-	line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
-	if [ "$line_count" != 1 ] || [ -n "$start" ]; then
-		[ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
-		[ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
-		range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
-		[ -z "$range" ] && die "Invalid range!"
-		for i in $range; do
-			tput clear
-			ep_no=$i
-			printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
-			play_episode
-		done
-	else
-		play_episode
-	fi
+    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
+    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
+    [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
+    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
+    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    if [ "$line_count" != 1 ] || [ -n "$start" ]; then
+        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
+        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
+        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
+        [ -z "$range" ] && die "Invalid range!"
+        for i in $range; do
+            tput clear
+            ep_no=$i
+            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            play_episode
+        done
+    else
+        play_episode
+    fi
 }
 
 # MAIN
@@ -271,11 +271,11 @@ mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-*Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
-*ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
-*steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
-*MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
-*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
+    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
+    *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
+    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -291,101 +291,99 @@ histfile="$hist_dir/ani-hsts"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
-	case "$1" in
-	-v | --vlc)
-		case "$(uname -a)" in
-		*ndroid*) player_function="android_vlc" ;;
-		MINGW*) player_function="vlc.exe" ;;
-		*) player_function="vlc" ;;
-		esac
-		;;
-	-s | --syncplay)
-		case "$(uname -s)" in
-		Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-		MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
-		*) player_function="syncplay" ;;
-		esac
-		;;
-	-q | --quality)
-		[ $# -lt 2 ] && die "missing argument!"
-		quality="$2"
-		shift
-		;;
-	-S | --select-nth)
-		[ $# -lt 2 ] && die "missing argument!"
-		index="$2"
-		shift
-		;;
-	-c | --continue) search=history ;;
-	-d | --download) player_function=download ;;
-	-D | --delete)
-		: >"$histfile"
-		exit 0
-		;;
-	-V | --version) version_info ;;
-	-h | --help) help_info ;;
-	-e | --episode | -r | --range)
-		[ $# -lt 2 ] && die "missing argument!"
-		ep_no="$2"
-		shift
-		;;
-	--dub) mode="dub" ;;
-	-U | --update) update_script ;;
-	*) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
-	esac
-	shift
+    case "$1" in
+        -v | --vlc)
+            case "$(uname -a)" in
+                *ndroid*) player_function="android_vlc" ;;
+                MINGW*) player_function="vlc.exe" ;;
+                *) player_function="vlc" ;;
+            esac
+            ;;
+        -s | --syncplay)
+            case "$(uname -s)" in
+                Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+                MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+                *) player_function="syncplay" ;;
+            esac
+            ;;
+        -q | --quality)
+            [ $# -lt 2 ] && die "missing argument!"
+            quality="$2"
+            shift
+            ;;
+        -S | --select-nth)
+            [ $# -lt 2 ] && die "missing argument!"
+            index="$2"
+            shift
+            ;;
+        -c | --continue) search=history ;;
+        -d | --download) player_function=download ;;
+        -D | --delete)
+            : >"$histfile"
+            exit 0
+            ;;
+        -V | --version) version_info ;;
+        -h | --help) help_info ;;
+        -e | --episode | -r | --range)
+            [ $# -lt 2 ] && die "missing argument!"
+            ep_no="$2"
+            shift
+            ;;
+        --dub) mode="dub" ;;
+        -U | --update) update_script ;;
+        *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
+    esac
+    shift
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" "fzf" || true
 case "$player_function" in
-debug) ;;
-download) dep_ch "ffmpeg" "aria2c" ;;
-flatpak*)
-	dep_ch "flatpak"
-	flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
-	;;
-android*) printf "Checking of players on Android is disabled\n" ;;
-*) dep_ch "$player_function" ;;
+    debug) ;;
+    download) dep_ch "ffmpeg" "aria2c" ;;
+    flatpak*)
+        dep_ch "flatpak"
+        flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
+        ;;
+    android*) printf "Checking of players on Android is disabled\n" ;;
+    *) dep_ch "$player_function" ;;
 esac
 
 # searching
 case "$search" in
-history)
-	anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
-	wait
-	[ -z "$anime_list" ] && die "No unwatched series in history!"
-	result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
-	[ -z "$result" ] && exit 1
-	result=$(grep "$result" "$histfile")
-	read -r ep_no id title <<-EOF
-		$result
-	EOF
-	ep_list=$(episodes_list "$id")
-	ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
-	tput cuu1 && tput el
-	;;
-*)
-	while [ -z "$query" ]; do
-		if [ "$use_external_menu" = "0" ]; then
-			printf "Search anime: " && read -r query
-		else
-			query=$(: | external_menu "" "Search anime: ")
-		fi
-	done
-	query=$(printf "%s" "$query" | sed "s| |+|g")
-	anime_list=$(search_anime "$query")
-	[ -z "$anime_list" ] && die "No results found!"
-	[ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-	[ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
-	[ -z "$result" ] && exit 1
-	title=$(printf "%s" "$result" | cut -f2)
-	allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
-	id=$(printf "%s" "$result" | cut -f1)
-	ep_list=$(episodes_list "$id")
-	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
-	[ -z "$ep_no" ] && exit 1
-	;;
+    history)
+        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
+        wait
+        [ -z "$anime_list" ] && die "No unwatched series in history!"
+        result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
+        [ -z "$result" ] && exit 1
+        result=$(grep "$result" "$histfile")
+        read -r ep_no id title result
+        ep_list=$(episodes_list "$id")
+        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+        tput cuu1 && tput el
+        ;;
+    *)
+        while [ -z "$query" ]; do
+            if [ "$use_external_menu" = "0" ]; then
+                printf "Search anime: " && read -r query
+            else
+                query=$(: | external_menu "" "Search anime: ")
+            fi
+        done
+        query=$(printf "%s" "$query" | sed "s| |+|g")
+        anime_list=$(search_anime "$query")
+        [ -z "$anime_list" ] && die "No results found!"
+        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
+        [ -z "$result" ] && exit 1
+        title=$(printf "%s" "$result" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+        id=$(printf "%s" "$result" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
 esac
 
 # moves the cursor up one line and clears that line
@@ -396,20 +394,20 @@ play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
-	case "$cmd" in
-	next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
-	replay) episode="$replay" ;;
-	previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-	select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
-	change_quality)
-		episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
-		quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
-		episode=$(printf "%s" "$episode" | cut -d'>' -f2)
-		;;
-	*) exit 0 ;;
-	esac
-	[ -z "$ep_no" ] && die "Out of range"
-	play
+    case "$cmd" in
+        next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+        replay) episode="$replay" ;;
+        previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+        select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
+        change_quality)
+            episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
+            quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
+            episode=$(printf "%s" "$episode" | cut -d'>' -f2)
+            ;;
+        *) exit 0 ;;
+    esac
+    [ -z "$ep_no" ] && die "Out of range"
+    play
 done
 
 # ani-cli
