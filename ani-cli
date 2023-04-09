@@ -356,10 +356,10 @@ case "$search" in
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
         [ -z "$result" ] && exit 1
-        result=$(grep "$result" "$histfile")
-        read -r ep_no id title <<-EOF
-            $result
-        EOF
+        result=$(grep "$result" "$histfile") #The following EOF block needs to be indented with tabs. See SC1040
+		read -r ep_no id title <<-EOF
+			$result
+		EOF
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
