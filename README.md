@@ -7,8 +7,9 @@
 <img src="https://img.shields.io/badge/os-android-brightgreen">
 <br>
 <h1 align="center">
-<a href="https://matrix.to/#/#ani-cli:matrix.org"><img src="https://element.io/blog/content/images/2020/07/Logomark---white-on-green.png" width="80"></a>
-<a href="https://discord.gg/aqu7GpqVmR"><img src="https://pnggrid.com/wp-content/uploads/2021/05/Discord-Logo-Square-1024x1024.png" width="80"></a>
+<a href="https://discord.gg/aqu7GpqVmR">
+<img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
+</a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
