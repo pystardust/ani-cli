@@ -343,7 +343,7 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
-        -n | --season)
+        -v | --season)
             [ $# -lt 2 ] && die "missing argument!"
             seasonnum="$2"
             shift
@@ -363,7 +363,7 @@ while [ $# -gt 0 ]; do
             ;;
         -V | --version) version_info ;;
         -h | --help) help_info ;;
-        -e | --episode | -r | --range)
+        -n | --episode | -r | --range)
             [ $# -lt 2 ] && die "missing argument!"
             ep_no="$2"
             shift
