@@ -63,7 +63,7 @@ help_info() {
         play dubbed version
       -U, --update
         Update the script
-      -e --season
+      -n --season
         Select season (Needed for the -j --jellyfin option)
       -o --output
         Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
@@ -222,7 +222,7 @@ download() {
     case $1 in
         *m3u8*)
             if [ -n "$output" ]; then
-                nameformat=$(printf "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
+                nameformat=$(printf '%s' "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
                 file_name="${nameformat}"
 
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/${file_name}.mp4"
@@ -234,7 +234,7 @@ download() {
             if [ -n "$output" ]; then
 
                 # Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
-                nameformat=$(printf "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
+                nameformat=$(printf '%s' "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
                 file_name="${nameformat}"
 
                 aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "${file_name}.mp4" --download-result=hide
