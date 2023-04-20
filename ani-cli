@@ -65,7 +65,7 @@ help_info() {
         Update the script
       -n --season
         Select season (Needed for the -j --jellyfin option)
-      -o --output
+      -f --format
         Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
         Example of use can be 'Ep%ES%S-%m'
         The default way is \"%AT%E-%M\"
@@ -350,7 +350,7 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         
-        -o | --output)
+        -f | --format)
             [ $# -lt 2 ] && die "missing argument!"
             output="$2"
             shift
