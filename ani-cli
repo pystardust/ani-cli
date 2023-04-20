@@ -343,7 +343,7 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
-        -v | --season)
+        -n | --season)
             [ $# -lt 2 ] && die "missing argument!"
             seasonnum="$2"
             shift
