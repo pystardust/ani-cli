@@ -65,16 +65,17 @@ help_info() {
         Update the script
       -Se --season
         Select season (Needed for the -j --jellyfin option)
-      -j --jellyfin
-        Makes the naming scheme of downloaded video file compatible with Jellyfin (SXE00X). This requires the -Se --season option to be used
-        Takes True/False
+      -o --output
+        Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
+        Example of use can be 'Ep%ES%S-%m'
+        The defult way is \"%AT%E-%M\"
     Some example usages:
       %s -q 720p banana fish
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-      %s --jellyfin True --season 2 -d \"attack on titan\"
+      %s -d -o \"S%SE%E-%M\" --dub --season 1 \"attack on titan\"
     \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
@@ -217,25 +218,28 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
-
 download() {
     case $1 in
-        *)
-            if [ "$jellyfin" = "True" ]; then
-                if [ ${#ep_no} -eq 3 ]; then
-                    epstr="E$ep_no"
-                elif [ ${#ep_no} -eq 2 ]; then
-                    epstr="E0$ep_no"
-                elif [ ${#ep_no} -eq 1 ]; then
-                    epstr="E00$ep_no"
-                fi
-                seasonstr="S$seasonnum"
-
-                file_name="${seasonstr}${epstr}"
+        *m3u8*)
+            if [ -n "$output" ]; then
+                nameformat=$("echo "$output" | sed 's/%E/$ep_no/' | sed 's/%E/$seasonnum/'") # Replace the 
+                file_name="${nameformat}"
 
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/${file_name}.mp4"
             else
-                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+                ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+            fi
+            ;;
+        *)
+            if [ -n "$output" ]; then
+
+                # Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
+                nameformat=$(echo "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
+                file_name="${nameformat}"
+
+                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "${file_name}.mp4" --download-result=hide
+            else
+                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "${2}.mp4" --download-result=hide
             fi
             ;;
     esac
@@ -339,17 +343,16 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
-        -Se | --season)
+        -n | --season)
             [ $# -lt 2 ] && die "missing argument!"
             seasonnum="$2"
             shift
-            ;;        
-        
+            ;;
         -c | --continue) search=history ;;
         
-        --j | --jellyfin)
+        -o | --output)
             [ $# -lt 2 ] && die "missing argument!"
-            jellyfin="$2"
+            output="$2"
             shift
             ;;
 
