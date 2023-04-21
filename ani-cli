@@ -363,7 +363,7 @@ while [ $# -gt 0 ]; do
             ;;
         -V | --version) version_info ;;
         -h | --help) help_info ;;
-        -n | --episode | -r | --range)
+        -e | --episode | -r | --range)
             [ $# -lt 2 ] && die "missing argument!"
             ep_no="$2"
             shift
