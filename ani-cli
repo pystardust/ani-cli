@@ -221,8 +221,8 @@ update_history() {
 download() {
     case $1 in
         *m3u8*)
-            if [ -n "$output" ]; then
-                nameformat=$(printf "%s" "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
+            if [ -n "$format" ]; then
+                nameformat=$(printf "%s" "$format" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
                 file_name="${nameformat}"
                 echo "$links"
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/${file_name}.mp4"
@@ -231,10 +231,10 @@ download() {
             fi
             ;;
         *)
-            if [ -n "$output" ]; then
+            if [ -n "$format" ]; then
                 echo "$links"
                 # Supports allanime_title  (%AT), mode (sub, dub)  (%M), ep-num  (%E), seasonnum (if its provided in --season NUM)  (%S)
-                nameformat=$(printf "%s" "$output" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
+                nameformat=$(printf "%s" "$format" | sed "s/%E/$ep_no/g; s/%M/$mode/g; s/%AT/$allanime_title/g; s/%S/$seasonnum/g")
                 file_name="${nameformat}"
 
                 aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "${file_name}.mp4" --download-result=hide
@@ -352,7 +352,7 @@ while [ $# -gt 0 ]; do
         
         -f | --format)
             [ $# -lt 2 ] && die "missing argument!"
-            output="$2"
+            format="$2"
             shift
             ;;
 
