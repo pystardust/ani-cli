@@ -185,6 +185,10 @@ rm -rf ani-cli
 
 All dependencies can be installed with scoop (from the extras bucket), however some users experienced that installed programs aren't always added to the path. If this happens installing from winget instead usually works.
 
+Note that curl can cause issues. 
+ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
+If you run into issues, try the scoop install or grab the newest curl you can find.
+
 ### Android
 
 Install termux [(Guide)](https://termux.com/)
