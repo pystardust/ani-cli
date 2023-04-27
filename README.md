@@ -300,7 +300,7 @@ In Steam Desktop app:
 Install iSH from the app store
 Use apk to install dependencies
 ```sh
-apk add grep sed curl fzf git ffmpeg aria2c
+apk add grep sed curl fzf git ffmpeg aria2
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli /bin/ani-cli
 chmod +x /bin/ani-cli
