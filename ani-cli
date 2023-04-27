@@ -1,7 +1,10 @@
 #!/bin/sh
 
-version_number="4.2.3"
+version_number="4.2.4"
 
+is_ish() { 
+test -d /proc/ish 
+}
 # UI
 
 external_menu() {
@@ -212,14 +215,27 @@ update_history() {
 }
 
 download() {
+
+  if is_ish;then
+    printf "\e]8;;vlc-x-callback://x-callback-url/download?url=$episode&filename=${allanime_title}episode-${ep_no}-${mode}\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to Download ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n"
+   sleep 5
+   read -p "Click return to continue "
+  
+
+else
     case $1 in
         *m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
         *) aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
     esac
+fi
 }
 
 play_episode() {
     [ -z "$episode" ] && get_episode_url
+    
+    
+    
+    
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
         mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
@@ -231,7 +247,9 @@ play_episode() {
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
+        iSH) printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=$episode&filename=${allanime_title}episode-${ep_no}-${mode}\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n";sleep 5 ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
+        
     esac
     replay="$episode"
     unset episode
@@ -264,19 +282,26 @@ play() {
 
 # MAIN
 
+
 # setup
 agent="Mozilla/5.0 (Windows NT 6.1; Win64; rv:109.0) Gecko/20100101 Firefox/109.0"
 allanime_base="allanime.to"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
-case "$(uname -a)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
-    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
-    *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
-    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
-esac
+
+if is_ish;then
+  player_function="${ANI_CLI_PLAYER:-iSH}"           # iOS (iSH, uname is slower than this and deprecated)
+else
+  case "$(uname -a)" in
+      *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
+      *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
+      *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
+      *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
+      *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
+  esac
+fi
+
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 [ -t 0 ] || use_external_menu=1
@@ -291,14 +316,20 @@ histfile="$hist_dir/ani-hsts"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
+
     case "$1" in
         -v | --vlc)
+            if is_ish ;then
+                player_function="iSH"
+            else
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
                 *) player_function="vlc" ;;
             esac
+            fi
             ;;
+            
         -s | --syncplay)
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
@@ -336,17 +367,22 @@ while [ $# -gt 0 ]; do
     shift
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+
 dep_ch "curl" "sed" "grep" "fzf" || true
-case "$player_function" in
-    debug) ;;
-    download) dep_ch "ffmpeg" "aria2c" ;;
-    flatpak*)
-        dep_ch "flatpak"
-        flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
-        ;;
-    android*) printf "Checking of players on Android is disabled\n" ;;
-    *) dep_ch "$player_function" ;;
-esac
+  
+  case "$player_function" in
+      debug) ;;
+      download) dep_ch "ffmpeg" "aria2c" ;;
+      flatpak*)
+          dep_ch "flatpak"
+          flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
+          ;;
+      android*) printf "Checking of players on Android is disabled\n" ;;
+      *iSH*) printf "\nYou cannot check for players on iSH, but VLC on iOS is required\n";;
+      *) dep_ch "$player_function" ;;
+      
+  esac
+
 
 # searching
 case "$search" in
