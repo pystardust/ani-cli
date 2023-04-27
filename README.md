@@ -303,6 +303,7 @@ Use apk to install dependencies
 apk add grep sed curl fzf git
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli /bin/ani-cli
+chmod +x /bin/ani-cli
 ```
 
 ## Uninstall
