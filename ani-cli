@@ -366,8 +366,7 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
-printf "\33[2K\r\033[1;34mC
-hecking dependencies...\033[0m\n"
+printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 
 dep_ch "curl" "sed" "grep" "fzf" || true
   
