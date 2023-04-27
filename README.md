@@ -43,6 +43,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [Windows](#Windows)
   - [Android](#Android)
   - [Steam Deck](#Steam-deck)
+  - [iOS](#iOS)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
 - [Homies](#Homies)
@@ -294,6 +295,15 @@ In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 *Note: Konsole window size bugs out if launched from "Gaming Mode".*
 *Note: this is not working the way it should yet.*
+
+### iOS
+Install iSH from the app store
+Use apk to install dependencies
+'''
+apk add grep sed curl fzf git
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cp ~/.ani-cli/ani-cli /bin
+'''
 
 ## Uninstall
 
