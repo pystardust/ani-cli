@@ -316,14 +316,20 @@ histfile="$hist_dir/ani-hsts"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
+
     case "$1" in
         -v | --vlc)
+            if is_ish ;then
+                player_function="iSH"
+            else
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
                 *) player_function="vlc" ;;
             esac
+            fi
             ;;
+            
         -s | --syncplay)
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
