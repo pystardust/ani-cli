@@ -299,11 +299,11 @@ In Steam Desktop app:
 ### iOS
 Install iSH from the app store
 Use apk to install dependencies
-'''
+```sh
 apk add grep sed curl fzf git
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli /bin
-'''
+```
 
 ## Uninstall
 
