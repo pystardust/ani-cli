@@ -231,6 +231,7 @@ play_episode() {
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
+	  iSH) printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=$episode&filename=${allanime_title}episode-${ep_no}-${mode}\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n";sleep 5 ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
     esac
     replay="$episode"
@@ -275,6 +276,7 @@ case "$(uname -a)" in
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
     *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
+    *iSH*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;	    	   # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
@@ -296,6 +298,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
+		    *iSH*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
             ;;
@@ -345,6 +348,7 @@ case "$player_function" in
         flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
         ;;
     android*) printf "Checking of players on Android is disabled\n" ;;
+    *iSH*) printf "Checking of players on iOS is disabled\n" ;;
     *) dep_ch "$player_function" ;;
 esac
 
