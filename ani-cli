@@ -276,7 +276,7 @@ case "$(uname -a)" in
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
     *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
-    *iSH*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;	    	   # iOS (iSH)
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;	    	   # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
