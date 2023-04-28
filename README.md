@@ -214,6 +214,8 @@ rm -rf ani-cli
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
 ### iOS
+Install VLC from app store
+-
 Make sure apk is updated using
 ```apk update```
 then paste this:
