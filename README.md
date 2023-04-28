@@ -216,7 +216,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 ### iOS
 Make sure apk is updated using
 ```apk update```
-then install
+then paste this
 ```sh
 apk add grep sed curl fzf git ffmpeg aria2
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
