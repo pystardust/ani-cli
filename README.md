@@ -215,7 +215,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### iOS
 Make sure apk is updated using
-```sh apk update```
+```apk update```
 then install
 ```sh
 apk add grep sed curl fzf git ffmpeg aria2
