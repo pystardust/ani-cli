@@ -231,7 +231,7 @@ play_episode() {
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
-	iSH) printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=${episode}&filename=${allanime_title}episode-${ep_no}-${mode}\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n";sleep 5 ;;
+	    iSH) printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-${mode}\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode";sleep 5 ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
     esac
     replay="$episode"
