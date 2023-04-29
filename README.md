@@ -5,6 +5,7 @@
 <img src="https://img.shields.io/badge/os-mac-brightgreen">
 <img src="https://img.shields.io/badge/os-windows-brightgreen">
 <img src="https://img.shields.io/badge/os-android-brightgreen">
+<img src="https://img.shields.io/badge/os-ios-brightgreen">
 <br>
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
@@ -43,6 +44,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [Windows](#Windows)
   - [Android](#Android)
   - [Steam Deck](#Steam-deck)
+  - [iOS](#iOS)
 - [Uninstall](#Uninstall)
 - [Dependencies](#Dependencies)
 - [Homies](#Homies)
@@ -211,6 +213,18 @@ rm -rf ani-cli
 ```
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
+
+### iOS
+Install VLC from app store
+-
+Make sure apk is updated using
+```apk update```
+then paste this:
+```sh
+apk add grep sed curl fzf git ffmpeg aria2
+git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
+```
 
 ### Steam Deck
 
