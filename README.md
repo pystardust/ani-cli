@@ -5,6 +5,7 @@
 <img src="https://img.shields.io/badge/os-mac-brightgreen">
 <img src="https://img.shields.io/badge/os-windows-brightgreen">
 <img src="https://img.shields.io/badge/os-android-brightgreen">
+<img src="https://img.shields.io/badge/os-ios-brightgreen">
 <br>
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
