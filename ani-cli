@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.4"
+version_number="4.2.5"
 
 # UI
 
@@ -63,6 +63,8 @@ help_info() {
         play dubbed version
       -U, --update
         Update the script
+      -N, --non-interactive
+        Disable the interactive menu
     Some example usages:
       %s -q 720p banana fish
       %s -d -e 2 cyberpunk edgerunners
@@ -237,6 +239,9 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
+    if [ $no_menu -eq 1 ]; then
+      die "Playing episode $ep_no of $title"
+    fi
     wait
 }
 
@@ -271,6 +276,7 @@ allanime_base="allanime.to"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
+no_menu=0
 case "$(uname -a)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
@@ -332,6 +338,7 @@ while [ $# -gt 0 ]; do
             ep_no="$2"
             shift
             ;;
+        -N | --non-interactive) no_menu=1 ;;
         --dub) mode="dub" ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
