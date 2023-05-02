@@ -240,7 +240,8 @@ play_episode() {
     unset episode
     update_history
     if [ $no_menu -eq 1 ]; then
-      die "Playing episode $ep_no of $title"
+      printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no of $title"
+      exit 0
     fi
     wait
 }
