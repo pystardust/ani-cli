@@ -213,12 +213,16 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
+# Downloads a file from a URL and saves it with the specified filename in the specified directory
 download() {
-    case $1 in
-        *m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-        *) aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
-    esac
+    if echo "$(curl -s "$1")" | grep -q '#EXTM3U'; then
+        ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+    else
+        echo "aria $1"
+        aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+    fi
 }
+
 
 play_episode() {
     [ -z "$episode" ] && get_episode_url
