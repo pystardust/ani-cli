@@ -213,7 +213,6 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
-# Downloads a file from a URL and saves it with the specified filename in the specified directory
 download() {
     if echo "$(curl -s "$1")" | grep -q '#EXTM3U'; then
         ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
