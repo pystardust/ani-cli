@@ -222,7 +222,6 @@ download() {
     fi
 }
 
-
 play_episode() {
     [ -z "$episode" ] && get_episode_url
     case "$player_function" in
