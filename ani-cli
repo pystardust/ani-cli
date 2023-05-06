@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.5"
+version_number="4.2.6"
 
 # UI
 
@@ -222,7 +222,6 @@ download() {
         aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
     fi
 }
-
 
 play_episode() {
     [ -z "$episode" ] && get_episode_url
