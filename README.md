@@ -233,6 +233,7 @@ rm -rf ffmpeg
 apk add ffmpeg
 git clone https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
+chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
 ```
 note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
