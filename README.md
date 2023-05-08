@@ -216,6 +216,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### iOS
 Install iSH and VLC from the app store.
+
 Make sure apk is updated using
 ```apk update; apk upgrade```
 then run this:
