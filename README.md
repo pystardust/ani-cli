@@ -215,16 +215,28 @@ rm -rf ani-cli
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
 ### iOS
-Install VLC from app store
--
+Install iSH and VLC from the app store.
+
 Make sure apk is updated using
-```apk update```
-then paste this:
+```apk update; apk upgrade```
+then run this:
 ```sh
-apk add grep sed curl fzf git ffmpeg aria2
-git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+apk add grep sed curl fzf git aria2 alpine-sdk ncurses
+git clone https://github.com/Lockl00p/ffmpeglibs-iSH.git ~/ffmpeg
+cd ~/ffmpeg
+cat fmp.?? > ffmpeg.tar.gz
+tar -xvf ffmpeg.tar.gz
+cd FFmpeg
+make install
+cd 
+rm -rf ffmpeg
+apk add ffmpeg
+git clone https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
+chmod +x /usr/local/bin/ani-cli
+rm -rf ~/.ani-cli
 ```
+note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
 
 ### Steam Deck
 
