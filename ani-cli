@@ -217,10 +217,10 @@ download() {
     case $1 in
         *m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
         *) if curl -s -m 5 "$1" | grep -q '^#EXTM3U'; then
-        ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
-    else
-        aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
-  fi ;;
+            ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+        else
+            aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+        fi ;;
     esac
 }
 
@@ -237,15 +237,18 @@ play_episode() {
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
-	    iSH) printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode";sleep 5 ;;
+        iSH)
+            printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode"
+            sleep 5
+            ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
     esac
     replay="$episode"
     unset episode
     update_history
     if [ "$no_menu" -eq 1 ]; then
-      printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no of $title"
-      exit 0
+        printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no of $title"
+        exit 0
     fi
     wait
 }
@@ -287,7 +290,7 @@ case "$(uname -a)" in
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
     *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;	    	   # iOS (iSH)
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;               # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
@@ -309,7 +312,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
-		    *iSH*) player_function="iSH" ;;
+                *iSH*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
             ;;
@@ -373,8 +376,8 @@ case "$search" in
         result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
         [ -z "$result" ] && exit 1
         resfile="$(mktemp)"
-        grep "$result" "$histfile" > "$resfile"
-        read -r ep_no id title < "$resfile"
+        grep "$result" "$histfile" >"$resfile"
+        read -r ep_no id title <"$resfile"
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
