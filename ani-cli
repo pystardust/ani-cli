@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.7"
+version_number="4.2.8"
 
 # UI
 
@@ -323,7 +323,10 @@ while [ $# -gt 0 ]; do
         -s | --syncplay)
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-                MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+                MINGW* | *Msys)
+                    player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe"
+                    command -v "$player_function" >/dev/null || player_function="syncplay.exe"
+                    ;;
                 *) player_function="syncplay" ;;
             esac
             ;;
