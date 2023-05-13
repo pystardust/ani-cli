@@ -418,7 +418,6 @@ play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
-    printf "%s\n" "$links"
     case "$cmd" in
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) episode="$replay" ;;
