@@ -254,7 +254,7 @@ play_episode() {
         printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no of $title"
         exit 0
     fi
-    wait
+    [ "$use_external_menu" = "1" ] && wait
 }
 
 play() {
