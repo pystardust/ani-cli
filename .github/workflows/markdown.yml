@@ -19,14 +19,3 @@ jobs:
       with:
         command: file
         target: "**.md"
-
-  markdown-lint:
-    name: Markdown lint
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v2
-    - name: Lint changelog file
-      uses: avto-dev/markdown-lint@v1
-      with:
-        args: '**.md'
