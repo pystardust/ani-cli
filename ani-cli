@@ -9,14 +9,14 @@ external_menu() {
 }
 
 launcher() {
-    [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
+    [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"        
     [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
     [ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
 nth() {
     stdin=$(cat -)
-    [ -z "$stdin" ] && return 1
+            [ -z "$stdin" ] && return 1
     line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
     [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
     prompt="$1"
