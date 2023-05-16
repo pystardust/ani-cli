@@ -29,6 +29,13 @@ jobs:
     - name: Output Handling
       run: echo '${{ steps.broken-link.outputs.output }}'
       
+  check-exec:
+    name: Check for executable bit
+    runs-on: ubuntu-latest
+    steps:
+    - name: test exec bit
+      run: test -x "./ani-cli"
+  
   master-pr-check-version:
     runs-on: ubuntu-latest
     steps:
@@ -37,3 +44,12 @@ jobs:
       uses: port19x/action-pr-version-check@v0.1.1
       with:
         file: ani-cli
+
+  cpr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validates the pull request
+        uses: Namchee/conventional-pr@v0.12.1
+        with:
+          access_token: "${{ GITHUB_TOKEN }}"
+          issue: false
