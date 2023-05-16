@@ -37,14 +37,16 @@ jobs:
     name: Check for executable bit
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: test exec bit
-      run: |
-        test -x "./ani-cli"
-        ls
+      run: test -x "./ani-cli"
 
   version-bump:
     name: Check for version bump
     runs-on: ubuntu-latest
     steps:
-    - name: test exec bit
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: check version bump
       run: git diff origin/master | grep version_number
