@@ -324,7 +324,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
                 MINGW* | *Msys)
-                    export PATH=$PATH:"/c/Program Files (x86)/Syncplay/"
+                    export PATH="$PATH":"/c/Program Files (x86)/Syncplay/"
                     player_function="syncplay.exe"
                     ;;
                 *) player_function="syncplay" ;;
