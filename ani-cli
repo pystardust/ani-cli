@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.7"
+version_number="4.2.8"
 
 # UI
 
@@ -254,7 +254,7 @@ play_episode() {
         printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no of $title"
         exit 0
     fi
-    wait
+    [ "$use_external_menu" = "1" ] && wait
 }
 
 play() {
@@ -424,7 +424,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
         change_quality)
-            episode=$(printf "%s" "$links" | sed -n '/^\([0-9]*p\)/p' | launcher)
+            episode=$(printf "%s" "$links" | launcher)
             quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
             episode=$(printf "%s" "$episode" | cut -d'>' -f2)
             ;;
