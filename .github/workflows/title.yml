@@ -1,5 +1,7 @@
 name: "semantic pr title"
-on: pull_request
+on: 
+  pull_request:
+    types: [opened, edited, ready_for_review]
 permissions:
   pull-requests: read
 
