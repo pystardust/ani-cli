@@ -14,4 +14,4 @@ jobs:
       uses: luizm/action-sh-checker@master
       env:
         SHELLCHECK_OPTS: -s sh -o all -e 2250
-        SHFMT_OPTS: -i 4 -ci
+        SHFMT_OPTS: -i 4 -ci -d
