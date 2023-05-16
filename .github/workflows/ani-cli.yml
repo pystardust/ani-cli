@@ -1,8 +1,8 @@
 name: 'ani-cli checks'
 on:
   push:
-    paths: 
-      - "**ani-cli"
+    branches:
+    - "master"
   pull_request:
     paths: 
       - "**ani-cli"
