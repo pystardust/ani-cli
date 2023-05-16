@@ -10,7 +10,7 @@ name: 'ani-cli checks'
 
 jobs:
   sh-checker:
-    name: Shellcheck & Shfmt
+    name: Shellcheck + Shfmt
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -21,7 +21,7 @@ jobs:
         SHFMT_OPTS: -i 4 -ci -d
       
   check-exec:
-    name: Check for executable bit
+    name: Executable Bit
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -29,7 +29,7 @@ jobs:
       run: test -x "./ani-cli"
 
   version-bump:
-    name: Check for version bump
+    name: Version Bump
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
