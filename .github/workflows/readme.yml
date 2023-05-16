@@ -1,10 +1,10 @@
 on:
   push:
     paths: 
-      - "./README.md"
+      - "**.md"
   pull_request:
     paths: 
-      - "./README.md"
+      - "**.md"
 
 name: 'readme checks'
 

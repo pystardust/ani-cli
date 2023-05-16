@@ -1,10 +1,10 @@
 on:
   push:
     paths: 
-      - "./ani-cli"
+      - "**ani-cli"
   pull_request:
     paths: 
-      - "./ani-cli"
+      - "**ani-cli"
 
 name: 'ani-cli checks'
 
