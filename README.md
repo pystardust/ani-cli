@@ -1,16 +1,15 @@
 <p align=center>
 <br>
-<a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
+<a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-darkgreen.svg"></a>
 <a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
-<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
-<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-brightgreen">
-<a href="#Android"><img src="https://img.shields.io/badge/os-android-brightgreen">
-<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-brightgreen">
-<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-brightgreen">
+<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-darkblue">
+<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-blue">
+<a href="#Android"><img src="https://img.shields.io/badge/os-android-green">
+<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-darkblue">
+<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-purple">
 <br>
 <h1 align="center">
-<a href="https://discord.gg/aqu7GpqVmR">
-<img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
+<a href="https://discord.gg/aqu7GpqVmR"><img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0b52aa9e99b832574a53_full_logo_blurple_RGB.png" height = "45%" width= "30%">
 </a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
