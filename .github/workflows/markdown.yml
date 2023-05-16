@@ -1,0 +1,26 @@
+name: 'markdown checks'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths: 
+      - "**.md"
+
+jobs:
+  dead-links:
+    name: Dead Link Checker
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run DeadFinder
+      uses: hahwul/deadfinder@1.2.4
+      id: broken-link
+      with:
+        command: file
+        target: "**.md"
+  example:
+    name: Find Trailing Whitespace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ocular-d/trailing-spaces@0.0.2

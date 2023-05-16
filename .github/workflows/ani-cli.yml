@@ -1,0 +1,38 @@
+name: 'ani-cli checks'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths: 
+      - "**ani-cli"
+
+jobs:
+  sh-checker:
+    name: Shellcheck + Shfmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run the sh-checker
+      uses: luizm/action-sh-checker@master
+      env:
+        SHELLCHECK_OPTS: -s sh -o all -e 2250
+        SHFMT_OPTS: -i 4 -ci -d
+      
+  check-exec:
+    name: Executable Bit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: test exec bit
+      run: test -x "./ani-cli"
+
+  version-bump:
+    name: Version Bump
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: check version bump
+      run: git diff origin/master | grep version_number
