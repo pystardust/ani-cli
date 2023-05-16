@@ -7,7 +7,7 @@
 <a href="#Android"><img src="https://img.shields.io/badge/os-android-brightgreen">
 <a href="#iOS"><img src="https://img.shields.io/badge/os-ios-brightgreen">
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-brightgreen">
-<br>
+<br>                      
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
 <img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
