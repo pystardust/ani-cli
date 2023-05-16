@@ -35,12 +35,3 @@ jobs:
     steps:
     - name: test exec bit
       run: test -x "./ani-cli"
-  
-  master-pr-check-version:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Check if version changed
-      uses: port19x/action-pr-version-check@v0.1.1
-      with:
-        file: ./ani-cli
