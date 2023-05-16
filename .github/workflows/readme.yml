@@ -1,0 +1,21 @@
+on:
+  push:
+    paths: "./README.md"
+  pull_request:
+    paths: "./README.md"
+
+name: 'readme checks'
+
+jobs:
+  dead-links:
+    name: Dead Link Checker
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run DeadFinder
+      uses: hahwul/deadfinder@1.2.4
+      id: broken-link
+      with:
+        command: file
+        target: "./README.md"
+    - name: Output Handling
+      run: echo '${{ steps.broken-link.outputs.output }}'
