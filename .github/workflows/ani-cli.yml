@@ -26,13 +26,3 @@ jobs:
     - uses: actions/checkout@v3
     - name: test exec bit
       run: test -x "./ani-cli"
-
-  version-bump:
-    name: Version Bump
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: check version bump
-      run: git diff origin/master | grep version_number
