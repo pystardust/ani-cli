@@ -34,4 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: test exec bit
-      run: test -x "./ani-cli"
+      run: |
+        test -x "./ani-cli"
+        ls
