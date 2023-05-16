@@ -19,5 +19,3 @@ jobs:
       with:
         command: file
         target: "**.md"
-    - name: Output Handling
-      run: echo '${{ steps.broken-link.outputs.output }}'
