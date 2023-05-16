@@ -1,8 +1,8 @@
 name: 'markdown checks'
 on:
   push:
-    paths: 
-      - "**.md"
+    branches:
+      - "master"
   pull_request:
     paths: 
       - "**.md"
