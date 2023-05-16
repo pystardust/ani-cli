@@ -19,19 +19,6 @@ jobs:
       env:
         SHELLCHECK_OPTS: -s sh -o all -e 2250
         SHFMT_OPTS: -i 4 -ci -d
-
-  dead-links:
-    name: Dead Link Checker
-    runs-on: ubuntu-latest
-    steps:
-    - name: Run DeadFinder
-      uses: hahwul/deadfinder@1.2.4
-      id: broken-link
-      with:
-        command: file
-        target: "**.md"
-    - name: Output Handling
-      run: echo '${{ steps.broken-link.outputs.output }}'
       
   check-exec:
     name: Check for executable bit
@@ -47,6 +34,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 2
+        fetch-depth: 0
     - name: check version bump
       run: git diff origin/master | grep version_number
