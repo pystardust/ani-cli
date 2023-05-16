@@ -6,7 +6,7 @@ on:
     paths: 
       - "**.md"
 
-name: 'readme checks'
+name: 'markdown checks'
 
 jobs:
   dead-links:
