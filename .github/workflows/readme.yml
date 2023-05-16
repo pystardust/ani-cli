@@ -18,6 +18,6 @@ jobs:
       id: broken-link
       with:
         command: file
-        target: "./README.md"
+        target: "**.md"
     - name: Output Handling
       run: echo '${{ steps.broken-link.outputs.output }}'
