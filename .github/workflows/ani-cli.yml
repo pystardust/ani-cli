@@ -1,3 +1,4 @@
+name: 'ani-cli checks'
 on:
   push:
     paths: 
@@ -5,8 +6,6 @@ on:
   pull_request:
     paths: 
       - "**ani-cli"
-
-name: 'ani-cli checks'
 
 jobs:
   sh-checker:
