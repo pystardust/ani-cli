@@ -1,8 +1,10 @@
 on:
   push:
+    paths: "./ani-cli"
   pull_request:
+    paths: "./ani-cli"
 
-name: 'QA'
+name: 'ani-cli checks'
 
 jobs:
   sh-checker:
@@ -37,3 +39,10 @@ jobs:
       run: |
         test -x "./ani-cli"
         ls
+
+  version-bump:
+    name: Check for version bump
+    runs-on: ubuntu-latest
+    steps:
+    - name: test exec bit
+      run: git diff origin/master | grep version_number
