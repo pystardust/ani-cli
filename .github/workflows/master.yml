@@ -43,13 +43,4 @@ jobs:
     - name: Check if version changed
       uses: port19x/action-pr-version-check@v0.1.1
       with:
-        file: ani-cli
-
-  cpr:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validates the pull request
-        uses: Namchee/conventional-pr@v0.12.1
-        with:
-          access_token: "${{ GITHUB_TOKEN }}"
-          issue: false
+        file: ./ani-cli
