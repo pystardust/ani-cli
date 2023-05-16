@@ -5,12 +5,13 @@ on:
 name: 'QA'
 
 jobs:
-  shellcheck:
-    name: Shellcheck
+  sh-checker:
+    name: Sh-Checker
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Run ShellCheck
-      uses: ludeeus/action-shellcheck@master
+    - name: Run the sh-checker
+      uses: luizm/action-sh-checker@master
       env:
         SHELLCHECK_OPTS: -s sh -o all -e 2250
+        SHFMT_OPTS: -s # FIXME
