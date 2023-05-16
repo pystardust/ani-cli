@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.9"
+version_number="4.3.0"
 
 # UI
 
@@ -10,7 +10,7 @@ external_menu() {
 
 launcher() {
     [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
-    [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --prompt "$2"
+    [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
     [ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
@@ -323,7 +323,10 @@ while [ $# -gt 0 ]; do
         -s | --syncplay)
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
-                MINGW* | *Msys) player_function="/c/Program Files (x86)/Syncplay/Syncplay.exe" ;;
+                MINGW* | *Msys)
+                    export PATH="$PATH":"/c/Program Files (x86)/Syncplay/"
+                    player_function="syncplay.exe"
+                    ;;
                 *) player_function="syncplay" ;;
             esac
             ;;
