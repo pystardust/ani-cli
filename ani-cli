@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.2.8"
+version_number="4.2.9"
 
 # UI
 
@@ -219,10 +219,10 @@ download() {
         *) if curl -s -m 5 "$1" | grep -q '^#EXTM3U'; then
             ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
         else
-            if uname -a| grep -q "ish"; then
+            if uname -a | grep -q "ish"; then
                 curl --output-dir "$download_dir" -o "$2.mp4" "$1"
-            else  
-                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide 
+            else
+                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
             fi
         fi ;;
     esac
