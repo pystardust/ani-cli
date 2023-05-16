@@ -1,3 +1,4 @@
+name: 'markdown checks'
 on:
   push:
     paths: 
@@ -5,8 +6,6 @@ on:
   pull_request:
     paths: 
       - "**.md"
-
-name: 'markdown checks'
 
 jobs:
   dead-links:
