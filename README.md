@@ -384,7 +384,20 @@ rm -rf "~/.aria2"
 rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 ```
-
+* iOS
+To uninstall ani-cli:
+```
+rm -rf /usr/local/bin/ani-cli
+```
+To uninstall FFmpeg:
+```
+rm -rf /usr/local/lib/libavutil.a /usr/local/lib/libavcodec.a /usr/local/lib/libavformat.a /usr/local/lib/pkgconfig/libavutil.a /usr/local/lib/pkgconfig/libavcodec.a /usr/local/lib/pkgconfig/libavformat.a
+apk del ffmpeg
+```
+To uninstall other dependencies:
+```
+apk del grep sed curl fzf git aria2 alpine-sdk ncurses
+```
 ## Dependencies
 
 - grep
