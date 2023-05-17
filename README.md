@@ -385,7 +385,6 @@ rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 ```
 * iOS
-To uninstall ani-cli:
 ```
 rm -rf /usr/local/bin/ani-cli
 ```
