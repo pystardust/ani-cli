@@ -1,0 +1,14 @@
+name: 'markdown checks'
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+jobs:
+  dead-links:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
+  trailing-ws:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
