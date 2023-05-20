@@ -8,14 +8,17 @@ on:
       - "**ani-cli"
 jobs:
   sh-checker:
+    name: Shellcheck + Shfmt
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify ani-cli"'
   check-exec:
+    name: Executable Bit
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify ani-cli"'
   version-bump:
+    name: Version Bump
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify ani-cli"'
