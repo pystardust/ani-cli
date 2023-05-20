@@ -1,3 +1,5 @@
+# Added due to required but conditional checks
+# Read more: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks#handling-skipped-but-required-checks
 name: 'markdown checks'
 on:
   pull_request:
