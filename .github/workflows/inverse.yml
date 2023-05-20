@@ -1,0 +1,37 @@
+# Added due to required but conditional checks
+# Read more: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+
+name: 'ani-cli checks'
+on:
+  pull_request:
+    paths-ignore:
+      - "**ani-cli"
+jobs:
+  sh-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify ani-cli"'
+  check-exec:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify ani-cli"'
+  version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify ani-cli"'
+
+---
+name: 'markdown checks'
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+jobs:
+  dead-links:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
+  trailing-ws:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
