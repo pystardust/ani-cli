@@ -5,10 +5,12 @@ on:
       - "**.md"
 jobs:
   dead-links:
+    name: Dead Link Checker
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify documentation"'
   trailing-ws:
+    name: Find Trailing Whitespace
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify documentation"'
