@@ -18,7 +18,7 @@ jobs:
       with:
         command: file
         target: "**.md"
-  example:
+  trailing-ws:
     name: Find Trailing Whitespace
     runs-on: ubuntu-latest
     steps:
