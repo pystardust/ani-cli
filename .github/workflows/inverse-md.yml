@@ -1,0 +1,18 @@
+# Added due to required but conditional checks
+# Read more: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+name: 'markdown checks'
+on:
+  pull_request:
+    paths-ignore:
+      - "**.md"
+jobs:
+  dead-links:
+    name: Dead Link Checker
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
+  trailing-ws:
+    name: Find Trailing Whitespace
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify documentation"'
