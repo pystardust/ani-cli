@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.3.0"
+version_number="4.3.1"
 
 # UI
 
@@ -222,7 +222,7 @@ download() {
             if uname -a | grep -q "ish"; then
                 curl --output-dir "$download_dir" -o "$2.mp4" "$1"
             else
-                aria2c --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+                aria2c --enable-rpc=false --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
             fi
         fi ;;
     esac
