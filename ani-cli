@@ -147,7 +147,8 @@ generate_link() {
         5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
         *) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
     esac
-    provider_id=$(printf "%b" "$(printf "%s" "$provider_id" | sed 's/\(..\)/\\x\1/g')" | sed "s/\/clock/\/clock\.json/")
+    hexadecimal_provider_id="$(printf "%s" "$provider_id" | sed 's/\(..\)/\\x\1/g')"
+    provider_id=$(printf "%b" "$hexadecimal_provider_id" | sed "s/\/clock/\/clock\.json/")
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
 
