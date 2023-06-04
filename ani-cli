@@ -103,54 +103,8 @@ dep_ch() {
 }
 
 # SCRAPING
-
-# extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
-get_links() {
-    episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com/apivtwo/clock.json?id=$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
-    case "$episode_link" in
-        *crunchyroll*)
-            curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
-            ;;
-        *repackager.wixmp.com*)
-            extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
-            for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
-                printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
-            done | sort -nr
-            ;;
-        *//cache.* | *gofcdn.com*)
-            if printf "%s" "$episode_link" | head -1 | grep -q "original.m3u"; then
-                printf "%s" "$episode_link"
-            else
-                extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
-                relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl -e "https://${allanime_base}/" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
-            fi
-            ;;
-        *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
-    esac
-    printf "Fetching %s Links\n" "$provider_name" 1>&2
-}
-
-# innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
-provider_init() {
-    provider_name=$1
-    provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
-}
-
-# generates links based on given provider
-generate_link() {
-    case $1 in
-        1) provider_init 'wixmp' '/Default :/p' ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
-        3) provider_init 'vrv' '/Ac :/p' ;;            # vrv(crunchyroll)(m3u8)(multi)
-        4) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
-        5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
-        *) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
-    esac
-    [ -n "$provider_id" ] && get_links "$provider_id"
-}
-
 select_quality() {
+  if [ -n "$embed" ]; then
     case "$1" in
         best) result=$(printf "%s" "$links" | head -n1) ;;
         worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
@@ -158,6 +112,23 @@ select_quality() {
     esac
     [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
     printf "%s" "$result" | cut -d'>' -f2
+  else
+    case "$1" in
+        worst) result=$(printf "%s" "$links" | head -n1) ;;
+        *) result=$(printf "%s" "$links" | tail -n1) ;;
+    esac
+    [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | tail -n1)
+    printf "%s" "$result"
+  fi
+}
+
+get_links_from_embed() {
+    # TODO scrape the embeds
+    links=$(curl -s "$embed" | sed -nE "s@.*class=\"linkserver\" data-status=\"1\" data-video=\"([^\"]*)\">([^<]*)<.*@\2\t\1@p")
+    printf "%s\n" "$links" | while read -r provider url; do
+      printf "%s\t%s\n" "$provider" "$url"
+    done
+    exit
 }
 
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
@@ -165,18 +136,11 @@ get_episode_url() {
     # get the embed urls of the selected episode
     episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
 
-    resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":".*clock\?id=([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
-    # generate links into sequential files
-    provider=1
-    i=0
-    while [ "$i" -lt 6 ]; do
-        generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 6 + 1))
-        : $((i += 1))
-    done
-    wait
-    # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
+    links=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"(https://workfields[^"]*)".*|\1|p')
+    if [ -z "$links" ]; then
+      embed=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"(https://playtaku[^"]*)".*|\1|p')
+      get_links_from_embed
+    fi
     episode=$(select_quality "$quality")
     [ -z "$episode" ] && die "Episode not released!"
 }
