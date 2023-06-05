@@ -165,7 +165,8 @@ generate_link() {
         7) provider_init "wetransfer" "/Kir :/p" ;;     # wetransfer(mp4)(single)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
-    provider_id="$(printf "%s" "$(hex_to_bin "$provider_id")" | sed "s/\/clock/\/clock\.json/")"
+    bin=$(hex_to_bin "$provider_id")
+    provider_id="$(printf "%s" "$bin" | sed "s/\/clock/\/clock\.json/")"
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
 
