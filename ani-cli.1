@@ -13,7 +13,7 @@ This tool scrapes the site allanime.
 .PD 0
 .P
 .PD
-\f[B]ani-cli\f[R] without options defaults to iina on macOS, flatpak mpv on Steamdeck, mpv apk on android and mpv media player everywhere else.
+\f[B]ani-cli\f[R] without options defaults to iina on macOS, flatpak mpv on Steamdeck, mpv apk on android, vlc on iOS and mpv media player everywhere else.
 .SH OPTIONS
 .TP
 \fB\-e | --episode | -r | --range\fR \fI\,<episode>\/\fR
@@ -46,8 +46,11 @@ Fetch update from github.
 \fB\-v | --vlc\fR
 Use VLC as the media player.
 .TP
-\fB\-V | --version\fR
-Print version number and exit.
+\fB\-N | --non-interactive\fR
+Disable the interactive menu.
+.TP
+\fB\-S | --select-nth\fR \fI\,<index>\/\fR
+Selects nth entry.
 .TP
 \fB\--dub\fR
 Play the dubbed version. Without this flag, it'll always play the subbed version.
