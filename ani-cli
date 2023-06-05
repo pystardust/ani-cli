@@ -138,19 +138,19 @@ provider_init() {
 }
 
 hex_to_bin() {
-  hex="$1"
-  len=$(printf "%s" "$hex" | wc -c)
-  bin=""
-  i=1
-  while [ "$i" -lt "$len" ]; do
-    char=$(printf "%s" "$hex" | cut -c "$i-$((i+1))")
-    dec=$(printf "%d" "0x$char")
-    oct=$(printf "%03o" "$dec")
-    # shellcheck disable=SC2059
-    bin="$bin$(printf "\\$oct")"
-    i=$((i+2))
-  done
-  printf "%s" "$bin"
+    hex="$1"
+    len=$(printf "%s" "$hex" | wc -c)
+    bin=""
+    i=1
+    while [ "$i" -lt "$len" ]; do
+        char=$(printf "%s" "$hex" | cut -c "$i-$((i + 1))")
+        dec=$(printf "%d" "0x$char")
+        oct=$(printf "%03o" "$dec")
+        # shellcheck disable=SC2059
+        bin="$bin$(printf "\\$oct")"
+        i=$((i + 2))
+    done
+    printf "%s" "$bin"
 }
 
 # generates links based on given provider
@@ -161,8 +161,8 @@ generate_link() {
         3) provider_init "vrv" "/Ac :/p" ;;            # vrv(crunchyroll)(m3u8)(multi)
         4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
         5) provider_init "usercloud" "/Uv-mp4 :/p" ;;  # usercloud(mp4)(single)
-        6) provider_init "dropbox" "/Sak :/p" ;;        # dropbox(mp4)(single)
-        7) provider_init "wetransfer" "/Kir :/p" ;;     # wetransfer(mp4)(single)
+        6) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
+        7) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     bin=$(hex_to_bin "$provider_id")
