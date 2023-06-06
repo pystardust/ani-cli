@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.4.0"
+version_number="4.4.1"
 
 # UI
 
@@ -137,18 +137,36 @@ provider_init() {
     provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2)
 }
 
+hex_to_ascii() {
+    hex="$1"
+    len=$(printf "%s" "$hex" | wc -c)
+    bin=""
+    i=1
+    while [ "$i" -lt "$len" ]; do
+        char=$(printf "%s" "$hex" | cut -c "$i-$((i + 1))")
+        dec=$(printf "%d" "0x$char")
+        oct=$(printf "%03o" "$dec")
+        # shellcheck disable=SC2059
+        bin="$bin$(printf "\\$oct")"
+        i=$((i + 2))
+    done
+    printf "%s" "$bin"
+}
+
 # generates links based on given provider
 generate_link() {
     case $1 in
-        1) provider_init 'wixmp' '/Default :/p' ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init 'pstatic' '/Default B :/p' ;; # pstatic(default backup)(mp4)(multi)
-        3) provider_init 'vrv' '/Ac :/p' ;;            # vrv(crunchyroll)(m3u8)(multi)
-        4) provider_init 'sharepoint' '/S-mp4 :/p' ;;  # sharepoint(mp4)(single)
-        5) provider_init 'usercloud' '/Uv-mp4 :/p' ;;  # usercloud(mp4)(single)
-        *) provider_init 'gogoanime' '/Luf-mp4 :/p' ;; # gogoanime(m3u8)(multi)
+        1) provider_init "wixmp" "/Default :/p" ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
+        2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
+        3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
+        4) provider_init "pstatic" "/Default B :/p" ;; # pstatic(default backup)(mp4)(multi)
+        5) provider_init "vrv" "/Ac :/p" ;;            # vrv(crunchyroll)(m3u8)(multi)
+        6) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
+        7) provider_init "usercloud" "/Uv-mp4 :/p" ;;  # usercloud(mp4)(single)
+        *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
-    hexadecimal_provider_id="$(printf "%s" "$provider_id" | sed 's/\(..\)/\\x\1/g')"
-    provider_id=$(printf "%b" "$hexadecimal_provider_id" | sed "s/\/clock/\/clock\.json/")
+    bin=$(hex_to_ascii "$provider_id")
+    provider_id="$(printf "%s" "$bin" | sed "s/\/clock/\/clock\.json/")"
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
 
@@ -171,9 +189,9 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
-    while [ "$i" -lt 6 ]; do
+    while [ "$i" -lt 8 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 6 + 1))
+        provider=$((provider % 8 + 1))
         : $((i += 1))
     done
     wait
