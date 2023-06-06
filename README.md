@@ -416,6 +416,7 @@ apk del grep sed curl fzf git aria2 alpine-sdk ncurses
 * [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
-* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
+* [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python)
+* [porn-cli](https://github.com/mov-cli/porn-cli): Commandline Tool to watch and download porn. (Python)
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
