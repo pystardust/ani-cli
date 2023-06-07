@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.4.1"
+version_number="4.4.2"
 
 # UI
 
@@ -140,17 +140,17 @@ provider_init() {
 hex_to_ascii() {
     hex="$1"
     len=$(printf "%s" "$hex" | wc -c)
-    bin=""
+    ascii=""
     i=1
     while [ "$i" -lt "$len" ]; do
         char=$(printf "%s" "$hex" | cut -c "$i-$((i + 1))")
         dec=$(printf "%d" "0x$char")
         oct=$(printf "%03o" "$dec")
         # shellcheck disable=SC2059
-        bin="$bin$(printf "\\$oct")"
+        ascii="$ascii$(printf "\\$oct")"
         i=$((i + 2))
     done
-    printf "%s" "$bin"
+    printf "%s" "$ascii"
 }
 
 # generates links based on given provider
@@ -400,7 +400,7 @@ case "$search" in
         anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
-        result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: " | cut -f1)
+        result=$(printf "%s" "$anime_list" | nl -w 2 | nth "Select anime: " | cut -f1)
         [ -z "$result" ] && exit 1
         resfile="$(mktemp)"
         grep "$result" "$histfile" >"$resfile"
@@ -422,7 +422,7 @@ case "$search" in
         anime_list=$(search_anime "$query")
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 1 | nth "Select anime: ")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | nth "Select anime: ")
         [ -z "$result" ] && exit 1
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
