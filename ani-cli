@@ -140,17 +140,17 @@ provider_init() {
 hex_to_ascii() {
     hex="$1"
     len=$(printf "%s" "$hex" | wc -c)
-    bin=""
+    ascii=""
     i=1
     while [ "$i" -lt "$len" ]; do
         char=$(printf "%s" "$hex" | cut -c "$i-$((i + 1))")
         dec=$(printf "%d" "0x$char")
         oct=$(printf "%03o" "$dec")
         # shellcheck disable=SC2059
-        bin="$bin$(printf "\\$oct")"
+        ascii="$ascii$(printf "\\$oct")"
         i=$((i + 2))
     done
-    printf "%s" "$bin"
+    printf "%s" "$ascii"
 }
 
 # generates links based on given provider
