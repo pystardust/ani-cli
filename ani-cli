@@ -19,8 +19,8 @@ nth() {
     [ -z "$stdin" ] && return 1
     line_count="$(
         printf "%s\n" "$stdin" |
-        wc -l |
-        tr -d "[:space:]"
+            wc -l |
+            tr -d "[:space:]"
     )"
     [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
     prompt="$1"
@@ -28,15 +28,15 @@ nth() {
     [ $# -ne 1 ] && shift && multi_flag="$1"
     line=$(
         printf "%s" "$stdin" |
-        cut -f1,3 |
-        tr '\t' ' ' |
-        launcher "$multi_flag" "$prompt" |
-        cut -d " " -f 1
+            cut -f1,3 |
+            tr '\t' ' ' |
+            launcher "$multi_flag" "$prompt" |
+            cut -d " " -f 1
     )
     [ -n "$line" ] &&
         printf "%s" "$stdin" |
         grep -E '^'"${line}"'($|\s)' |
-        cut -f2,3 ||
+            cut -f2,3 ||
         exit 1
 }
 
@@ -126,8 +126,8 @@ get_links() {
             -s \
             --cipher "AES256-SHA256" "https://allanimenews.com$*" \
             -A "$agent" |
-        sed 's|},{|\n|g' |
-        sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p'
+            sed 's|},{|\n|g' |
+            sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p'
     )
     case "$episode_link" in
         *crunchyroll*)
@@ -136,22 +136,22 @@ get_links() {
                 -s \
                 --cipher "AES256-SHA256" "$episode_link" \
                 -A "$agent" |
-            sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
-            sort -nr
+                sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
+                sort -nr
             ;;
         *repackager.wixmp.com*)
             extract_link=$(
                 printf "%s" "$episode_link" |
-                cut -d'>' -f2 |
-                sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g'
+                    cut -d'>' -f2 |
+                    sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g'
             )
             for j in $(
                 printf "%s" "$episode_link" |
-                sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' |
-                sed 's|,|\n|g'
+                    sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' |
+                    sed 's|,|\n|g'
             ); do
                 printf "%s >%s\n" "$j" "$extract_link" |
-                sed "s|,[^/]*|${j}|g"
+                    sed "s|,[^/]*|${j}|g"
             done | sort -nr
             ;;
         *//cache.* | *gofcdn.com*)
@@ -166,9 +166,9 @@ get_links() {
                     --cipher "AES256-SHA256" \
                     -A "$agent" \
                     "$extract_link" |
-                sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
-                sed "s|>|>${relative_link}|g" |
-                sort -nr
+                    sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
+                    sed "s|>|>${relative_link}|g" |
+                    sort -nr
             fi
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
@@ -243,9 +243,9 @@ get_episode_url() {
             --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" \
             --data-urlencode "query=${episode_embed_gql}" \
             -A "$agent" |
-        tr '{}' '\n' |
-        sed 's|\\u002F|\/|g;s|\\||g' |
-        sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p'
+            tr '{}' '\n' |
+            sed 's|\\u002F|\/|g;s|\\||g' |
+            sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p'
     )
     # generate links into sequential files
     provider=1
@@ -282,8 +282,8 @@ search_anime() {
         --data-urlencode "variables=${variables}" \
         --data-urlencode "query=${search_gql}" \
         -A "$agent" |
-    sed 's|Show|\n|g' |
-    sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+        sed 's|Show|\n|g' |
+        sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
@@ -303,9 +303,9 @@ episodes_list() {
         --data-urlencode "variables={\"showId\":\"$*\"}" \
         --data-urlencode "query=${episodes_list_gql}" \
         -A "$agent" |
-    sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" |
-    sed 's|,|\n|g; s|"||g' |
-    sort -n -k 1
+        sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" |
+        sed 's|,|\n|g; s|"||g' |
+        sort -n -k 1
 }
 
 # PLAYING
