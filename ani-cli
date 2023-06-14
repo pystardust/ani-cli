@@ -17,13 +17,27 @@ launcher() {
 nth() {
     stdin=$(cat -)
     [ -z "$stdin" ] && return 1
-    line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
+    line_count="$(
+        printf "%s\n" "$stdin" |
+        wc -l |
+        tr -d "[:space:]"
+    )"
     [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
     prompt="$1"
     multi_flag=""
     [ $# -ne 1 ] && shift && multi_flag="$1"
-    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
-    [ -n "$line" ] && printf "%s" "$stdin" | grep -E '^'"${line}"'($|\s)' | cut -f2,3 || exit 1
+    line=$(
+        printf "%s" "$stdin" |
+        cut -f1,3 |
+        tr '\t' ' ' |
+        launcher "$multi_flag" "$prompt" |
+        cut -d " " -f 1
+    )
+    [ -n "$line" ] &&
+        printf "%s" "$stdin" |
+        grep -E '^'"${line}"'($|\s)' |
+        cut -f2,3 ||
+        exit 1
 }
 
 die() {
@@ -106,15 +120,38 @@ dep_ch() {
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    episode_link=$(
+        curl \
+            -e "https://${allanime_base}" \
+            -s \
+            --cipher "AES256-SHA256" "https://allanimenews.com$*" \
+            -A "$agent" |
+        sed 's|},{|\n|g' |
+        sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p'
+    )
     case "$episode_link" in
         *crunchyroll*)
-            curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
+            curl \
+                -e "https://${allanime_base}" \
+                -s \
+                --cipher "AES256-SHA256" "$episode_link" \
+                -A "$agent" |
+            sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
+            sort -nr
             ;;
         *repackager.wixmp.com*)
-            extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
-            for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
-                printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
+            extract_link=$(
+                printf "%s" "$episode_link" |
+                cut -d'>' -f2 |
+                sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g'
+            )
+            for j in $(
+                printf "%s" "$episode_link" |
+                sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' |
+                sed 's|,|\n|g'
+            ); do
+                printf "%s >%s\n" "$j" "$extract_link" |
+                sed "s|,[^/]*|${j}|g"
             done | sort -nr
             ;;
         *//cache.* | *gofcdn.com*)
@@ -123,7 +160,15 @@ get_links() {
             else
                 extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
                 relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl -e "https://${allanime_base}/" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
+                curl \
+                    -e "https://${allanime_base}/" \
+                    -s \
+                    --cipher "AES256-SHA256" \
+                    -A "$agent" \
+                    "$extract_link" |
+                sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
+                sed "s|>|>${relative_link}|g" |
+                sort -nr
             fi
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
@@ -183,9 +228,25 @@ select_quality() {
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     # get the embed urls of the selected episode
-    episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
+    episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {
+        episode(showId: \$showId  translationType: \$translationType  episodeString: \$episodeString) {
+            episodeString sourceUrls
+        }
+    }"
 
-    resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp=$(
+        curl \
+            -e "https://${allanime_base}" \
+            -s \
+            --cipher "AES256-SHA256" \
+            -G "https://api.${allanime_base}/allanimeapi" \
+            --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" \
+            --data-urlencode "query=${episode_embed_gql}" \
+            -A "$agent" |
+        tr '{}' '\n' |
+        sed 's|\\u002F|\/|g;s|\\||g' |
+        sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p'
+    )
     # generate links into sequential files
     provider=1
     i=0
@@ -203,16 +264,48 @@ get_episode_url() {
 
 # search the query and give results
 search_anime() {
-    search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
+    variables="{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}"
+    search_gql="
+        query(\$search: SearchInput  \$limit: Int  \$page: Int  \$translationType: VaildTranslationTypeEnumType  \$countryOrigin: VaildCountryOriginEnumType) {
+            shows(search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {
+                edges {
+                    _id name availableEpisodes __typename
+                }
+            }
+        }"
 
-    curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+    curl \
+        -e "https://${allanime_base}" \
+        -s \
+        --cipher "AES256-SHA256" \
+        -G "https://api.${allanime_base}/allanimeapi" \
+        --data-urlencode "variables=${variables}" \
+        --data-urlencode "query=${search_gql}" \
+        -A "$agent" |
+    sed 's|Show|\n|g' |
+    sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
 episodes_list() {
-    episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
+    episodes_list_gql="
+        query (\$showId: String!) {
+            show(_id: \$showId) {
+                _id availableEpisodesDetail
+            }
+        }"
 
-    curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
+    curl \
+        -e "https://${allanime_base}" \
+        -s \
+        --cipher AES256-SHA256 \
+        -G "https://api.${allanime_base}/allanimeapi" \
+        --data-urlencode "variables={\"showId\":\"$*\"}" \
+        --data-urlencode "query=${episodes_list_gql}" \
+        -A "$agent" |
+    sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" |
+    sed 's|,|\n|g; s|"||g' |
+    sort -n -k 1
 }
 
 # PLAYING
@@ -254,7 +347,15 @@ play_episode() {
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
         mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
+        android_vlc)
+            nohup am start \
+                --user 0 \
+                -a android.intent.action.VIEW \
+                -d "$episode" \
+                -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity \
+                -e "title" \
+                "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 &
+            ;;
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
@@ -262,7 +363,12 @@ play_episode() {
         download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
-            printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode"
+            printf \
+                "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" \
+                "$episode" \
+                "$allanime_title" \
+                "$ep_no" \
+                "$mode"
             sleep 5
             ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
