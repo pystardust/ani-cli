@@ -104,20 +104,13 @@ dep_ch() {
 
 # SCRAPING
 
-# curl wrapper to be used for getting data out of $allanime_base
-allanime_curl() {
-    curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$*"
-}
-
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com$*" -A "$agent" |
-        sed 's|},{|\n|g' |
+    episode_link="$($allanime_curl "https://allanimenews.com$*" | sed 's|},{|\n|g' |
         sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
     case "$episode_link" in
         *crunchyroll*)
-            curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" |
-                sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
+                $allanime_curl "$episode_link" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
             ;;
         *repackager.wixmp.com*)
             extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
@@ -131,8 +124,7 @@ get_links() {
             else
                 extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
                 relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl -e "https://${allanime_base}/" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" |
-                    sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
+                $allanime_curl "$extract_link" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
             fi
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
@@ -214,9 +206,8 @@ get_episode_url() {
             \"translationType\":\"$mode\",
             \"episodeString\":\"$ep_no\"
         }"
-    resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "variables=$query_json" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' |
-        sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp=$($allanime_curl -G "$api_url" --data-urlencode "variables=$query_json" --data-urlencode "query=$episode_embed_gql" |
+        tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     provider=1
     i=0
@@ -269,8 +260,7 @@ search_anime() {
             \"translationType\":\"$mode\",
             \"countryOrigin\":\"ALL\"
         }"
-    curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "variables=$query_json" --data-urlencode "query=$search_gql" -A "$agent" |
+    $allanime_curl -G "$api_url" --data-urlencode "variables=$query_json" --data-urlencode "query=$search_gql" |
         sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
@@ -292,8 +282,7 @@ episodes_list() {
         {
             \"showId\":\"$*\"
         }" 
-    curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "variables=$query_json" --data-urlencode "query=$episodes_list_gql" -A "$agent" |
+    $allanime_curl -G "$api_url" --data-urlencode "variables=$query_json" --data-urlencode "query=$episodes_list_gql" |
         sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
@@ -390,6 +379,10 @@ play() {
 # setup
 agent="Mozilla/5.0 (Windows NT 6.1; Win64; rv:109.0) Gecko/20100101 Firefox/109.0"
 allanime_base="allanime.to"
+api_url="https://api.${allanime_base}/allanimeapi"
+# curl wrapper to be used for getting data out of allanime
+allanime_curl="curl -e https://${allanime_base} -s --cipher AES256-SHA256 -A $agent"
+
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
