@@ -36,8 +36,8 @@ nth() {
     [ -n "$line" ] &&
         printf "%s" "$stdin" |
         grep -E '^'"${line}"'($|\s)' |
-            cut -f2,3 ||
-        exit 1
+            cut -f2,3 \
+            || exit 1
 }
 
 die() {
@@ -120,10 +120,7 @@ dep_ch() {
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    episode_link=$(
-        curl \
-            -e "https://${allanime_base}" \
-            -s \
+    episode_link=$(curl -e "https://${allanime_base}" -s \
             --cipher "AES256-SHA256" "https://allanimenews.com$*" \
             -A "$agent" |
             sed 's|},{|\n|g' |
@@ -131,26 +128,21 @@ get_links() {
     )
     case "$episode_link" in
         *crunchyroll*)
-            curl \
-                -e "https://${allanime_base}" \
-                -s \
+            curl -e "https://${allanime_base}" -s \
                 --cipher "AES256-SHA256" "$episode_link" \
                 -A "$agent" |
                 sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' |
                 sort -nr
             ;;
         *repackager.wixmp.com*)
-            extract_link=$(
-                printf "%s" "$episode_link" |
+            extract_link=$(printf "%s" "$episode_link" |
                     cut -d'>' -f2 |
                     sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g'
             )
-            for j in $(
-                printf "%s" "$episode_link" |
+            for j in $(printf "%s" "$episode_link" |
                     sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' |
                     sed 's|,|\n|g'
-            ); do
-                printf "%s >%s\n" "$j" "$extract_link" |
+            ); do printf "%s >%s\n" "$j" "$extract_link" |
                     sed "s|,[^/]*|${j}|g"
             done | sort -nr
             ;;
@@ -160,9 +152,7 @@ get_links() {
             else
                 extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
                 relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl \
-                    -e "https://${allanime_base}/" \
-                    -s \
+                curl -e "https://${allanime_base}/" -s \
                     --cipher "AES256-SHA256" \
                     -A "$agent" \
                     "$extract_link" |
@@ -234,10 +224,7 @@ get_episode_url() {
         }
     }"
 
-    resp=$(
-        curl \
-            -e "https://${allanime_base}" \
-            -s \
+    resp=$(curl -e "https://${allanime_base}" -s \
             --cipher "AES256-SHA256" \
             -G "https://api.${allanime_base}/allanimeapi" \
             --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" \
