@@ -104,6 +104,11 @@ dep_ch() {
 
 # SCRAPING
 
+# curl wrapper to be used for getting data out of $allanime_base
+allanime_curl() {
+    curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$*"
+}
+
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
     episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com$*" -A "$agent" |
@@ -204,13 +209,13 @@ get_episode_url() {
             }
         }"
     query_json="
-        variables={
+        {
             \"showId\":\"$id\",
             \"translationType\":\"$mode\",
             \"episodeString\":\"$ep_no\"
         }"
     resp=$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "$query_json" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' |
+        --data-urlencode "variables=$query_json" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' |
         sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"#([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     provider=1
@@ -239,11 +244,11 @@ search_anime() {
         )
         {    
             shows(
-            search: \$search
-            limit: \$limit
-            page: \$page
-            translationType: \$translationType
-            countryOrigin: \$countryOrigin
+                search: \$search
+                limit: \$limit
+                page: \$page
+                translationType: \$translationType
+                countryOrigin: \$countryOrigin
             )
             {
                 edges 
@@ -253,7 +258,7 @@ search_anime() {
             }
         }"
     query_json="
-        variables={
+        {
             \"search\":{
                 \"allowAdult\":false,
                 \"allowUnknown\":false,
@@ -265,14 +270,14 @@ search_anime() {
             \"countryOrigin\":\"ALL\"
         }"
     curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "$query_json" --data-urlencode "query=$search_gql" -A "$agent" |
+        --data-urlencode "variables=$query_json" --data-urlencode "query=$search_gql" -A "$agent" |
         sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
 episodes_list() {
     episodes_list_gql="
-        query (
+        query ( 
             \$showId: String!
         )
         {
@@ -284,11 +289,11 @@ episodes_list() {
             }
         }"
     query_json="
-        variables={
+        {
             \"showId\":\"$*\"
         }" 
     curl -e "https://${allanime_base}" -s --cipher AES256-SHA256 -G "https://api.${allanime_base}/allanimeapi"\
-        --data-urlencode "$query_json" --data-urlencode "query=$episodes_list_gql" -A "$agent" |
+        --data-urlencode "variables=$query_json" --data-urlencode "query=$episodes_list_gql" -A "$agent" |
         sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
