@@ -406,13 +406,14 @@ case "$search" in
         tput cuu1 && tput el
         ;;
     *)
-        while [ -z "$query" ]; do
-            if [ "$use_external_menu" = "0" ]; then
+        if [ "$use_external_menu" = "0" ]; then
+            while [ -z "$query" ]; do
                 printf "Search anime: " && read -r query
-            else
-                query=$(: | external_menu "" "Search anime: ")
-            fi
-        done
+            done
+        else
+            query=$(printf "" | external_menu "" "Search anime: ")
+            [ -z "$query" ] && exit 1
+        fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anime "$query")
         [ -z "$anime_list" ] && die "No results found!"
