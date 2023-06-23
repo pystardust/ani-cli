@@ -138,19 +138,9 @@ provider_init() {
 }
 
 hex_to_ascii() {
-    hex="$1"
-    len=$(printf "%s" "$hex" | wc -c)
-    ascii=""
-    i=1
-    while [ "$i" -lt "$len" ]; do
-        char=$(printf "%s" "$hex" | cut -c "$i-$((i + 1))")
-        dec=$(printf "%d" "0x$char")
-        oct=$(printf "%03o" "$dec")
-        # shellcheck disable=SC2059
-        ascii="$ascii$(printf "\\$oct")"
-        i=$((i + 2))
-    done
-    printf "%s" "$ascii"
+    printf '%s' "$1" | awk 'BEGIN{FS="";}{
+      for (i=1;i<=NF;i+=2) printf "%c", strtonum("0x" $i $(i+1))
+    }'
 }
 
 # generates links based on given provider
