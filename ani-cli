@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.4.3"
+version_number="4.4.4"
 
 # UI
 
@@ -108,16 +108,13 @@ dep_ch() {
 get_links() {
     episode_link="$(curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "https://allanimenews.com$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
     case "$episode_link" in
-        *crunchyroll*)
-            curl -e "https://${allanime_base}" -s --cipher "AES256-SHA256" "$episode_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sort -nr
-            ;;
         *repackager.wixmp.com*)
             extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
             for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\n|g'); do
                 printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
             done | sort -nr
             ;;
-        *//cache.* | *gofcdn.com*)
+        *vipanicdn* | *anifastcdn*)
             if printf "%s" "$episode_link" | head -1 | grep -q "original.m3u"; then
                 printf "%s" "$episode_link"
             else
@@ -128,7 +125,7 @@ get_links() {
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
-    printf "Fetching %s Links\n" "$provider_name" 1>&2
+    printf "\033[1;32m %s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -160,9 +157,7 @@ generate_link() {
         2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         4) provider_init "pstatic" "/Default B :/p" ;; # pstatic(default backup)(mp4)(multi)
-        5) provider_init "vrv" "/Ac :/p" ;;            # vrv(crunchyroll)(m3u8)(multi)
-        6) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
-        7) provider_init "usercloud" "/Uv-mp4 :/p" ;;  # usercloud(mp4)(single)
+        5) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     bin=$(hex_to_ascii "$provider_id")
@@ -189,9 +184,9 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
-    while [ "$i" -lt 8 ]; do
+    while [ "$i" -lt 6 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 8 + 1))
+        provider=$((provider % 6 + 1))
         : $((i += 1))
     done
     wait
@@ -235,16 +230,16 @@ update_history() {
 
 download() {
     case $1 in
-        *m3u8*) ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" ;;
-        *) if curl -s -m 5 "$1" | grep -q '^#EXTM3U'; then
-            ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
-        else
-            if uname -a | grep -q "ish"; then
-                curl --output-dir "$download_dir" -o "$2.mp4" "$1"
+        *m3u8*)
+            if command -v "hls"; then
+                hls -n 300 -ro "$download_dir/$2" "$1"
             else
-                aria2c --enable-rpc=false --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+                ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
-        fi ;;
+            ;;
+        *)
+            aria2c --enable-rpc=false --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            ;;
     esac
 }
 
@@ -411,13 +406,14 @@ case "$search" in
         tput cuu1 && tput el
         ;;
     *)
-        while [ -z "$query" ]; do
-            if [ "$use_external_menu" = "0" ]; then
+        if [ "$use_external_menu" = "0" ]; then
+            while [ -z "$query" ]; do
                 printf "Search anime: " && read -r query
-            else
-                query=$(: | external_menu "" "Search anime: ")
-            fi
-        done
+            done
+        else
+            query=$(printf "" | external_menu "" "Search anime: ")
+            [ -z "$query" ] && exit 1
+        fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anime "$query")
         [ -z "$anime_list" ] && die "No results found!"
