@@ -232,7 +232,7 @@ download() {
     case $1 in
         *m3u8*)
             if command -v "hls"; then
-                hls -n 3 -ro "$download_dir/$2" "$1"
+                hls -ro "$download_dir/$2" "$1"
             else
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
