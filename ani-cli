@@ -136,7 +136,7 @@ provider_init() {
 
 hex_to_ascii() {
     hex="$1"
-    len=$(echo "$hex" | awk '{print length}')
+    len="${#hex}"
     i=1
     while [ "$i" -le "$len" ]; do
         char=$(echo "$hex" | cut -c "$i-$((i + 1))")
