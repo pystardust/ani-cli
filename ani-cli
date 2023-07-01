@@ -142,32 +142,14 @@ bypass_debug() {
     fi
 }
 
-hex_to_ascii() {
-    bypass_debug "1"
-    hex="$1"
-    len="${#hex}"
-    i=1
-    while [ "$i" -le "$len" ]; do
-        char=$(echo "$hex" | cut -c "$i-$((i + 1))")
-        dec=$(printf "%d" "0x$char")
-        oct=$(printf "%03o" "$dec")
-        #shellcheck disable=SC2059
-        printf "\\$oct"
-        i=$((i + 2))
-    done
-    bypass_debug "0"
-}
-
 decrypt_allanime() {
     bypass_debug "1"
-    for result in $(hex_to_ascii "$1" | od -An -v -t u1); do
-        for char in $(printf "%s" "1234567890123456789" | grep -o .); do
-            decimal_char="$(printf "%02d" "'$char'")"
-            : $((result ^= decimal_char))
-        done
-
+    for hex in $(printf '%s' "$1" | sed 's/../&\n/g'); do
+        dec=$(printf '%d' "0x$hex")
+        xor=$((dec ^ 48))
+        oct=$(printf "%03o" "$xor")
         #shellcheck disable=SC2059
-        printf "\\$(printf "%03o" "$result")"
+        printf "\\$oct"
     done
     bypass_debug "0"
 }
@@ -206,6 +188,7 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
+    rm "$cache_dir/*"
     while [ "$i" -lt 6 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
         provider=$((provider % 6 + 1))
