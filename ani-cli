@@ -188,7 +188,7 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
-    rm "$cache_dir/*"
+    rm -f "$cache_dir/*"
     while [ "$i" -lt 6 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
         provider=$((provider % 6 + 1))
