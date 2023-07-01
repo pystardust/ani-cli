@@ -135,6 +135,7 @@ provider_init() {
 }
 
 hex_to_ascii() {
+    printf "%s" "$-" | grep -q 'x' && set +x
     hex="$1"
     len="${#hex}"
     i=1
@@ -146,9 +147,11 @@ hex_to_ascii() {
         printf "\\$oct"
         i=$((i + 2))
     done
+    printf "%s" "$-" | grep -q 'x' || set -x
 }
 
 decrypt_allanime() {
+    printf "%s" "$-" | grep -q 'x' && set +x
     for result in $(hex_to_ascii "$1" | od -An -v -t u1); do
         for char in $(printf "%s" "1234567890123456789" | grep -o .); do
             decimal_char="$(printf "%02d" "'$char'")"
@@ -158,6 +161,7 @@ decrypt_allanime() {
         #shellcheck disable=SC2059
         printf "\\$(printf "%03o" "$result")"
     done
+    printf "%s" "$-" | grep -q 'x' || set +x
 }
 
 # generates links based on given provider
