@@ -164,8 +164,7 @@ generate_link() {
         5) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
-    bin=$(decrypt_allanime "$provider_id" | tr -d ':')
-    provider_id="$(printf "%s" "$bin" | sed "s/\/clock/\/clock\.json/")"
+    provider_id="$(decrypt_allanime "$provider_id" | sed "s/\/clock/\/clock\.json/")"
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
 
