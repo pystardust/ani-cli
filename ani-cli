@@ -147,7 +147,7 @@ hex_to_ascii() {
         printf "\\$oct"
         i=$((i + 2))
     done
-    printf "%s" "$-" | grep -q 'x' || set -x
+    printf "%s" "$-" | grep -q 'x' && set +x || set -x
 }
 
 decrypt_allanime() {
@@ -161,7 +161,7 @@ decrypt_allanime() {
         #shellcheck disable=SC2059
         printf "\\$(printf "%03o" "$result")"
     done
-    printf "%s" "$-" | grep -q 'x' || set +x
+    printf "%s" "$-" | grep -q 'x' && set +x || set -x
 }
 
 # generates links based on given provider
@@ -389,7 +389,7 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
-printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m"
 dep_ch "curl" "sed" "grep" "fzf" || true
 case "$player_function" in
     debug) ;;
@@ -398,10 +398,11 @@ case "$player_function" in
         dep_ch "flatpak"
         flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
         ;;
-    android*) printf "Checking of players on Android is disabled\n" ;;
-    *iSH*) printf "Checking of players on iOS is disabled\n" ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled" ;;
+    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled" ;;
     *) dep_ch "$player_function" ;;
 esac
+printf "\n"
 
 # searching
 case "$search" in
