@@ -135,11 +135,11 @@ provider_init() {
 }
 
 bypass_debug() {
-	if printf "%s" "$-" | grep -q 'x';then
-		set +x
-	elif [ "$1" -eq "0" ];then
-		set -x
-	fi
+    if printf "%s" "$-" | grep -q 'x'; then
+        set +x
+    elif [ "$1" -eq "0" ]; then
+        set -x
+    fi
 }
 
 hex_to_ascii() {
