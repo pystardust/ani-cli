@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.4.6"
+version_number="4.5.0"
 
 # UI
 
@@ -322,7 +322,11 @@ use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 cache_dir="${ANI_CLI_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli}"
-[ ! -d "$cache_dir" ] && mkdir -p "$cache_dir"
+if [ ! -d "$cache_dir" ];then
+	mkdir -p "$cache_dir"
+else
+	rm -f "$cache_dir/*"
+fi
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
@@ -383,16 +387,15 @@ printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m"
 dep_ch "curl" "sed" "grep" "fzf" || true
 case "$player_function" in
     debug) ;;
-    download) dep_ch "ffmpeg" "aria2c" ;;
+    download) 	dep_ch "ffmpeg" "aria2c" ;;
     flatpak*)
         dep_ch "flatpak"
         flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
         ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled" ;;
-    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled" ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
+    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     *) dep_ch "$player_function" ;;
 esac
-printf "\n"
 
 # searching
 case "$search" in
@@ -413,7 +416,7 @@ case "$search" in
     *)
         if [ "$use_external_menu" = "0" ]; then
             while [ -z "$query" ]; do
-                printf "Search anime: " && read -r query
+                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
             done
         else
             query=$(printf "" | external_menu "" "Search anime: ")
