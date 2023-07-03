@@ -290,6 +290,7 @@ play() {
     else
         play_episode
     fi
+    # moves upto stored positon and deletes to end
     tput rc && tput ed
 }
 
@@ -405,7 +406,6 @@ case "$search" in
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
-        tput cuu1 && tput el
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
@@ -433,6 +433,7 @@ esac
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
+# stores the positon of cursor
 tput sc
 
 # playback & loop
