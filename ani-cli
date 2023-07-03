@@ -291,7 +291,7 @@ play() {
         play_episode
     fi
     # moves upto stored positon and deletes to end
-    tput rc && tput ed
+    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
 
 # MAIN
