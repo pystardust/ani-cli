@@ -125,7 +125,7 @@ get_links() {
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
-    printf "\033[1;32m %s\033[0m Links Fetched\n" "$provider_name" 1>&2
+    printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -154,6 +154,7 @@ generate_link() {
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         4) provider_init "pstatic" "/Default B :/p" ;; # pstatic(default backup)(mp4)(multi)
         5) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
+        6) provider_init "rab" "/Rab :/p" ;;           # rab(mp4)(multi)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     provider_id="$(decrypt_allanime "$provider_id" | sed "s/\/clock/\/clock\.json/")"
@@ -180,9 +181,9 @@ get_episode_url() {
     provider=1
     i=0
     rm -f "$cache_dir/*"
-    while [ "$i" -lt 6 ]; do
+    while [ "$i" -lt 7 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 6 + 1))
+        provider=$((provider % 7 + 1))
         : $((i += 1))
     done
     wait
@@ -289,6 +290,7 @@ play() {
     else
         play_episode
     fi
+    tput rc && tput ed
 }
 
 # MAIN
@@ -375,7 +377,7 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
-printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m"
+printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
 dep_ch "curl" "sed" "grep" "fzf" || true
 case "$player_function" in
     debug) ;;
@@ -431,6 +433,7 @@ esac
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
+tput sc
 
 # playback & loop
 play
