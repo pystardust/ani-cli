@@ -228,7 +228,7 @@ update_history() {
 download() {
     case $1 in
         *m3u8*)
-            if command -v "hls"; then
+            if command -v "hls" >/dev/null; then
                 hls -ro "$download_dir/$2" "$1"
             else
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
