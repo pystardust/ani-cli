@@ -229,7 +229,7 @@ download() {
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
-                yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+                yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 --paths "$download_dir" --paths temp: "${HOME}/.cache/yt-dlp-temp" --output "$2.mp4"
             else
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
