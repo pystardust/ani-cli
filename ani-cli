@@ -152,9 +152,8 @@ generate_link() {
         1) provider_init "wixmp" "/Default :/p" ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
         2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
-        4) provider_init "pstatic" "/Default B :/p" ;; # pstatic(default backup)(mp4)(multi)
-        5) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
-        6) provider_init "rab" "/Rab :/p" ;;           # rab(mp4)(multi)
+        4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
+        5) provider_init "rab" "/Rab :/p" ;;           # rab(mp4)(multi)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     provider_id="$(decrypt_allanime "$provider_id" | sed "s/\/clock/\/clock\.json/")"
@@ -181,9 +180,9 @@ get_episode_url() {
     provider=1
     i=0
     rm -f "$cache_dir/*"
-    while [ "$i" -lt 7 ]; do
+    while [ "$i" -lt 6 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 7 + 1))
+        provider=$((provider % 6 + 1))
         : $((i += 1))
     done
     wait
@@ -244,14 +243,14 @@ play_episode() {
     [ -z "$episode" ] && get_episode_url
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
-        mpv*) nohup "$player_function" --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
+        mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}episode-${ep_no}-${mode}" "$episode" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}episode-${ep_no}-${mode}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$episode" "${allanime_title}episode-${ep_no}-${mode}" ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode"
@@ -402,7 +401,7 @@ case "$search" in
         read -r ep_no id title <"$resfile"
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
@@ -420,7 +419,7 @@ case "$search" in
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && exit 1
         title=$(printf "%s" "$result" | cut -f2)
-        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | tr 'A-Z ' 'a-z-')"
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
