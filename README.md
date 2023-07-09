@@ -154,7 +154,7 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
-brew install curl grep aria2 ffmpeg git fzf && \
+brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
 brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
@@ -259,6 +259,9 @@ tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
 cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
+chmod +x ~/.local/bin/yt-dlp
+
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 
@@ -297,6 +300,13 @@ curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-bui
 tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
 cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
+```
+
+##### Install [yt-dlp](https://github.com/yt-dlp/yt-dlp) (needed for download feature only):
+
+```sh
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
+chmod +x ~/.local/bin/yt-dlp
 ```
 
 ##### Install ani-cli:
@@ -380,6 +390,7 @@ rm -rf ~/.ani-cli
 optionally: remove dependencies:
 ```sh
 rm ~/.local/bin/aria2c
+rm ~/.local/bin/yt-dlp
 rm -rf "~/.aria2"
 rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
@@ -405,7 +416,8 @@ apk del grep sed curl fzf git aria2 alpine-sdk ncurses
 - mpv - Video Player
 - iina - mpv replacement for MacOS
 - aria2c - Download manager
-- ffmpeg - m3u8 Downloader
+- yt-dlp - m3u8 Downloader
+- ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
 
 ## Homies
