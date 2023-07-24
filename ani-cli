@@ -330,7 +330,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
-                *iSH*) player_function="iSH" ;;
+                *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
             ;;
