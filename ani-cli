@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.5.0"
+version_number="4.5.1"
 
 # UI
 
@@ -253,7 +253,7 @@ play_episode() {
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
-            printf "\e]8;;vlc-x-callback://x-callback-url/stream?url=%s&filename=%sepisode-%s-%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode" "$allanime_title" "$ep_no" "$mode"
+            printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5
             ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
@@ -330,7 +330,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW*) player_function="vlc.exe" ;;
-                *iSH*) player_function="iSH" ;;
+                *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
             ;;
