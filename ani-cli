@@ -179,7 +179,7 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
-    cache_dir="$(mktemp --tmpdir -d tmp.ani-cli.XXXX)"
+    cache_dir="$(mktemp -d)"
     while [ "$i" -lt 6 ]; do
         generate_link "$provider" >"$cache_dir"/"$i" &
         provider=$((provider % 6 + 1))
