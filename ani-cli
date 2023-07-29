@@ -179,15 +179,16 @@ get_episode_url() {
     # generate links into sequential files
     provider=1
     i=0
-    cache_links=""
-    while [ "$provider" -lt 7 ]; do
-        tmp99=$(generate_link "$provider")
-        cache_links=$(printf "%s\n%s" "$cache_links" "$tmp99")
+    cache_dir="$(mktemp --tmpdir -d tmp.ani-cli.XXXX)"
+    while [ "$i" -lt 6 ]; do
+        generate_link "$provider" >"$cache_dir"/"$i" &
         provider=$((provider % 6 + 1))
+        : $((i += 1))
     done
     wait
     # select the link with matching quality
-    links=$(printf "$cache_links" | sed 's|^Mp4-||g' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
+    rm -r "$cache_dir"
     episode=$(select_quality "$quality")
     [ -z "$episode" ] && die "Episode not released!"
 }
