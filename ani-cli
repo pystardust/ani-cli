@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.5.3"
+version_number="4.5.4"
 
 # UI
 
@@ -60,7 +60,9 @@ help_info() {
       -e, --episode, -r, --range
         Specify the number of episodes to watch
       --dub
-        play dubbed version
+        Play dubbed version
+      -- rofi
+        Use rofi instead of fzf for the interactive menu
       -U, --update
         Update the script
       -N, --non-interactive
@@ -180,10 +182,10 @@ get_episode_url() {
     provider=1
     i=0
     cache_dir="$(mktemp -d)"
-    while [ "$i" -lt 6 ]; do
+    providers="1 2 3 4 5 6"
+    for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$i" &
         provider=$((provider % 6 + 1))
-        : $((i += 1))
     done
     wait
     # select the link with matching quality
@@ -368,6 +370,7 @@ while [ $# -gt 0 ]; do
             ;;
         -N | --non-interactive) no_menu=1 ;;
         --dub) mode="dub" ;;
+        --rofi) use_external_menu=1 ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
@@ -408,7 +411,7 @@ case "$search" in
                 printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
             done
         else
-            query=$(printf "" | external_menu "" "Search anime: ")
+            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
         fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
