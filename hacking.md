@@ -37,7 +37,7 @@ Additionally the debugger doesn't always show you the html faithfully - I've exp
 If you navigate the site normally from the browser, you'll see that each anime is represented with an URL that compromises from an ID (that identifies a series/season of series) and an episode number.
 The series identifier is stored in the `id` variable by the script and the episode number in the `ep_no` number.
 
-Each episode has an embedded player that contains the links to the videos to be played. 
+Each episode has an embedded player that contains the links to the videos to be played.
 Your goal is to get these links along with the resolution (quality) of the streams.
 The embedded player has a separate URL from the episode page, but you can always get there from the episode page (and in some cases just by knowing the id and the episode number).
 
@@ -52,7 +52,7 @@ The `curl` in this function is responsible for the search request, and the follo
 The reason for this is the `nth` function, see it for more details.
 You'll have to change some variables in the process (eg. allanime_base) too.
 
-If you have done everything correctly, you can run `ani-cli`, query your site of choice and select from the responses. 
+If you have done everything correctly, you can run `ani-cli`, query your site of choice and select from the responses.
 Then ani-cli should fail without a message.
 If it fails with `No results found!` you have debugging to do.
 
@@ -96,7 +96,7 @@ The output of the `get_links` function needs to be concatenated into the `links`
 From here the `get_episode_url` function will continue with quality selection which you need not to alter.
 
 ## Other functionality
-Assuming you completed all the necessary modifications, ani-cli should completely work for you now. 
+Assuming you completed all the necessary modifications, ani-cli should completely work for you now.
 The UI and the history system works as long as you keep the structure of the original code and the format of the responses.
 
 There might be cases that can't be covered by the current structure of ani-cli, but still it works for most sites as I've observed.
