@@ -13,7 +13,7 @@ You'll also need web browser with a debugger and environment that can run unmodi
 
 ## The scraping process
 The following flowchart demonstrates how ani-cli operates from a scraping standpoint:
-[!image](.assets/ani-cli-flow-simplified.svg)
+![image](.assets/ani-cli-flow-simplified.svg)
 The steps to get to a link from a query is the following:
 1. search with the site's search page for the query
 2. extract IDs from response, user chooses one
