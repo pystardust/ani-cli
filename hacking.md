@@ -29,6 +29,8 @@ Many sites have various protections against reverse-engineering.
 The extension webapi-blocker can help you with bringing up the debugger that we'll use during this guide or to conceal the presence of a debugger.
 These reverse-engineering protections are always evolving though so there's no silver bullet - you'll have to do your own research on how to get around them.
 
+As a nuclear option you can resort to [Burp Suite](https://portswigger.net/burp/communitydownload).
+
 An adblocker can help with reducing traffic from the site, but beware of extensions that change the appearance of the site (eg. darkreader) because they can alter the html/css.
 
 Once you have the pages (urls) that you're interested in, it's easier to inspect them from less/an editor.
@@ -103,3 +105,7 @@ The UI and the history system works as long as you keep the structure of the ori
 
 There might be cases that can't be covered by the current structure of ani-cli, but still it works for most sites as I've observed.
 
+## UX Spec
+
+There also exists a UX spec if you want to replicate the ani-cli user experience in a fresh codebase:
+![image](.assets/ani-cli-ux-spec.png)
