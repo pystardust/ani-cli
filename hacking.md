@@ -57,6 +57,7 @@ You'll have to change some variables in the process (eg. allanime_base) too.
 If you have done everything correctly, you can run `ani-cli`, query your site of choice and select from the responses.
 Then ani-cli should fail without a message.
 If it fails with `No results found!` you have debugging to do.
+Running ani-cli with `sh -x` is a good way to debug.
 
 ### Episode selection
 Having completed the previous step, the `id` and `title` will contain the selected title and the corresponding id.
