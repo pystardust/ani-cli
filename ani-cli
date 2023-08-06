@@ -189,7 +189,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;|http|!d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
     [ -z "$episode" ] && die "Episode not released!"
