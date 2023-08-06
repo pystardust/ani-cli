@@ -377,7 +377,8 @@ while [ $# -gt 0 ]; do
     shift
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
-dep_ch "curl" "sed" "grep" "fzf" || true
+dep_ch "curl" "sed" "grep" || true
+if [ "$ANI_CLI_PLAYER" != "debug" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
