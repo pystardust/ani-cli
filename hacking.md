@@ -29,8 +29,6 @@ Many sites have various protections against reverse-engineering.
 The extension webapi-blocker can help you with bringing up the debugger that we'll use during this guide or to conceal the presence of a debugger.
 These reverse-engineering protections are always evolving though so there's no silver bullet - you'll have to do your own research on how to get around them.
 
-As a nuclear option you can resort to [Burp Suite](https://portswigger.net/burp/communitydownload).
-
 An adblocker can help with reducing traffic from the site, but beware of extensions that change the appearance of the site (eg. darkreader) because they can alter the html/css.
 
 Once you have the pages (urls) that you're interested in, it's easier to inspect them from less/an editor.
