@@ -129,7 +129,7 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 #### Installing from source
 
-Install dependencies [(See below)](#Dependencies)
+Install dependencies [(See below)](#dependencies-1)
 
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
@@ -140,7 +140,7 @@ rm -rf ani-cli
 
 ### MacOS
 
-Install dependencies [(See below)](#Dependencies)
+Install dependencies [(See below)](#dependencies-1)
 
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
