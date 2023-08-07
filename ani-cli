@@ -312,6 +312,7 @@ case "$(uname -a)" in
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
     *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;               # iOS (iSH)
+    *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;          # Windows wsl2
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
