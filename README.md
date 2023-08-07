@@ -192,22 +192,6 @@ Note that curl can cause issues.
 ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
 If you run into issues, try the scoop install or grab the newest curl you can find.
 
-### Windows WSL2
-
-#### Linux Part:
-
-Follow the Linux section and install from source.
-
-#### Windows Terminal Part:
-
-Ensure mpv is installed on Windows. When you type mpv.exe in the terminal, it should open an mpv window. 
-
-Simplest way to do it is:
-
-```sh
-winget install mpv
-```
-
 ### Android
 
 Install termux [(Guide)](https://termux.com/)
