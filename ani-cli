@@ -127,7 +127,7 @@ get_links() {
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
-    printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
+    [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -189,7 +189,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
     [ -z "$episode" ] && die "Episode not released!"
@@ -245,7 +245,10 @@ download() {
 play_episode() {
     [ -z "$episode" ] && get_episode_url
     case "$player_function" in
-        debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$episode" ;;
+        debug)
+            [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
+            printf "%s\n" "$episode"
+            ;;
         mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
@@ -366,6 +369,7 @@ while [ $# -gt 0 ]; do
         -e | --episode | -r | --range)
             [ $# -lt 2 ] && die "missing argument!"
             ep_no="$2"
+            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
             shift
             ;;
         -N | --non-interactive) no_menu=1 ;;
@@ -377,7 +381,8 @@ while [ $# -gt 0 ]; do
     shift
 done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
-dep_ch "curl" "sed" "grep" "fzf" || true
+dep_ch "curl" "sed" "grep" || true
+if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
