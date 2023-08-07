@@ -310,9 +310,8 @@ case "$(uname -a)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;           # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;    # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;; # steamdeck OS
-    *MINGW*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;         # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;               # iOS (iSH)
-    *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;          # Windows wsl2
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                   # Linux OS
 esac
 
@@ -331,7 +330,7 @@ while [ $# -gt 0 ]; do
         -v | --vlc)
             case "$(uname -a)" in
                 *ndroid*) player_function="android_vlc" ;;
-                MINGW*) player_function="vlc.exe" ;;
+                MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
