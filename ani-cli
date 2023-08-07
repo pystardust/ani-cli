@@ -255,6 +255,11 @@ play_episode() {
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        /mnt/c/*)
+            cd "/mnt/c/Program Files (x86)/Syncplay" || return 1 # cannot use fullpath and set title in wsl2
+            nohup cmd.exe /C "syncplay.exe" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 &
+            cd - || return 1
+            ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
@@ -345,7 +350,16 @@ while [ $# -gt 0 ]; do
                     export PATH="$PATH":"/c/Program Files (x86)/Syncplay/"
                     player_function="syncplay.exe"
                     ;;
-                *) player_function="syncplay" ;;
+                *)
+                    case "$(uname -r)" in
+                        *WSL2*)
+                            player_function="/mnt/c/Program Files (x86)/Syncplay/syncplay.exe"
+                            ;;
+                        *)
+                            player_function="syncplay"
+                            ;;
+                    esac
+                    ;;
             esac
             ;;
         -q | --quality)
