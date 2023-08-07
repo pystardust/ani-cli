@@ -33,22 +33,22 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Table of Contents
 
-- [Fixing errors](#Fixing-errors)
-- [Install](#Install)
-  - [Linux](#Linux)
-   - [Debian](#Debian-unstable)
-   - [Fedora](#Fedora)
-   - [Arch](#Arch)
-   - [OpenSuse Tumbleweed and Leap](#OpenSuse-Tumbleweed-and-Leap)
-   - [From source](#Installing-from-source)
-  - [MacOS](#MacOS)
-  - [Windows](#Windows)
-  - [Android](#Android)
-  - [Steam Deck](#Steam-deck)
-  - [iOS](#iOS)
-- [Uninstall](#Uninstall)
-- [Dependencies](#Dependencies)
-- [Homies](#Homies)
+- [Fixing errors](#fixing-errors)
+- [Install](#install)
+  - [Linux](#linux)
+   - [Debian](#debian-unstable)
+   - [Fedora](#fedora)
+   - [Arch](#arch)
+   - [OpenSuse Tumbleweed and Leap](#opensuse-tumbleweed-and-leap)
+   - [From source](#installing-from-source)
+  - [MacOS](#macos)
+  - [Windows](#windows)
+  - [Android](#android)
+  - [Steam Deck](#steam-deck)
+  - [iOS](#ios)
+- [Uninstall](#uninstall)
+- [Dependencies](#dependencies-1)
+- [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
@@ -129,7 +129,7 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 #### Installing from source
 
-Install dependencies [(See below)](#Dependencies)
+Install dependencies [(See below)](#dependencies-1)
 
 ```sh
 sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
@@ -140,7 +140,7 @@ rm -rf ani-cli
 
 ### MacOS
 
-Install dependencies [(See below)](#Dependencies)
+Install dependencies [(See below)](#dependencies-1)
 
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
