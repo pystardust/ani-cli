@@ -81,6 +81,9 @@ Controls the frontend of ani-cli. Can be 0 (uses fzf) or 1 (uses rofi dmenu). De
 \fBANI_CLI_MULTI_SELECTION\fR
 Controls the multi flag for the chosen frontend. Default is -m for fzf and --multi-select for rofi dmenu.
 .TP
+\fBANI_CLI_NON_INTERACTIVE\fR
+Enabled by default if both -e and -S are given. Disables fzf dependency check. Also disables some debug information if running with ANI_CLI_PLAYER="debug"
+.TP
 \fBANI_CLI_HIST_DIR\fR
 Controls the directory ani-cli uses for storing history. A /ani-cli subfolder is created there for the histfile if doesn't exists. Default is $XDG_STATE_HOME if set, $HOME/.local/state if not.
 .TP
