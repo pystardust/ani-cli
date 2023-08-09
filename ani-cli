@@ -2,7 +2,6 @@
 
 version_number="4.5.7"
 
-
 # UI
 
 external_menu() {
