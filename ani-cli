@@ -138,7 +138,7 @@ decrypt_allanime() {
     printf "%s" "$-" | grep -q 'x' && set +x
     for hex in $(printf '%s' "$1" | sed 's/../&\n/g'); do
         dec=$(printf '%d' "0x$hex")
-        xor=$((dec ^ 48))
+        xor=$((dec ^ 56))
         oct=$(printf "%03o" "$xor")
         #shellcheck disable=SC2059
         printf "\\$oct"
@@ -153,7 +153,6 @@ generate_link() {
         2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
-        5) provider_init "rab" "/Rab :/p" ;;           # rab(mp4)(multi)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     provider_id="$(decrypt_allanime "$provider_id" | sed "s/\/clock/\/clock\.json/")"
@@ -175,15 +174,12 @@ get_episode_url() {
     # get the embed urls of the selected episode
     episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
 
-    resp=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"##([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
-    provider=1
-    i=0
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4 5 6"
+    providers="$(seq 1 5)"
     for provider in $providers; do
-        generate_link "$provider" >"$cache_dir"/"$i" &
-        provider=$((provider % 6 + 1))
+        generate_link "$provider" >"$cache_dir"/"$provider" &
     done
     wait
     # select the link with matching quality
