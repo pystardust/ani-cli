@@ -61,7 +61,7 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
-      -- rofi
+      --rofi
         Use rofi instead of fzf for the interactive menu
       -U, --update
         Update the script
