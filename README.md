@@ -127,17 +127,6 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 *Note: package is noarch, so any architecture should work, even though the repo is labelled x86-64*
 
-#### Installing from source
-
-Install dependencies [(See below)](#dependencies-1)
-
-```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git"
-sudo cp ani-cli/ani-cli /usr/local/bin
-rm -rf ani-cli
-```
-
 ### MacOS
 
 Install dependencies [(See below)](#dependencies-1)
@@ -169,19 +158,9 @@ Then make sure git bash is installed. [(Install)](https://git-scm.com/download/w
 
 The following steps and ani-cli need to be run from git bash in windows terminal.
 
-#### Scoop bucket
-
 ```sh
 scoop bucket add extras
 scoop install ani-cli
-```
-
-#### From source
-```sh
-rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git"
-cp ani-cli/ani-cli /usr/bin
-rm -rf ani-cli
 ```
 
 #### Dependencies
@@ -201,16 +180,6 @@ Install termux [(Guide)](https://termux.com/)
 ```sh
 pkg up -y
 pkg install ani-cli
-```
-
-#### From source
-
-```sh
-pkg up -y
-rm -rf "$PREFIX/share/ani-cli" "$PREFIX/bin/ani-cli" "$PREFIX/bin/UI" "$PREFIX"/local/bin/player_* #If some of these aren't found, it's not a problem
-git clone "https://github.com/pystardust/ani-cli.git"
-cp ani-cli/ani-cli "$PREFIX"/bin
-rm -rf ani-cli
 ```
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
@@ -331,6 +300,17 @@ In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 *Note: Konsole window size bugs out if launched from "Gaming Mode".*
 *Note: this is not working the way it should yet.*
+
+### Installing from source
+
+Install dependencies [(See below)](#dependencies-1)
+
+```sh
+sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
+git clone "https://github.com/pystardust/ani-cli.git"
+sudo cp ani-cli/ani-cli /usr/local/bin
+rm -rf ani-cli
+```
 
 ## Uninstall
 
