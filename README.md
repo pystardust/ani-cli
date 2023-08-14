@@ -69,7 +69,8 @@ Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli:
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
 
-*Native packages have a more robust update cycle, but sometimes they are slow to upgrade. If the one for your platform is up-to-date we suggest going with it.*
+*Native packages have a more robust update cycle, but sometimes they are slow to upgrade. \
+If the one for your platform is up-to-date we suggest going with it.*
 
 ### Linux
 
