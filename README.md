@@ -310,6 +310,8 @@ rm -rf ani-cli
 
 ## Uninstall
 
+<details>
+
 * apt:
 ```sh
 sudo apt remove ani-cli
@@ -384,6 +386,9 @@ To uninstall other dependencies:
 ```
 apk del grep sed curl fzf git aria2 alpine-sdk ncurses
 ```
+
+</details>
+
 ## Dependencies
 
 - grep
