@@ -62,9 +62,6 @@ History has been reworked and relocated. We're working on a transition script, p
 
 ## Install
 
-#### Users of V3.2 or the v3.2.x series should uninstall before upgrading
-Otherwise you're likely to see an error like the following: ` "/usr/bin/ani-cli: line 470: (...)/player_mpv: No such file or directory"`
-
 ### Native packages
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
@@ -135,7 +132,6 @@ Install dependencies [(See below)](#dependencies-1)
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-rm -rf "$(brew --prefix)/share/ani-cli" "$(brew --prefix)/bin/ani-cli" "$(brew --prefix)/bin/UI" "$(brew --prefix)"/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ./ani-cli "$(brew --prefix)"/bin
 cd .. && rm -rf ./ani-cli
@@ -307,7 +303,6 @@ In Steam Desktop app:
 Install dependencies [(See below)](#dependencies-1)
 
 ```sh
-sudo rm -rf "/usr/local/share/ani-cli" "/usr/local/bin/ani-cli" "/usr/local/bin/UI" /usr/local/bin/player_* #If some of these aren't found, it's not a problem
 git clone "https://github.com/pystardust/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
