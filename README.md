@@ -157,6 +157,13 @@ cd .. && rm -rf ./ani-cli
 brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
 brew install --cask iina
 ```
+
+```sh
+git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
+cp ./ani-cli "$(brew --prefix)"/bin
+cd .. && rm -rf ./ani-cli
+```
+
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
 ### Windows
