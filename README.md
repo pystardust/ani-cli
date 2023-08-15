@@ -58,25 +58,22 @@ History has been reworked and relocated. We're working on a transition script, p
 
 ## Install
 
-### Native packages
-
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
 
-*Native packages have a more robust update cycle, but sometimes they are slow to upgrade. \
-If the one for your platform is up-to-date we suggest going with it.*
+### Tier 1 Support: Linux, Mac, Android
 
-### Linux
+*These Plattforms have rock solid support and are used by maintainers and large parts of the userbase.*
 
-<details>
-<summary>Debian unstable</summary>
+<details><summary><b>Linux</b></summary>
+
+<details><summary>Debian unstable</summary>
 
 ```sh
 sudo apt install ani-cli
 ```
 </details>
 
-<details>
-<summary>Fedora</summary>
+<details><summary>Fedora</summary>
 
 To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
 To be able to install syncplay, you'll need to enable this copr repo (instructions included): https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/.
@@ -87,20 +84,16 @@ sudo dnf copr enable derisis13/ani-cli
 sudo dnf install ani-cli
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
-</details>
 
-<details>
-<summary>Arch</summary>
+</details><details><summary>Arch</summary>
 
 Build and install from the AUR:
 ```sh
 yay -S ani-cli
 ```
 Also consider `ani-cli-git`
-</details>
 
-<details>
-<summary>Gentoo</summary>
+</details><details><summary>Gentoo</summary>
 
 Build and install from the GURU:
 ```sh
@@ -112,10 +105,8 @@ Consider using the 9999 ebuild.
 ```sh
 sudo emerge -a =app-misc/ani-cli-9999
 ```
-</details>
 
-<details>
-<summary>OpenSuse</summary>
+</details><details><summary>OpenSuse</summary>
 
 On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
 You can find instructions on this [here](https://en.opensuse.org/Additional_package_repositories#Packman).
@@ -130,11 +121,7 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 *Note: package is noarch, so any architecture should work, even though the repo is labelled x86-64*
 
-</details>
-
-### MacOS
-
-<details>
+</details></details><details><summary><b>MacOS</b></summary>
 
 Install dependencies [(See below)](#dependencies-1)
 
@@ -154,11 +141,26 @@ brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
+</details><details><summary><b>Android</b></summary>
+
+Install termux [(Guide)](https://termux.com/)
+
+#### Termux package
+
+```sh
+pkg up -y
+pkg install ani-cli
+```
+
+For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
+
 </details>
 
-### Windows
+### Teir 2 Support: Windows, iOS, Steam Deck
 
-<details>
+*While officially supported, installation is more involved on these plattforms and sometimes issues arise. Reach out if you need help.*
+
+<details><summary><b>Windows</b></summary>
 
 *ani-cli needs a posix shell and the current way is git bash. Unfortunately fzf can't run in git bash's default terminal. The solution is to use git bash in windows terminal*
 
@@ -181,28 +183,7 @@ Note that curl can cause issues.
 ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
 If you run into issues, try the scoop install or grab the newest curl you can find.
 
-</details>
-
-### Android
-
-<details>
-
-Install termux [(Guide)](https://termux.com/)
-
-#### Termux package
-
-```sh
-pkg up -y
-pkg install ani-cli
-```
-
-For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
-
-</details>
-
-### iOS
-
-<details>
+</details><details><summary><b>iOS</b></summary>
 
 Install iSH and VLC from the app store.
 
@@ -228,9 +209,7 @@ rm -rf ~/.ani-cli
 note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
 </details>
 
-### Steam Deck
-
-<details>
+<details><summary><b>Steam Deck</b></summary>
 
 #### Copypaste script:
 
@@ -325,6 +304,8 @@ In Steam Desktop app:
 </details>
 
 ### Installing from source
+
+*This method should work for any unix-like operating system and is a baseline for porting efforts.*
 
 Install dependencies [(See below)](#dependencies-1)
 
