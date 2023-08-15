@@ -3,10 +3,10 @@
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
 <a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
-<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-brightgreen">
 <a href="#Android"><img src="https://img.shields.io/badge/os-android-brightgreen">
-<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-brightgreen">
-<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-brightgreen">
+<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
+<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-yellow">
+<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
 <br>
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR">
