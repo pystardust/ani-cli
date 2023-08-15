@@ -36,16 +36,12 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Linux](#linux)
-   - [Debian](#debian-unstable)
-   - [Fedora](#fedora)
-   - [Arch](#arch)
-   - [OpenSuse Tumbleweed and Leap](#opensuse-tumbleweed-and-leap)
-   - [From source](#installing-from-source)
   - [MacOS](#macos)
   - [Windows](#windows)
   - [Android](#android)
   - [Steam Deck](#steam-deck)
   - [iOS](#ios)
+  - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
 - [Homies](#homies)
@@ -71,13 +67,16 @@ If the one for your platform is up-to-date we suggest going with it.*
 
 ### Linux
 
-#### Debian unstable
+<details>
+<summary>Debian unstable</summary>
 
 ```sh
 sudo apt install ani-cli
 ```
+</details>
 
-#### Fedora
+<details>
+<summary>Fedora</summary>
 
 To install mpv (and vlc) you need _RPM Fusion free_ enabled. Simply follow the instructions here: https://rpmfusion.org/Configuration
 To be able to install syncplay, you'll need to enable this copr repo (instructions included): https://copr.fedorainfracloud.org/coprs/batmanfeynman/syncplay/.
@@ -88,16 +87,20 @@ sudo dnf copr enable derisis13/ani-cli
 sudo dnf install ani-cli
 ```
 *If for your distro uses rpm and you would like to see a native package, open an issue.*
+</details>
 
-#### Arch
+<details>
+<summary>Arch</summary>
 
 Build and install from the AUR:
 ```sh
 yay -S ani-cli
 ```
 Also consider `ani-cli-git`
+</details>
 
-#### Gentoo
+<details>
+<summary>Gentoo</summary>
 
 Build and install from the GURU:
 ```sh
@@ -109,8 +112,10 @@ Consider using the 9999 ebuild.
 ```sh
 sudo emerge -a =app-misc/ani-cli-9999
 ```
+</details>
 
-#### OpenSuse Tumbleweed and Leap
+<details>
+<summary>OpenSuse</summary>
 
 On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
 You can find instructions on this [here](https://en.opensuse.org/Additional_package_repositories#Packman).
@@ -125,7 +130,11 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 *Note: package is noarch, so any architecture should work, even though the repo is labelled x86-64*
 
+</details>
+
 ### MacOS
+
+<details>
 
 Install dependencies [(See below)](#dependencies-1)
 
@@ -145,7 +154,11 @@ brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
+</details>
+
 ### Windows
+
+<details>
 
 *ani-cli needs a posix shell and the current way is git bash. Unfortunately fzf can't run in git bash's default terminal. The solution is to use git bash in windows terminal*
 
@@ -168,7 +181,11 @@ Note that curl can cause issues.
 ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
 If you run into issues, try the scoop install or grab the newest curl you can find.
 
+</details>
+
 ### Android
+
+<details>
 
 Install termux [(Guide)](https://termux.com/)
 
@@ -181,7 +198,12 @@ pkg install ani-cli
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
+</details>
+
 ### iOS
+
+<details>
+
 Install iSH and VLC from the app store.
 
 Make sure apk is updated using
@@ -204,8 +226,11 @@ chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
 ```
 note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
+</details>
 
 ### Steam Deck
+
+<details>
 
 #### Copypaste script:
 
@@ -297,6 +322,7 @@ In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 *Note: Konsole window size bugs out if launched from "Gaming Mode".*
 *Note: this is not working the way it should yet.*
+</details>
 
 ### Installing from source
 
