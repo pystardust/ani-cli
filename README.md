@@ -62,6 +62,11 @@ History has been reworked and relocated. We're working on a transition script, p
 
 <details><summary><b>Linux</b></summary>
 
+#### Native Packages
+
+*Native packages have a more robust update cycle, but sometimes they are slow to upgrade. \
+If the one for your platform is up-to-date we suggest going with it.*
+
 <details><summary>Debian unstable</summary>
 
 ```sh
@@ -154,7 +159,8 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### Teir 2 Support: Windows, iOS, Steam Deck
 
-*While officially supported, installation is more involved on these plattforms and sometimes issues arise. Reach out if you need help.*
+*While officially supported, installation is more involved on these plattforms and sometimes issues arise.
+Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
 
@@ -301,7 +307,7 @@ In Steam Desktop app:
 
 ### Installing from source
 
-*This method should work for any unix-like operating system and is a baseline for porting efforts.*
+*This method works for any unix-like operating system and is a baseline for porting efforts.*
 
 Install dependencies [(See below)](#dependencies-1)
 
