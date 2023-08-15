@@ -159,7 +159,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### Tier 2 Support: Windows, iOS, Steam Deck
 
-*While officially supported, installation is more involved on these plattforms and sometimes issues arise.
+*While officially supported, installation is more involved on these plattforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
