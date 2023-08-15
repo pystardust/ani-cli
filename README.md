@@ -35,8 +35,8 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
-  - [Tier 1 Support](#tier-1-support-linux-mac-android)
-  - [Tier 2 Support](#tier-2-support-windows-ios-steam-deck)
+  - [Tier 1 Support: Linux, Mac, Android](#tier-1-support-linux-mac-android)
+  - [Tier 2 Support: Windows, iOS, Steam Deck](#tier-2-support-windows-ios-steam-deck)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
@@ -157,7 +157,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 </details>
 
-### Teir 2 Support: Windows, iOS, Steam Deck
+### Tier 2 Support: Windows, iOS, Steam Deck
 
 *While officially supported, installation is more involved on these plattforms and sometimes issues arise.
 Reach out if you need help.*
