@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.6.1"
+version_number="4.6.2"
 
 # UI
 
@@ -224,7 +224,9 @@ update_history() {
 download() {
     case $1 in
         *m3u8*)
-            if command -v "yt-dlp" >/dev/null; then
+            if command -v "streamlink" >/dev/null; then
+                streamlink --stream-segment-threads 5 -o "$download_dir/$2.mp4" "$1" best
+            elif command -v "yt-dlp" >/dev/null; then
                 yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
                 ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
