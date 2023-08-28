@@ -224,8 +224,8 @@ update_history() {
 download() {
     case $1 in
         *m3u8*)
-            if command -v "streamlink" >/dev/null; then
-                streamlink --stream-segment-threads 5 -o "$download_dir/$2.mp4" "$1" best
+            if command -v "N_m3u8DL-RE" >/dev/null; then
+                N_m3u8DL-RE --log-level ERROR --thread-count 10 --download-retry-count 10 "$1" --save-dir "$download_dir" --save-name "$2"
             elif command -v "yt-dlp" >/dev/null; then
                 yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
