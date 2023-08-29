@@ -2,6 +2,13 @@
 
 version_number="4.6.1"
 
+# TODO: implement caching => @Derisis13 :point_right: :point_left:
+cleanup() {
+    rm "$HOME"/.cache/ani-cli/images/* >/dev/null 2>&1
+    ueberzug cmd -s "$ANI_CLI_UEBERZUG_SOCKET" -a exit >/dev/null 2>&1
+}
+trap cleanup EXIT INT TERM
+
 # UI
 
 external_menu() {
@@ -128,6 +135,26 @@ get_links() {
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
+download_thumbnails() {
+    [ -d "$HOME/.cache/ani-cli/images" ] || mkdir -p "$HOME/.cache/ani-cli/images"
+    printf "\33[2K\r\033[1;34mDownloading thumbnails...\033\n[0m"
+    printf "%s\n" "$1" | while read -r cover_url anime_id anime_title; do
+        curl -s -o "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" "$cover_url" &&
+            convert "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" -resize ${thumbnail_size}x${thumbnail_size} "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" &
+    done
+    sleep "$2"
+}
+
+image_preview_fzf() {
+    UB_PID_FILE="$UEBERZUG_TMP_DIR/.$(uuidgen)"
+    ueberzugpp layer --no-stdin --silent --use-escape-codes --pid-file "$UB_PID_FILE"
+    UB_PID=$(cat "$UB_PID_FILE")
+
+    ANI_CLI_UEBERZUG_SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
+    choice=$(find ~/.cache/ani-cli/images/ -type f -exec basename {} \; | fzf --reverse --with-nth 2 -d '  ' --preview="ueberzugpp cmd -s $ANI_CLI_UEBERZUG_SOCKET -i fzfpreview -a add -x $ueberzug_x -y $ueberzug_y --max-width $max_width --max-height $max_height -f ~/.cache/ani-cli/images/{}")
+    ueberzugpp cmd -s "$ANI_CLI_UEBERZUG_SOCKET" -a exit
+}
+
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
 provider_init() {
     provider_name=$1
@@ -191,9 +218,15 @@ get_episode_url() {
 
 # search the query and give results
 search_anime() {
-    search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
+    search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes thumbnail __typename}    }}"
 
-    curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+    if [ "$thumbnails" = "true" ]; then
+        images=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" |
+            sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*\"thumbnail\":\"([^\"]*)\".*|\4\t\1\t\2 (\3 episodes)|p")
+        download_thumbnails "$images" 1
+    else
+        curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+    fi
 }
 
 # get the episodes list of the selected anime
@@ -298,13 +331,14 @@ allanime_api="https://api.allanime.day"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
+
 case "$(uname -a)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
-    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;  # steamdeck OS
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" && UEBERZUG_TMP_DIR="$TMPDIR" ;;      # mac OS
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" UEBERZUG_TMP_DIR="/tmp" ;;     # Android OS (termux)
+    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" UEBERZUG_TMP_DIR="/tmp" ;;  # steamdeck OS
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" UEBERZUG_TMP_DIR="/tmp" ;; # Windows OS
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" UEBERZUG_TMP_DIR="/tmp" ;;                # iOS (iSH)
+    *) player_function="${ANI_CLI_PLAYER:-mpv}" UEBERZUG_TMP_DIR="/tmp" ;;                    # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -317,15 +351,32 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
+thumbnails="${ANI_CLI_THUMBNAILS:-false}"
+thumbnail_size="${ANI_CLI_THUMBNAIL_SIZE:-1000}"
+ueberzug_x="${ANI_CLI_UEBERZUG_X:-$(($(tput cols) / 2 + 10))}"
+ueberzug_y="${ANI_CLI_UEBERZUG_Y:-8}"
+[ -z "$FZF_PREVIEW_COLUMNS" ] && max_width=$(($(tput cols) - 2)) || max_width=$FZF_PREVIEW_COLUMNS
+[ -z "$FZF_PREVIEW_LINES" ] && max_height=$(($(tput lines) - 2)) || max_height=$FZF_PREVIEW_LINES
+
 while [ $# -gt 0 ]; do
     case "$1" in
-        -v | --vlc)
-            case "$(uname -a)" in
-                *ndroid*) player_function="android_vlc" ;;
-                MINGW* | *WSL2*) player_function="vlc.exe" ;;
-                *ish*) player_function="iSH" ;;
-                *) player_function="vlc" ;;
-            esac
+        -c | --continue) search=history ;;
+        -d | --download) player_function=download ;;
+        -D | --delete)
+            : >"$histfile"
+            exit 0
+            ;;
+        -e | --episode | -r | --range)
+            [ $# -lt 2 ] && die "missing argument!"
+            ep_no="$2"
+            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
+            shift
+            ;;
+        -h | --help) help_info ;;
+        -q | --quality)
+            [ $# -lt 2 ] && die "missing argument!"
+            quality="$2"
+            shift
             ;;
         -s | --syncplay)
             case "$(uname -s)" in
@@ -337,33 +388,27 @@ while [ $# -gt 0 ]; do
                 *) player_function="syncplay" ;;
             esac
             ;;
-        -q | --quality)
-            [ $# -lt 2 ] && die "missing argument!"
-            quality="$2"
-            shift
-            ;;
         -S | --select-nth)
             [ $# -lt 2 ] && die "missing argument!"
             index="$2"
             shift
             ;;
-        -c | --continue) search=history ;;
-        -d | --download) player_function=download ;;
-        -D | --delete)
-            : >"$histfile"
-            exit 0
+        -t | --thumbnail)
+            dep_ch "ueberzugpp"
+            thumbnails=true
+            ;;
+        -U | --update) update_script ;;
+        -v | --vlc)
+            case "$(uname -a)" in
+                *ndroid*) player_function="android_vlc" ;;
+                MINGW* | *WSL2*) player_function="vlc.exe" ;;
+                *ish*) player_function="iSH" ;;
+                *) player_function="vlc" ;;
+            esac
             ;;
         -V | --version) version_info ;;
-        -h | --help) help_info ;;
-        -e | --episode | -r | --range)
-            [ $# -lt 2 ] && die "missing argument!"
-            ep_no="$2"
-            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
-            shift
-            ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
-        -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
@@ -408,14 +453,21 @@ case "$search" in
             [ -z "$query" ] && exit 1
         fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
-        anime_list=$(search_anime "$query")
-        [ -z "$anime_list" ] && die "No results found!"
-        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && exit 1
-        title=$(printf "%s" "$result" | cut -f2)
+        if [ "$thumbnails" = "true" ]; then
+            search_anime "$query"
+            image_preview_fzf
+            title=$(printf "%s" "$choice" | sed -nE "s/  .* \([0-9]* episodes\)  (.*)/\1/p")
+            id=$(printf "%s" "$choice" | sed -nE "s/  .* \([0-9]* episodes\)  (.*)\.jpg/\1/p")
+        else
+            anime_list=$(search_anime "$query")
+            [ -z "$anime_list" ] && die "No results found!"
+            [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+            [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+            [ -z "$result" ] && exit 1
+            title=$(printf "%s" "$result" | cut -f2)
+            id=$(printf "%s" "$result" | cut -f1)
+        fi
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
-        id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
