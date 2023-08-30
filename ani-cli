@@ -140,7 +140,7 @@ download_thumbnails() {
     printf "\33[2K\r\033[1;34mDownloading thumbnails...\033\n[0m"
     printf "%s\n" "$1" | while read -r cover_url anime_id anime_title; do
         curl -s -o "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" "$cover_url" &&
-            convert "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" -resize ${thumbnail_size}x${thumbnail_size} "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" &
+            convert "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" -resize "${thumbnail_size}x${thumbnail_size}" "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" &
     done
     sleep "$2"
 }
