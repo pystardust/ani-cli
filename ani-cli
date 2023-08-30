@@ -152,6 +152,7 @@ image_preview_fzf() {
 
     ANI_CLI_UEBERZUG_SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
     choice=$(find ~/.cache/ani-cli/images/ -type f -exec basename {} \; | fzf --reverse --with-nth 2 -d '  ' --preview="ueberzugpp cmd -s $ANI_CLI_UEBERZUG_SOCKET -i fzfpreview -a add -x $ueberzug_x -y $ueberzug_y --max-width $max_width --max-height $max_height -f ~/.cache/ani-cli/images/{}")
+    [ -z "$choice" ] && exit 1
     ueberzugpp cmd -s "$ANI_CLI_UEBERZUG_SOCKET" -a exit
 }
 
@@ -220,7 +221,7 @@ get_episode_url() {
 search_anime() {
     search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes thumbnail __typename}    }}"
 
-    if [ "$thumbnails" = "true" ]; then
+    if [ "$thumbnails" = "1" ]; then
         images=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" |
             sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*\"thumbnail\":\"([^\"]*)\".*|\4\t\1\t\2 (\3 episodes)|p")
         download_thumbnails "$images" 1
@@ -351,10 +352,10 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
-thumbnails="${ANI_CLI_THUMBNAILS:-false}"
+thumbnails="${ANI_CLI_THUMBNAILS:-0}"
 thumbnail_size="${ANI_CLI_THUMBNAIL_SIZE:-1000}"
 ueberzug_x="${ANI_CLI_UEBERZUG_X:-$(($(tput cols) / 2 + 10))}"
-ueberzug_y="${ANI_CLI_UEBERZUG_Y:-8}"
+ueberzug_y="${ANI_CLI_UEBERZUG_Y:-1}"
 [ -z "$FZF_PREVIEW_COLUMNS" ] && max_width=$(($(tput cols) - 2)) || max_width=$FZF_PREVIEW_COLUMNS
 [ -z "$FZF_PREVIEW_LINES" ] && max_height=$(($(tput lines) - 2)) || max_height=$FZF_PREVIEW_LINES
 
@@ -395,7 +396,7 @@ while [ $# -gt 0 ]; do
             ;;
         -t | --thumbnail)
             dep_ch "ueberzugpp"
-            thumbnails=true
+            thumbnails=1
             ;;
         -U | --update) update_script ;;
         -v | --vlc)
@@ -453,7 +454,7 @@ case "$search" in
             [ -z "$query" ] && exit 1
         fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
-        if [ "$thumbnails" = "true" ]; then
+        if [ "$thumbnails" = "1" ]; then
             search_anime "$query"
             image_preview_fzf
             title=$(printf "%s" "$choice" | sed -nE "s/  .* \([0-9]* episodes\)  (.*)/\1/p")
