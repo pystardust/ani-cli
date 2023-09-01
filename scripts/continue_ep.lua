@@ -43,11 +43,7 @@ function AnimeEpTimestamp:GetProps()
   self.content_table = AnimeEpTimestampObj:ReadFromTimeStampFile()
 
 
-  if next(self.content_table) == nil then
-    print("shit")
-  end
-
-  if next(self.content_table) ~= nil then
+  if #self.content_table > 0 then
     for index in ipairs(self.content_table) do
       if self.content_table[index]:match(self.anime_ep.." - ") then
         self.ep_start_pos_timestamp = self.content_table[index]:gsub("^"..self.anime_ep.." %- ", "")
@@ -84,7 +80,7 @@ function AnimeEpTimestamp:UpdateTimeStampVars()
          (mp.get_property_bool("pause") == false) and
          (mp.get_property("time-pos") ~= nil))
   do
-    print(self.ep_timestamp)
+    -- print(self.ep_timestamp)
     self.ep_timestamp = math.floor(mp.get_property("time-pos"))
     os.execute("sleep 1")
   end
@@ -101,15 +97,19 @@ end
 function AnimeEpTimestamp:ReadFromTimeStampFile()
   local anime_ep_timestamp_file_obj = assert(io.open(self.anime_ep_timestamp_file_path, "a+"))
 
-  if anime_ep_timestamp_file_obj:read("l") == nil then
-    self.content_table = { self.anime_ep.." - "..self.ep_timestamp }
+  for i in io.lines(self.anime_ep_timestamp_file_path) do
+   table.insert(self.content_table, i)
   end
 
-  if anime_ep_timestamp_file_obj:read("l") ~= nil then
-    for i in io.lines(self.anime_ep_timestamp_file_path) do
-     table.insert(self.content_table, i)
-    end
-  end
+  -- if anime_ep_timestamp_file_obj:read("l") == nil then
+  --   self.content_table = { self.anime_ep.." - "..self.ep_timestamp }
+  -- end
+
+  -- if anime_ep_timestamp_file_obj:read("l") ~= nil then
+  --   for i in io.lines(self.anime_ep_timestamp_file_path) do
+  --    table.insert(self.content_table, i)
+  --   end
+  -- end
 
   anime_ep_timestamp_file_obj:close()
 
@@ -119,28 +119,35 @@ end
 
 
 function AnimeEpTimestamp:WriteTimeStampOnQuit()
-  if next(self.content_table) == nil then
+  if #self.content_table == 0 then
     self.content_table = { self.anime_ep.." - "..self.ep_timestamp }
   end
 
-  if next(self.content_table) ~= nil then
-    for index in ipairs(self.content_table) do
-      if self.content_table[index]:match(self.anime_ep.." - ") then
+  local ep_found = 0
+  for index in ipairs(self.content_table) do
+    print(self.content_table[index])
+    if self.content_table[index]:match(self.anime_ep.." - ") then
 
-        if self.ep_timestamp >= self.ep_duration_without_ed then
-          table.remove(self.content_table, index)
+      ep_found = 1
+      if self.ep_timestamp >= self.ep_duration_without_ed then
+        table.remove(self.content_table, index)
 
-        elseif self.ep_timestamp < self.ep_duration_without_ed then
-          self.content_table[index] = self.anime_ep.." - "..self.ep_timestamp
-        end
-
-        break
+      elseif self.ep_timestamp < self.ep_duration_without_ed then
+        self.content_table[index] = self.anime_ep.." - "..self.ep_timestamp
       end
+
+      break
     end
+
+  end
+
+  if ep_found == 0 then
+    table.insert(self.content_table, self.anime_ep.." - "..self.ep_timestamp)
   end
 
   self.anime_ep_timestamp_file_obj = assert(io.open(self.anime_ep_timestamp_file_path, "w+"))
   for index in ipairs(self.content_table) do
+    print(self.content_table[index])
     self.anime_ep_timestamp_file_obj:write(self.content_table[index].."\n")
   end
   self.anime_ep_timestamp_file_obj:close()
@@ -151,12 +158,12 @@ end
 
 function AnimeEpTimestamp:EditEpHistoryOnQuit()
   local ani_hsts_table = {}
-  print("mofo ==> ",self.anime_ep_hist_file_path)
+  print("lkop ==> ",self.anime_ep_hist_file_path)
   for i in io.lines(self.anime_ep_hist_file_path) do
     ani_hsts_table.insert(i)
   end
 
-  print("fuck")
+  print("damlop")
   for index in ipairs(ani_hsts_table) do
     if ani_hsts_table[index]:match(self.anime_name) then
       print(ani_hsts_table[index].." => subbing")
@@ -172,8 +179,7 @@ end
 AnimeEpTimestampObj = AnimeEpTimestamp:new()
 function Onload()
   AnimeEpTimestampObj:GetProps()
-  AnimeEpTimestampObj:ShowDeets()
-  mp.set_property("time-pos", AnimeEpTimestampObj.ep_start_pos_timestamp)
+  mp.set_property("start", AnimeEpTimestampObj.ep_start_pos_timestamp)
   AnimeEpTimestampObj:UpdateTimeStampVars()
 
   -- write to file on shutdown
