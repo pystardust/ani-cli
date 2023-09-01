@@ -132,6 +132,7 @@ Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
 cp ./ani-cli "$(brew --prefix)"/bin
 cd .. && rm -rf ./ani-cli
+
 ```
 
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
@@ -314,6 +315,8 @@ Install dependencies [(See below)](#dependencies-1)
 ```sh
 git clone "https://github.com/pystardust/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
+mkdir "${HOME}/.config/ani-cli"
+cp -rfv ani-cli/scripts "${HOME}/.config/ani-cli"
 rm -rf ani-cli
 ```
 
