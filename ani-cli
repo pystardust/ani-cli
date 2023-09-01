@@ -2,6 +2,26 @@
 
 version_number="4.6.1"
 
+# directory for anime episode timestamp files
+
+# directory to store files named as anime titles with episodes mapped with time left on it
+ep_timestamp_dir="${HOME}/.local/state/ani-cli/ani-eps-hsts/" 
+
+# mpv lua script for ani-cli that keeps track of episodes
+ani_cli_scripts_dir="${HOME}/.config/ani-cli/scripts/"
+for dir in $ep_timestamp_dir $ani_cli_scripts_dir
+do
+    [[ ! -e "$dir" ]] && mkdir -p "$dir"
+    if [[ ! -d "$dir" ]]
+    then
+        rm -rf "$dir"
+        mkdir -p "$dir"
+    fi
+done
+unset ep_timestamp_dir ani_cli_scripts_dir
+
+
+
 # UI
 
 external_menu() {
@@ -243,7 +263,9 @@ play_episode() {
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+
+        mpv*) nohup "$player_function" --script="$HOME/.config/ani-cli/scripts/continue_ep.lua" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        # mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
@@ -302,7 +324,7 @@ case "$(uname -a)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;  # steamdeck OS
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}";; # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
 esac
