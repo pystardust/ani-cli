@@ -5,7 +5,7 @@ version_number="4.6.1"
 # directory for anime episode timestamp files
 
 # directory to store files named as anime titles with episodes mapped with time left on it
-ep_timestamp_dir="${HOME}/.local/state/ani-cli/ani-eps-hsts/" 
+ep_timestamp_dir="${HOME}/.local/state/ani-cli/ani-eps-hsts/"
 
 # mpv lua script for ani-cli that keeps track of episodes
 ani_cli_scripts_dir="${HOME}/.config/ani-cli/scripts/"
