@@ -131,7 +131,6 @@ function AnimeEpTimestamp:WriteTimeStampOnQuit()
 
     local ep_found = 0
     for index in ipairs(self.content_table) do
-      print(self.content_table[index])
       if self.content_table[index]:match(self.anime_ep.." - ") then
 
         ep_found = 1
