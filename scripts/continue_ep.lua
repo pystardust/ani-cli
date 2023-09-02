@@ -42,6 +42,11 @@ function AnimeEpTimestamp:GetProps()
     end
   end
 
+  local non_whole_ep_regex = "%.%d+$"
+  if self.media_title:match(non_whole_ep_regex) then
+    self.media_title = self.media_title:gsub(non_whole_ep_regex, "")
+  end
+
   self.anime_name = string.gsub(self.media_title, " [Ee]pisode [0-9]+", "")
   self.anime_ep = string.gsub(self.media_title, ".*[Ee]pisode ", "")
   self.ep_duration_with_ed = math.floor(mp.get_property("duration"))
