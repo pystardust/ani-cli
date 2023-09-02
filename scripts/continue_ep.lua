@@ -120,36 +120,43 @@ end
 
 
 function AnimeEpTimestamp:WriteTimeStampOnQuit()
-  if #self.content_table == 0 then
-    self.content_table = { self.anime_ep.." - "..self.ep_timestamp }
+  if (self.ep_timestamp >= self.ep_duration_without_ed) and (#self.content_table == 0) then
+    os.remove(self.anime_ep_timestamp_file_path)
   end
 
-  local ep_found = 0
-  for index in ipairs(self.content_table) do
-    print(self.content_table[index])
-    if self.content_table[index]:match(self.anime_ep.." - ") then
-
-      ep_found = 1
-      if self.ep_timestamp >= self.ep_duration_without_ed then
-        table.remove(self.content_table, index)
-
-      elseif self.ep_timestamp < self.ep_duration_without_ed then
-        self.content_table[index] = self.anime_ep.." - "..self.ep_timestamp
-      end
-
-      break
+  if self.ep_timestamp <= self.ep_duration_without_ed then
+    if #self.content_table == 0 then
+      self.content_table = { self.anime_ep.." - "..self.ep_timestamp }
     end
-  end
 
-  if ep_found == 0 then
-    table.insert(self.content_table, self.anime_ep.." - "..self.ep_timestamp)
-  end
+    local ep_found = 0
+    for index in ipairs(self.content_table) do
+      print(self.content_table[index])
+      if self.content_table[index]:match(self.anime_ep.." - ") then
 
-  self.anime_ep_timestamp_file_obj = assert(io.open(self.anime_ep_timestamp_file_path, "w+"))
-  for index in ipairs(self.content_table) do
-    self.anime_ep_timestamp_file_obj:write(self.content_table[index].."\n")
+        ep_found = 1
+        if self.ep_timestamp >= self.ep_duration_without_ed then
+          table.remove(self.content_table, index)
+
+        elseif self.ep_timestamp < self.ep_duration_without_ed then
+          self.content_table[index] = self.anime_ep.." - "..self.ep_timestamp
+        end
+
+        break
+      end
+    end
+
+    if ep_found == 0 then
+      table.insert(self.content_table, self.anime_ep.." - "..self.ep_timestamp)
+    end
+
+    self.anime_ep_timestamp_file_obj = assert(io.open(self.anime_ep_timestamp_file_path, "w+"))
+    for index in ipairs(self.content_table) do
+      self.anime_ep_timestamp_file_obj:write(self.content_table[index].."\n")
+    end
+    self.anime_ep_timestamp_file_obj:close()
+
   end
-  self.anime_ep_timestamp_file_obj:close()
 
   -- AnimeEpTimestampObj:EditEpHistoryOnQuit()
 end
