@@ -361,23 +361,13 @@ ueberzug_y="${ANI_CLI_UEBERZUG_Y:-1}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -c | --continue) search=history ;;
-        -d | --download) player_function=download ;;
-        -D | --delete)
-            : >"$histfile"
-            exit 0
-            ;;
-        -e | --episode | -r | --range)
-            [ $# -lt 2 ] && die "missing argument!"
-            ep_no="$2"
-            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
-            shift
-            ;;
-        -h | --help) help_info ;;
-        -q | --quality)
-            [ $# -lt 2 ] && die "missing argument!"
-            quality="$2"
-            shift
+        -v | --vlc)
+            case "$(uname -a)" in
+                *ndroid*) player_function="android_vlc" ;;
+                MINGW* | *WSL2*) player_function="vlc.exe" ;;
+                *ish*) player_function="iSH" ;;
+                *) player_function="vlc" ;;
+            esac
             ;;
         -s | --syncplay)
             case "$(uname -s)" in
@@ -389,27 +379,37 @@ while [ $# -gt 0 ]; do
                 *) player_function="syncplay" ;;
             esac
             ;;
+        -q | --quality)
+            [ $# -lt 2 ] && die "missing argument!"
+            quality="$2"
+            shift
+            ;;
         -S | --select-nth)
             [ $# -lt 2 ] && die "missing argument!"
             index="$2"
+            shift
+            ;;
+        -c | --continue) search=history ;;
+        -d | --download) player_function=download ;;
+        -D | --delete)
+            : >"$histfile"
+            exit 0
+            ;;
+        -V | --version) version_info ;;
+        -h | --help) help_info ;;
+        -e | --episode | -r | --range)
+            [ $# -lt 2 ] && die "missing argument!"
+            ep_no="$2"
+            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
             shift
             ;;
         -t | --thumbnail)
             dep_ch "ueberzugpp"
             thumbnails=1
             ;;
-        -U | --update) update_script ;;
-        -v | --vlc)
-            case "$(uname -a)" in
-                *ndroid*) player_function="android_vlc" ;;
-                MINGW* | *WSL2*) player_function="vlc.exe" ;;
-                *ish*) player_function="iSH" ;;
-                *) player_function="vlc" ;;
-            esac
-            ;;
-        -V | --version) version_info ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
+        -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
