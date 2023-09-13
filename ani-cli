@@ -105,7 +105,7 @@ update_script() {
 # checks if dependencies are present
 dep_ch() {
     for dep; do
-        command -v "${dep%% *}" >/dev/null || die "Program \"$dep\" not found. Please install it."
+        command -v "$dep" >/dev/null || die "Program \"$dep\" not found. Please install it."
     done
 }
 
