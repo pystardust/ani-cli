@@ -24,11 +24,17 @@
 ## Development with nix
 
 When you develop with nix you can use the [dev shell](https://github.com/pystardust/ani-cli#nix-shell).
-To run the dev shell you can run the following command in the repository root: `nix-shell`
+
+To run the dev shell you can run the following command in the repository root: 
+```shell
+nix-shell
+```
+
 The dev shell includes the following packages:
 - runtime dependencies of ani-cli
 - shfmt
 - shellcheck
+
 Its also possible to use alternative packages for the video player or add features with this command:
 ```shell
 nix-shell --arg <feature> true
@@ -38,6 +44,7 @@ These are the packages available in the dev shell:
 - `withIina`
 - `chromecastSupport`
 - `syncSupport`
+  
 Just chain these commands together when you wanna multiple features for example:
 ```shell
 nix-shell --arg withVlc true --arg chromecastSupport true
