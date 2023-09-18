@@ -18,5 +18,5 @@ assert withMpv || withVlc || withIina;
 with pkgs;
 mkShell {
   name = "ani-cli dev shell";
-  buildInputs = [ (ani-cli.override ({ withMpv = withMpv; withVlc = withVlc; withIina = withIina; chromecastSupport = chromecastSupport; syncSupport = syncSupport; })).runtimeDependencies ];
+  buildInputs = [ shfmt shellcheck (ani-cli.override ({ withMpv = withMpv; withVlc = withVlc; withIina = withIina; chromecastSupport = chromecastSupport; syncSupport = syncSupport; })).runtimeDependencies ];
 }
