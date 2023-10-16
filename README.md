@@ -152,6 +152,10 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 pkg install ani-cli
 ```
+If you're using Android 14 make sure to run this due to [#1206](https://github.com/pystardust/ani-cli/issues/1206):
+```sh
+pkg install termux-am
+```
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
