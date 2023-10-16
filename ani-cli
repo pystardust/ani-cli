@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.6.1"
+version_number="4.6.2"
 
 # UI
 
@@ -309,8 +309,6 @@ esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 [ -t 0 ] || use_external_menu=1
-[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
-[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
@@ -368,6 +366,8 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
 dep_ch "curl" "sed" "grep" || true
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
