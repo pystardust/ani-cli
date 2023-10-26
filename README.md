@@ -197,15 +197,7 @@ Make sure apk is updated using
 ```apk update; apk upgrade```
 then run this:
 ```sh
-apk add grep sed curl fzf git aria2 alpine-sdk ncurses
-git clone https://github.com/Lockl00p/ffmpeglibs-iSH.git ~/ffmpeg
-cd ~/ffmpeg
-cat fmp.?? > ffmpeg.tar.gz
-tar -xvf ffmpeg.tar.gz
-cd FFmpeg
-make install
-cd
-rm -rf ffmpeg
+apk add grep sed curl fzf git aria2 ncurses
 apk add ffmpeg
 git clone https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
@@ -390,14 +382,9 @@ flatpak uninstall io.mpv.Mpv
 ```
 rm -rf /usr/local/bin/ani-cli
 ```
-To uninstall FFmpeg:
-```
-rm -rf /usr/local/lib/libavutil.a /usr/local/lib/libavcodec.a /usr/local/lib/libavformat.a /usr/local/lib/pkgconfig/libavutil.a /usr/local/lib/pkgconfig/libavcodec.a /usr/local/lib/pkgconfig/libavformat.a
-apk del ffmpeg
-```
 To uninstall other dependencies:
 ```
-apk del grep sed curl fzf git aria2 alpine-sdk ncurses
+apk del grep sed curl fzf git aria2 ffmpeg ncurses
 ```
 
 </details>
