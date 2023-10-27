@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.6.2"
+version_number="4.6.3"
 
 # UI
 
@@ -63,6 +63,8 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
+      --skip
+        Use ani-skip to skip the intro of the episode (mpv only)
       -U, --update
         Update the script
     Some example usages:
@@ -103,6 +105,17 @@ dep_ch() {
 }
 
 # SCRAPING
+
+get_skip_times() {
+    skip_argument="$(ani-skip "$title" "$ep_no")"
+    echo "\"$title\"" "\"$ep_no\"" 1>&2
+    if [ "$skip_argument" = "" ]; then
+        printf "\033[1;31m%s\033[0m Failed\n" "ani-skip" 1>&2
+    else
+        printf "\033[1;32m%s\033[0m Skip Times Fetched\n" "ani-skip" 1>&2
+        skip_script="--script=~/.config/mpv/scripts/skip.lua"
+    fi
+}
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
@@ -237,13 +250,14 @@ download() {
 }
 
 play_episode() {
+    [ "$skip_intro" = 1 ] && get_skip_times
     [ -z "$episode" ] && get_episode_url
     case "$player_function" in
         debug)
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        mpv*) nohup "$player_function" "$skip_script" "$skip_argument" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
@@ -308,6 +322,7 @@ case "$(uname -a)" in
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 [ -t 0 ] || use_external_menu=1
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
@@ -361,6 +376,7 @@ while [ $# -gt 0 ]; do
             ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
+        --skip) skip_intro=1;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
@@ -370,6 +386,9 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
 dep_ch "curl" "sed" "grep" || true
+if [ "$skip_intro" = 1 ]; then
+    dep_ch "ani-skip" || true
+fi
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
