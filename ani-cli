@@ -376,7 +376,7 @@ while [ $# -gt 0 ]; do
             ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
-        --skip) skip_intro=1;;
+        --skip) skip_intro=1 ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
