@@ -408,7 +408,7 @@ Ani-skip is a script to automatically skip anime opening sequences, making it ea
 
 Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
 
-**Warning*:* For now, ani-skip does **not** seem to work under Windows. 
+**Warning:** For now, ani-skip does **not** seem to work under Windows. 
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime ask for including it in the database in their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
