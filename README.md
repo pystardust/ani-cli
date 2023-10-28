@@ -40,7 +40,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
-  - [Ani-Skip](#ani-skip)
+  - [Ani-Skip](#ani-skip-optional)
 - [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
