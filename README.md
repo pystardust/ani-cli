@@ -406,7 +406,9 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 
 Ani-skip is a script to automatically skip anime opening sequences, making it easier to watch your favorite shows without having to manually skip the intros each time (from the original [README](https://github.com/synacktraa/ani-skip/tree/master#a-script-to-automatically-skip-anime-opening-sequences-making-it-easier-to-watch-your-favorite-shows-without-having-to-manually-skip-the-intros-each-time)).
 
-**Warning*:* For now, ani-skip is only supported on *Linux* using *mpv* as the media player.
+Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
+
+**Warning*:* For now, ani-skip does **not** seem to work under Windows. 
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime ask for including it in the database in their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
