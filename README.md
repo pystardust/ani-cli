@@ -421,10 +421,10 @@ By setting the environment variable `ANI_CLI_SKIP_INTRO=1`, the feature can be e
 #### Install
 
 ```sh
-git clone https://github.com/synacktraa/ani-skip.git && cd ./ani-skip
-mkdir ~/.config/mpv/scripts && cp skip.lua ~/.config/mpv/scripts/
-chmod 700 ani-skip
-sudo cp ani-skip /usr/local/bin/
+git clone https://github.com/synacktraa/ani-skip.git
+sudo cp ani-skip/ani-skip /usr/local/bin
+mkdir -p ~/.config/mpv/scripts && cp ani-skip/skip.lua ~/.config/mpv/scripts/
+rm -rf ani-skip
 ```
 
 ## Homies
