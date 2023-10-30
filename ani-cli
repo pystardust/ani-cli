@@ -239,14 +239,15 @@ download() {
 }
 
 play_episode() {
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$title" "$ep_no" | cut -d' ' -f1)" && skip_arg="$(ani-skip "$title" "$ep_no" | cut -d' ' -f2)"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$title" "$ep_no")"
     [ -z "$episode" ] && get_episode_url
+    # shellcheck disable=SC2086
     case "$player_function" in
         debug)
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*) nohup "$player_function" "$skip_flag" "$skip_arg" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        mpv*) nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
