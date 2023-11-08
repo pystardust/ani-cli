@@ -40,7 +40,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
-  - [Ani-Skip](#ani-skip-optional)
+  - [Ani-Skip](#ani-skip)
 - [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
@@ -401,31 +401,19 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
+- ani-skip (optional)
 
-### Ani-Skip (optional)
+### Ani-Skip
 
 Ani-skip is a script to automatically skip anime opening sequences, making it easier to watch your favorite shows without having to manually skip the intros each time (from the original [README](https://github.com/synacktraa/ani-skip/tree/master#a-script-to-automatically-skip-anime-opening-sequences-making-it-easier-to-watch-your-favorite-shows-without-having-to-manually-skip-the-intros-each-time)).
+
+For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip).
 
 Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
 
 **Warning:** For now, ani-skip does **not** seem to work under Windows.
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
-
-#### Usage
-
-By using the `--skip` flag, ani-cli runs the external ani-skip script if it is installed (if the dependency check fails, ani-cli exits).
-
-By setting the environment variable `ANI_CLI_SKIP_INTRO=1`, the feature can be enabled permanently.
-
-#### Install
-
-```sh
-git clone https://github.com/synacktraa/ani-skip.git
-sudo cp ani-skip/ani-skip /usr/local/bin
-mkdir -p ~/.config/mpv/scripts && cp ani-skip/skip.lua ~/.config/mpv/scripts/
-rm -rf ani-skip
-```
 
 ## Homies
 
