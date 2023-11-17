@@ -302,7 +302,16 @@ case "$(uname -a)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;  # steamdeck OS
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+    *MINGW* | *WSL2*)                                                 # Windows OS
+        # check for mpvnet, fallback to mpv if not found
+        if command -v "mpvnet.exe" >/dev/null; then
+            player_function="${ANI_CLI_PLAYER:-mpvnet.exe}"
+        elif command -v "mpv.exe" >/dev/null; then
+            player_function="${ANI_CLI_PLAYER:-mpv.exe}"
+        else
+            die "Neither mpv.exe nor mpvnet.exe found. Please install one of them."
+        fi
+        ;;
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
 esac
