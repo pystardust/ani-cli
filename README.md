@@ -161,7 +161,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 </details>
 
-### Tier 2 Support: Windows, iOS, Steam Deck
+### Tier 2 Support: Windows, iOS, Steam Deck, WSL
 
 *While officially supported, installation is more involved on these plattforms and sometimes issues arise. \
 Reach out if you need help.*
@@ -300,6 +300,23 @@ In Steam Desktop app:
 *Note: Konsole window size bugs out if launched from "Gaming Mode".*
 *Note: this is not working the way it should yet.*
 </details>
+
+<details><summary><b>WSL</b></summary>
+
+By any chance You're using this method means that you wanna experiment run WSL gui programs in windows<br>
+and it'll work, don't worry (;
+
+> Note: Depending on Your WSL distro, just use the local package manager to install mpv and all other [dependencies](#dependencies-1)
+
+Then run this CopyPaste script in WSL(any distro):
+```sh
+git clone "https://github.com/pystardust/ani-cli.git"
+sudo cp ani-cli/ani-cli /usr/local/bin
+rm -rf ani-cli 
+```
+
+</details>
+
 
 ### Installing from source
 
