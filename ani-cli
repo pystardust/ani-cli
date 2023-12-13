@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.7.0"
+version_number="4.7.1"
 
 # UI
 
@@ -108,7 +108,7 @@ dep_ch() {
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    episode_link="$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" "https://embed.ssbcontent.site$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    episode_link="$(curl -e "$allanime_base" -s "https://embed.ssbcontent.site$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
     case "$episode_link" in
         *repackager.wixmp.com*)
             extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
@@ -122,7 +122,7 @@ get_links() {
             else
                 extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
                 relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl -e "$allanime_base" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
+                curl -e "$allanime_base" -s "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
             fi
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
@@ -176,7 +176,7 @@ get_episode_url() {
     # get the embed urls of the selected episode
     episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
 
-    resp=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp=$(curl -e "$allanime_base" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4 5"
@@ -195,7 +195,7 @@ get_episode_url() {
 search_anime() {
     search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
 
-    curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
+    curl -e "$allanime_base" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
 }
 
 # get the episodes list of the selected anime
