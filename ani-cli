@@ -5,12 +5,21 @@ version_number="4.7.1"
 # UI
 
 external_menu() {
-    rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
+
+    if [ "$use_external_menu" = "1" ]
+    then
+       rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
+    elif [ "$use_external_menu" = "2" ]
+    then
+	wofi "$1" -d -p "$2"
+    fi
 }
 
 launcher() {
+
     [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
     [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
+    [ "$use_external_menu" = "2" ] && external_menu "$1" "$2"
     [ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
 }
 
@@ -63,6 +72,8 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
+      --wofi
+        Use wofi instead of fzf for the interactive menu, works better desktop environments
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       -U, --update
@@ -266,6 +277,7 @@ play_episode() {
     unset episode
     update_history
     [ "$use_external_menu" = "1" ] && wait
+    [ "$use_external_menu" = "2" ] && wait
 }
 
 play() {
@@ -365,7 +377,8 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --dub) mode="dub" ;;
-        --rofi) use_external_menu=1 ;;
+        --rofi) use_external_menu="1" ;;
+        --wofi) use_external_menu="2" ;;
         --skip) skip_intro=1 ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
@@ -374,6 +387,7 @@ while [ $# -gt 0 ]; do
 done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
+[ "$use_external_menu" = "2" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
