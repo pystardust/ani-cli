@@ -65,15 +65,18 @@ help_info() {
         Use rofi instead of fzf for the interactive menu
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
+      --skip-title <title>
+        Use given title as ani-skip query
       -U, --update
         Update the script
     Some example usages:
       %s -q 720p banana fish
+      %s --skip --skip-title \"one piece\" -S 2 one piece
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
