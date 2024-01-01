@@ -375,7 +375,8 @@ while [ $# -gt 0 ]; do
         --skip-title)
             [ $# -lt 2 ] && die "missing argument!"
             skip_title="$2"
-            shift ;;
+            shift
+            ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
