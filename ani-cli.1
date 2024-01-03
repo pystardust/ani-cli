@@ -60,6 +60,9 @@ Use rofi instead of fzf for the interactive menu
 .TP
 \fB\--skip\fR
 Use ani-skip to skip the intro of the episode (mpv only)
+.TP
+\fB\--skip-title\fR \fI\,<title>\/\fR
+Specify the title to use for ani-skip
 .PP
 .SH
 ENVIRONMENT VARIABLES
@@ -95,6 +98,9 @@ Controls the default source. Valid is history (equivalent to -c), everything els
 .TP
 \fBANI_CLI_SKIP_INTRO\fR
 Controls if ani-skip is used to skip intros (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
+.TP
+\fBANI_CLI_SKIP_TITLE\fR
+Overrides the anime title to query for skip times. Can be any string value. Default is empty, resolving to the anime title as given by ani-cli.
 .PP
 .SH EPISODE SELECTION
 .PP

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.7.2"
+version_number="4.7.3"
 
 # UI
 
@@ -65,15 +65,18 @@ help_info() {
         Use rofi instead of fzf for the interactive menu
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
+      --skip-title <title>
+        Use given title as ani-skip query
       -U, --update
         Update the script
     Some example usages:
       %s -q 720p banana fish
+      %s --skip --skip-title \"one piece\" -S 2 one piece
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -239,7 +242,8 @@ download() {
 }
 
 play_episode() {
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$title" "$ep_no")"
+    aniskip_title="${skip_title:-${title}}"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$aniskip_title" "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
@@ -313,6 +317,8 @@ esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
+# shellcheck disable=SC2154
+skip_title="$ANI_CLI_SKIP_TITLE"
 [ -t 0 ] || use_external_menu=1
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
@@ -367,6 +373,11 @@ while [ $# -gt 0 ]; do
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
         --skip) skip_intro=1 ;;
+        --skip-title)
+            [ $# -lt 2 ] && die "missing argument!"
+            skip_title="$2"
+            shift
+            ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
