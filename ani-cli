@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.6.2"
+version_number="4.7.3"
 
 # TODO: implement caching => @Derisis13 :point_right: :point_left:
 cleanup() {
@@ -69,15 +69,20 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
+      --skip
+        Use ani-skip to skip the intro of the episode (mpv only)
+      --skip-title <title>
+        Use given title as ani-skip query
       -U, --update
         Update the script
     Some example usages:
       %s -q 720p banana fish
+      %s --skip --skip-title \"one piece\" -S 2 one piece
       %s -d -e 2 cyberpunk edgerunners
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -112,7 +117,7 @@ dep_ch() {
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    episode_link="$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" "https://embed.ssbcontent.site$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    episode_link="$(curl -e "$allanime_base" -s "https://embed.ssbcontent.site$*" -A "$agent" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
     case "$episode_link" in
         *repackager.wixmp.com*)
             extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
@@ -126,7 +131,7 @@ get_links() {
             else
                 extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
                 relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-                curl -e "$allanime_base" -s --cipher "AES256-SHA256" "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
+                curl -e "$allanime_base" -s "$extract_link" -A "$agent" | sed 's|^#.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|' | sed "s|>|>${relative_link}|g" | sort -nr
             fi
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
@@ -199,7 +204,7 @@ get_episode_url() {
     # get the embed urls of the selected episode
     episode_embed_gql="query (\$showId: String!, \$translationType: VaildTranslationTypeEnumType!, \$episodeString: String!) {    episode(        showId: \$showId        translationType: \$translationType        episodeString: \$episodeString    ) {        episodeString sourceUrls    }}"
 
-    resp=$(curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp=$(curl -e "$allanime_base" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4 5"
@@ -225,13 +230,12 @@ search_anime() {
     else
         curl -e "$allanime_base" -s --cipher "AES256-SHA256" -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1\t\2 (\3 episodes)|p"
     fi
-}
 
 # get the episodes list of the selected anime
 episodes_list() {
     episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
 
-    curl -e "$allanime_base" -s --cipher AES256-SHA256 -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
+    curl -e "$allanime_base" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\n|g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
@@ -268,13 +272,16 @@ download() {
 }
 
 play_episode() {
+    aniskip_title="${skip_title:-${title}}"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$aniskip_title" "$ep_no")"
     [ -z "$episode" ] && get_episode_url
+    # shellcheck disable=SC2086
     case "$player_function" in
         debug)
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*) nohup "$player_function" --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        mpv*) nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
@@ -339,9 +346,10 @@ case "$(uname -a)" in
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
+# shellcheck disable=SC2154
+skip_title="$ANI_CLI_SKIP_TITLE"
 [ -t 0 ] || use_external_menu=1
-[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
-[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
@@ -398,13 +406,22 @@ while [ $# -gt 0 ]; do
         -t | --thumbnail) thumbnails=1 ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
+        --skip) skip_intro=1 ;;
+        --skip-title)
+            [ $# -lt 2 ] && die "missing argument!"
+            skip_title="$2"
+            shift
+            ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
 done
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
 dep_ch "curl" "sed" "grep" || true
+[ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;

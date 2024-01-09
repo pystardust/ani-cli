@@ -40,6 +40,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
+  - [Ani-Skip](#ani-skip)
 - [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
@@ -152,6 +153,10 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 pkg install ani-cli
 ```
+If you're using Android 14 make sure to run this due to [#1206](https://github.com/pystardust/ani-cli/issues/1206):
+```sh
+pkg install termux-am
+```
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
@@ -193,15 +198,7 @@ Make sure apk is updated using
 ```apk update; apk upgrade```
 then run this:
 ```sh
-apk add grep sed curl fzf git aria2 alpine-sdk ncurses
-git clone https://github.com/Lockl00p/ffmpeglibs-iSH.git ~/ffmpeg
-cd ~/ffmpeg
-cat fmp.?? > ffmpeg.tar.gz
-tar -xvf ffmpeg.tar.gz
-cd FFmpeg
-make install
-cd
-rm -rf ffmpeg
+apk add grep sed curl fzf git aria2 ncurses
 apk add ffmpeg
 git clone https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
@@ -386,14 +383,9 @@ flatpak uninstall io.mpv.Mpv
 ```
 rm -rf /usr/local/bin/ani-cli
 ```
-To uninstall FFmpeg:
-```
-rm -rf /usr/local/lib/libavutil.a /usr/local/lib/libavcodec.a /usr/local/lib/libavformat.a /usr/local/lib/pkgconfig/libavutil.a /usr/local/lib/pkgconfig/libavcodec.a /usr/local/lib/pkgconfig/libavformat.a
-apk del ffmpeg
-```
 To uninstall other dependencies:
 ```
-apk del grep sed curl fzf git aria2 alpine-sdk ncurses
+apk del grep sed curl fzf git aria2 ffmpeg ncurses
 ```
 
 </details>
@@ -409,13 +401,26 @@ apk del grep sed curl fzf git aria2 alpine-sdk ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
+- ani-skip (optional)
+
+### Ani-Skip
+
+Ani-skip is a script to automatically skip anime opening sequences, making it easier to watch your favorite shows without having to manually skip the intros each time (from the original [README](https://github.com/synacktraa/ani-skip/tree/master#a-script-to-automatically-skip-anime-opening-sequences-making-it-easier-to-watch-your-favorite-shows-without-having-to-manually-skip-the-intros-each-time)).
+
+For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip).
+
+Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
+
+**Warning:** For now, ani-skip does **not** seem to work under Windows.
+
+**Note:** It may be, that ani-skip won't know the anime you're trying to watch. Try using the `--skip-title <title>` command line argument. (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
 ## Homies
 
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allanime, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
-* [saikou](https://github.com/saikou-app/saikou): Best android app for anime/manga with anilist integration (Kotlin)
+* [Dantotsu](https://github.com/rebelonion/Dantotsu): Rebirth of Saikou, Best android app for anime/manga/LN with anilist integration (Kotlin)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
