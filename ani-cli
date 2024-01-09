@@ -5,7 +5,6 @@ version_number="4.6.2"
 # TODO: implement caching => @Derisis13 :point_right: :point_left:
 cleanup() {
     rm "$HOME"/.cache/ani-cli/images/* >/dev/null 2>&1
-    ueberzug cmd -s "$ANI_CLI_UEBERZUG_SOCKET" -a exit >/dev/null 2>&1
 }
 trap cleanup EXIT INT TERM
 
@@ -139,21 +138,19 @@ download_thumbnails() {
     [ -d "$HOME/.cache/ani-cli/images" ] || mkdir -p "$HOME/.cache/ani-cli/images"
     printf "\33[2K\r\033[1;34mDownloading thumbnails...\033\n[0m"
     printf "%s\n" "$1" | while read -r cover_url anime_id anime_title; do
-        curl -s -o "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" "$cover_url" &&
-            convert "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" -resize "${thumbnail_size}x${thumbnail_size}" "$HOME/.cache/ani-cli/images/  $anime_title  $anime_id.jpg" &
+        curl -s -o "$HOME/.cache/ani-cli/images/$anime_title  $anime_id.jpg" "$cover_url" &&
+            convert "$HOME/.cache/ani-cli/images/$anime_title  $anime_id.jpg" -resize "${thumbnail_size}x${thumbnail_size}" "$HOME/.cache/ani-cli/images/$anime_title  $anime_id.jpg" &
     done
     sleep "$2"
 }
 
-image_preview_fzf() {
-    UB_PID_FILE="$UEBERZUG_TMP_DIR/.$(uuidgen)"
-    ueberzugpp layer --no-stdin --silent --use-escape-codes --pid-file "$UB_PID_FILE"
-    UB_PID=$(cat "$UB_PID_FILE")
-
-    ANI_CLI_UEBERZUG_SOCKET="$UEBERZUG_TMP_DIR"/ueberzugpp-"$UB_PID".socket
-    choice=$(find ~/.cache/ani-cli/images/ -type f -exec basename {} \; | fzf --reverse --with-nth 2 -d '  ' --preview="ueberzugpp cmd -s $ANI_CLI_UEBERZUG_SOCKET -i fzfpreview -a add -x $ueberzug_x -y $ueberzug_y --max-width $max_width --max-height $max_height -f ~/.cache/ani-cli/images/{}")
+image_preview() {
+    if [ "$use_external_menu" = "0" ]; then
+        choice=$(find ~/.cache/ani-cli/images/ -type f -exec basename {} \; | fzf --cycle --reverse --with-nth 1 -d '  ' --preview="chafa ~/.cache/ani-cli/images/{}")
+    else
+        choice=$(find ~/.cache/ani-cli/images/ -type f -exec basename {} \; | while read A; do printf "%s\x00icon\x1f%s\n" "$A" "~/.cache/ani-cli/images/$A"; done | rofi -dmenu -p "" -display-columns 1 -display-column-separator '  ')
+    fi
     [ -z "$choice" ] && exit 1
-    ueberzugpp cmd -s "$ANI_CLI_UEBERZUG_SOCKET" -a exit
 }
 
 # innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -332,14 +329,13 @@ allanime_api="https://api.allanime.day"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
-
 case "$(uname -a)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" && UEBERZUG_TMP_DIR="$TMPDIR" ;;      # mac OS
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" UEBERZUG_TMP_DIR="/tmp" ;;     # Android OS (termux)
-    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" UEBERZUG_TMP_DIR="/tmp" ;;  # steamdeck OS
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" UEBERZUG_TMP_DIR="/tmp" ;; # Windows OS
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" UEBERZUG_TMP_DIR="/tmp" ;;                # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-mpv}" UEBERZUG_TMP_DIR="/tmp" ;;                    # Linux OS
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
+    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;  # steamdeck OS
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
+    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
 esac
 
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -354,10 +350,6 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 thumbnails="${ANI_CLI_THUMBNAILS:-0}"
 thumbnail_size="${ANI_CLI_THUMBNAIL_SIZE:-1000}"
-ueberzug_x="${ANI_CLI_UEBERZUG_X:-$(($(tput cols) / 2 + 10))}"
-ueberzug_y="${ANI_CLI_UEBERZUG_Y:-1}"
-[ -z "$FZF_PREVIEW_COLUMNS" ] && max_width=$(($(tput cols) - 2)) || max_width=$FZF_PREVIEW_COLUMNS
-[ -z "$FZF_PREVIEW_LINES" ] && max_height=$(($(tput lines) - 2)) || max_height=$FZF_PREVIEW_LINES
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -403,10 +395,7 @@ while [ $# -gt 0 ]; do
             [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
             shift
             ;;
-        -t | --thumbnail)
-            dep_ch "ueberzugpp"
-            thumbnails=1
-            ;;
+        -t | --thumbnail) thumbnails=1 ;;
         --dub) mode="dub" ;;
         --rofi) use_external_menu=1 ;;
         -U | --update) update_script ;;
@@ -456,9 +445,9 @@ case "$search" in
         query=$(printf "%s" "$query" | sed "s| |+|g")
         if [ "$thumbnails" = "1" ]; then
             search_anime "$query"
-            image_preview_fzf
-            title=$(printf "%s" "$choice" | sed -nE "s/  .* \([0-9]* episodes\)  (.*)/\1/p")
-            id=$(printf "%s" "$choice" | sed -nE "s/  .* \([0-9]* episodes\)  (.*)\.jpg/\1/p")
+            image_preview
+            title=$(printf "%s" "$choice" | sed -nE "s/(.*) \([0-9]* episodes\)  .*/\1 /p")
+            id=$(printf "%s" "$choice" | sed -nE "s/.* \([0-9]* episodes\)  (.*)\.jpg/\1/p")
         else
             anime_list=$(search_anime "$query")
             [ -z "$anime_list" ] && die "No results found!"
