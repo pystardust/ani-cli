@@ -65,6 +65,8 @@ help_info() {
         Use rofi instead of fzf for the interactive menu
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
+      --no-detach
+        Don't detach the player (useful for in-terminal playback, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
       -U, --update
