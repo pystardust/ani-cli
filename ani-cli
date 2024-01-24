@@ -238,6 +238,7 @@ play_episode() {
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
+        # TODO
         mpv*) nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
@@ -303,6 +304,7 @@ case "$(uname -a)" in
     *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
 esac
 
+no_detach="${ANI_CLI_NO_DETACH:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 # shellcheck disable=SC2154
@@ -359,6 +361,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --dub) mode="dub" ;;
+        --no-detach) no_detach=1 ;;
         --rofi) use_external_menu=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
