@@ -290,9 +290,8 @@ cp ~/.ani-cli/ani-cli ~/.local/bin/
 ```
 echo '[Desktop Entry]
 Encoding=UTF-8
-Version=4.0
 Type=Application
-Exec=konsole -e ani-cli
+Exec=konsole -e $HOME/.local/bin/ani-cli
 Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
 ```
 The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming Mode"
