@@ -217,7 +217,7 @@ note that downloading is going to be very slow. This is an iSH issue, not an ani
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck)
 
 ```sh
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
@@ -258,7 +258,7 @@ press enter("A" button on Steam Deck) on questions
 ##### Make a ~/.local/bin folder if doesn't exist and add it to $PATH
 
 ```sh
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
 ```
 
 ##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
