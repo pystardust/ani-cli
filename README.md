@@ -217,7 +217,7 @@ note that downloading is going to be very slow. This is an iSH issue, not an ani
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck)
 
 ```sh
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:\$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
@@ -258,7 +258,7 @@ press enter("A" button on Steam Deck) on questions
 ##### Make a ~/.local/bin folder if doesn't exist and add it to $PATH
 
 ```sh
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export $PATH=$HOME/.local/bin:$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
+[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:\$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
 ```
 
 ##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
@@ -290,16 +290,13 @@ cp ~/.ani-cli/ani-cli ~/.local/bin/
 ```
 echo '[Desktop Entry]
 Encoding=UTF-8
-Version=4.0
 Type=Application
-Exec=konsole -e ani-cli
-Name=ani-cli' > ~/.local/share/applications/ani-cli.desktop
+Exec=bash -c "source $HOME/.'$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")'rc && konsole --fullscreen -e ani-cli"
+Name=ani-cli' > $HOME/.local/share/applications/ani-cli.desktop
 ```
 The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming Mode"
 In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
-*Note: Konsole window size bugs out if launched from "Gaming Mode".*
-*Note: this is not working the way it should yet.*
 </details>
 
 ### Installing from source
