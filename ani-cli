@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.7.4"
+version_number="4.7.5"
 
 # UI
 
@@ -373,7 +373,7 @@ while [ $# -gt 0 ]; do
 done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
-printf "\33[2K\r\033[1;34mChecking dependencies...\033\n[0m"
+printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
