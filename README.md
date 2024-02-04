@@ -47,11 +47,9 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Fixing errors
 
-If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
-`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
+If you encounter "No results found" (and are sure the prompt was correct) or any breaking issue, then make sure you are on latest version by typing
+`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run windows terminal preview and there type `ani-cli -U`.
 If after this the issue persists then open an issue.
-
-History has been reworked and relocated. We're working on a transition script, please be patient. Old history can be viewed with `less ${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts`
 
 ## Install
 
@@ -59,7 +57,7 @@ History has been reworked and relocated. We're working on a transition script, p
 
 ### Tier 1 Support: Linux, Mac, Android
 
-*These Plattforms have rock solid support and are used by maintainers and large parts of the userbase.*
+*These Platforms have rock solid support and are used by maintainers and large parts of the userbase.*
 
 <details><summary><b>Linux</b></summary>
 
@@ -68,7 +66,7 @@ History has been reworked and relocated. We're working on a transition script, p
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. \
 If the one for your platform is up-to-date we suggest going with it.*
 
-<details><summary>Debian unstable</summary>
+<details><summary>Debian 13/unstable</summary>
 
 ```sh
 sudo apt install ani-cli
@@ -177,6 +175,7 @@ Then, install scoop. You will use this to install and update ani-cli from time t
 scoop bucket add extras
 scoop install ani-cli fzf mpv git
 ```
+Consider also installing `yt-dlp` and `aria2` for downloading to work
 
 #### Dependencies
 
