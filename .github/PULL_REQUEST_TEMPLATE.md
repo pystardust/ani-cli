@@ -24,6 +24,9 @@
 - [ ] `-e` select episode works
 - [ ] `-S` select index works
 - [ ] `-r` range selection works
+- [ ] `--skip` ani-skip works
+- [ ] `--skip-title` ani-skip title argument works
+- [ ] `--no-detach` no detach works
 - [ ] `--dub` and regular (sub) mode both work
 - [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
 ---

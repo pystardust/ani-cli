@@ -47,7 +47,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Fixing errors
 
-If you encounter "No results found" (and are sure the prompt was correct) or any breaking issue, then make sure you are on latest version by typing
+If you encounter `No results found` (and are sure the prompt was correct) or any breaking issue, then make sure you are on **latest version** by typing
 `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run windows terminal preview and there type `ani-cli -U`.
 If after this the issue persists then open an issue.
 
