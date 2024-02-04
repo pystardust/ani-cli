@@ -164,22 +164,18 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### Tier 2 Support: Windows, iOS, Steam Deck
 
-*While officially supported, installation is more involved on these plattforms and sometimes issues arise. \
+*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
 
-*ani-cli needs a posix shell and the current way is git bash. Unfortunately fzf can't run in git bash's default terminal. The solution is to use git bash in windows terminal*
+First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=en-us&gl=US) It comes preinstalled with Windows 11
 
-First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=de-at&gl=at&rtc=1)
-
-Then make sure git bash is installed. [(Install)](https://git-scm.com/download/win) It needs to be added to windows terminal [(Instructions)](https://stackoverflow.com/questions/56839307/adding-git-bash-to-the-new-windows-terminal)
-
-The following steps and ani-cli need to be run from git bash in windows terminal.
+Then, install scoop. You will use this to install and update ani-cli from time to time. [(Install)](https://scoop.sh/) Follow **quickstart**.
 
 ```sh
 scoop bucket add extras
-scoop install ani-cli
+scoop install ani-cli fzf mpv git
 ```
 
 #### Dependencies
