@@ -10,12 +10,13 @@
 <br>
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
-<a href="https://github.com/Nannk/ani-cli-steamdeck/blob/master/matrix.md"><img src="https://www.matrix.org/images/matrix-logo-white.svg" height=110></a>
+<a href="https://github.com/Nannk/ani-cli-steamdeck/blob/master/matrix.md"><img src="https://github.com/Nannk/ani-cli-steamdeck/assets/34575742/a8a26452-c3f8-4c4c-9439-a6e736578621" height=110></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
 <a href="https://github.com/justchokingaround"><img src="https://img.shields.io/badge/maintainer-justchokingaround-blue"></a>
 <a href="https://github.com/Derisis13"><img src="https://img.shields.io/badge/maintainer-Derisis13-blue"></a>
+
 <a href="https://github.com/71zenith"><img src="https://img.shields.io/badge/maintainer-71zenith-blue"></a>
 
 </p>
