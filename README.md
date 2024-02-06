@@ -47,11 +47,9 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Fixing errors
 
-If you encounter "Video url not found" or any breaking issue, then make sure you are on latest version by typing
-`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run gitbash as administrator then there type `ani-cli -U`.
+If you encounter `No results found` (and are sure the prompt was correct) or any breaking issue, then make sure you are on **latest version** by typing
+`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run windows terminal preview and there type `ani-cli -U`.
 If after this the issue persists then open an issue.
-
-History has been reworked and relocated. We're working on a transition script, please be patient. Old history can be viewed with `less ${XDG_CACHE_HOME:-$HOME/.cache}/ani-hsts`
 
 ## Install
 
@@ -59,7 +57,7 @@ History has been reworked and relocated. We're working on a transition script, p
 
 ### Tier 1 Support: Linux, Mac, Android
 
-*These Plattforms have rock solid support and are used by maintainers and large parts of the userbase.*
+*These Platforms have rock solid support and are used by maintainers and large parts of the userbase.*
 
 <details><summary><b>Linux</b></summary>
 
@@ -68,7 +66,7 @@ History has been reworked and relocated. We're working on a transition script, p
 *Native packages have a more robust update cycle, but sometimes they are slow to upgrade. \
 If the one for your platform is up-to-date we suggest going with it.*
 
-<details><summary>Debian unstable</summary>
+<details><summary>Debian 13/unstable</summary>
 
 ```sh
 sudo apt install ani-cli
@@ -164,23 +162,20 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 ### Tier 2 Support: Windows, iOS, Steam Deck
 
-*While officially supported, installation is more involved on these plattforms and sometimes issues arise. \
+*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
 
-*ani-cli needs a posix shell and the current way is git bash. Unfortunately fzf can't run in git bash's default terminal. The solution is to use git bash in windows terminal*
+First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=en-us&gl=US) It comes preinstalled with Windows 11
 
-First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=de-at&gl=at&rtc=1)
-
-Then make sure git bash is installed. [(Install)](https://git-scm.com/download/win) It needs to be added to windows terminal [(Instructions)](https://stackoverflow.com/questions/56839307/adding-git-bash-to-the-new-windows-terminal)
-
-The following steps and ani-cli need to be run from git bash in windows terminal.
+Then, install scoop. You will use this to install and update ani-cli from time to time. [(Install)](https://scoop.sh/) Follow **quickstart**.
 
 ```sh
 scoop bucket add extras
-scoop install ani-cli
+scoop install ani-cli fzf mpv git
 ```
+Consider also installing `yt-dlp` and `aria2` for downloading to work
 
 #### Dependencies
 
