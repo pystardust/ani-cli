@@ -241,7 +241,7 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*) 
-            # shellcheck: disable=S2086,2312
+            # shellcheck disable=S2086,2312
             $([ "$no_detach" = 0 ] && echo "nohup") "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $([ "$no_detach" = 0 ] && echo ">/dev/null 2>&1 &") ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 &
             ;;
