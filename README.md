@@ -10,7 +10,7 @@
 <br>
 <h1 align="center">
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
-<a href="https://github.com/Nannk/ani-cli-steamdeck/blob/master/matrix.md"><img src="https://github.com/Nannk/ani-cli-steamdeck/assets/34575742/9cddd237-157d-4f2e-beb1-0e5a3e1015b1" height=110></a>
+<a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
