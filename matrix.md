@@ -1,6 +1,6 @@
-To get invited to ani-cli matrix space send an email to `user at domain` with the following contents:
+To get invited to ani-cli matrix space send an email to `8klv0leh7 at mozmail.com` with the following contents:
 ```
-Subject: ani-cli matrix invite
+Subject: ani-cli matrix space invite
 Body: @yourusername:matrixserver
 ```
 
