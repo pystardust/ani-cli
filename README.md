@@ -86,7 +86,7 @@ sudo dnf install ani-cli
 
 </details><details><summary>Arch</summary>
 
-Build and install from the AUR:
+Build and install from the [AUR](https://aur.archlinux.org/packages/ani-cli):
 ```sh
 yay -S ani-cli
 ```
