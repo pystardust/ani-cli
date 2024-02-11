@@ -225,6 +225,12 @@ chmod +x ~/.local/bin/aria2c
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
 
+mkdir ~/.patch
+curl -o ~/.patch/patch.tar.gz ftp://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz
+tar xvf ~/.patch/patch.tar.gz -C ~/.patch/
+ cd ~/.patch/patch-2.7.6 && ./configure && make && cp ~/.patch/patch-2.7.6/src/patch ~/.local/bin/
+cd ~
+
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 
@@ -270,6 +276,16 @@ chmod +x ~/.local/bin/aria2c
 ```sh
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
+```
+
+##### Install [patch](https://savannah.gnu.org/projects/patch/)
+
+```
+mkdir ~/.patch
+curl -o ~/.patch/patch.tar.gz ftp://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz
+tar xvf ~/.patch/patch.tar.gz -C ~/.patch/
+ cd ~/.patch/patch-2.7.6 && ./configure && make && cp ~/.patch/patch-2.7.6/src/patch ~/.local/bin/
+cd ~
 ```
 
 ##### Install ani-cli:
@@ -393,6 +409,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
 - ani-skip (optional)
+- patch - Self updating
 
 ### Ani-Skip
 
