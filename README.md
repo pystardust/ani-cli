@@ -277,9 +277,9 @@ curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.l
 chmod +x ~/.local/bin/yt-dlp
 ```
 
-##### Install [patch](https://savannah.gnu.org/projects/patch/)
+##### Install [patch](https://savannah.gnu.org/projects/patch/) (needed for self-update feature [ -U ] ):
 
-```
+```sh
 mkdir ~/.patch
 curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
 tar xvf .patch/patch.tar.zst -C ~/.patch/
