@@ -227,7 +227,7 @@ chmod +x ~/.local/bin/yt-dlp
 
 mkdir ~/.patch
 curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
-tar xvf .patch/patch.tar.zst -C ~/.patch 
+tar xvf .patch/patch.tar.zst -C ~/.patch/
 cp ~/.patch/usr/bin/patch ~/.local/bin 
 
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
@@ -281,10 +281,9 @@ chmod +x ~/.local/bin/yt-dlp
 
 ```
 mkdir ~/.patch
-curl -o ~/.patch/patch.tar.gz ftp://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.gz
-tar xvf ~/.patch/patch.tar.gz -C ~/.patch/
- cd ~/.patch/patch-2.7.6 && ./configure && make && cp ~/.patch/patch-2.7.6/src/patch ~/.local/bin/
-cd ~
+curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
+tar xvf .patch/patch.tar.zst -C ~/.patch/ 
+cp ~/.patch/usr/bin/patch ~/.local/bin
 ```
 
 ##### Install ani-cli:
