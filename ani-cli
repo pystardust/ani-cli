@@ -218,7 +218,7 @@ update_history() {
 }
 
 download() {
-    if [ $folder_path = true ]; then
+    if [ "$folder_path" = true ]; then
       mkdir -p "$download_dir/$title"
 	    download_dir="$download_dir/$title"
       folder_path=false
