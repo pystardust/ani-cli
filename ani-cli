@@ -43,6 +43,8 @@ help_info() {
         Continue watching from history
       -d, --download
         Download the video instead of playing it
+      -f, --folder
+        Changes root to a new folder
       -D, --delete
         Delete history
       -s, --syncplay
@@ -216,6 +218,12 @@ update_history() {
 }
 
 download() {
+    if [[ $folder_path = true ]]; then
+      mkdir -p "$download_dir/$title"
+	    download_dir="$download_dir/$title"
+      folder_path=false
+    fi
+
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
@@ -316,6 +324,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+folder_path=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -349,6 +358,7 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         -d | --download) player_function=download ;;
+        -f | --folder) folder_path=true ;;
         -D | --delete)
             : >"$histfile"
             exit 0
