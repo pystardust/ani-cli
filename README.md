@@ -423,7 +423,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 
 ## Homies
 
-* [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in pt-br (Portuguese) 
+
 
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allanime, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
@@ -435,3 +435,4 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
 * [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
+* [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go) 
