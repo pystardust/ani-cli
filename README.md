@@ -433,3 +433,4 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
 * [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
+* [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go)
