@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Using /usr/bin/env so that the script is portable across all distributions
 
-version_number="4.8.1"
+version_number="4.8.2"
 
 # UI
 
