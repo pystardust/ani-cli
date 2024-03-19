@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# Using /usr/bin/env so that the script is portable across all distributions
 
 version_number="4.8.1"
 
@@ -196,15 +197,15 @@ search_anime() {
 |g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p"
 }
 
+# searches the query on animeschedule and gives results
 search_next_episode() {
 
-    search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
-    
-    curl -e "$animeschedule" -s "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
-|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\"|p"
+    nep_query="$(printf "%s" "$1" | sed "s|-|%20|g")"
+    curl -s "$animeschedule_base/shows?q=$nep_query" | awk -F '"' '{print $2}' | sed "s|/shows/||g"
 
 }
 
+# gets countdown timer from animeschedule
 time_until_next_ep() {
 
     fetched="$(curl -s "$animeschedule/$1")"
@@ -319,6 +320,7 @@ allanime_refr="https://allanime.to"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
 animeschedule="https://animeschedule.net/anime"
+animeschedule_base="https://animeschedule.net"
 time_to_next_ep=""
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
@@ -451,12 +453,15 @@ case "$search" in
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && exit 1
         title=$(printf "%s" "$result" | cut -f2)
-        schedule_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g")"
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
+        
+        schedule_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g")"
+        schedule_title=$(search_next_episode "$schedule_title")
         ttne=$(time_until_next_ep "$schedule_title")
-        [ -z "$ep_no" ] && ep_no=$(printf "%s\n%s\n%s" "$ep_list" "$ttne" "$schedule_title" | nth "Select episode: " "$multi_selection_flag")
+       
+        [ -z "$ep_no" ] && ep_no=$(printf "%s\n%s" "$ep_list" "$ttne" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
         ;;
 esac
