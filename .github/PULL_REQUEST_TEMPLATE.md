@@ -2,9 +2,9 @@
 
 ## Type of change
 
-- [x] Bug fix
-- [x] Feature
-- [x] Documentation update
+- [ ] Bug fix
+- [ ] Feature
+- [ ] Documentation update
 
 ## Description
 
@@ -12,27 +12,27 @@
 
 ## Checklist
 
-- [x] any anime playing
-- [x] bumped version
+- [ ] any anime playing
+- [ ] bumped version
 ---
-- [x] next, prev and replay work
-- [x] `-c` history and continue work
-- [x] `-d` downloads work
-- [x] `-s` syncplay works
-- [x] `-q` quality works
-- [x] `-v` vlc works
-- [x] `-e` select episode works
-- [x] `-S` select index works
-- [x] `-r` range selection works
-- [x] `--skip` ani-skip works
-- [x] `--skip-title` ani-skip title argument works
-- [x] `--no-detach` no detach works
-- [x] `--dub` and regular (sub) mode both work
-- [x] all providers return links (not necessarily on a single anime, use debug mode to confirm)
+- [ ] next, prev and replay work
+- [ ] `-c` history and continue work
+- [ ] `-d` downloads work
+- [ ] `-s` syncplay works
+- [ ] `-q` quality works
+- [ ] `-v` vlc works
+- [ ] `-e` select episode works
+- [ ] `-S` select index works
+- [ ] `-r` range selection works
+- [ ] `--skip` ani-skip works
+- [ ] `--skip-title` ani-skip title argument works
+- [ ] `--no-detach` no detach works
+- [ ] `--dub` and regular (sub) mode both work
+- [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
 ---
-- [x] `-h` help info is up to date
-- [x] Readme is up to date
-- [x] Man page is up to date
+- [ ] `-h` help info is up to date
+- [ ] Readme is up to date
+- [ ] Man page is up to date
 
 ## Additional Testcases
 
