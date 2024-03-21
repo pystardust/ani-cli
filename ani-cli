@@ -390,7 +390,7 @@ while [ $# -gt 0 ]; do
             skip_title="$2"
             shift
             ;;
-        -N | --nextep-countdown) 
+        -N | --nextep-countdown)
             countdown=1
             ;;
         -U | --update) update_script ;;
