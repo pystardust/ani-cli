@@ -199,6 +199,8 @@ search_anime() {
 }
 
 time_until_next_ep() {
+    animeschedule="https://animeschedule.net/anime"
+    animeschedule_base="https://animeschedule.net"
     schedule_title="$(printf "%s" "$1" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g" | sed "s|-|%20|g")"
     schedule_title="$(curl -s "$animeschedule_base/shows?q=$schedule_title" | awk -F '"' '{print $2}' | sed "s|/shows/||g")"
     fetched="$(curl -s "$animeschedule/$schedule_title")"
@@ -310,8 +312,6 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefo
 allanime_refr="https://allanime.to"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
-animeschedule="https://animeschedule.net/anime"
-animeschedule_base="https://animeschedule.net"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
