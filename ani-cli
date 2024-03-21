@@ -248,7 +248,7 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
-            if [ "$no_detach" = 0]; then
+            if [ "$no_detach" = 0 ]; then
                 nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
             else
                 "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
