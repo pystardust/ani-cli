@@ -198,13 +198,10 @@ search_anime() {
 |g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p"
 }
 
-search_next_episode() {
-    nep_query="$(printf "%s" "$1" | sed "s|-|%20|g")"
-    curl -s "$animeschedule_base/shows?q=$nep_query" | awk -F '"' '{print $2}' | sed "s|/shows/||g"
-}
-
 time_until_next_ep() {
-    fetched="$(curl -s "$animeschedule/$1")"
+    schedule_title="$(printf "%s" "$1" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g" | sed "s|-|%20|g")"
+    schedule_title="$(curl -s "$animeschedule_base/shows?q=$schedule_title" | awk -F '"' '{print $2}' | sed "s|/shows/||g")"
+    fetched="$(curl -s "$animeschedule/$schedule_title")"
     ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | awk -F '"' '{print $4}')"
     printf "%s" "$ttne"
 }
@@ -454,9 +451,7 @@ case "$search" in
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
-        [ "$countdown" = "1" ] && schedule_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g")"
-        [ "$countdown" = "1" ] && schedule_title=$(search_next_episode "$schedule_title")
-        [ "$countdown" = "1" ] && ttne=$(time_until_next_ep "$schedule_title")
+        [ "$countdown" = "1" ] && ttne=$(time_until_next_ep "$title")
         [ -z "$ep_no" ] && ep_no=$(printf "%s\n%s" "$ep_list" "$ttne" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
         ;;
