@@ -219,9 +219,11 @@ episodes_list() {
 # PLAYING
 
 process_hist_entry() {
+    [ "$countdown" = "1" ] && ttne="$(time_until_next_ep "$title")"
+    [ -n "$ttne" ] && ttne="$(printf " - next episode in: %s" "$ttne")"
     ep_list=$(episodes_list "$id")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s%s\n" "$id" "$title" "$ep_no" "$([ "$countdown" = "1" ] && printf "%s%s" " - Next episode in: " "$(time_until_next_ep "$title")")"
+    [ -n "$ep_no" ] && printf "%s\t%s - episode %s%s\n" "$id" "$title" "$ep_no" "$ttne"
 }
 
 update_history() {
