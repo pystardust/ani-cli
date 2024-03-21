@@ -428,7 +428,7 @@ case "$search" in
         grep "$result" "$histfile" >"$resfile"
         read -r ep_no id title <"$resfile"
         ep_list=$(episodes_list "$id")
-        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") | 2>/dev/null
+        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
     *)
