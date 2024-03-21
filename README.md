@@ -9,9 +9,8 @@
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
 <br>
 <h1 align="center">
-<a href="https://discord.gg/aqu7GpqVmR">
-<img src="https://invidget.switchblade.xyz/aqu7GpqVmR">
-</a>
+<a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
+<a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
@@ -226,6 +225,11 @@ chmod +x ~/.local/bin/aria2c
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
 
+mkdir ~/.patch
+curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
+tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
+cp ~/.patch/usr/bin/patch ~/.local/bin/
+
 git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 
@@ -271,6 +275,15 @@ chmod +x ~/.local/bin/aria2c
 ```sh
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
+```
+
+##### Install [patch](https://savannah.gnu.org/projects/patch/) (needed for self-update feature [ -U ] ):
+
+```sh
+mkdir ~/.patch
+curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
+tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
+cp ~/.patch/usr/bin/patch ~/.local/bin/
 ```
 
 ##### Install ani-cli:
@@ -394,6 +407,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
 - ani-skip (optional)
+- patch - Self updating
 
 ### Ani-Skip
 
@@ -418,3 +432,5 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch movies/shows in the cli (Python/Shell)
 * [dra-cla](https://github.com/CoolnsX/dra-cla): ani-cli equivalent for korean dramas (Shell)
 * [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
+* [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
+* [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go)
