@@ -201,7 +201,7 @@ search_anime() {
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     schedule_title="$(printf "%s" "$1" | awk '{print tolower($0)}')"
-    schedule_query="$(printf "%s" "$schedule_title" | sed 's|%20|-|g')"
+    schedule_query="$(printf "%s" "$schedule_title" | sed 's|+|-|g')"
     fetched="$(curl -s "$animeschedule/anime/$schedule_query")"
 
     
@@ -460,8 +460,7 @@ case "$search" in
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
         fi
-        query=$(printf "%s" "$query" | sed 's|+|%20|g')
-        query=$(printf "%s" "$query" | sed 's| |%20|g')
+        query=$(printf "%s" "$query" | sed 's| |+|g')
         time_until_next_ep "$query"
         ;;
     *)
