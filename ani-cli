@@ -199,13 +199,23 @@ search_anime() {
 }
 
 time_until_next_ep() {
-    animeschedule="https://animeschedule.net/anime"
-    animeschedule_base="https://animeschedule.net"
-    schedule_title="$(printf "%s" "$1" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g" | sed "s|-|%20|g")"
-    schedule_title="$(curl -s "$animeschedule_base/shows?q=$schedule_title" | awk -F '"' '{print $2}' | sed "s|/shows/||g")"
-    fetched="$(curl -s "$animeschedule/$schedule_title")"
+    animeschedule="https://animeschedule.net"
+
+    schedule_title="$(printf "%s" "$1" | cut -d'(' -f1 | tr -d '[:punct:]' | sed "s| |-|g" | sed 's/.$//' | sed "s|-Season-|-|g")"
+    schedule_query="$(printf "%s" "$schedule_title" | sed "s|-|%20|g")"
+
+    schedule_title="$(printf "%s" "$schedule_title" | awk '{print tolower($0)}' | sed 's/[0-9]//g' | sed 's/.$//')"
+    schedule_query="$(printf "%s" "$schedule_query" | awk '{print tolower($0)}')"
+
+    schedule_query="$(curl -s "$animeschedule/shows?q=$schedule_query" | awk -F '"' '{print $2}' | grep "$schedule_title" | head -n1 | sed "s|/shows/||g")"
+    
+    fetched="$(curl -s "$animeschedule/anime/$schedule_query")"
     ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | awk -F '"' '{print $4}')"
-    printf "%s" "$ttne"
+
+    [ -n "$ttne" ] && echo "Next episode in: " "$ttne"
+    [ -z "$ttne" ] && echo "No information about next episode"
+
+    die
 }
 
 # get the episodes list of the selected anime
@@ -458,8 +468,8 @@ case "$search" in
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
-        [ "$countdown" = "1" ] && ttne=$(time_until_next_ep "$title")
-        [ -z "$ep_no" ] && ep_no=$(printf "%s\n%s" "$ep_list" "$ttne" | nth "Select episode: " "$multi_selection_flag")
+        [ "$countdown" = "1" ] && time_until_next_ep "$title"
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
         ;;
 esac
