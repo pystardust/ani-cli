@@ -460,6 +460,7 @@ case "$search" in
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
         fi
+        query=$(printf "%s" "$query" | sed 's|+|%20|g')
         query=$(printf "%s" "$query" | sed 's| |%20|g')
         time_until_next_ep "$query"
         ;;
