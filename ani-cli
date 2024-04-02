@@ -204,7 +204,6 @@ time_until_next_ep() {
     schedule_query="$(printf "%s" "$schedule_title" | sed 's|+|-|g')"
     fetched="$(curl -s "$animeschedule/anime/$schedule_query")"
 
-    
     if printf "%s" "$fetched" | grep -q "Not Found"; then
         anime_list="$(curl -s "$animeschedule/shows?q=$schedule_title" | awk -F '"' '{print $2}' | grep "$schedule_query" | uniq | grep -v "/anime/")"
         for anime in $anime_list; do
@@ -412,7 +411,7 @@ while [ $# -gt 0 ]; do
             skip_title="$2"
             shift
             ;;
-        -N | --nextep-countdown) search=nextep;;
+        -N | --nextep-countdown) search=nextep ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
