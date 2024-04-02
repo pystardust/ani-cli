@@ -220,7 +220,7 @@ time_until_next_ep() {
         [ -z "$ttne" ] && echo "Finished"
     fi
 
-    die
+    exit 0
 }
 
 # get the episodes list of the selected anime
