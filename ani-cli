@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.2"
+version_number="4.8.3"
 
 # UI
 
@@ -69,6 +69,8 @@ help_info() {
         Don't detach the player (useful for in-terminal playback, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
+      -N, --nextep-countdown
+        Display a countdown to the next episode
       -U, --update
         Update the script
     Some example usages:
@@ -111,7 +113,7 @@ dep_ch() {
 
 # SCRAPING
 
-# extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
+# extract the video links from response of embed urls, extract mp4 links form m3u8 lists
 get_links() {
     episode_link="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent" | sed 's|},{|\
 |g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
@@ -196,6 +198,31 @@ search_anime() {
 |g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p"
 }
 
+time_until_next_ep() {
+    animeschedule="https://animeschedule.net"
+    schedule_title="$(printf "%s" "$1" | awk '{print tolower($0)}')"
+    schedule_query="$(printf "%s" "$schedule_title" | sed 's|+|-|g')"
+    fetched="$(curl -s "$animeschedule/anime/$schedule_query")"
+
+    if printf "%s" "$fetched" | grep -q "Not Found"; then
+        anime_list="$(curl -s "$animeschedule/shows?q=$schedule_title" | awk -F '"' '{print $2}' | grep "$schedule_query" | uniq | grep -v "/anime/")"
+        for anime in $anime_list; do
+            fetched="$(curl -s "$animeschedule/anime/$anime")"
+            main_title="$(printf "%s" "$fetched" | grep 'anime-header-main-title' | grep -v '{' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')"
+            english_title="$(printf "%s" "$fetched" | grep 'anime-header-english-title' | grep -v '{' | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')"
+            ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | awk -F '"' '{print $4}')"
+            [ -n "$ttne" ] && printf "%s / %s\n%s\n---\n" "$main_title" "$english_title" " -  Next episode in: $ttne" | more
+            [ -z "$ttne" ] && printf "%s / %s\n%s\n---\n" "$main_title" "$english_title" " -  Finished" | more
+        done
+    else
+        ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | awk -F '"' '{print $4}')"
+        [ -n "$ttne" ] && echo "Next episode in: " "$ttne"
+        [ -z "$ttne" ] && echo "Finished"
+    fi
+
+    exit 0
+}
+
 # get the episodes list of the selected anime
 episodes_list() {
     episodes_list_gql="query (\$showId: String!) {    show(        _id: \$showId    ) {        _id availableEpisodesDetail    }}"
@@ -207,9 +234,10 @@ episodes_list() {
 # PLAYING
 
 process_hist_entry() {
+    [ -n "$ttne" ] && ttne="$(printf " - next episode in: %s" "$ttne")"
     ep_list=$(episodes_list "$id")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+    [ -n "$ep_no" ] && printf "%s\t%s - episode %s%s\n" "$id" "$title" "$ep_no" "$ttne"
 }
 
 update_history() {
@@ -383,6 +411,7 @@ while [ $# -gt 0 ]; do
             skip_title="$2"
             shift
             ;;
+        -N | --nextep-countdown) search=nextep ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
@@ -420,6 +449,18 @@ case "$search" in
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        ;;
+    nextep)
+        if [ "$use_external_menu" = "0" ]; then
+            while [ -z "$query" ]; do
+                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
+            done
+        else
+            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
+            [ -z "$query" ] && exit 1
+        fi
+        query=$(printf "%s" "$query" | sed 's| |+|g')
+        time_until_next_ep "$query"
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
