@@ -200,27 +200,14 @@ search_anime() {
 
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
-    schedule_title="$(printf "%s" "$1" | tr '[:upper:]' '[:lower:]')"
-    schedule_query="$(printf "%s" "$schedule_title" | sed 's|+|-|g')"
-    fetched="$(curl -s "$animeschedule/anime/$schedule_query")"
-
-    if printf "%s" "$fetched" | grep -q "Not Found"; then
-        anime_list="$(curl -s "$animeschedule/shows?q=$schedule_title" | cut -d '"' -f 2 | grep "$schedule_query" | uniq | grep -v "/anime/")"
-        for anime in $anime_list; do
-            fetched="$(curl -s "$animeschedule/anime/$anime")"
-            main_title="$(printf "%s" "$fetched" | grep 'anime-header-main-title' | grep -v '{' | cut -d '>' -f 2 | cut -d '<' -f 1)"
-            english_title="$(printf "%s" "$fetched" | grep 'anime-header-english-title' | grep -v '{' | cut -d '>' -f 2 | cut -d '<' -f 1)"
-            ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | cut -d '"' -f 4)"
-            [ -n "$ttne" ] && printf "%s / %s\n%s\n---\n" "$main_title" "$english_title" " -  Next episode in: $ttne" | more
-            [ -z "$ttne" ] && printf "%s / %s\n%s\n---\n" "$main_title" "$english_title" " -  Finished" | more
-        done
-    else
-        ttne="$(printf "%s" "$fetched" | grep 'countdown-time countdown-time-raw' | uniq | cut -d '"' -f 4)"
-        [ -n "$ttne" ] && echo "Next episode in: " "$ttne"
-        [ -z "$ttne" ] && echo "Finished"
-    fi
-
-    exit 0
+    curl -s -G "$animeschedule/api/v3/anime" --data-urlencode "q=$1" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
+        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
+        status="Ongoing"
+        color="33"
+        printf "%s\n" "$data"
+        ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Finished" && color="32"
+        printf "Status:  \033[1;%sm%s\033[0m\n---\n" "$color" "$status"
+    done
 }
 
 # get the episodes list of the selected anime
@@ -459,8 +446,8 @@ case "$search" in
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
         fi
-        query=$(printf "%s" "$query" | sed 's| |+|g')
         time_until_next_ep "$query"
+        exit 0
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
