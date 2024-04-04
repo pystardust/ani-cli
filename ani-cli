@@ -437,18 +437,6 @@ case "$search" in
         ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
-    nextep)
-        if [ "$use_external_menu" = "0" ]; then
-            while [ -z "$query" ]; do
-                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
-            done
-        else
-            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
-            [ -z "$query" ] && exit 1
-        fi
-        time_until_next_ep "$query"
-        exit 0
-        ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
             while [ -z "$query" ]; do
@@ -457,6 +445,11 @@ case "$search" in
         else
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
+        fi
+        # for checking new releases by specifying anime name
+        if [ "$search" = "nextep" ]; then
+            time_until_next_ep "$query"
+            exit 0
         fi
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anime "$query")
