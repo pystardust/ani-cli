@@ -208,6 +208,7 @@ time_until_next_ep() {
         ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Finished" && color="32"
         printf "Status:  \033[1;%sm%s\033[0m\n---\n" "$color" "$status"
     done
+    exit 0
 }
 
 # get the episodes list of the selected anime
@@ -447,10 +448,8 @@ case "$search" in
             [ -z "$query" ] && exit 1
         fi
         # for checking new releases by specifying anime name
-        if [ "$search" = "nextep" ]; then
-            time_until_next_ep "$query"
-            exit 0
-        fi
+        [ "$search" = "nextep" ] && time_until_next_ep "$query"
+
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anime "$query")
         [ -z "$anime_list" ] && die "No results found!"
