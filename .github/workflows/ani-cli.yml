@@ -33,4 +33,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: verify that noone added awk
-      run: ! grep awk "./ani-cli"
+      run: '! grep awk "./ani-cli"'
