@@ -267,7 +267,7 @@ download() {
 
 play_episode() {
     aniskip_title="${skip_title:-${title}}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$aniskip_title" "$ep_no")"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$aniskip_title" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
