@@ -420,7 +420,7 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
-[ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true) && mal_id=$(ani-skip -q "${skip_title:-${title}}")
+[ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true) 
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
@@ -480,6 +480,7 @@ case "$search" in
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
+        [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
         ;;
