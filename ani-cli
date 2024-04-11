@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.4"
+version_number="4.8.5"
 
 # UI
 
@@ -265,7 +265,7 @@ download() {
     esac
 }
 
-play_episode() {    
+play_episode() {
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
