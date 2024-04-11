@@ -265,8 +265,7 @@ download() {
     esac
 }
 
-play_episode() {
-    aniskip_title="${skip_title:-${title}}"
+play_episode() {    
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
