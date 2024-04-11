@@ -26,3 +26,11 @@ jobs:
     - uses: actions/checkout@v3
     - name: test exec bit
       run: test -x "./ani-cli"
+
+  check-no-awk:
+    name: No Awk Allowed
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: verify that noone added awk
+      run: '! grep awk "./ani-cli"'
