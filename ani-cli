@@ -64,7 +64,7 @@ help_info() {
       --rofi
         Use rofi instead of fzf for the interactive menu
        -f, --fs, --fullscreen
-        Open player in Fullscreen (mpv and vlc)
+        Open player in fullscreen (mpv and vlc)
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
