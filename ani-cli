@@ -400,7 +400,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -N | --nextep-countdown) search=nextep ;;
-        -f | --fs | --fullscreen) 
+        -f | --fs | --fullscreen)
             fullscreen_flag_mpv="--fullscreen"
             fullscreen_flag_vlc="-f"
             ;;
