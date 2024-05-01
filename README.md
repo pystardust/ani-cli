@@ -194,7 +194,7 @@ then run this:
 ```sh
 apk add grep sed curl fzf git aria2 ncurses
 apk add ffmpeg
-git clone https://github.com/pystardust/ani-cli ~/.ani-cli
+git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
