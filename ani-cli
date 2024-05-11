@@ -225,7 +225,13 @@ episodes_list() {
 
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
-    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+
+    if [ "$ep_no" = "unwatched" ]; then
+        ep_no=$(printf "%s" "$ep_list" | head -n 1)
+    else
+        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+    fi
+
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
@@ -446,8 +452,7 @@ case "$search" in
         resfile="$(mktemp)"
         grep "$result" "$histfile" >"$resfile"
         read -r ep_no id title <"$resfile"
-        ep_list=$(episodes_list "$id")
-        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+        process_hist_entry
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
     *)
