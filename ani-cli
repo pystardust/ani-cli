@@ -39,6 +39,8 @@ help_info() {
     %s [options] [query] [options]
 
     Options:
+      -a, --add
+        Add an anime to the history (to watch later)
       -c, --continue
         Continue watching from history
       -d, --download
@@ -237,6 +239,16 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
+add_unwatched_to_history() {
+    if grep -q -- "$id" "$histfile"; then
+        return
+    fi
+
+    cp "$histfile" "${histfile}.new"
+    printf "unwatched\t%s\t%s\n" "$id" "$title" >>"${histfile}.new"
+    mv "${histfile}.new" "$histfile"
+}
+
 download() {
     case $1 in
         *m3u8*)
@@ -343,6 +355,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+only_add_to_hist=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -374,6 +387,7 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
+        -a | --add) only_add_to_hist=true ;;
         -c | --continue) search=history ;;
         -d | --download) player_function=download ;;
         -D | --delete)
@@ -457,6 +471,9 @@ case "$search" in
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
+
+        $only_add_to_hist && add_unwatched_to_history && exit 0
+
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
