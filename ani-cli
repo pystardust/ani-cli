@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.6"
+version_number="4.8.7"
 
 # UI
 
@@ -67,6 +67,8 @@ help_info() {
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
         Don't detach the player (useful for in-terminal playback, mpv only)
+      --exit-after-play
+        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
       -N, --nextep-countdown
@@ -266,6 +268,10 @@ play_episode() {
                 nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
             else
                 "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                mpv_exitcode=$?
+                if [ "$exit_after_play" = 1 ]; then
+                  exit "$mpv_exitcode"
+                fi
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
@@ -333,6 +339,7 @@ case "$(uname -a)" in
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
+exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 # shellcheck disable=SC2154
@@ -390,6 +397,7 @@ while [ $# -gt 0 ]; do
             ;;
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
+        --exit-after-play) exit_after_play=1 ;;
         --rofi) use_external_menu=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
