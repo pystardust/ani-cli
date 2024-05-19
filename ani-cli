@@ -270,7 +270,7 @@ play_episode() {
                 "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 if [ "$exit_after_play" = 1 ]; then
-                  exit "$mpv_exitcode"
+                    exit "$mpv_exitcode"
                 fi
             fi
             ;;
