@@ -269,9 +269,7 @@ play_episode() {
             else
                 "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
-                if [ "$exit_after_play" = 1 ]; then
-                    exit "$mpv_exitcode"
-                fi
+                [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
