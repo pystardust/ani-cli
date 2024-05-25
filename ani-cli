@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.7"
+version_number="4.8.8"
 
 # UI
 
@@ -121,13 +121,6 @@ get_links() {
 |g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
 
     case "$episode_link" in
-        *repackager.wixmp.com*)
-            extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
-            for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | sed 's|,|\
-|g'); do
-                printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
-            done | sort -nr
-            ;;
         *vipanicdn* | *anifastcdn*)
             if printf "%s" "$episode_link" | head -1 | grep -q "original.m3u"; then
                 printf "%s" "$episode_link"
@@ -153,10 +146,9 @@ provider_init() {
 # generates links based on given provider
 generate_link() {
     case $1 in
-        1) provider_init "wixmp" "/Default :/p" ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
-        3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
-        4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
+        1) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
+        2) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
+        3) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
@@ -180,7 +172,7 @@ get_episode_url() {
     resp=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4 5"
+    providers="1 2 3 4"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
