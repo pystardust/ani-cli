@@ -35,7 +35,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, iOS, Steam Deck](#tier-2-support-windows-ios-steam-deck)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck](#tier-2-support-windows-wsl-ios-steam-deck)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
@@ -159,7 +159,7 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 </details>
 
-### Tier 2 Support: Windows, iOS, Steam Deck
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck
 
 *While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
@@ -183,6 +183,14 @@ All dependencies can be installed with scoop (from the extras bucket), however s
 Note that curl can cause issues.
 ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
 If you run into issues, try the scoop install or grab the newest curl you can find.
+
+</details><details><summary><b>WSL</b></summary>
+
+Follow the installation instructions of your Linux distribution.
+
+Note that the media player (mpv or vlc) will need to be installed on Windows, not WSL. See the justification for this in the comment [(here)](https://github.com/pystardust/ani-cli/issues/1266#issuecomment-1926945757). Instructions on how to use the media player from WSL instead are also included in the linked comment.
+
+When installing the media player on Windows, make sure that it is on the Windows Path. An easy way to ensure this is to download the media player with a package manager (on Windows, not WSL) such as scoop.
 
 </details><details><summary><b>iOS</b></summary>
 
