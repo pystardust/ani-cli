@@ -23,7 +23,7 @@
 <h3 align="center">
 A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allanime.to/">allanime.</a>
 </h3>
-	
+
 <h1 align="center">
 	Showcase
 </h1>
@@ -47,7 +47,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 ## Fixing errors
 
 If you encounter `No results found` (and are sure the prompt was correct) or any breaking issue, then make sure you are on **latest version** by typing
-`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run windows terminal preview and there type `ani-cli -U`.
+`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
 If after this the issue persists then open an issue.
 
 ## Install
@@ -166,23 +166,75 @@ Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
 
-First, you'll need windows terminal preview. [(Install)](https://apps.microsoft.com/store/detail/windows-terminal-preview/9N8G5RFZ9XK3?hl=en-us&gl=US) It comes preinstalled with Windows 11
+`ani-cli` is on scoop. Please read further for setup instructions.
 
-Then, install scoop. You will use this to install and update ani-cli from time to time. [(Install)](https://scoop.sh/) Follow **quickstart**.
+We will set up the bash.exe that comes with Git for Windows to be used with Windows Terminal. You may use terminals such as Wezterm or Alacritty, but this guide only covers Windows Terminal. The Git Bash terminal (i.e., mintty) [has problems with fzf](#windows-known-problems-and-solutions).
+
+First, you'll need to install the scoop package manager. [(Install)](https://scoop.sh/) Follow **quickstart**.
+
+Next, get Windows Terminal. It comes preinstalled on Windows 11. If you do not have it, install it by running the following commands in powershell.
 
 ```sh
 scoop bucket add extras
-scoop install ani-cli fzf mpv git
+scoop install extras/windows-terminal
 ```
-Consider also installing `yt-dlp` and `aria2` for downloading to work
 
-#### Dependencies
+Next, get git. If you have it, please update it. If you do not already have it, install it by running `scoop install git` in powershell.
 
-All dependencies can be installed with scoop (from the extras bucket), however some users experienced that installed programs aren't always added to the path. If this happens installing from winget instead usually works.
+Ensure that Git Bash is present in the Windows Terminal tab drop down, as shown below.
 
-Note that curl can cause issues.
-ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`.
-If you run into issues, try the scoop install or grab the newest curl you can find.
+![windows-terminal-git-bash-1.png](.assets/windows-terminal-git-bash-1.png)
+
+If it is not there, please add it. To add it, first click the drop-down button beside the new tab button (shown above).
+
+Then, navigate to `Settings > Profiles > Add a new profile`. Click `+ New empty profile`.
+
+![windows-terminal-git-bash-2.png](.assets/windows-terminal-git-bash-2.png)
+
+Next:
+- If you installed git with scoop: Set *Name* as "Git Bash", set *Command line* as `%GIT_INSTALL_ROOT%\bin\bash.exe -i -l`, and set *Icon* as `%GIT_INSTALL_ROOT%\mingw64\share\git\git-for-windows.ico`.
+- If you installed git by other means: Set *Name* as "Git Bash", set *Command line* as `C:\Program Files\Git\bin\bash.exe -i -l`, and set *Icon* as `C:\Program Files\Git\mingw64\share\git\git-for-windows.ico`.
+
+Ensure that this Profile is not set to *Hidden* and save your changes.
+
+![windows-terminal-git-bash-3.png](.assets/windows-terminal-git-bash-3.png)
+
+You will use this profile to run `ani-cli` in this bash shell.
+Under Startup in Windows Terminal Settings, you may set this profile as the default so that you do not have to switch to it every time you want to run `ani-cli`.
+
+![windows-terminal-git-bash-4.png](.assets/windows-terminal-git-bash-4.png)
+
+Now restart Windows Terminal. In the Git Bash profile, install `ani-cli` by running the following commands.
+
+```sh
+scoop bucket add extras
+scoop install extras/windows-terminal
+```
+
+Next, install its dependencies.
+
+```sh
+scoop bucket add extras
+scoop install fzf ffmpeg mpv
+```
+
+Consider also installing `yt-dlp` and `aria2` for downloading to work.
+
+Restart Windows Terminal. Go to the Git Bash profile and update `ani-cli` with `ani-cli -U`. You will use this keep ani-cli up-to-date.
+
+Now you can use ani-cli. Read the output of `ani-cli -h` for more help.
+
+#### Windows: Known Problems and Solutions
+
+If you have a problem, please update ani-cli to the latest version with `ani-cli -U`. If you still have a problem, please read further.
+
+- Stuck in "Search anime:". This shouldn't happen if you are using the Windows Terminal + Bash setup described above. It happens if you are using the Git Bash terminal (i.e., the mintty terminal). This is a problem between fzf and mintty, which should be resolved in future versions of fzf. For the time being, either use the Windows Terminal setup described above or, if you are dead-set on using the mintty terminal, run `export MSYS=enable_pcon` before running ani-cli.
+- "No such file or directory" or WSL-related errors: This shouldn't happen if you are using the Window Terminal + Bash setup described above. This happens if you run ani-cli in powershell or cmd. This is due WSL's bash.exe being called instead of Git for Windows' bash.exe in `%USERPROFILE%\scoop\shims\ani-cli.cmd`. If you must use powershell or cmd, edit the `%USERPROFILE%\scoop\shims\ani-cli.cmd` file. In File Explorer, go to the `C:\Users\USERNAME\scoop\shims` directory and open the `ani-cli.cmd` file with notepad. Next:
+    - If you installed git with scoop, replace `@bash` with `@"%GIT_INSTALL_ROOT%\bin\bash.exe"`, or
+    - If you installed git by other means, replace `@bash` with `@"C:\Program Files\Git\bin\bash.exe"`.
+This should be fixed if the ani-cli scoop manifest gets updated in [this PR](https://github.com/ScoopInstaller/Extras/pull/13342).
+- curl can cause issues. ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`. If you run into issues, try installing a newer one with scoop.
+- If you installed mpv with scoop, your mpv configuration will get read from `C:\Users\USERNAME\scoop\apps\mpv\current\portable_config`. See [the mpv documentation](https://mpv.io/manual/stable/) regarding `portable_config` for more details.
 
 </details><details><summary><b>WSL</b></summary>
 
