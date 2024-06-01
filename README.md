@@ -195,7 +195,9 @@ Next:
 - If you installed git with scoop: Set *Name* as "Git Bash", set *Command line* as `%GIT_INSTALL_ROOT%\bin\bash.exe -i -l`, and set *Icon* as `%GIT_INSTALL_ROOT%\mingw64\share\git\git-for-windows.ico`.
 - If you installed git by other means: Set *Name* as "Git Bash", set *Command line* as `C:\Program Files\Git\bin\bash.exe -i -l`, and set *Icon* as `C:\Program Files\Git\mingw64\share\git\git-for-windows.ico`.
 
-Ensure that this Profile is not set to *Hidden* and save your changes.
+Next, set *Starting Directory* to `%USERPROFILE%`, and set *Hide profile from dropdown* to Off.
+
+Now save your changes.
 
 ![windows-terminal-git-bash-3.png](.assets/windows-terminal-git-bash-3.png)
 
