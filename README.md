@@ -36,7 +36,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, WSL, iOS, Steam Deck](#tier-2-support-windows-wsl-ios-steam-deck)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-FreeBSD)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
@@ -160,9 +160,9 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 </details>
 
-### Tier 2 Support: Windows, WSL, iOS, Steam Deck
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
 
-*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
+*While officially supported (except FreeBSD), installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
@@ -368,6 +368,12 @@ Name=ani-cli' > $HOME/.local/share/applications/ani-cli.desktop
 The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming Mode"
 In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
+
+<details><summary><b>FreeBSD</b></summary>
+```sh
+	echo test to see if i got structure of readme right
+```
+
 </details>
 
 ### Installing from source
