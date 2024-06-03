@@ -196,9 +196,11 @@ Next:
 - If you installed git with scoop: Set *Name* as "Git Bash", set *Command line* as `%GIT_INSTALL_ROOT%\bin\bash.exe -i -l`, and set *Icon* as `%GIT_INSTALL_ROOT%\mingw64\share\git\git-for-windows.ico`.
 - If you installed git by other means: Set *Name* as "Git Bash", set *Command line* as `C:\Program Files\Git\bin\bash.exe -i -l`, and set *Icon* as `C:\Program Files\Git\mingw64\share\git\git-for-windows.ico`.
 
-Ensure that this Profile is not set to *Hidden* and save your changes.
+Next, set *Starting Directory* to `%USERPROFILE%`, and ensure that *Hide profile from dropdown* is set to "Off" (otherwise you won't be able to see this profile in the drop down).
 
 ![windows-terminal-git-bash-3.png](.assets/windows-terminal-git-bash-3.png)
+
+Now save your changes.
 
 You will use this profile to run `ani-cli` in this bash shell.
 Under Startup in Windows Terminal Settings, you may set this profile as the default so that you do not have to switch to it every time you want to run `ani-cli`.
