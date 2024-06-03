@@ -371,8 +371,39 @@ In Steam Desktop app:
 </details>
 
 <details><summary><b>FreeBSD</b></summary>
+	
+#### Linux Binary Compatibility:
+important to note that ani-cli will not work if you don't have linuxemu installed.
+here are the minimum instructions to get it up and running, for more info refer to the official [docs](https://docs.freebsd.org/en/books/handbook/linuxemu/).
+
 ```sh
-	echo test to see if i got structure of readme right
+sudo sysrc linux_enable="YES"
+service linux start
+```
+
+#### Installation in steps:
+
+##### Install dependencies (including mpv): 
+important to note these are only the basic dependencies if you want more functionality its up to you to find and install them.
+
+```sh
+sudo pkg install fzf curl mpv
+```
+
+##### Install ani-cli:
+
+install git if you haven't already
+
+```sh
+sudo pkg install git
+```
+
+install from source:
+
+```sh
+git clone "https://github.com/pystardust/ani-cli.git"
+sudo cp ani-cli/ani-cli /usr/local/bin
+rm -rf ani-cli
 ```
 
 </details>
