@@ -368,6 +368,7 @@ Name=ani-cli' > $HOME/.local/share/applications/ani-cli.desktop
 The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming Mode"
 In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
+</details>
 
 <details><summary><b>FreeBSD</b></summary>
 ```sh
