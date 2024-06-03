@@ -373,7 +373,7 @@ In Steam Desktop app:
 <details><summary><b>FreeBSD</b></summary>
 	
 #### Linux Binary Compatibility:
-important to note that ani-cli will not work if you don't have linuxemu installed.
+important to note that ani-cli will not work if you don't have linuxemu enabled.
 here are the minimum instructions to get it up and running, for more info refer to the official [docs](https://docs.freebsd.org/en/books/handbook/linuxemu/).
 
 ```sh
