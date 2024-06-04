@@ -375,8 +375,6 @@ In Steam Desktop app:
 #### Copypaste script:
 
 ```sh
-sudo sysrc linux_enable="YES"
-service linux start
 sudo pkg install mpv fzf aria2 yt-dlp patch git
 git clone "https://github.com/pystardust/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
@@ -384,15 +382,6 @@ rm -rf ani-cli
 ```
 
 #### Installation in steps:
-
-##### Linux Binary Compatibility:
-important to note that ani-cli will not work if you don't have linuxemu enabled.
-here are the minimum instructions to get it up and running, for more info refer to the official [docs](https://docs.freebsd.org/en/books/handbook/linuxemu/).
-
-```sh
-sudo sysrc linux_enable="YES"
-service linux start
-```
 
 ##### Install mpv:
 
