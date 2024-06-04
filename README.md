@@ -383,34 +383,10 @@ rm -rf ani-cli
 
 #### Installation in steps:
 
-##### Install mpv:
+##### Install dependencies:
 
 ```sh
-sudo pkg install mpv
-```
-
-##### Install [fzf](https://github.com/junegunn/fzf):
-
-```sh
-sudo pkg install fzf
-```
-
-##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
-
-```sh
-sudo pkg install aria2
-```
-
-##### Install [yt-dlp](https://github.com/yt-dlp/yt-dlp) (needed for download feature only):
-
-```sh
-sudo pkg install yt-dlp
-```
-
-##### Install [patch](https://savannah.gnu.org/projects/patch/) (needed for self-update feature [ -U ] ):
-
-```sh
-sudo pkg install patch
+sudo pkg install mpv fzf aria2 yt-dlp patch
 ```
 
 ##### Install ani-cli:
