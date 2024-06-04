@@ -541,7 +541,7 @@ For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip
 
 Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
 
-**Warning:** For now, ani-skip does **not** seem to work under Windows or FreeBSD.
+**Warning:** For now, ani-skip does **not** seem to work under Windows.
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch. Try using the `--skip-title <title>` command line argument. (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
