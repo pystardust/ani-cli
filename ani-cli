@@ -359,7 +359,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -a)" in
                 *ndroid*) player_function="android_mpv" ;;
                 MINGW* | *WSL2*) player_function="mpv.exe" ;;
-                *steamdeck* player_function="flatpak_mpv" ;;
+                *steamdeck*) player_function="flatpak_mpv" ;;
                 *) player_function="mpv" ;;
             esac
             ;;
