@@ -53,6 +53,8 @@ help_info() {
         Specify the video quality
       -v, --vlc
         Use VLC to play the video
+      -m, --mpv
+        Use MPV to play the video
       -V, --version
         Show the version of the script
       -h, --help
@@ -351,6 +353,14 @@ while [ $# -gt 0 ]; do
                 MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
+            esac
+            ;;
+        -m | --mpv)
+            case "$(uname -a)" in
+                *ndroid*) player_function="android_mpv" ;;
+                MINGW* | *WSL2*) player_function="mpv.exe" ;;
+                *steamdeck* player_function="flatpak_mpv" ;;
+                *) player_function="mpv" ;;
             esac
             ;;
         -s | --syncplay)
