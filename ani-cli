@@ -387,6 +387,7 @@ while [ $# -gt 0 ]; do
             case "$(uname -s)" in
                 Darwin*) log show --predicate 'eventMessage contains "ani-cli"' --info ;;
                 Linux*) journalctl -t ani-cli ;;
+                *) die "Logger not implemented for your platform" ;;
             esac
             exit 0
             ;;
