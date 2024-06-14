@@ -207,9 +207,10 @@ Under Startup in Windows Terminal Settings, you may set this profile as the defa
 
 ![windows-terminal-git-bash-4.png](.assets/windows-terminal-git-bash-4.png)
 
-Now restart Windows Terminal. In the Git Bash profile, install `ani-cli` by running the following command.
+Now restart Windows Terminal. In the Git Bash profile, install `ani-cli` by running the following commands.
 
 ```sh
+scoop bucket add extras
 scoop install ani-cli
 ```
 
