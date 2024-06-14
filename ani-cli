@@ -228,7 +228,7 @@ update_history() {
         sed -E "s|^[^\t]+\t${id}\t[^\t]+.*$|${ep_no}\t${id}\t${title}\t${mode}|" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\t%s\n" "$ep_no" "$id" "$title" "$mode">>"${histfile}.new"
+        printf "%s\t%s\t%s\t%s\n" "$ep_no" "$id" "$title" "$mode" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
 }
@@ -424,7 +424,7 @@ esac
 # searching
 case "$search" in
     history)
-        anime_list=$(while IFS=$'\t' read -r ep_no id title mode; do process_hist_entry & done <"$histfile")
+        anime_list=$(while IFS=$(printf '\t') read -r ep_no id title mode; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
