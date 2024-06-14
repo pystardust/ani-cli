@@ -45,6 +45,8 @@ help_info() {
         Download the video instead of playing it
       -D, --delete
         Delete history
+      -l, --logview
+        Show logs
       -s, --syncplay
         Use Syncplay to watch with friends
       -S, --select-nth
@@ -249,6 +251,7 @@ download() {
 }
 
 play_episode() {
+    [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
@@ -320,6 +323,7 @@ allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
+log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
@@ -377,6 +381,13 @@ while [ $# -gt 0 ]; do
         -d | --download) player_function=download ;;
         -D | --delete)
             : >"$histfile"
+            exit 0
+            ;;
+        -l | --logview)
+            case "$(uname -s)" in
+                Darwin*) log show --predicate 'eventMessage contains "ani-cli"' --info ;;
+                Linux*) journalctl -t ani-cli ;;
+            esac
             exit 0
             ;;
         -V | --version) version_info ;;
