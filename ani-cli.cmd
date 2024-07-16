@@ -8,4 +8,6 @@ aria2c --allow-overwrite "https://github.com/git-for-windows/git/releases/downlo
 del "%~dp0\PortableGit.exe"
 SET ani-windows=%~dp0PortableGit\bin\bash.exe
 :next
+IF NOT EXIST "%~dp0ani-cli" aria2c --allow-overwrite "https://github.com/pystardust/ani-cli/raw/master/ani-cli" --dir="%~dp0\"
+IF NOT EXIST "%~dp0ani-cli.1" aria2c --allow-overwrite "https://github.com/pystardust/ani-cli/raw/master/ani-cli.1" --dir="%~dp0\"
 "%ani-windows%" %~dp0ani-cli %*
