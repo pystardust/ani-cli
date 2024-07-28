@@ -106,10 +106,31 @@ update_script() {
     exit 0
 }
 
+where_iina() {
+    # check if iina's symlink is present
+    if [ ! $(which iina) ]; then
+    # set the location of iina-cli to /Appliations directory
+        player_function="/Applications/IINA.app/Contents/MacOS/iina-cli"
+    fi
+    # start iina with the given arguments $1 = allanime_title, $2 = ep_no, $3 = episode
+    nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${1}Episode ${2}" "$3"  2>&1 &
+    # set the player_function back to iina as not to break the rest of the script
+    player_function="iina"
+}
+
 # checks if dependencies are present
 dep_ch() {
     for dep; do
+    # check if iina is the player_function and if iina is installed either in PATH or in /Applications.
+    if [ "$dep " = "iina " ]; then
+        if [ $(which iina) ] || [ -f "/Applications/IINA.app/Contents/MacOS/iina-cli" ]; then
+            player_function="iina";
+        else
+            die "Program \"iina\" not found. Please install it."
+        fi
+    else
         command -v "$dep" >/dev/null || die "Program \"$dep\" not found. Please install it."
+    fi
     done
 }
 
@@ -268,7 +289,7 @@ play_episode() {
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        iina) where_iina "${allanime_title}" "${ep_no}" "$episode";;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
