@@ -108,7 +108,7 @@ update_script() {
 
 where_iina() {
     # check if iina's symlink is present
-    if [ ! $(which iina) ]; then
+    if [ ! "$(which iina)" ]; then
     # set the location of iina-cli to /Appliations directory
         player_function="/Applications/IINA.app/Contents/MacOS/iina-cli"
     fi
@@ -123,7 +123,7 @@ dep_ch() {
     for dep; do
     # check if iina is the player_function and if iina is installed either in PATH or in /Applications.
     if [ "$dep " = "iina " ]; then
-        if [ $(which iina) ] || [ -f "/Applications/IINA.app/Contents/MacOS/iina-cli" ]; then
+        if [ "$(which iina)" ] || [ -f "/Applications/IINA.app/Contents/MacOS/iina-cli" ]; then
             player_function="iina";
         else
             die "Program \"iina\" not found. Please install it."
