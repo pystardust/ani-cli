@@ -278,6 +278,7 @@ play_episode() {
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5
             ;;
+        cb*) nohup "$player_function" copy "$episode" >/dev/null 2>&1 & ;;
         *) nohup "$player_function" "$episode" >/dev/null 2>&1 & ;;
     esac
     replay="$episode"
@@ -361,6 +362,15 @@ while [ $# -gt 0 ]; do
                     player_function="syncplay.exe"
                     ;;
                 *) player_function="syncplay" ;;
+            esac
+            ;;
+        -C | --copyurl) # Sorry for bad SH :3 <3
+            case "$(uname -s)" in
+                MINGW* | *Msys)
+                    export PATH="$PATH":"/c/Users/$(whoami)/scoop/shims" # i hope you have "clipboard" installed using scoop (https://github.com/Slackadays/Clipboard)
+                    player_function="cb.exe"
+                    ;;
+                *) player_function="cb" ;;
             esac
             ;;
         -q | --quality)
