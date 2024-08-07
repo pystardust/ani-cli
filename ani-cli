@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.11"
+version_number="4.8.12"
 
 # UI
 
@@ -41,6 +41,8 @@ help_info() {
     Options:
       -c, --continue
         Continue watching from history
+      -C, --copyurl
+        Copy the currently playing anime URL to clipboard
       -d, --download
         Download the video instead of playing it
       -D, --delete
