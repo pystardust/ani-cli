@@ -508,6 +508,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - fzf - User interface
 - ani-skip (optional)
 - patch - Self updating
+- [clipboard](https://github.com/Slackadays/Clipboard)
 
 ### Ani-Skip
 
