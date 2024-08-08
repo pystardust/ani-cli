@@ -211,7 +211,7 @@ Now restart Windows Terminal. In the Git Bash profile, install `ani-cli` by runn
 
 ```sh
 scoop bucket add extras
-scoop install extras/windows-terminal
+scoop install ani-cli
 ```
 
 Next, install its dependencies.
