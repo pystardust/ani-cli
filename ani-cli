@@ -115,7 +115,7 @@ dep_ch() {
 
 where_iina() {
     [ -n "$ANI_CLI_PLAYER" ] && echo "$ANI_CLI_PLAYER" && return 0
-    [ -n "$(command -v iina)" ] && echo "iina" && return 0
+    command -v iina >/dev/null && echo "iina" && return 0
     [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
     dep_ch iina # exit with formating
 }
