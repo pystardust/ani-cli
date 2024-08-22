@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.11"
+version_number="4.8.12"
 
 # UI
 
@@ -41,6 +41,8 @@ help_info() {
     Options:
       -c, --continue
         Continue watching from history
+		-C, --copy-link
+		  Copy the video link to clipboard
       -d, --download
         Download the video instead of playing it
       -D, --delete
@@ -248,6 +250,51 @@ download() {
     esac
 }
 
+copy_link_termux() {
+    dep_ch termux-clipboard-set
+    termux-clipboard-set -- "$1"
+}
+
+copy_link_darwin() {
+    dep_ch pbcopy
+    printf "%s" "$1" | pbcopy # TODO test pbcopy
+}
+
+copy_link_windows() {
+    deb_cp clip
+    printf "%s" "$1" | clip # TODO test
+}
+
+copy_link_linux() {
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+        dep_ch wl-copy
+        wl-copy -- "$1"
+    elif [ -n "$DISPLAY" ]; then
+        dep_ch xclip
+        printf "%s" "$1" | xclip -selection clipboard
+    else
+        die "Not in a wayland or Xorg session (\$WAYLAND_DISPLAY and \$DISPLAY are both empty)"
+    fi
+}
+
+copy_link_ish() {
+    printf "\033[31mSorry, iSH is not supported due to the author of the copy fuction not being able to find a command for copying text in iSH.\nFor now, you can copy the link manually:\033[0m\n%s" "$1"
+	 die
+}
+
+copy_link() {
+    case "$(uname -a)" in
+        *Darwin*) platform=darwin ;;          # mac OS
+        *ndroid*) platform=termux ;;          # Android OS (termux)
+        *neptune*) platform=linux ;;          # steamdeck OS !! Does wl-copy or xclip work on Steamdeck OS?
+        *MINGW* | *WSL2*) platform=windows ;; # Windows OS 
+        *ish*) platform=ish ;;                # iOS (iSH) !! TODO: find a clipboard util for iSH
+        *) platform=linux ;;                  # Linux OS
+    esac
+	 copy_link_"$platform" "$1"
+	 printf "\033[1;34mLink copied:\033[0m\n%s\n" "$1"
+}
+
 play_episode() {
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
@@ -272,7 +319,7 @@ play_episode() {
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
+        download|copy_link) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
@@ -308,7 +355,7 @@ play() {
         play_episode
     fi
     # moves upto stored positon and deletes to end
-    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
+    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && [ "$player_function" != "copy_link" ] && tput rc && tput ed
 }
 
 # MAIN
@@ -375,6 +422,7 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         -d | --download) player_function=download ;;
+		  -C | --copy-link) player_function=copy_link ;;
         -D | --delete)
             : >"$histfile"
             exit 0
@@ -412,6 +460,7 @@ if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
+	 copy_link) : ;; # clipboard util availability is checked just before copy
     flatpak*)
         dep_ch "flatpak"
         flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
@@ -470,7 +519,7 @@ tput sc
 
 # playback & loop
 play
-[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
+[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] || [ "$player_function" = "copy_link" ] && exit 0
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
     case "$cmd" in

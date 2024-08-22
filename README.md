@@ -508,6 +508,9 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - fzf - User interface
 - ani-skip (optional)
 - patch - Self updating
+- xclip - copy video link on Xorg (optional)
+- wl-clipboard - copy video link on wayland (optional)
+- termux-api - copy video link on termux (optional)
 
 ### Ani-Skip
 
