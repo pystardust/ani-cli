@@ -114,8 +114,8 @@ dep_ch() {
 }
 
 where_iina() {
-    [ -n "$ANI_CLI_PLAYER" ] && echo "$ANI_CLI_PLAYER" && return 0
-    command -v iina >/dev/null && echo "iina" && return 0
+    [ -n "$ANI_CLI_PLAYER" ] && printf "$ANI_CLI_PLAYER" && return 0
+    command -v iina >/dev/null && printf "iina" && return 0
     [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
     dep_ch iina # exit with formating
 }
@@ -329,7 +329,7 @@ mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-    *Darwin*) player_function=$(where_iina) ;;                        # mac OS
+    *Darwin*) player_function="$(where_iina)" ;;                      # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *neptune*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;    # steamdeck OS
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
