@@ -115,6 +115,13 @@ dep_ch() {
     done
 }
 
+where_iina() {
+    [ -n "$ANI_CLI_PLAYER" ] && printf "%s" "$ANI_CLI_PLAYER" && return 0
+    command -v iina >/dev/null && printf "iina" && return 0
+    [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
+    dep_ch iina # exit with formating
+}
+
 # SCRAPING
 
 # extract the video links from response of embed urls, extract mp4 links form m3u8 lists
@@ -180,7 +187,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
     [ -z "$episode" ] && die "Episode not released!"
@@ -271,7 +278,7 @@ play_episode() {
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
@@ -326,7 +333,7 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
+    *Darwin*) player_function="$(where_iina)" ;;                      # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *neptune*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;    # steamdeck OS
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
@@ -430,6 +437,7 @@ case "$player_function" in
         ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
+    *iina*) true ;; # handled out of band in where_iina
     *) dep_ch "$player_function" ;;
 esac
 
