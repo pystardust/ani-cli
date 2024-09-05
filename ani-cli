@@ -45,6 +45,8 @@ help_info() {
         Download the video instead of playing it
       -D, --delete
         Delete history
+      -f, --flatpak-mpv
+        Use mpv (flatpak) to play the video
       -l, --logview
         Show logs
       -s, --syncplay
@@ -364,6 +366,8 @@ while [ $# -gt 0 ]; do
                 *) player_function="vlc" ;;
             esac
             ;;
+        -f | --flatpak-mpv)
+            player_function="flatpak_mpv" ;;
         -s | --syncplay)
             case "$(uname -s)" in
                 Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
