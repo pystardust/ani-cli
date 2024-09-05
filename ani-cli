@@ -147,6 +147,7 @@ get_links() {
 | >|' | sed "s|>|>${relative_link}|g" | sort -nr
             fi
             ;;
+
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
@@ -189,7 +190,7 @@ get_episode_url() {
     resp=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4"
+    providers="1 2 3 4 5"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
@@ -333,9 +334,9 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-allanime_refr="https://allanime.to"
+allanime_refr="https://allmanga.to"
 allanime_base="allanime.day"
-allanime_api="https://api.${allanime_base}"
+allanime_api="https://api.${allanime_base}" #api is down apparently
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
