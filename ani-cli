@@ -147,7 +147,6 @@ get_links() {
 | >|' | sed "s|>|>${relative_link}|g" | sort -nr
             fi
             ;;
-
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
