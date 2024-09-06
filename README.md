@@ -524,12 +524,12 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 
 ## FAQ
 - Can i change subtitle language or turn them off? - No, the subtitles are baked into the video.
-- Can i change dub language? - No
+- Can i change dub language? - No.
 - Can i change media source? - No (unless you can scrape that source yourself).
 - How do i use vlc? - Use `--vlc` or `export ANI_CLI_PLAYER=vlc`.
 - Is there a way to adjust resolution? - `-q resolution`, for example `ani-cli -q 1080`.
 - How can i download? - `-d`, it will download into your working directory.
-- How can i bulk download? - `-d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`
+- How can i bulk download? - `-d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
 
 ## Homies
 
