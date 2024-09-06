@@ -41,6 +41,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies-1)
   - [Ani-Skip](#ani-skip)
+- [FAQ](#faq)
 - [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
@@ -520,6 +521,15 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 **Warning:** For now, ani-skip does **not** seem to work under Windows.
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch. Try using the `--skip-title <title>` command line argument. (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
+
+## FAQ
+- Can i change subtitle language or turn them off? - No, the subtitles are baked into the video.
+- Can i change dub language? - No
+- Can i change media source? - No (unless you can scrape that source yourself).
+- How do i use vlc? - Use `--vlc` or `export ANI_CLI_PLAYER=vlc`.
+- Is there a way to adjust resolution? - `-q resolution`, for example `ani-cli -q 1080`.
+- How can i download? - `-d`, it will download into your working directory.
+- How can i bulk download? - `-d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`
 
 ## Homies
 
