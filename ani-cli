@@ -77,6 +77,7 @@ help_info() {
         Display a countdown to the next episode
       -U, --update
         Update the script
+      --completion 
     Some example usages:
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
@@ -108,6 +109,38 @@ update_script() {
     exit 0
 }
 
+print_completion() {
+    cat << 'EOF'
+# Enable autocompletion
+autoload -U compinit && compinit
+
+_ani-cli() {
+  _arguments \
+    '(-c --continue)'{-c,--continue}'[Continue watching from history]' \
+    '(-d --download)'{-d,--download}'[Download the video instead of playing it]' \
+    '(-D --debug)'{-D,--debug}'[Enable debug mode]' \
+    '(-s --syncplay)'{-s,--syncplay}'[Use Syncplay to watch with friends]' \
+    '(-S --select-nth)'{-S,--select-nth}'[Select nth entry]' \
+    '(-q --quality)'{-q,--quality}'[Specify the video quality]' \
+    '(-v --vlc)'{-v,--vlc}'[Use VLC to play the video]' \
+    '(-V --version)'{-V,--version}'[Show the version of the script]' \
+    '(-h --help)'{-h,--help}'[Show help this help message]' \
+    '(-e --episode)'{-e,--episode}'[Specify the episode to watch]' \
+    '(-e --episode)'{-r,--range}'[Specify the range of episodes to watch]' \
+    '--dub[Dub the video]' \
+    '--rofi[Use rofi instead of fzf]' \
+    '--skip[Use ani-skip to skip the intro of the episode (mpv only)]' \
+    "--no-detach[ Don't detach the player (useful for in-terminal playback, mpv only)]" \
+    '(--no-detach)--exit-after-play[Exit after the video is played]' \
+    '--skip-title[Use given title as ani-skip query]' \
+    '(-N --nextep-countdown)'{-N,--nextep-countdown}'[Countdown to next episode]' \
+    '(-U --update)'{-U,--update}'[Update the script]'
+}
+
+# Register the completion function for `ani-cli`
+compdef _ani-cli ani-cli
+EOF
+}
 # checks if dependencies are present
 dep_ch() {
     for dep; do
@@ -418,6 +451,7 @@ while [ $# -gt 0 ]; do
             ;;
         -N | --nextep-countdown) search=nextep ;;
         -U | --update) update_script ;;
+        --completion) print_completion && die ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
