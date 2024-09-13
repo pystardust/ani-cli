@@ -77,7 +77,8 @@ help_info() {
         Display a countdown to the next episode
       -U, --update
         Update the script
-      --completion 
+      --completion
+        Generates a completion script for any supported shells at the moment only 'bash' and 'zsh' are supported.
     Some example usages:
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
@@ -110,37 +111,124 @@ update_script() {
 }
 
 print_completion() {
-    cat << 'EOF'
-# Enable autocompletion
+    # Detect the current shell
+    detect_shell() {
+        local shell_name
+        shell_name=$(basename "$SHELL")
+
+        case "$shell_name" in
+            bash)
+                echo "bash"
+                ;;
+            zsh)
+                echo "zsh"
+                ;;
+            *)
+                echo "unsupported"
+                ;;
+        esac
+    }
+
+    zsh_completion() {
+        cat << 'EOF'
+# Enable autocompletion for zsh
 autoload -U compinit && compinit
 
 _ani-cli() {
-  _arguments \
-    '(-c --continue)'{-c,--continue}'[Continue watching from history]' \
-    '(-d --download)'{-d,--download}'[Download the video instead of playing it]' \
-    '(-D --debug)'{-D,--debug}'[Enable debug mode]' \
-    '(-s --syncplay)'{-s,--syncplay}'[Use Syncplay to watch with friends]' \
-    '(-S --select-nth)'{-S,--select-nth}'[Select nth entry]' \
-    '(-q --quality)'{-q,--quality}'[Specify the video quality]' \
-    '(-v --vlc)'{-v,--vlc}'[Use VLC to play the video]' \
-    '(-V --version)'{-V,--version}'[Show the version of the script]' \
-    '(-h --help)'{-h,--help}'[Show help this help message]' \
-    '(-e --episode)'{-e,--episode}'[Specify the episode to watch]' \
-    '(-e --episode)'{-r,--range}'[Specify the range of episodes to watch]' \
-    '--dub[Dub the video]' \
-    '--rofi[Use rofi instead of fzf]' \
-    '--skip[Use ani-skip to skip the intro of the episode (mpv only)]' \
-    "--no-detach[ Don't detach the player (useful for in-terminal playback, mpv only)]" \
-    '(--no-detach)--exit-after-play[Exit after the video is played]' \
-    '--skip-title[Use given title as ani-skip query]' \
-    '(-N --nextep-countdown)'{-N,--nextep-countdown}'[Countdown to next episode]' \
-    '(-U --update)'{-U,--update}'[Update the script]'
+    _arguments \
+        '(-c --continue)'{-c,--continue}'[Continue watching from history]' \
+        '(-d --download)'{-d,--download}'[Download the video instead of playing it]' \
+        '(-D --debug)'{-D,--debug}'[Enable debug mode]' \
+        '(-s --syncplay)'{-s,--syncplay}'[Use Syncplay to watch with friends]' \
+        '(-S --select-nth)'{-S,--select-nth}'[Select nth entry]' \
+        '(-q --quality)'{-q,--quality}'[Specify the video quality]' \
+        '(-v --vlc)'{-v,--vlc}'[Use VLC to play the video]' \
+        '(-V --version)'{-V,--version}'[Show the version of the script]' \
+        '(-h --help)'{-h,--help}'[Show help this help message]' \
+        '(-e --episode)'{-e,--episode}'[Specify the episode to watch]' \
+        '(-e --episode)'{-r,--range}'[Specify the range of episodes to watch]' \
+        '--dub[Dub the video]' \
+        '--rofi[Use rofi instead of fzf]' \
+        '--skip[Use ani-skip to skip the intro of the episode (mpv only)]' \
+        "--no-detach[ Don't detach the player (useful for in-terminal playback, mpv only)]" \
+        '(--no-detach)--exit-after-play[Exit after the video is played]' \
+        '--skip-title[Use given title as ani-skip query]' \
+        '(-N --nextep-countdown)'{-N,--nextep-countdown}'[Countdown to next episode]' \
+        '(-U --update)'{-U,--update}'[Update the script]'
 }
 
 # Register the completion function for `ani-cli`
 compdef _ani-cli ani-cli
 EOF
+    }
+
+    bash_completion() {
+        cat << 'EOF'
+#!/bin/bash
+
+_ani_cli_autocomplete() {
+    local cur prev words cword
+    _init_completion || return
+
+    # Define the main options
+    local main_options=(
+        '-c --continue Continue watching from history'
+        '-d --download Download the video instead of playing it'
+        '-D --debug Enable debug mode'
+        '-s --syncplay Use Syncplay to watch with friends'
+        '-S --select-nth Select nth entry'
+        '-q --quality Specify the video quality'
+        '-v --vlc Use VLC to play the video'
+        '-V --version Show the version of the script'
+        '-h --help Show help message'
+        '-e --episode Specify the episode to watch'
+        '--dub Dub the video'
+        '--rofi Use rofi instead of fzf'
+        '--skip Use ani-skip to skip the intro of the episode (mpv only)'
+        '--no-detach Do not detach the player (useful for in-terminal playback, mpv only)'
+        '-N --nextep-countdown Countdown to next episode'
+        '-U --update Update the script'
+    )
+
+    # Define options that depend on specific flags
+    local conditional_options=()
+
+    # Check for the presence of '--no-detach' flag to enable '--exit-after-play'
+    if [[ "${words[@]}" =~ "--no-detach" ]]; then
+        conditional_options+=('--exit-after-play[Exit after the video is played]')
+    fi
+
+    # Check for the presence of '-e' or '--episode' flag to enable '-r' and '--range'
+    if [[ "${words[@]}" =~ "-e" || "${words[@]}" =~ "--episode" ]]; then
+        conditional_options+=('-r[Specify the range of episodes to watch]' '--range[Specify the range of episodes to watch]')
+    fi
+
+    # Combine the main options and conditional options
+    COMPREPLY=($(compgen -W "${main_options[*]} ${conditional_options[*]}" -- "$cur"))
 }
+
+# Register the completion function for `ani-cli`
+complete -F _ani_cli_autocomplete ani-cli
+EOF
+    }
+
+    # Apply the appropriate setup based on the detected shell
+    shell=$(detect_shell)
+
+    case "$shell" in
+        bash)
+            bash_completion
+            ;;
+        zsh)
+            zsh_completion
+            ;;
+        *)
+            echo "Autocompletion is not yet supported for $shell. Sorry!"
+            ;;
+    esac
+}
+
+print_completion
 # checks if dependencies are present
 dep_ch() {
     for dep; do
