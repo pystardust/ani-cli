@@ -505,14 +505,16 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 
 To add tab completions using bash run the following command inside the ani-cli directory
 ```
-echo "source /path/to/ani-cli/_ani-cli-bash" >> ~/.bashrc
+cp _ani-cli-bash /path/to/your/completions
+echo "source /path/to/your/completions/_ani-cli-bash" >> ~/.bashrc
 ```
 
 ### zsh
 
 To add tab completions using zsh run the following command inside the ani-cli directory
 ```
-echo "source /path/to/ani-cli/_ani-cli-zsh" >> ~/.zshrc
+cp _ani-cli-zsh /path/to/your/completions
+echo "source /path/to/your/completions/_ani-cli-zsh" >> ~/.zshrc
 ```
 
 ## Dependencies
