@@ -39,6 +39,9 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-FreeBSD)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
+- [Completion](#completion)
+  - [bash](#bash)
+  - [zsh](#zsh)
 - [Dependencies](#dependencies-1)
   - [Ani-Skip](#ani-skip)
 - [FAQ](#faq)
@@ -495,6 +498,22 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 ```
 
 </details>
+
+## Completion
+
+### bash
+
+To add tab completions using bash run the following command inside the ani-cli directory
+```
+echo "source /path/to/ani-cli/_ani-cli-bash" >> ~/.bashrc
+```
+
+### zsh
+
+To add tab completions using zsh run the following command inside the ani-cli directory
+```
+echo "source /path/to/ani-cli/_ani-cli-zsh" >> ~/.zshrc
+```
 
 ## Dependencies
 
