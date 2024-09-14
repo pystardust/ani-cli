@@ -1,0 +1,45 @@
+#!/bin/bash
+
+_ani_cli_autocomplete() {
+    local cur prev opts
+
+    # Get the current and previous words in the command line
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Define the main options
+    opts="
+        -c --continue
+        -d --download
+        -D --delete
+        -s --syncplay
+        -S --select-nth
+        -q --quality
+        -v --vlc
+        -V --version
+        -h --help
+        -e --episode
+        --dub
+        --rofi
+        --skip
+        --no-detach
+        -N --nextep-countdown
+        -U --update
+    "
+
+    # Check for conditional options
+    if [[ "${COMP_WORDS[@]}" =~ "--no-detach" ]]; then
+        opts+=" --exit-after-play"
+    fi
+
+    if [[ "${COMP_WORDS[@]}" =~ "-e" || "${COMP_WORDS[@]}" =~ "--episode" ]]; then
+        opts+=" -r --range"
+    fi
+
+    # Use `compgen` to generate the options based on the current word
+    COMPREPLY=($(compgen -W "${opts}" -- "$cur"))
+}
+
+# Register the completion function for `ani-cli`
+complete -F _ani_cli_autocomplete ani-cli
