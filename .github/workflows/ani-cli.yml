@@ -4,8 +4,11 @@ on:
     branches:
       - master
   pull_request:
-    paths: 
+    paths:
       - "**ani-cli"
+    paths-ignore:
+      - "_ani-cli-bash"
+      - "_ani-cli-zsh"
 
 jobs:
   sh-checker:
