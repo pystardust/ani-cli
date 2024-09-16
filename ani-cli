@@ -339,14 +339,17 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-    *Darwin*) player_function="$(where_iina)" ;;                      # mac OS
+    *Darwin*)                                                         # mac OS
+        player_function="$(where_iina)"
+        [ $? -eq 0 ] || exit $?
+        ;;
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *) 
-      player_function="${ANI_CLI_PLAYER:-$(where_mpv)}"               # Linux OS
-      [ $? -eq 0 ] || exit $?
-      ;;
+    *)                                                                # Linux OS
+        player_function="${ANI_CLI_PLAYER:-$(where_mpv)}"
+        [ $? -eq 0 ] || exit $?
+        ;;
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
