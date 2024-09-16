@@ -12,7 +12,7 @@ jobs:
     name: Shellcheck + Shfmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Run the sh-checker
       uses: luizm/action-sh-checker@master
       env:
@@ -23,7 +23,7 @@ jobs:
     name: Executable Bit
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: test exec bit
       run: test -x "./ani-cli"
 
@@ -31,6 +31,6 @@ jobs:
     name: No Awk Allowed
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: verify that noone added awk
       run: '! grep awk "./ani-cli"'
