@@ -45,8 +45,6 @@ help_info() {
         Download the video instead of playing it
       -D, --delete
         Delete history
-      -f, --flatpak-mpv
-        Use mpv (flatpak) to play the video
       -l, --logview
         Show logs
       -s, --syncplay
@@ -122,6 +120,12 @@ where_iina() {
     command -v iina >/dev/null && printf "iina" && return 0
     [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
     dep_ch iina # exit with formating
+}
+
+where_mpv() {
+    command -v "$ANI_CLI_PLAYER" >/dev/null && printf "%s" "$ANI_CLI_PLAYER" && return 0
+    command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
+    dep_ch mpv # exit with formating
 }
 
 # SCRAPING
@@ -337,10 +341,12 @@ quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
     *Darwin*) player_function="$(where_iina)" ;;                      # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
-    *neptune*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;    # steamdeck OS
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
+    *) 
+      player_function="${ANI_CLI_PLAYER:-$(where_mpv)}"               # Linux OS
+      [ $? -eq 0 ] || exit $?
+      ;;
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
@@ -365,9 +371,6 @@ while [ $# -gt 0 ]; do
                 *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
-            ;;
-        -f | --flatpak-mpv)
-            player_function="flatpak_mpv"
             ;;
         -s | --syncplay)
             case "$(uname -s)" in
@@ -436,13 +439,10 @@ if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    flatpak*)
-        dep_ch "flatpak"
-        flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
-        ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     *iina*) true ;; # handled out of band in where_iina
+    *mpv*) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
 
