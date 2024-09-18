@@ -116,16 +116,13 @@ dep_ch() {
 }
 
 where_iina() {
-    [ -n "$ANI_CLI_PLAYER" ] && printf "%s" "$ANI_CLI_PLAYER" && return 0
-    command -v iina >/dev/null && printf "iina" && return 0
     [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
-    dep_ch iina # exit with formating
+    printf "%s" "iina" && return 0
 }
 
 where_mpv() {
-    command -v "mpv" >/dev/null && printf "%s" "mpv" && return 0
     command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
-    dep_ch mpv # exit with formating
+    printf "%s" "mpv" && return 0
 }
 
 # SCRAPING
@@ -339,17 +336,11 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a)" in
-    *Darwin*)                                                         # mac OS
-        player_function="$(where_iina)"
-        [ $? -eq 0 ] || exit $?
-        ;;
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *)                                                                # Linux OS
-        player_function="${ANI_CLI_PLAYER:-$(where_mpv)}"
-        [ $? -eq 0 ] || exit $?
-        ;;
+    *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;           # Linux OS
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
@@ -444,8 +435,8 @@ case "$player_function" in
     download) dep_ch "ffmpeg" "aria2c" ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    *iina*) true ;; # handled out of band in where_iina
-    *mpv*) true ;; # handled out of band in where_mpv
+    *IINA*) true ;; # handled out of band in where_iina
+    flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
 
