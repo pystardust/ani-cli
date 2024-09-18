@@ -123,7 +123,7 @@ where_iina() {
 }
 
 where_mpv() {
-    command -v "$ANI_CLI_PLAYER" >/dev/null && printf "%s" "$ANI_CLI_PLAYER" && return 0
+    command -v "mpv" >/dev/null && printf "%s" "mpv" && return 0
     command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
     dep_ch mpv # exit with formating
 }
