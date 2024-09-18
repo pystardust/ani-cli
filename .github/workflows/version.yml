@@ -2,7 +2,7 @@ name: 'ani-cli checks'
 on:
   pull_request:
     paths: 
-      - "**ani-cli"
+      - "/ani-cli"
       
 jobs:
   version-bump:
