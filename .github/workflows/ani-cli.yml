@@ -5,10 +5,7 @@ on:
       - master
   pull_request:
     paths:
-      - "**ani-cli"
-    paths-ignore:
-      - "_ani-cli-bash"
-      - "_ani-cli-zsh"
+      - "/ani-cli"
 
 jobs:
   sh-checker:
