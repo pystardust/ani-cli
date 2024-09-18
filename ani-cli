@@ -435,7 +435,7 @@ case "$player_function" in
     download) dep_ch "ffmpeg" "aria2c" ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    *IINA*) true ;; # handled out of band in where_iina
+    *IINA*) true ;;      # handled out of band in where_iina
     flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
