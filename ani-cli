@@ -193,7 +193,11 @@ get_episode_url() {
     links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
-    [ -z "$episode" ] && die "Episode not released!"
+    if echo "$ep_list" | grep -q "^$ep_no$"; then
+        [ -z "$episode" ] && die "Episode is released, but no valid sources!"
+    else
+        [ -z "$episode" ] && die "Episode not released!"
+    fi
 }
 
 # search the query and give results
