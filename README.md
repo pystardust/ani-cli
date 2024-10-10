@@ -489,7 +489,7 @@ rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 ```
 * iOS
-```
+```sh
 rm -rf /usr/local/bin/ani-cli
 ```
 To uninstall other dependencies:
@@ -504,7 +504,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 ### bash
 
 To add tab completions using bash run the following command inside the ani-cli directory
-```
+```sh
 cp _ani-cli-bash /path/to/your/completions
 echo "source /path/to/your/completions/_ani-cli-bash" >> ~/.bashrc
 ```
@@ -512,11 +512,19 @@ echo "source /path/to/your/completions/_ani-cli-bash" >> ~/.bashrc
 ### zsh
 
 To add tab completions using zsh run the following command inside the ani-cli directory
-```
+```sh
 cp _ani-cli-zsh /path/to/your/completions
 echo "source /path/to/your/completions/_ani-cli-zsh" >> ~/.zshrc
 ```
 
+### Cross-Shell (with [Carapace](https://github.com/carapace-sh/carapace))
+
+See the [setup](https://carapace-sh.github.io/carapace-bin/setup.html) guide on Carapace for your specific shell. 
+To add tab completions using zsh run the following command inside the ani-cli directory
+```sh
+cp ani-cli.toml $HOME/.config/carapace/specs/ani-cli.yaml
+# Restart your shell for good measure
+``````
 ## Dependencies
 
 - grep
