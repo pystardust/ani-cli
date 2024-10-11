@@ -519,7 +519,7 @@ echo "source /path/to/your/completions/_ani-cli-zsh" >> ~/.zshrc
 
 ### Cross-Shell (with [Carapace](https://github.com/carapace-sh/carapace))
 
-See the [setup](https://carapace-sh.github.io/carapace-bin/setup.html) guide on Carapace for your specific shell. 
+See the [setup](https://carapace-sh.github.io/carapace-bin/setup.html) guide on Carapace for your specific shell.
 To add tab completions using zsh run the following command inside the ani-cli directory
 ```sh
 cp ani-cli.toml $HOME/.config/carapace/specs/ani-cli.yaml
@@ -553,7 +553,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 
 ## FAQ
 <details>
-	
+
 * Can I change subtitle language or turn them off? - No, the subtitles are baked into the video.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
