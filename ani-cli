@@ -335,7 +335,7 @@ mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
-case "$(uname -a)" in
+case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
@@ -359,7 +359,7 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
-            case "$(uname -a)" in
+            case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
