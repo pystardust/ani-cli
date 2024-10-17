@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.9.3"
+version_number="4.9.4"
 
 # UI
 
@@ -201,7 +201,11 @@ get_episode_url() {
     links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
-    [ -z "$episode" ] && die "Episode not released!"
+    if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
+        [ -z "$episode" ] && die "Episode is released, but no valid sources!"
+    else
+        [ -z "$episode" ] && die "Episode not released!"
+    fi
 }
 
 # search the query and give results
@@ -209,7 +213,7 @@ search_anime() {
     search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
 
     curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
-|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p"
+| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
 }
 
 time_until_next_ep() {
@@ -245,7 +249,7 @@ process_hist_entry() {
 
 update_history() {
     if grep -q -- "$id" "$histfile"; then
-        sed -E "s|^[^\t]+\t${id}\t[^\t]+$|${ep_no}\t${id}\t${title}|" "$histfile" >"${histfile}.new"
+        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
         printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
