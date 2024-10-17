@@ -573,3 +573,5 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [redqu](https://github.com/port19x/redqu):  A media centric reddit client (Clojure)
 * [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
 * [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go)
+* [Curd](https://github.com/Wraient/curd): A CLI tool to watch anime with Anilist, Discord RPC, Skip Intro Outro (Python)
+- [FastAnime](https://github.com/Benex254/FastAnime): browser anime experience from the terminal (Python)
