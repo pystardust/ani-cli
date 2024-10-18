@@ -218,7 +218,7 @@ search_anime() {
 
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
-    avoids_reencoding="$(printf "%s" "$1" |sed 's/+/ /g')"
+    avoids_reencoding="$(printf "%s" "$1" | sed 's/+/ /g')"
     curl -s -G "$animeschedule/api/v3/anime" --data-urlencode "q=$avoids_reencoding" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
         data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
         status="Ongoing"
