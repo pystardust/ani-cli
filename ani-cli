@@ -27,16 +27,16 @@ nth() {
 }
 
 die() {
-    printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
+    printf "\33[2K\r\033[1;31m[error]\033[0m \033[1;37m%s\033[0m\n" "$*" >&2
     exit 1
 }
 
 info() {
-    printf "\33[2K\r\033[1;32m%s\033[0m\n" "$*" >&1
+    printf "\33[2K\r\033[1;32m[Info]\033[0m \033[1;37m%s\033[0m\n" "$*" >&1
 }
 
 notice() {
-    printf "\33[2K\r\033[1;33m%s\033[0m\n" "$*" >&1
+    printf "\33[2K\r\033[1;33m[Notice]\033[0m \033[1;37m%s\033[0m\n" "$*" >&1
 }
 
 help_info() {
@@ -107,10 +107,10 @@ update_script() {
     update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
-        printf "Script is up to date :)\n"
+        info "Script is up to date :)\n"
     else
         if printf '%s\n' "$update" | patch "$0" -; then
-            printf "Script has been updated\n"
+            info "Script has been updated\n"
         else
             die "Can't update for some reason!"
         fi
@@ -458,15 +458,15 @@ while [ $# -gt 0 ]; do
 done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
-printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+info "Checking dependencies..."
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
-    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
+    android*) notice "Checking of players on Android is disabled" ;;
+    *iSH*) info "Checking of players on iOS is disabled" ;;
     *IINA*) true ;;      # handled out of band in where_iina
     flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
