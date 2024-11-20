@@ -27,16 +27,8 @@ nth() {
 }
 
 die() {
-    printf "\33[2K\r\033[1;31m[error]\033[0m \033[1;37m%s\033[0m\n" "$*" >&2
+    printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
     exit 1
-}
-
-info() {
-    printf "\33[2K\r\033[1;32m[Info]\033[0m \033[1;37m%s\033[0m\n" "$*" >&1
-}
-
-notice() {
-    printf "\33[2K\r\033[1;33m[Notice]\033[0m \033[1;37m%s\033[0m\n" "$*" >&1
 }
 
 help_info() {
