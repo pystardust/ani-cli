@@ -221,8 +221,8 @@ get_episode_url() {
 # search the query and give results
 search_anime() {
     language="${2:-englishName}"
-    [[ "$language" == "jp" ]] && language="nativeName"
-    [[ "$language" == "jl" ]] && language="name"
+    [ "$language" = "jp" ] && language="nativeName"
+    [ "$language" = "jl" ] && language="name"
 
     search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id $language availableEpisodes __typename       }    }}"
 
@@ -449,7 +449,7 @@ while [ $# -gt 0 ]; do
         -L | --language)
             lang="$2"
             [ $# -lt 2 ] && die "Expecting 1 argument: specify language (e.g., 'jp' or 'jl')."
-            [[ "$lang" == "jp" || "$lang" == "jl" ]] || die "Invalid language! Use 'jp' or 'jl'."
+            [ "$lang" = "jp" || "$lang" = "jl" ] || die "Invalid language! Use 'jp' or 'jl'."
             shift
             ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
