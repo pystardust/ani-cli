@@ -155,7 +155,7 @@ get_links() {
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
-# innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
+# initialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
 provider_init() {
     provider_name=$1
     provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
@@ -332,7 +332,7 @@ play() {
     else
         play_episode
     fi
-    # moves upto stored positon and deletes to end
+    # moves up to stored position and deletes to end
     [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
 
@@ -496,7 +496,7 @@ esac
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
-# stores the positon of cursor
+# stores the position of cursor
 tput sc
 
 # playback & loop

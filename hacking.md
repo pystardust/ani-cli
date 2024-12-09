@@ -3,7 +3,7 @@ Ani-cli is set up to scrape one platform - currently allanime. Supporting multip
 
 However ani-cli being open-source and the pirate anime streaming sites being so similar you can hack ani-cli to support any site that follows a few conventions.
 
-## Prequisites
+## Prerequisites
 Here's the of skills you'll need and the guide will take for granted:
 - basic shell scripting
 - understanding of http(s) requests and proficiency with curl
@@ -33,7 +33,7 @@ An adblocker can help with reducing traffic from the site, but beware of extensi
 
 Once you have the pages (urls) that you're interested in, it's easier to inspect them from less/an editor.
 The debugger's inspector can help you with finding what's what but finding patterns/urls is much easier in an editor.
-Additionally the debugger doesn't always show you the html faithfully - I've experineced some escape sequences being rendered, capitalization changing - so be sure you see the response of the servers in raw format before you write your regexes.
+Additionally the debugger doesn't always show you the html faithfully - I've experienced some escape sequences being rendered, capitalization changing - so be sure you see the response of the servers in raw format before you write your regexes.
 
 ### Core concepts
 If you navigate the site normally from the browser, you'll see that each anime is represented with an URL that compromises from an ID (that identifies a series/season of series) and an episode number.
@@ -50,7 +50,7 @@ Just try searching for a few series and see how the URL changes (most of the tim
 If the site uses a POST request or a more roundabout way, use the debugger to analyze the traffic.
 
 Once you figured out how searching works, you'll have to replicate it in the `search_anime` function.
-The `curl` in this function is responsible for the search request, and the following `sed` regexes mold the respons into many lines of `id\ttitle` format.
+The `curl` in this function is responsible for the search request, and the following `sed` regexes mold the response into many lines of `id\ttitle` format.
 The reason for this is the `nth` function, see it for more details.
 You'll have to change some variables in the process (eg. allanime_base) too.
 
@@ -83,7 +83,7 @@ From here they are separated and parsed by `provider_init` and the first half on
 Some sites (like allanime) have these urls not in plaintext but "encrypted". The decrypt allanime function does this post-processing, it might need to be changed or discarded completely.
 
 If there's only one embed source, the `generate links..` block can be reduced to a single call to `generate_link`.
-The current structure does the agregation of many providers asynchronously, but this is not needed if there's only one source.
+The current structure does the aggregation of many providers asynchronously, but this is not needed if there's only one source.
 
 ### Extracting the media links
 
