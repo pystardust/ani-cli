@@ -110,6 +110,27 @@ Consider using the 9999 ebuild.
 sudo emerge -a =app-misc/ani-cli-9999
 ```
 
+</details><details><summary>NixOS and Nix</summary>
+
+Nixpkgs provides the `pkgs.ani-cli` attribute which can be overrided to support multiple options as demonstrated below. By default, `pkgs.ani-cli` only provides mpv support.
+
+```nix
+packages =
+    let
+        custom-ani-cli = pkgs.ani-cli.override {
+            withMpv = true;
+            withVlc = true;
+            withIina = true; # for macOS nix users
+            chromecastSupport = true;
+            syncSupport = true;
+        };
+    in
+    with pkgs; [
+        custom-ani-cli
+        ani-skip # ani-skip can also be installed (mpv only)
+    ];
+```
+
 </details><details><summary>OpenSuse</summary>
 
 On Suse the provided MPV and VLC packages are missing features that are used by ani-cli. The only required is the "Only Essentials" repository which has versions for each Suse release.
@@ -545,7 +566,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 
 ## FAQ
 <details>
-	
+
 * Can I change subtitle language or turn them off? - No, the subtitles are baked into the video.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
