@@ -292,6 +292,7 @@ play_episode() {
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+        android_mpvkt) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n live.mehiz.mpvkt/live.mehiz.mpvkt.ui.player.PlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
