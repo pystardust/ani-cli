@@ -2,14 +2,14 @@ name: 'ani-cli checks'
 on:
   pull_request:
     paths: 
-      - "**ani-cli"
+      - "/ani-cli"
       
 jobs:
   version-bump:
     name: Version Bump
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: check version bump
