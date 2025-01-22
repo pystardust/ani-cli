@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.9.6"
+version_number="4.9.7"
 
 # UI
 
@@ -318,6 +318,10 @@ play() {
     [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
     [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
     line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    if [ "$ep_no" = "all" ]; then
+        start=1
+        end=$(printf "%s" "$ep_list" | tail -n1)
+    fi
     if [ "$line_count" != 1 ] || [ -n "$start" ]; then
         [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
         [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
