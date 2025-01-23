@@ -350,7 +350,7 @@ quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv}" ;;     # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;           # Linux OS
 esac
