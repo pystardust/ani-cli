@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.8.1"
+version_number="4.9.6"
 
 # UI
 
@@ -45,6 +45,8 @@ help_info() {
         Download the video instead of playing it
       -D, --delete
         Delete history
+      -l, --logview
+        Show logs
       -s, --syncplay
         Use Syncplay to watch with friends
       -S, --select-nth
@@ -67,8 +69,12 @@ help_info() {
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
         Don't detach the player (useful for in-terminal playback, mpv only)
+      --exit-after-play
+        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
+      -N, --nextep-countdown
+        Display a countdown to the next episode
       -U, --update
         Update the script
     Some example usages:
@@ -109,9 +115,19 @@ dep_ch() {
     done
 }
 
+where_iina() {
+    [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
+    printf "%s" "iina" && return 0
+}
+
+where_mpv() {
+    command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
+    printf "%s" "mpv" && return 0
+}
+
 # SCRAPING
 
-# extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
+# extract the video links from response of embed urls, extract mp4 links form m3u8 lists
 get_links() {
     episode_link="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent" | sed 's|},{|\
 |g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
@@ -139,7 +155,7 @@ get_links() {
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
-# innitialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
+# initialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
 provider_init() {
     provider_name=$1
     provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
@@ -182,10 +198,14 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d' | sort -g -r -s)
     rm -r "$cache_dir"
     episode=$(select_quality "$quality")
-    [ -z "$episode" ] && die "Episode not released!"
+    if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
+        [ -z "$episode" ] && die "Episode is released, but no valid sources!"
+    else
+        [ -z "$episode" ] && die "Episode not released!"
+    fi
 }
 
 # search the query and give results
@@ -193,7 +213,20 @@ search_anime() {
     search_gql="query(        \$search: SearchInput        \$limit: Int        \$page: Int        \$translationType: VaildTranslationTypeEnumType        \$countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: \$search        limit: \$limit        page: \$page        translationType: \$translationType        countryOrigin: \$countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}"
 
     curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
-|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"([^\"]*)\".*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p"
+| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
+}
+
+time_until_next_ep() {
+    animeschedule="https://animeschedule.net"
+    curl -s -G "$animeschedule/api/v3/anime" --data "q=$1" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
+        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
+        status="Ongoing"
+        color="33"
+        printf "%s\n" "$data"
+        ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Finished" && color="32"
+        printf "Status:  \033[1;%sm%s\033[0m\n---\n" "$color" "$status"
+    done
+    exit 0
 }
 
 # get the episodes list of the selected anime
@@ -208,13 +241,15 @@ episodes_list() {
 
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
+    latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
+    title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
 update_history() {
     if grep -q -- "$id" "$histfile"; then
-        sed -E "s/^[^\t]+\t${id}\t/${ep_no}\t${id}\t/" "$histfile" >"${histfile}.new"
+        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
         printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
@@ -238,8 +273,8 @@ download() {
 }
 
 play_episode() {
-    aniskip_title="${skip_title:-${title}}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip "$aniskip_title" "$ep_no")"
+    [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
@@ -247,10 +282,18 @@ play_episode() {
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*) $([ "$no_detach" = 0 ] && echo "nohup") "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        mpv*)
+            if [ "$no_detach" = 0 ]; then
+                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+            else
+                "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                mpv_exitcode=$?
+                [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
+            fi
+            ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        iina) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
@@ -289,7 +332,7 @@ play() {
     else
         play_episode
     fi
-    # moves upto stored positon and deletes to end
+    # moves up to stored position and deletes to end
     [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
 
@@ -297,22 +340,23 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-allanime_refr="https://allanime.to"
+allanime_refr="https://allmanga.to"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
+log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
-case "$(uname -a)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-iina}" ;;            # mac OS
+case "$(uname -a | cut -d " " -f 1,3-)" in
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
-    *steamdeck*) player_function="${ANI_CLI_PLAYER:-flatpak_mpv}" ;;  # steamdeck OS
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-mpv}" ;;                    # Linux OS
+    *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;           # Linux OS
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
+exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 # shellcheck disable=SC2154
@@ -327,7 +371,7 @@ search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
-            case "$(uname -a)" in
+            case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
@@ -360,6 +404,14 @@ while [ $# -gt 0 ]; do
             : >"$histfile"
             exit 0
             ;;
+        -l | --logview)
+            case "$(uname -s)" in
+                Darwin*) log show --predicate 'process == "logger"' ;;
+                Linux*) journalctl -t ani-cli ;;
+                *) die "Logger not implemented for your platform" ;;
+            esac
+            exit 0
+            ;;
         -V | --version) version_info ;;
         -h | --help) help_info ;;
         -e | --episode | -r | --range)
@@ -370,6 +422,7 @@ while [ $# -gt 0 ]; do
             ;;
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
+        --exit-after-play) exit_after_play=1 ;;
         --rofi) use_external_menu=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
@@ -377,6 +430,7 @@ while [ $# -gt 0 ]; do
             skip_title="$2"
             shift
             ;;
+        -N | --nextep-countdown) search=nextep ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
@@ -391,12 +445,10 @@ if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    flatpak*)
-        dep_ch "flatpak"
-        flatpak info io.mpv.Mpv >/dev/null 2>&1 || die "Program \"mpv (flatpak)\" not found. Please install it."
-        ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
+    *IINA*) true ;;      # handled out of band in where_iina
+    flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
 
@@ -406,13 +458,12 @@ case "$search" in
         anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
-        result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
-        [ -z "$result" ] && exit 1
-        resfile="$(mktemp)"
-        grep "$result" "$histfile" >"$resfile"
-        read -r ep_no id title <"$resfile"
+        [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
+        [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+        [ -z "$id" ] && exit 1
+        title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
         ep_list=$(episodes_list "$id")
-        ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+        ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
     *)
@@ -424,6 +475,9 @@ case "$search" in
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
             [ -z "$query" ] && exit 1
         fi
+        # for checking new releases by specifying anime name
+        [ "$search" = "nextep" ] && time_until_next_ep "$query"
+
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anime "$query")
         [ -z "$anime_list" ] && die "No results found!"
@@ -438,10 +492,11 @@ case "$search" in
         [ -z "$ep_no" ] && exit 1
         ;;
 esac
+[ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
-# stores the positon of cursor
+# stores the position of cursor
 tput sc
 
 # playback & loop

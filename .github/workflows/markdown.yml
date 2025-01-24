@@ -22,5 +22,5 @@ jobs:
     name: Find Trailing Whitespace
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ocular-d/trailing-spaces@0.0.2

@@ -28,8 +28,8 @@ Download episode.
 \fB\-D | --delete\fR
 Delete history.
 .TP
-\fB\-S | --select-nth\fR \fI\,<index>\/\fR
-Selects nth entry.
+\fB\-l | --logview\fR
+Show logs.
 .TP
 \fB\-h | --help\fR
 Show summary of options.
@@ -46,23 +46,25 @@ Fetch update from github.
 \fB\-v | --vlc\fR
 Use VLC as the media player.
 .TP
-\fB\-N | --non-interactive\fR
-Disable the interactive menu.
-.TP
 \fB\-S | --select-nth\fR \fI\,<index>\/\fR
 Selects nth entry.
+.TP
+\fB\-N | --nextep-countdown\fR
+Prints a countdown to the next episode as the last episode in the list. If in history is after the current episode.
 .TP
 \fB\--dub\fR
 Play the dubbed version. Without this flag, it'll always play the subbed version.
 .TP
 \fB\--rofi\fR
-Use rofi instead of fzf for the interactive menu 
+Use rofi instead of fzf for the interactive menu
 .TP
 \fB\--skip\fR
 Use ani-skip to skip the intro of the episode (mpv only)
 .TP
 \fB\--no-detach\fR
 Don't detach the player (useful for in-terminal playback, mpv only)
+\fB\--exit-after-play\fR
+Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
 .TP
 \fB\--skip-title\fR \fI\,<title>\/\fR
 Specify the title to use for ani-skip
@@ -86,6 +88,9 @@ Sets the player ani-cli uses. Can be debug (print links), download (equivalent t
 .TP
 \fBANI_CLI_EXTERNAL_MENU\fR
 Controls the frontend of ani-cli. Can be 0 (uses fzf) or 1 (uses rofi dmenu). Default is 0.
+.TP
+\fBANI_CLI_LOG_EPISODE\fR
+Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Default is 1.
 .TP
 \fBANI_CLI_MULTI_SELECTION\fR
 Controls the multi flag for the chosen frontend. Default is -m for fzf and --multi-select for rofi dmenu.

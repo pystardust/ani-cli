@@ -4,7 +4,7 @@ on:
     branches:
       - master
   pull_request:
-    paths: 
+    paths:
       - "**ani-cli"
 
 jobs:
@@ -12,17 +12,27 @@ jobs:
     name: Shellcheck + Shfmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Run the sh-checker
       uses: luizm/action-sh-checker@master
       env:
         SHELLCHECK_OPTS: -s sh -o all -e 2250
         SHFMT_OPTS: -i 4 -ci -d
+      with:
+        sh_checker_exclude: "_ani-cli-bash _ani-cli-zsh"
       
   check-exec:
     name: Executable Bit
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: test exec bit
       run: test -x "./ani-cli"
+
+  check-no-awk:
+    name: No Awk Allowed
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: verify that noone added awk
+      run: '! grep awk "./ani-cli"'

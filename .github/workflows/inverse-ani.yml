@@ -5,7 +5,7 @@ name: 'ani-cli checks'
 on:
   pull_request:
     paths-ignore:
-      - "**ani-cli"
+      - "/ani-cli"
 jobs:
   sh-checker:
     name: Shellcheck + Shfmt
