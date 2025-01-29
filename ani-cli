@@ -275,8 +275,7 @@ download() {
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
     skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
-    skip_flag_arr=($skip_flag)
-    [ "$skip_intro" = 0 ] && skip_flag=${skip_flag_arr[0]}
+    [ "$skip_intro" = 0 ] && skip_flag=$(echo $skip_flag | cut -d ' ' -f 1)
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
