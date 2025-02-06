@@ -36,13 +36,13 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-FreeBSD)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-freebsd)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Completion](#completion)
   - [bash](#bash)
   - [zsh](#zsh)
-- [Dependencies](#dependencies-1)
+- [Dependencies](#dependencies)
   - [Ani-Skip](#ani-skip)
 - [FAQ](#faq)
 - [Homies](#homies)
@@ -127,7 +127,7 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 </details></details><details><summary><b>MacOS</b></summary>
 
-Install dependencies [(See below)](#dependencies-1)
+Install dependencies [(See below)](#dependencies)
 
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
@@ -415,7 +415,7 @@ rm -rf ani-cli
 
 *This method works for any unix-like operating system and is a baseline for porting efforts.*
 
-Install dependencies [(See below)](#dependencies-1)
+Install dependencies [(See below)](#dependencies)
 
 ```sh
 git clone "https://github.com/pystardust/ani-cli.git"
