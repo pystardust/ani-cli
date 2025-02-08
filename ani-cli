@@ -481,7 +481,6 @@ case "$search" in
                 printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
             done
         else
-            echo $external_menu_args
             [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: " "$external_menu_args")
             [ -z "$query" ] && exit 1
         fi
