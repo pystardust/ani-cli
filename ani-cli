@@ -66,7 +66,7 @@ help_info() {
       --rofi
         Use rofi instead of fzf for the interactive menu
       --normal-window
-        Make rofi menus appear as windows (effective only when --rofi is used)
+        Make rofi menus appear as windows (only effective when --rofi is used)
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach

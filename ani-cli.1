@@ -58,6 +58,9 @@ Play the dubbed version. Without this flag, it'll always play the subbed version
 \fB\--rofi\fR
 Use rofi instead of fzf for the interactive menu
 .TP
+\fB\--normal-window\fR
+Make rofi menus appear as windows (only effective when --rofi is used)
+.TP
 \fB\--skip\fR
 Use ani-skip to skip the intro of the episode (mpv only)
 .TP
@@ -88,6 +91,9 @@ Sets the player ani-cli uses. Can be debug (print links), download (equivalent t
 .TP
 \fBANI_CLI_EXTERNAL_MENU\fR
 Controls the frontend of ani-cli. Can be 0 (uses fzf) or 1 (uses rofi dmenu). Default is 0.
+.TP
+\fBANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW\fR
+Controls the way rofi displays the window. Can be 0 (no additional arguments passed to rofi) or 1 (the menu is displayed as a normal window, -normal-window argument is passed to rofi). Default is 0.
 .TP
 \fBANI_CLI_LOG_EPISODE\fR
 Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Default is 1.
