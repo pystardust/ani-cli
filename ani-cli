@@ -5,13 +5,13 @@ version_number="4.9.7"
 # UI
 
 external_menu() {
-    rofi "$1" -sort -dmenu -i -width 1500 -p "$2"
+    rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3"
 }
 
 launcher() {
     [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
     [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
-    [ "$use_external_menu" = "1" ] && external_menu "$1" "$2"
+    [ "$use_external_menu" = "1" ] && external_menu "$1" "$2" "$external_menu_args"
 }
 
 nth() {
@@ -65,6 +65,8 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
+      --normal-window
+        Make rofi menus appear as windows (effective only when --rofi is used)
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
@@ -358,6 +360,7 @@ esac
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 # shellcheck disable=SC2154
 skip_title="$ANI_CLI_SKIP_TITLE"
@@ -424,6 +427,7 @@ while [ $# -gt 0 ]; do
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 ;;
         --rofi) use_external_menu=1 ;;
+        --normal-window) external_menu_normal_window=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
             [ $# -lt 2 ] && die "missing argument!"
@@ -438,6 +442,11 @@ while [ $# -gt 0 ]; do
 done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
+if [ "$external_menu_normal_window" = "1" ]; then
+  external_menu_args="-normal-window"
+else
+  external_menu_args=""
+fi
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
@@ -472,7 +481,8 @@ case "$search" in
                 printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
             done
         else
-            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: ")
+            echo $external_menu_args
+            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: " "$external_menu_args")
             [ -z "$query" ] && exit 1
         fi
         # for checking new releases by specifying anime name
