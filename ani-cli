@@ -462,6 +462,32 @@ case "$search" in
         [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
         [ -z "$id" ] && exit 1
         title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
+        # Check sub/dub availability and prompt
+        original_mode="$mode"
+        mode="sub"
+        sub_ep_list=$(episodes_list "$id")
+        mode="dub"
+        dub_ep_list=$(episodes_list "$id")
+        mode="$original_mode"
+        sub_available=$([ -n "$sub_ep_list" ] && echo 1 || echo 0)
+        dub_available=$([ -n "$dub_ep_list" ] && echo 1 || echo 0)
+        if [ "$original_mode" = "dub" ]; then
+            if [ "$dub_available" -eq 0 ]; then
+                die "Dub not available for this anime."
+            else
+                mode="dub"
+            fi
+        else
+            if [ "$sub_available" -eq 1 ] && [ "$dub_available" -eq 1 ]; then
+                mode=$(printf "sub\ndub" | nth "Select audio type: ")
+            elif [ "$sub_available" -eq 1 ]; then
+                mode="sub"
+            elif [ "$dub_available" -eq 1 ]; then
+                mode="dub"
+            else
+                die "No episodes available for this anime."
+            fi
+        fi
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
@@ -487,6 +513,32 @@ case "$search" in
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
+        # Check sub/dub availability and prompt
+        original_mode="$mode"
+        mode="sub"
+        sub_ep_list=$(episodes_list "$id")
+        mode="dub"
+        dub_ep_list=$(episodes_list "$id")
+        mode="$original_mode"
+        sub_available=$([ -n "$sub_ep_list" ] && echo 1 || echo 0)
+        dub_available=$([ -n "$dub_ep_list" ] && echo 1 || echo 0)
+        if [ "$original_mode" = "dub" ]; then
+            if [ "$dub_available" -eq 0 ]; then
+                die "Dub not available for this anime."
+            else
+                mode="dub"
+            fi
+        else
+            if [ "$sub_available" -eq 1 ] && [ "$dub_available" -eq 1 ]; then
+                mode=$(printf "sub\ndub" | nth "Select audio type: ")
+            elif [ "$sub_available" -eq 1 ]; then
+                mode="sub"
+            elif [ "$dub_available" -eq 1 ]; then
+                mode="dub"
+            else
+                die "No episodes available for this anime."
+            fi
+        fi
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
