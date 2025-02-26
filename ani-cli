@@ -65,8 +65,6 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
-      --normal-window
-        Make rofi menus appear as windows (only effective when --rofi is used)
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
@@ -427,7 +425,6 @@ while [ $# -gt 0 ]; do
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 ;;
         --rofi) use_external_menu=1 ;;
-        --normal-window) external_menu_normal_window=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
             [ $# -lt 2 ] && die "missing argument!"
@@ -443,9 +440,9 @@ done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 if [ "$external_menu_normal_window" = "1" ]; then
-  external_menu_args="-normal-window"
+    external_menu_args="-normal-window"
 else
-  external_menu_args=""
+    external_menu_args=""
 fi
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
