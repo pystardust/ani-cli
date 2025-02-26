@@ -439,11 +439,7 @@ while [ $# -gt 0 ]; do
 done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
-if [ "$external_menu_normal_window" = "1" ]; then
-    external_menu_args="-normal-window"
-else
-    external_menu_args=""
-fi
+[ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
