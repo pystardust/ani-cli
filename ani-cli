@@ -25,7 +25,12 @@ nth() {
     line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
     line_start=$(printf "%s" "$line" | head -n1)
     line_end=$(printf "%s" "$line" | tail -n1)
-    [ -n "$line" ] && printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+    [ -n "$line" ] || exit 1
+    if [ -z "$multi_flag" ]; then
+        printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+    else
+        printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+    fi
 }
 
 die() {
