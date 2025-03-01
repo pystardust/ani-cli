@@ -26,7 +26,7 @@ nth() {
     line_start=$(printf "%s" "$line" | head -n1)
     line_end=$(printf "%s" "$line" | tail -n1)
     [ -n "$line" ] || exit 1
-    if [ -z "$multi_flag" ]; then
+    if [ -z "$multi_flag" ] || [ "$line_start" -eq "$line_end" ]; then
         printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
     else
         printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
