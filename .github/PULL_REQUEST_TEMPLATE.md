@@ -21,9 +21,8 @@
 - [ ] `-s` syncplay works
 - [ ] `-q` quality works
 - [ ] `-v` vlc works
-- [ ] `-e` select episode works
+- [ ] `-e` (select episode) aka `-r` (range selection) works
 - [ ] `-S` select index works
-- [ ] `-r` range selection works
 - [ ] `--skip` ani-skip works
 - [ ] `--skip-title` ani-skip title argument works
 - [ ] `--no-detach` no detach works
@@ -40,3 +39,4 @@
 - Episode 0: Saenai Heroine no Sodatekata ♭
 - Unicode: Saenai Heroine no Sodatekata ♭
 - Non-whole episodes: Tensei shitara slime datta ken (ep. 24.5, ep. 24.9)
+- The examples of the help text

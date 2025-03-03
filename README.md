@@ -39,9 +39,6 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
   - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-freebsd)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
-- [Completion](#completion)
-  - [bash](#bash)
-  - [zsh](#zsh)
 - [Dependencies](#dependencies)
   - [Ani-Skip](#ani-skip)
 - [FAQ](#faq)
@@ -499,24 +496,6 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 
 </details>
 
-## Completion
-
-### bash
-
-To add tab completions using bash run the following command inside the ani-cli directory
-```
-cp _ani-cli-bash /path/to/your/completions
-echo "source /path/to/your/completions/_ani-cli-bash" >> ~/.bashrc
-```
-
-### zsh
-
-To add tab completions using zsh run the following command inside the ani-cli directory
-```
-cp _ani-cli-zsh /path/to/your/completions
-echo "source /path/to/your/completions/_ani-cli-zsh" >> ~/.zshrc
-```
-
 ## Dependencies
 
 - grep
@@ -574,4 +553,4 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
 * [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go)
 * [Curd](https://github.com/Wraient/curd): A CLI tool to watch anime with Anilist, Discord RPC, Skip Intro/Outro/Filler/Recap (Go)
-- [FastAnime](https://github.com/Benex254/FastAnime): browser anime experience from the terminal (Python)
+* [FastAnime](https://github.com/Benex254/FastAnime): browser anime experience from the terminal (Python)
