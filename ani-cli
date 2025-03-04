@@ -176,6 +176,7 @@ generate_link() {
         2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
+        5)  provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
@@ -199,7 +200,7 @@ get_episode_url() {
     resp=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4 5"
+    providers="1 2 3 4 5 6"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
