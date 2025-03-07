@@ -176,7 +176,7 @@ generate_link() {
         2) provider_init "dropbox" "/Sak :/p" ;;       # dropbox(mp4)(single)
         3) provider_init "wetransfer" "/Kir :/p" ;;    # wetransfer(mp4)(single)
         4) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
-        5) provider_init "hianime" "/Luf-Mp4 :/p" ;;   # hianime(m3u8)(multi)
+        5) provider_init "hianime" "/Luf-Mp4 :/p" ;;   # hianime(m3u8)(auto)
         *) provider_init "gogoanime" "/Luf-mp4 :/p" ;; # gogoanime(m3u8)(multi)
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
