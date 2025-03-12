@@ -153,7 +153,8 @@ get_links() {
             relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
             curl -e "$allanime_refr" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
 | >|;/EXT-X-I-FRAME/d' | sed "s|>|cc>${relative_link}|g" | sort -nr
-            printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' > "$cache_dir/suburl" ;;
+            printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl"
+            ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
@@ -169,10 +170,10 @@ provider_init() {
 # generates links based on given provider
 generate_link() {
     case $1 in
-        1) provider_init "wixmp" "/Default :/p" ;;     # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt-mp4 :/p" ;;    # youtube(mp4)(single)
-        3) provider_init "sharepoint" "/S-mp4 :/p" ;;  # sharepoint(mp4)(single)
-        *) provider_init "hianime" "/Luf-Mp4 :/p" ;;   # hianime(m3u8)(multi)
+        1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
+        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
+        3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
