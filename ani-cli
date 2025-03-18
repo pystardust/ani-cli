@@ -206,7 +206,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/*[!suburl] | sed 's|^Mp4-||g;/http/!d;/Alt/d;' | sort -g -r -s)
+    links=$(cat "$cache_dir"/*[0-9] | sed 's|^Mp4-||g;/http/!d;/Alt/d;' | sort -g -r -s)
     rm -r "$cache_dir"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
