@@ -164,6 +164,13 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 
 </details>
 
+<details><summary>Chimera Linux</summary>
+
+```sh
+sudo apk add ani-cli
+```
+</details>
+
 ### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
 
 *While officially supported (except FreeBSD), installation is more involved on these platforms and sometimes issues arise. \
