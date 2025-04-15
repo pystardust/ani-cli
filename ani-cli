@@ -291,7 +291,7 @@ play_episode() {
             ;;
         mpv*|celluloid)
             pfx=""
-            [ "$player_function" = "celluloid" ] && pfx="mpv-" && skip_flag="${skip_flag//--/--${pfx}}"
+            [ "$player_function" = "celluloid" ] && pfx="mpv-" && skip_flag=$(echo "$skip_flag" | sed 's/--/--mpv-/g')
 
             if [ "$no_detach" = 0 ]; then
                 nohup "$player_function" $skip_flag --${pfx}force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
