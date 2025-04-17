@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.9.9"
+version_number="4.10.0"
 
 # UI
 
@@ -73,11 +73,11 @@ help_info() {
       --rofi
         Use rofi instead of fzf for the interactive menu
       --skip
-        Use ani-skip to skip the intro of the episode (mpv only)
+        Use ani-skip to skip the intro of the episode (mpv and celluloid only)
       --no-detach
-        Don't detach the player (useful for in-terminal playback, mpv only)
+        Don't detach the player (useful for in-terminal playback, mpv and celluloid only)
       --exit-after-play
-        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
+        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv and celluloid only)
       --skip-title <title>
         Use given title as ani-skip query
       -N, --nextep-countdown
@@ -289,11 +289,13 @@ play_episode() {
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*)
+        mpv* | celluloid)
+            pfx=""
+            [ "$player_function" = "celluloid" ] && pfx="mpv-" && skip_flag=$(echo "$skip_flag" | sed 's/--/--mpv-/g')
             if [ "$no_detach" = 0 ]; then
-                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+                nohup "$player_function" $skip_flag "--${pfx}force-media-title=${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
             else
-                "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                "$player_function" $skip_flag "--${pfx}force-media-title=${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
             fi
