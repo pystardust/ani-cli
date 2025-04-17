@@ -289,14 +289,13 @@ play_episode() {
             [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*|celluloid)
+        mpv* | celluloid)
             pfx=""
             [ "$player_function" = "celluloid" ] && pfx="mpv-" && skip_flag=$(echo "$skip_flag" | sed 's/--/--mpv-/g')
-
             if [ "$no_detach" = 0 ]; then
-                nohup "$player_function" $skip_flag --${pfx}force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+                nohup "$player_function" $skip_flag "--${pfx}force-media-title=${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
             else
-                "$player_function" $skip_flag --${pfx}force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                "$player_function" $skip_flag "--${pfx}force-media-title=${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
             fi
