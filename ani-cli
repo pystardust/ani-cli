@@ -73,11 +73,11 @@ help_info() {
       --rofi
         Use rofi instead of fzf for the interactive menu
       --skip
-        Use ani-skip to skip the intro of the episode (mpv only)
+        Use ani-skip to skip the intro of the episode (mpv and celluloid only)
       --no-detach
-        Don't detach the player (useful for in-terminal playback, mpv only)
+        Don't detach the player (useful for in-terminal playback, mpv and celluloid only)
       --exit-after-play
-        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
+        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv and celluloid only)
       --skip-title <title>
         Use given title as ani-skip query
       -N, --nextep-countdown
