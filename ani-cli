@@ -26,7 +26,7 @@ nth() {
     line_start=$(printf "%s" "$line" | head -n1)
     line_end=$(printf "%s" "$line" | tail -n1)
     [ -n "$line" ] || exit 1
-    if [ -z "$multi_flag" ] || [ "$line_start" -eq "$line_end" ]; then
+    if [ "$line_start" = "$line_end" ]; then
         printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
     else
         printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
@@ -188,6 +188,7 @@ select_quality() {
     esac
     [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
     printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle" && refr_flag="--referrer=$m3u8_refr"
+    ! ( printf '%s' "$result" | grep -q "cc>") && unset subs_flag && unset refr_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
@@ -524,10 +525,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         replay) episode="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
-        change_quality)
-            episode=$(printf "%s" "$links" | launcher)
-            quality=$(printf "%s" "$episode" | grep -oE "^[0-9]+")
-            episode=$(printf "%s" "$episode" | cut -d'>' -f2)
+        change_quality) select_quality "$(printf "%s" "$links" | launcher | cut -d\> -f1)"
             ;;
         *) exit 0 ;;
     esac
