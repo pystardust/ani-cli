@@ -187,7 +187,9 @@ select_quality() {
         *) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
     [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
-    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle" && refr_flag="--referrer=$m3u8_refr"
+    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" \
+        && [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
+    printf '%s' "$result" | grep -q "cc>" && refr_flag="--referrer=$m3u8_refr" 
     ! ( printf '%s' "$result" | grep -q "cc>") && unset subs_flag && unset refr_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
