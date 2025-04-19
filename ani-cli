@@ -151,7 +151,7 @@ get_links() {
         *master.m3u8*)
             extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
             relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-            curl -e "https://megacloud.club/" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
+            curl -e "$m3u8_refr" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
 | >|;/EXT-X-I-FRAME/d' | sed "s|>|cc>${relative_link}|g" | sort -nr
             printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl"
             ;;
@@ -187,8 +187,7 @@ select_quality() {
         *) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
     [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
-    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle" && refr_flag="--referrer=https://megacloud.club/"
-    echo $result > a
+    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle" && refr_flag="--referrer=$m3u8_refr"
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
@@ -274,9 +273,9 @@ download() {
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
-                yt-dlp --referer "https://megacloud.club/" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
-                ffmpeg -referer "https://megacloud.club/" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
             ;;
         *)
@@ -353,6 +352,7 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+m3u8_refr="https://megacloud.club/"
 allanime_refr="https://allmanga.to"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
