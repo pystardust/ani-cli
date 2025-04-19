@@ -151,7 +151,7 @@ get_links() {
         *master.m3u8*)
             extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
             relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
-            curl -e "$allanime_refr" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
+            curl -e "https://megacloud.club/" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
 | >|;/EXT-X-I-FRAME/d' | sed "s|>|cc>${relative_link}|g" | sort -nr
             printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl"
             ;;
@@ -171,7 +171,7 @@ provider_init() {
 generate_link() {
     case $1 in
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
+        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single) TODO: make it work
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
@@ -187,7 +187,8 @@ select_quality() {
         *) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
     [ -z "$result" ] && printf "Specified quality not found, defaulting to best\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
-    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle"
+    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && subs_flag="--sub-file=$subtitle" && refr_flag="--referrer=https://megacloud.club/"
+    echo $result > a
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
@@ -206,7 +207,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/*[0-9] | sed 's|^Mp4-||g;/http/!d;/Alt/d;' | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d;' | sort -g -r -s)
     rm -r "$cache_dir"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
@@ -273,9 +274,9 @@ download() {
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
-                yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+                yt-dlp --referer "https://megacloud.club/" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
-                ffmpeg -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+                ffmpeg -referer "https://megacloud.club/" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
             ;;
         *)
@@ -296,16 +297,16 @@ play_episode() {
             ;;
         mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag >/dev/null 2>&1 &
+                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
             else
-                "$player_function" $skip_flag $subs_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                "$player_function" $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag "$episode" >/dev/null 2>&1 & ;;
+        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv $subs_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         vlc*) nohup "$player_function" $subs_flag --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag >/dev/null 2>&1 & ;;
