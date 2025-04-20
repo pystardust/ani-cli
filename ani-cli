@@ -182,7 +182,7 @@ generate_link() {
 
 select_quality() {
     # removing urls which have soft subs to avoid playing on android and iSH
-    printf '%s' "$player_function" | grep -qE '(android|iSH)' && links=$(printf '%s' "$links" | sed '/cc>/d;/subtitle >/d')
+    printf '%s' "$player_function" | grep -qE '(android|iSH|vlc)' && links=$(printf '%s' "$links" | sed '/cc>/d;/subtitle >/d')
     case "$1" in
         best) result=$(printf "%s" "$links" | head -n1) ;;
         worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
@@ -193,7 +193,8 @@ select_quality() {
         [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
     printf '%s' "$result" | grep -q "cc>" && refr_flag="--referrer=$m3u8_refr"
     printf "%s" "$result" | grep "tools.fast4speed.rsvp" && refr_flag="--referrer=https://youtu-chan.com"
-    ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset subs_flag && unset refr_flag
+    ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset refr_flag
+    ! (printf '%s' "$result" | grep -q "cc>") && unset subs_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
@@ -233,7 +234,8 @@ search_anime() {
 
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
-    curl -s -G "$animeschedule/api/v3/anime" --data "q=$(printf "%s\n" "$*" | tr ' ' '+')" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
+    query="$(printf "%s\n" "$*" | tr ' ' '+')"
+    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
         data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
         status="Ongoing"
         color="33"
@@ -530,7 +532,10 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         replay) episode="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
-        change_quality) select_quality "$(printf "%s" "$links" | launcher | cut -d\> -f1)" ;;
+        change_quality)
+            new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
+            select_quality "$new_quality"
+            ;;
         *) exit 0 ;;
     esac
     [ -z "$ep_no" ] && die "Out of range"
