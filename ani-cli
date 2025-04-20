@@ -192,7 +192,7 @@ select_quality() {
     printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" &&
         [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
     printf '%s' "$result" | grep -q "cc>" && refr_flag="--referrer=$m3u8_refr"
-    printf "%s" "$result" | grep "tools.fast4speed.rsvp" && refr_flag="--referrer=https://youtu-chan.com"
+    printf "%s" "$result" | grep -q "tools.fast4speed.rsvp" && refr_flag="--referrer=https://youtu-chan.com"
     ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset refr_flag
     ! (printf '%s' "$result" | grep -q "cc>") && unset subs_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
