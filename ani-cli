@@ -157,6 +157,8 @@ get_links() {
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
+
+    printf "%s" "$*" | grep -q "tools.fast4speed.rsvp" && printf "%s\n" "Yt>$*"
     [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
@@ -171,7 +173,7 @@ provider_init() {
 generate_link() {
     case $1 in
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single) TODO: make it work
+        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
@@ -190,7 +192,8 @@ select_quality() {
     printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" \
         && [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
     printf '%s' "$result" | grep -q "cc>" && refr_flag="--referrer=$m3u8_refr" 
-    ! ( printf '%s' "$result" | grep -q "cc>") && unset subs_flag && unset refr_flag
+    printf "%s" "$result" | grep "tools.fast4speed.rsvp" && refr_flag="--referrer=https://youtu-chan.com"
+    ! ( printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset subs_flag && unset refr_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
@@ -310,7 +313,7 @@ play_episode() {
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag  >/dev/null 2>&1 & ;;
-        vlc*) nohup "$player_function" $subs_flag --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
         catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
@@ -527,12 +530,11 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         replay) episode="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
-        change_quality) select_quality "$(printf "%s" "$links" | launcher | cut -d\> -f1)"
-            ;;
+        change_quality) select_quality "$(printf "%s" "$links" | launcher | cut -d\> -f1)" ;;
         *) exit 0 ;;
-    esac
-    [ -z "$ep_no" ] && die "Out of range"
-    play
+        esac
+        [ -z "$ep_no" ] && die "Out of range"
+        play
 done
 
 # ani-cli
