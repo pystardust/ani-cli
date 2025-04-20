@@ -77,7 +77,7 @@ help_info() {
       --no-detach
         Don't detach the player (useful for in-terminal playback, mpv only)
       --exit-after-play
-        Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv only)
+        Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
       -N, --nextep-countdown
@@ -159,7 +159,7 @@ get_links() {
     esac
 
     printf "%s" "$*" | grep -q "tools.fast4speed.rsvp" && printf "%s\n" "Yt >$*"
-    [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
+    printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
 # initialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
@@ -285,6 +285,8 @@ download() {
             else
                 ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
+            # embed subs into downloads
+            # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
             aria2c --enable-rpc=false --check-certificate=false --continue --async-dns=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
@@ -299,7 +301,7 @@ play_episode() {
     # shellcheck disable=SC2086
     case "$player_function" in
         debug)
-            [ -z "$ANI_CLI_NON_INTERACTIVE" ] && printf "All links:\n%s\nSelected link:\n" "$links"
+            printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
         mpv*)
@@ -308,7 +310,7 @@ play_episode() {
             else
                 "$player_function" $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
+                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
@@ -347,6 +349,7 @@ play() {
             tput clear
             ep_no=$i
             printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            [ "$i" = "$end" ] && unset range
             play_episode
         done
     else
@@ -439,12 +442,11 @@ while [ $# -gt 0 ]; do
         -e | --episode | -r | --range)
             [ $# -lt 2 ] && die "missing argument!"
             ep_no="$2"
-            [ -n "$index" ] && ANI_CLI_NON_INTERACTIVE=1 #Checks for -S presence
             shift
             ;;
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
-        --exit-after-play) exit_after_play=1 ;;
+        --exit-after-play) exit_after_play=1 && no_detach=1 ;;
         --rofi) use_external_menu=1 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
@@ -464,13 +466,12 @@ done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
-if [ -z "$ANI_CLI_NON_INTERACTIVE" ]; then dep_ch fzf || true; fi
+dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    *IINA*) true ;;      # handled out of band in where_iina
     flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
