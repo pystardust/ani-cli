@@ -298,7 +298,7 @@ download() {
             [ -e "$download_dir/$2.vtt" ] && ffmpeg -loglevel error -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4" && rm "$download_dir/$2.vtt"
             ;;
         *)
-            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue --async-dns=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$download_dir/$2.mp4"
             ;;
     esac
 }
