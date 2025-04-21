@@ -3,7 +3,7 @@
 [ -e "$HOME/.config/mpv" ] && export MPV_HOME="$HOME/.config/mpv"
 [ ! -e "$APPDATA" ] && export HOME=$HOME/.cache/ani-cli
 # [ -e "$CMDER_ROOT" ] && export HOME=$CMDER_ROOT/opt/home/.cache/ani-cli
-[ ! -e "$APPDATA" ] && YTDLPPATH=--paths temp:~/.cache
+[ ! -e "$APPDATA" ] && [ ! -e "$HOME/yt-dlp.conf" ] && mkdir $HOME && TMP_DIR=$(mktemp --directory) && echo "--paths temp:$TMP_DIR">> "$HOME/yt-dlp.conf"
 
 version_number="4.10.0"
 
@@ -286,7 +286,7 @@ download() {
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
-                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4" $(YTDLPPATH)
+                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
                 ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
