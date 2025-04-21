@@ -3,7 +3,7 @@
 [ -e "$HOME/.config/mpv" ] && export MPV_HOME="$HOME/.config/mpv"
 [ ! -e "$APPDATA" ] && export HOME=$HOME/.cache/ani-cli
 # [ -e "$CMDER_ROOT" ] && export HOME=$CMDER_ROOT/opt/home/.cache/ani-cli
-[ ! -e "$APPDATA" ] && mkdir $HOME 2>/dev/null & TMP_DIR=$(mktemp --directory) && echo "--paths temp:$TMP_DIR -S res:360"> "$HOME/yt-dlp.conf"
+[ ! -e "$APPDATA" ] && TMP_DIR=$(mktemp --directory)
 
 version_number="4.10.0"
 
@@ -144,6 +144,8 @@ get_links() {
     response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent")"
     episode_link="$(printf '%s' "$response" | sed 's|},{|\
 |g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    printf '%s' "$response" | grep -q "master.m3u8" && m3u8_refr=$(printf '%s' "$response" | sed -nE 's|.*Referer":"([^"]*)".*|\1|p') &&
+        printf '%s\n' "m3u8_refr >$m3u8_refr" > "$cache_dir/m3u8_refr"
 
     case "$episode_link" in
         *repackager.wixmp.com*)
@@ -154,7 +156,6 @@ get_links() {
             done | sort -nr
             ;;
         *master.m3u8*)
-            m3u8_refr=$(printf '%s' "$response" | sed -nE 's|.*Referer":"([^"]*)".*|\1|p') && printf '%s\n' "m3u8_refr >$m3u8_refr" >"$cache_dir/m3u8_refr"
             extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
             relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
             curl -e "$m3u8_refr" -s "$extract_link" -A "$agent" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
@@ -187,7 +188,7 @@ generate_link() {
 }
 
 select_quality() {
-    # removing urls which have soft subs to avoid playing on android and iSH and vlc (m3u8 streams don't get correct referrer)
+    # removing urls which have soft subs to avoid playing on android and iSH
     printf '%s' "$player_function" | grep -qE '(android|iSH|vlc)' && links=$(printf '%s' "$links" | sed '/cc>/d;/subtitle >/d;/m3u8_refr >/d')
     case "$1" in
         best) result=$(printf "%s" "$links" | head -n1) ;;
@@ -222,7 +223,7 @@ get_episode_url() {
     done
     wait
     # select the link with matching quality
-    links=$(cat "$cache_dir"/* | sort -g -r -s)
+    links=$(cat "$cache_dir"/* | sed 's|^Mp4-||g;/http/!d;/Alt/d;' | sort -g -r -s)
     rm -r "$cache_dir"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
@@ -289,18 +290,16 @@ download() {
     [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
     case $1 in
         *m3u8*)
-            if command -v "yt-dlp" >/dev/null; then
-                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
-            else
-                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
-            fi
+        [ -e "$download_dir/$2.vtt" ] && ffmpegsubtitle=" -i $subtitle -c:s mov_text" && rm "$download_dir/$2.vtt"
+                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1"$ffmpegsubtitle -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$TMP_DIR/$2.mp4"
             # embed subs into downloads
-            [ -e "$download_dir/$2.vtt" ] && ffmpeg -loglevel error -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4" && rm "$download_dir/$2.vtt"
+            # [ -e "$download_dir/$2.vtt" ] && ffmpeg -loglevel error -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4" && rm "$download_dir/$2.vtt"
             ;;
         *)
-            ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$download_dir/$2.mp4"
+		    ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$TMP_DIR/$2.mp4"
             ;;
     esac
+    mv "$TMP_DIR/$2.mp4" "$download_dir/$2.mp4"
 }
 
 play_episode() {
