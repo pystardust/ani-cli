@@ -26,6 +26,8 @@
 - [ ] `--skip` ani-skip works
 - [ ] `--skip-title` ani-skip title argument works
 - [ ] `--no-detach` no detach works
+- [ ] `--exit-after-play` auto exit after playing works
+- [ ] `--nextep-countdown` countdown to next ep works
 - [ ] `--dub` and regular (sub) mode both work
 - [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
 ---
