@@ -106,7 +106,7 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/candrapersada/ani-cli/refs/heads/fix-range-again/ani-cli")" || die "Connection error"
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/candrapersada/ani-cli/refs/heads/ffmpeg/ani-cli")" || die "Connection error"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "Script is up to date :)\n"
@@ -288,15 +288,16 @@ update_history() {
 download() {
     # download subtitle if it's set
     [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
+    ffmpegconvter="-codec:v libx264 -vf scale='min(640,iw)':'min(360,ih)' -preset medium -codec:a aac -crf 34 -b:a 64k"
     case $1 in
         *m3u8*)
         [ -e "$download_dir/$2.vtt" ] && ffmpegsubtitle=" -i $subtitle -c:s mov_text" && rm "$download_dir/$2.vtt"
-                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1"$ffmpegsubtitle -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$TMP_DIR/$2.mp4"
+                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1"$ffmpegsubtitle $ffmpegconvter "$TMP_DIR/$2.mp4"
             # embed subs into downloads
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -loglevel error -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4" && rm "$download_dir/$2.vtt"
             ;;
         *)
-		    ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" -codec:v libx264 -vf "scale='min(640,iw)':'min(360,ih)'" -preset medium -codec:a aac -crf 34 -b:a 64k "$TMP_DIR/$2.mp4"
+		    ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" $ffmpegconvter "$TMP_DIR/$2.mp4"
             ;;
     esac
     mv "$TMP_DIR/$2.mp4" "$download_dir/$2.mp4"
