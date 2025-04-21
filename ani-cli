@@ -1,4 +1,9 @@
 #!/bin/sh
+[ -e "$HOME/.var/app/io.mpv.Mpv/config/mpv" ] && export MPV_HOME="$HOME/.var/app/io.mpv.Mpv/config/mpv"
+[ -e "$HOME/.config/mpv" ] && export MPV_HOME="$HOME/.config/mpv"
+[ ! -e "$APPDATA" ] && export HOME=$HOME/.cache/ani-cli
+# [ -e "$CMDER_ROOT" ] && export HOME=$CMDER_ROOT/opt/home/.cache/ani-cli
+[ ! -e "$APPDATA" ] && YTDLPPATH=--paths temp:~/yt-dlp_temp
 
 version_number="4.10.0"
 
