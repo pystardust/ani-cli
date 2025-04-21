@@ -3,7 +3,7 @@
 [ -e "$HOME/.config/mpv" ] && export MPV_HOME="$HOME/.config/mpv"
 [ ! -e "$APPDATA" ] && export HOME=$HOME/.cache/ani-cli
 # [ -e "$CMDER_ROOT" ] && export HOME=$CMDER_ROOT/opt/home/.cache/ani-cli
-[ ! -e "$APPDATA" ] && [ ! -e "$HOME/yt-dlp.conf" ] && mkdir $HOME && TMP_DIR=$(mktemp --directory) && echo "--paths temp:$TMP_DIR -S res:360">> "$HOME/yt-dlp.conf"
+[ ! -e "$APPDATA" ] && [ ! -e "$HOME/yt-dlp.conf" ] && mkdir $HOME 2>/dev/null & TMP_DIR=$(mktemp --directory) && echo "--paths temp:$TMP_DIR -S res:360">> "$HOME/yt-dlp.conf"
 
 version_number="4.10.0"
 
