@@ -287,17 +287,22 @@ update_history() {
 
 download() {
     # download subtitle if it's set
-    [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
+    # [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
     ffmpegconvter="-codec:v libx264 -vf scale='min(640,iw)':'min(360,ih)' -preset medium -codec:a aac -crf 34 -b:a 64k"
     case $1 in
         *m3u8*)
-        [ -e "$download_dir/$2.vtt" ] && ffmpegsubtitle=" -i $subtitle -c:s mov_text" && rm "$download_dir/$2.vtt"
-                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1"$ffmpegsubtitle $ffmpegconvter "$TMP_DIR/$2.mp4"
+        # [ -e "$download_dir/$2.vtt" ] && ffmpegsubtitle=" -i $subtitle -c:s mov_text" && rm "$download_dir/$2.vtt"
+        [ -n "$subtitle" ] && ffmpegsubtitle=" -i $subtitle -c:s mov_text"
+            ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1"$ffmpegsubtitle $ffmpegconvter "$TMP_DIR/$2.mp4"
             # embed subs into downloads
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -loglevel error -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4" && rm "$download_dir/$2.vtt"
             ;;
         *)
-		    ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" $ffmpegconvter "$TMP_DIR/$2.mp4"
+            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue --async-dns=false --summary-interval=0 -x 16 -s 16 "$1" --dir="$TMP_DIR" -o "$2.bak.mp4" --download-result=hide
+            ffmpeg -loglevel error -stats -i "$TMP_DIR/$2.bak.mp4" $ffmpegconvter "$TMP_DIR/$2.mp4"
+            [ -e "$TMP_DIR/$2.bak.mp4.aria2" ] && download
+            # ffmpeg -referer "$allanime_refr" -loglevel error -stats -i "$1" $ffmpegconvter "$TMP_DIR/$2.mp4"
+
             ;;
     esac
     mv "$TMP_DIR/$2.mp4" "$download_dir/$2.mp4"
