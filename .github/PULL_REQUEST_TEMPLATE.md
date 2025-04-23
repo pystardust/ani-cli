@@ -41,4 +41,5 @@
 - Episode 0: Saenai Heroine no Sodatekata ♭
 - Unicode: Saenai Heroine no Sodatekata ♭
 - Non-whole episodes: Tensei shitara slime datta ken (ep. 24.5, ep. 24.9)
+- All Providers: Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e (TV) (3 m3u8, 3 mp4, 1 fast4speed, 1 sharepoint)
 - The examples of the help text
