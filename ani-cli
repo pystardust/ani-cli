@@ -430,7 +430,7 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         -d | --download) 
-            ["$ANI_CLI_PLAYER" = "-iSH" ] && extra_arg="--async-dns=false"
+            [ "$player_function" = "iSH" ] && extra_arg="--async-dns=false"
             player_function=download 
             ;;
         -D | --delete)
