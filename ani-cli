@@ -429,9 +429,9 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -c | --continue) search=history ;;
-        -d | --download) 
+        -d | --download)
             [ "$player_function" = "iSH" ] && extra_arg="--async-dns=false"
-            player_function=download 
+            player_function=download
             ;;
         -D | --delete)
             : >"$histfile"
