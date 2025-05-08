@@ -295,7 +295,8 @@ download() {
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
-            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue "$extra_arg" --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            # shellcheck disable=SC2086
+            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
             ;;
     esac
 }
@@ -430,7 +431,7 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         -d | --download)
-            [ "$player_function" = "iSH" ] && extra_arg="--async-dns=false"
+            [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
             player_function=download
             ;;
         -D | --delete)
