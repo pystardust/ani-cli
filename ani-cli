@@ -153,8 +153,8 @@ get_links() {
             extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
             relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
             m3u8_streams="$(curl -e "$m3u8_refr" -s "$extract_link" -A "$agent")"
-            printf "%s" "$m3u8_streams" | grep -q "EXTM3U" && printf "%s" "$m3u8_streams" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\
-| >|;/EXT-X-I-FRAME/d' | sed "s|>|cc>${relative_link}|g" | sort -nr
+            printf "%s" "$m3u8_streams" | grep -q "EXTM3U" && printf "%s" "$m3u8_streams" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' |
+                sed "s|>|cc>${relative_link}|g" | sort -nr
             printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl"
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
