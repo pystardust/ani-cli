@@ -544,7 +544,6 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allmanga, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
-* [Dantotsu](https://github.com/rebelonion/Dantotsu): Rebirth of Saikou, Best android app for anime/manga/LN with anilist integration (Kotlin)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch everything from your terminal. (Python)
