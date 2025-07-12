@@ -522,6 +522,36 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 
 **Note:** It may be, that ani-skip won't know the anime you're trying to watch. Try using the `--skip-title <title>` command line argument. (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
+## MyAnimeList API Integration
+
+ani-cli now supports searching for anime by MyAnimeList ID using the official MAL API. This provides deterministic search results and is especially useful for finding specific anime.
+
+### Setup
+
+1. **Get a MAL API Client ID:**
+   - Go to [MAL API Panel](https://myanimelist.net/apiconfig)
+   - Create a new application and copy your client ID
+
+2. **Configure ani-cli:**
+   - The first time you run ani-cli, it will prompt you to enter your MAL client ID
+   - This will be saved in `~/.config/ani-cli/mal.conf`
+
+### Usage
+
+```bash
+# Search by MAL ID
+ani-cli --mal-id 21
+
+# Combine with other options
+ani-cli --mal-id 21 -q 1080p -e 1
+```
+
+### Benefits
+
+- **Deterministic results:** Always find the exact anime you're looking for
+- **No ambiguity:** Avoid confusion with similar titles
+- **Direct access:** Skip the search interface for known anime
+
 ## FAQ
 <details>
 	
@@ -534,6 +564,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * How can I download? - Use `-d`, it will download into your working directory.
 * Can i change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
 * How can I bulk download? - `Use -d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
+* How do I search by MAL ID? - Use `--mal-id <id>`, for example `ani-cli --mal-id 21`.
 
 **Note:** All features are documented in `ani-cli --help`.
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.1"
+version_number="4.10.2"
 
 # UI
 
@@ -84,6 +84,8 @@ help_info() {
         Display a countdown to the next episode
       -U, --update
         Update the script
+      --mal-id <id>
+        Search for anime by MyAnimeList ID (requires MAL API client ID)
     Some example usages:
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
@@ -91,7 +93,8 @@ help_info() {
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+      %s --mal-id 21 one piece
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -130,6 +133,39 @@ where_iina() {
 where_mpv() {
     command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
     printf "%s" "mpv" && return 0
+}
+
+# MAL API
+
+# search anime by MAL ID using the official MAL API
+search_anime_by_mal_id() {
+    mal_id="$1"
+    response=""
+    title=""
+    
+    printf "\33[2K\r\033[1;34mZoeken naar anime met MAL ID: %s...\033[0m\n" "$mal_id" >&2
+    
+    if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
+        "https://api.myanimelist.net/v2/anime/$mal_id?fields=id,title"); then
+        die "Fout bij het ophalen van anime data van MAL API"
+    fi
+    
+    # Check if response contains error
+    if printf "%s" "$response" | grep -q '"error"'; then
+        die "Anime met MAL ID $mal_id niet gevonden"
+    fi
+    
+    # Extract title
+    title=$(printf "%s" "$response" | sed -n 's/.*"title":"\([^"]*\)".*/\1/p')
+    if [ -z "$title" ]; then
+        die "Kon geen titel vinden voor MAL ID $mal_id"
+    fi
+    
+    # Zoek met deze titel via de bestaande search_anime functie
+    anime_list=$(search_anime "$title")
+    [ -z "$anime_list" ] && die "Geen resultaten gevonden voor titel van MAL ID $mal_id: $title"
+    # Geef het eerste resultaat terug
+    printf "%s\n" "$(printf "%s" "$anime_list" | head -n1)"
 }
 
 # SCRAPING
@@ -353,7 +389,7 @@ play() {
     line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
     if [ "$line_count" != 1 ] || [ -n "$start" ]; then
         [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
-        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
+        [ -z "$end" ] && end=$(printf "%s" "$ep_no" | tail -n1)
         range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
         [ -z "$range" ] && die "Invalid range!"
         for i in $range; do
@@ -402,6 +438,23 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+
+CONFIG_DIR="$HOME/.config/ani-cli"
+CONFIG_FILE="$CONFIG_DIR/mal.conf"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    printf "\n🔑 Je hebt een MyAnimeList API client ID nodig om bepaalde functies te gebruiken.\n"
+    printf "1. Ga naar https://myanimelist.net/apiconfig en maak een nieuwe applicatie aan.\n"
+    printf "2. Kopieer je client ID.\n"
+    printf "3. Vul hieronder je client ID in.\n"
+    printf "Voer je MAL client ID in: "
+    read -r MAL_CLIENT_ID
+    mkdir -p "$CONFIG_DIR"
+    echo "MAL_CLIENT_ID=$MAL_CLIENT_ID" > "$CONFIG_FILE"
+    printf "Client ID opgeslagen in %s.\n" "$CONFIG_FILE"
+fi
+# shellcheck disable=SC1090
+. "$CONFIG_FILE"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -469,6 +522,12 @@ while [ $# -gt 0 ]; do
             ;;
         -N | --nextep-countdown) search=nextep ;;
         -U | --update) update_script ;;
+        --mal-id)
+            [ $# -lt 2 ] && die "missing argument!"
+            mal_search_id="$2"
+            search=mal_id
+            shift
+            ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
@@ -491,6 +550,16 @@ esac
 
 # searching
 case "$search" in
+    mal_id)
+        anime_list=$(search_anime_by_mal_id "$mal_search_id")
+        [ -z "$anime_list" ] && die "Anime met MAL ID $mal_search_id niet gevonden!"
+        title=$(printf "%s" "$anime_list" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        id=$(printf "%s" "$anime_list" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
     history)
         anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
         wait
