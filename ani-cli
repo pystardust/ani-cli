@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.2"
+version_number="4.10.8"
 
 # UI
 
@@ -86,6 +86,16 @@ help_info() {
         Update the script
       --mal-id <id>
         Search for anime by MyAnimeList ID (requires MAL API client ID)
+      --mal-season
+        Browse current season anime from MyAnimeList
+      --mal-top
+        Browse top anime from MyAnimeList
+      --clear-cache
+        Clear the cache directory
+      --favorites
+        Browse your favorite anime
+      --add-favorite <name>
+        Add anime to favorites by name
     Some example usages:
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
@@ -94,6 +104,7 @@ help_info() {
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
       %s --mal-id 21 one piece
+      %s --add-favorite "one piece"
     \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
@@ -142,30 +153,145 @@ search_anime_by_mal_id() {
     mal_id="$1"
     response=""
     title=""
+    cache_file="$MAL_CACHE_DIR/mal_id_${mal_id}"
     
-    printf "\33[2K\r\033[1;34mZoeken naar anime met MAL ID: %s...\033[0m\n" "$mal_id" >&2
-    
-    if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
-        "https://api.myanimelist.net/v2/anime/$mal_id?fields=id,title"); then
-        die "Fout bij het ophalen van anime data van MAL API"
-    fi
-    
-    # Check if response contains error
-    if printf "%s" "$response" | grep -q '"error"'; then
-        die "Anime met MAL ID $mal_id niet gevonden"
+    # Try to get from cache first
+    if response=$(cache_get "$cache_file"); then
+        printf "\33[2K\r\033[1;34mFound anime with MAL ID %s in cache...\033[0m\n" "$mal_id" >&2
+    else
+        printf "\33[2K\r\033[1;34mSearching for anime with MAL ID: %s...\033[0m\n" "$mal_id" >&2
+        
+        if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
+            "https://api.myanimelist.net/v2/anime/$mal_id?fields=id,title"); then
+            die "Error fetching anime data from MAL API"
+        fi
+        
+        # Check if response contains error
+        if printf "%s" "$response" | grep -q '"error"'; then
+            die "Anime with MAL ID $mal_id not found"
+        fi
+        
+        # Cache the response
+        cache_set "$cache_file" "$response"
     fi
     
     # Extract title
     title=$(printf "%s" "$response" | sed -n 's/.*"title":"\([^"]*\)".*/\1/p')
     if [ -z "$title" ]; then
-        die "Kon geen titel vinden voor MAL ID $mal_id"
+        die "Could not find title for MAL ID $mal_id"
     fi
     
-    # Zoek met deze titel via de bestaande search_anime functie
+    # Search with this title via the existing search_anime function
     anime_list=$(search_anime "$title")
-    [ -z "$anime_list" ] && die "Geen resultaten gevonden voor titel van MAL ID $mal_id: $title"
-    # Geef het eerste resultaat terug
+    [ -z "$anime_list" ] && die "No results found for MAL ID title: $title"
+    # Return the first result
     printf "%s\n" "$(printf "%s" "$anime_list" | head -n1)"
+}
+
+# get current season anime from MAL API
+get_mal_season_anime() {
+    response=""
+    current_year=$(date +%Y)
+    current_month=$(date +%m)
+    
+    # Determine current season
+    case $current_month in
+        12|01|02) season="winter" ;;
+        03|04|05) season="spring" ;;
+        06|07|08) season="summer" ;;
+        09|10|11) season="fall" ;;
+    esac
+    
+    # Adjust year for winter (December belongs to next year's winter)
+    [ "$current_month" = "12" ] && current_year=$((current_year + 1))
+    
+    cache_file="$MAL_CACHE_DIR/season_${current_year}_${season}"
+    
+    # Try to get from cache first
+    if response=$(cache_get "$cache_file"); then
+        printf "\33[2K\r\033[1;34mFound %s %s season anime in cache...\033[0m\n" "$season" "$current_year" >&2
+    else
+        printf "\33[2K\r\033[1;34mFetching %s %s season anime...\033[0m\n" "$season" "$current_year" >&2
+        
+        # Try current season first, if it fails, try previous season
+        if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
+            "https://api.myanimelist.net/v2/anime/season/$current_year/$season?limit=20&fields=id,title"); then
+            die "Error fetching season anime from MAL API"
+        fi
+        
+        # Check if response contains error, try previous season
+        if printf "%s" "$response" | grep -q '"error"'; then
+            # Try previous season
+            case $season in
+                winter) prev_season="fall"; prev_year=$((current_year - 1)) ;;
+                spring) prev_season="winter"; prev_year=$current_year ;;
+                summer) prev_season="spring"; prev_year=$current_year ;;
+                fall) prev_season="summer"; prev_year=$current_year ;;
+            esac
+            
+            printf "\33[2K\r\033[1;34mCurrent season not available, trying %s %s...\033[0m\n" "$prev_season" "$prev_year" >&2
+            
+            if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
+                "https://api.myanimelist.net/v2/anime/season/$prev_year/$prev_season?limit=20&fields=id,title"); then
+                die "Error fetching season anime from MAL API"
+            fi
+            
+            if printf "%s" "$response" | grep -q '"error"'; then
+                die "Could not fetch season anime"
+            fi
+        fi
+        
+        # Cache the response
+        cache_set "$cache_file" "$response"
+    fi
+    
+    # Extract anime data from the correct JSON structure
+    anime_data=$(printf "%s" "$response" | sed 's/},{/\n/g' | sed -n 's/.*"id":\([0-9]*\),"title":"\([^"]*\)".*/\1\t\2/p')
+    printf "%s" "$anime_data" | while read -r mal_id title; do
+        if [ -n "$mal_id" ] && [ -n "$title" ]; then
+            anime_result=$(search_anime "$title" | head -n1)
+            if [ -n "$anime_result" ]; then
+                printf "%s\n" "$anime_result"
+            fi
+        fi
+    done
+}
+
+# get top anime from MAL API
+get_mal_top_anime() {
+    response=""
+    cache_file="$MAL_CACHE_DIR/top_anime"
+    
+    # Try to get from cache first
+    if response=$(cache_get "$cache_file"); then
+        printf "\33[2K\r\033[1;34mFound top anime in cache...\033[0m\n" >&2
+    else
+        printf "\33[2K\r\033[1;34mFetching top anime...\033[0m\n" >&2
+        
+        if ! response=$(curl -s -H "X-MAL-CLIENT-ID: $MAL_CLIENT_ID" \
+            "https://api.myanimelist.net/v2/anime/ranking?ranking_type=all&limit=20&fields=id,title,alternative_titles"); then
+            die "Error fetching top anime from MAL API"
+        fi
+        
+        # Check if response contains error
+        if printf "%s" "$response" | grep -q '"error"'; then
+            die "Could not fetch top anime"
+        fi
+        
+        # Cache the response
+        cache_set "$cache_file" "$response"
+    fi
+    
+    # Extract anime data and search for each
+    anime_data=$(printf "%s" "$response" | sed 's/},{/\n/g' | sed -n 's/.*"id":\([0-9]*\),"title":"\([^"]*\)".*/\1\t\2/p')
+    printf "%s" "$anime_data" | while read -r mal_id title; do
+        if [ -n "$mal_id" ] && [ -n "$title" ]; then
+            anime_result=$(search_anime "$title" | head -n1)
+            if [ -n "$anime_result" ]; then
+                printf "%s\n" "$anime_result"
+            fi
+        fi
+    done
 }
 
 # SCRAPING
@@ -270,8 +396,23 @@ search_anime() {
     #shellcheck disable=SC2016
     search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
 
-    curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
-| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
+    cache_key=$(cache_key "$1" "$mode")
+    cache_file="$SEARCH_CACHE_DIR/${cache_key}"
+    
+    # Try to get from cache first
+    if cached_result=$(cache_get "$cache_file"); then
+        printf "%s" "$cached_result"
+        return 0
+    fi
+    
+    # Perform the search
+    result=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
+| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g')
+    
+    # Cache the result
+    cache_set "$cache_file" "$result"
+    
+    printf "%s" "$result"
 }
 
 time_until_next_ep() {
@@ -293,8 +434,23 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
-|g; s|"||g' | sort -n -k 1
+    cache_key=$(cache_key "$1" "$mode")
+    cache_file="$EPISODE_CACHE_DIR/${cache_key}"
+    
+    # Try to get from cache first
+    if cached_result=$(cache_get "$cache_file"); then
+        printf "%s" "$cached_result"
+        return 0
+    fi
+    
+    # Fetch episode list
+    result=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
+|g; s|"||g' | sort -n -k 1)
+    
+    # Cache the result
+    cache_set "$cache_file" "$result"
+    
+    printf "%s" "$result"
 }
 
 # PLAYING
@@ -437,24 +593,151 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
+favorites_file="$hist_dir/ani-favorites"
+[ ! -f "$favorites_file" ] && : >"$favorites_file"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 CONFIG_DIR="$HOME/.config/ani-cli"
 CONFIG_FILE="$CONFIG_DIR/mal.conf"
 
 if [ ! -f "$CONFIG_FILE" ]; then
-    printf "\n🔑 Je hebt een MyAnimeList API client ID nodig om bepaalde functies te gebruiken.\n"
-    printf "1. Ga naar https://myanimelist.net/apiconfig en maak een nieuwe applicatie aan.\n"
-    printf "2. Kopieer je client ID.\n"
-    printf "3. Vul hieronder je client ID in.\n"
-    printf "Voer je MAL client ID in: "
+    printf "\n🔑 You need a MyAnimeList API client ID for certain features.\n"
+    printf "1. Go to https://myanimelist.net/apiconfig and create a new application.\n"
+    printf "2. Copy your client ID.\n"
+    printf "3. Enter your client ID below.\n"
+    printf "Enter your MAL client ID: "
     read -r MAL_CLIENT_ID
     mkdir -p "$CONFIG_DIR"
     echo "MAL_CLIENT_ID=$MAL_CLIENT_ID" > "$CONFIG_FILE"
-    printf "Client ID opgeslagen in %s.\n" "$CONFIG_FILE"
+    printf "Client ID saved in %s.\n" "$CONFIG_FILE"
 fi
 # shellcheck disable=SC1090
 . "$CONFIG_FILE"
+
+# Cache system
+CACHE_DIR="$HOME/.cache/ani-cli"
+MAL_CACHE_DIR="$CACHE_DIR/mal"
+SEARCH_CACHE_DIR="$CACHE_DIR/search"
+EPISODE_CACHE_DIR="$CACHE_DIR/episodes"
+CACHE_EXPIRY=3600  # 1 hour in seconds
+
+# Create cache directories
+mkdir -p "$MAL_CACHE_DIR" "$SEARCH_CACHE_DIR" "$EPISODE_CACHE_DIR"
+
+# Cache functions
+cache_get() {
+    local cache_file="$1"
+    local current_time=$(date +%s)
+    local file_time
+    
+    if [ -f "$cache_file" ]; then
+        file_time=$(stat -c %Y "$cache_file" 2>/dev/null || stat -f %m "$cache_file" 2>/dev/null)
+        if [ $((current_time - file_time)) -lt "$CACHE_EXPIRY" ]; then
+            cat "$cache_file"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+cache_set() {
+    local cache_file="$1"
+    local data="$2"
+    printf "%s" "$data" > "$cache_file"
+}
+
+cache_key() {
+    printf "%s" "$*" | md5sum | cut -d' ' -f1
+}
+
+# FAVORITES SYSTEM
+
+# get favorites list
+get_favorites() {
+    if [ -f "$favorites_file" ]; then
+        cat "$favorites_file"
+    fi
+}
+
+# add anime to favorites
+add_to_favorites() {
+    local anime_id="$1"
+    local anime_title="$2"
+    
+    # Check if already in favorites
+    if [ -f "$favorites_file" ] && grep -q "^${anime_id}	" "$favorites_file"; then
+        printf "\033[1;33m%s is already in your favorites!\033[0m\n" "$anime_title" >&2
+        return 1
+    fi
+    
+    # Add to favorites
+    printf "%s	%s\n" "$anime_id" "$anime_title" >> "$favorites_file"
+    printf "\033[1;32m%s added to favorites!\033[0m\n" "$anime_title" >&2
+}
+
+# add anime to favorites by name
+add_favorite_by_name() {
+    local anime_name="$1"
+    local search_results
+    local selected_anime
+    
+    printf "\033[1;34mSearching for '%s'...\033[0m\n" "$anime_name" >&2
+    
+    # Search for the anime
+    search_results=$(search_anime "$anime_name")
+    if [ -z "$search_results" ]; then
+        printf "\033[1;31mNo anime found with name '%s'\033[0m\n" "$anime_name" >&2
+        return 1
+    fi
+    
+    # Let user select from results
+    selected_anime=$(printf "%s" "$search_results" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime to add to favorites: ")
+    if [ -z "$selected_anime" ]; then
+        printf "\033[1;33mNo anime selected\033[0m\n" >&2
+        return 1
+    fi
+    
+    # Extract ID and title
+    local anime_id=$(printf "%s" "$selected_anime" | cut -f1)
+    local anime_title=$(printf "%s" "$selected_anime" | cut -f2)
+    
+    # Add to favorites
+    add_to_favorites "$anime_id" "$anime_title"
+}
+
+# remove anime from favorites
+remove_from_favorites() {
+    local anime_id="$1"
+    local anime_title="$2"
+    
+    if [ -f "$favorites_file" ]; then
+        if grep -q "^${anime_id}	" "$favorites_file"; then
+            sed -i "/^${anime_id}	/d" "$favorites_file"
+            printf "\033[1;32m%s removed from favorites!\033[0m\n" "$anime_title" >&2
+        else
+            printf "\033[1;33m%s is not in your favorites!\033[0m\n" "$anime_title" >&2
+        fi
+    fi
+}
+
+# check if anime is in favorites
+is_in_favorites() {
+    local anime_id="$1"
+    [ -f "$favorites_file" ] && grep -q "^${anime_id}	" "$favorites_file"
+}
+
+# show favorites menu
+show_favorites_menu() {
+    local favorites_list
+    favorites_list=$(get_favorites)
+    
+    if [ -z "$favorites_list" ]; then
+        printf "\033[1;33mNo favorites yet. Add some anime to get started!\033[0m\n" >&2
+        return 1
+    fi
+    
+    printf "%s" "$favorites_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select favorite anime: "
+}
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -528,6 +811,27 @@ while [ $# -gt 0 ]; do
             search=mal_id
             shift
             ;;
+        --mal-season)
+            search=mal_season
+            ;;
+        --mal-top)
+            search=mal_top
+            ;;
+        --clear-cache)
+            printf "Clearing cache...\n"
+            rm -rf "$CACHE_DIR"
+            mkdir -p "$MAL_CACHE_DIR" "$SEARCH_CACHE_DIR" "$EPISODE_CACHE_DIR"
+            printf "Cache cleared successfully.\n"
+            exit 0
+            ;;
+        --favorites)
+            search=favorites
+            ;;
+        --add-favorite)
+            [ $# -lt 2 ] && die "missing argument!"
+            add_favorite_by_name "$2"
+            exit 0
+            ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
@@ -548,14 +852,101 @@ case "$player_function" in
     *) dep_ch "$player_function" ;;
 esac
 
+# Color codes
+CYAN='\033[1;36m'
+YELLOW='\033[1;33m'
+MAGENTA='\033[1;35m'
+RESET='\033[0m'
+
+# show interactive menu if no search type is specified
+if [ "$search" = "scrape" ] && [ -z "$query" ] && [ "$use_external_menu" = "0" ]; then
+    printf "${MAGENTA}   ／人◕ ‿‿ ◕人＼   ${RESET}\n"
+    printf "${CYAN}🎌 ani-cli - Anime Browser${RESET}\n"
+    printf "${YELLOW}1.${RESET} 🔍 Normal search\n"
+    printf "${YELLOW}2.${RESET} 🆔 Search by MAL ID\n"
+    printf "${YELLOW}3.${RESET} 📅 Season overview (MAL)\n"
+    printf "${YELLOW}4.${RESET} ⭐ Top anime (MAL)\n"
+    printf "${YELLOW}5.${RESET} ❤️  Favorites\n"
+    printf "${YELLOW}6.${RESET} ➕ Add to favorites\n"
+    printf "${CYAN}\nChoose an option (1-6): ${RESET}"
+    read -r menu_choice
+    
+    case "$menu_choice" in
+        1) 
+            printf "\n${CYAN}Search anime: ${RESET}"
+            read -r query
+            search="scrape"
+            ;;
+        2)
+            printf "\n${CYAN}Enter MAL ID: ${RESET}"
+            read -r mal_search_id
+            search="mal_id"
+            ;;
+        3)
+            search="mal_season"
+            ;;
+        4)
+            search="mal_top"
+            ;;
+        5)
+            search="favorites"
+            ;;
+        6)
+            printf "\n${CYAN}Enter anime name to add to favorites: ${RESET}"
+            read -r anime_name
+            add_favorite_by_name "$anime_name"
+            exit 0
+            ;;
+        *)
+            die "Invalid choice"
+            ;;
+    esac
+fi
+
 # searching
 case "$search" in
     mal_id)
         anime_list=$(search_anime_by_mal_id "$mal_search_id")
-        [ -z "$anime_list" ] && die "Anime met MAL ID $mal_search_id niet gevonden!"
+        [ -z "$anime_list" ] && die "Anime with MAL ID $mal_search_id not found!"
         title=$(printf "%s" "$anime_list" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$anime_list" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
+    mal_season)
+        anime_list=$(get_mal_season_anime)
+        [ -z "$anime_list" ] && die "No season anime found!"
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+        [ -n "$index" ] && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$result" ] && exit 1
+        title=$(printf "%s" "$result" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        id=$(printf "%s" "$result" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
+    mal_top)
+        anime_list=$(get_mal_top_anime)
+        [ -z "$anime_list" ] && die "No top anime found!"
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+        [ -n "$index" ] && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$result" ] && exit 1
+        title=$(printf "%s" "$result" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        id=$(printf "%s" "$result" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
+    favorites)
+        result=$(show_favorites_menu)
+        [ -z "$result" ] && exit 1
+        id=$(printf "%s" "$result" | cut -f1)
+        title=$(printf "%s" "$result" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
@@ -609,7 +1000,7 @@ tput sc
 play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
-while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
+while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nadd_favorite\nremove_favorite\nquit" | nth "Playing episode $ep_no of $title... "); do
     case "$cmd" in
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) episode="$replay" ;;
@@ -618,6 +1009,22 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         change_quality)
             new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
             select_quality "$new_quality"
+            ;;
+        add_favorite)
+            if is_in_favorites "$id"; then
+                printf "\033[1;33m%s is already in your favorites!\033[0m\n" "$title" >&2
+            else
+                add_to_favorites "$id" "$title"
+            fi
+            continue
+            ;;
+        remove_favorite)
+            if is_in_favorites "$id"; then
+                remove_from_favorites "$id" "$title"
+            else
+                printf "\033[1;33m%s is not in your favorites!\033[0m\n" "$title" >&2
+            fi
+            continue
             ;;
         *) exit 0 ;;
     esac
