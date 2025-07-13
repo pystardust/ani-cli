@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.1"
+version_number="4.10.2"
 
 # UI
 
@@ -289,7 +289,7 @@ download() {
             if command -v "yt-dlp" >/dev/null; then
                 yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
-                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" -extension_picky 0
             fi
             # embed subs into downloads
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
