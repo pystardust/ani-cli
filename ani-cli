@@ -357,9 +357,9 @@ play() {
         range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
         [ -z "$range" ] && die "Invalid range!"
         for i in $range; do
-            tput clear
+            [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput clear
             ep_no=$i
-            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no" >&2
             [ "$i" = "$end" ] && unset range
             play_episode
         done
@@ -476,15 +476,15 @@ done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
-printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n" >&2
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
-    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled\n" >&2 ;;
+    *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" >&2 ;;
     flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
@@ -532,9 +532,9 @@ esac
 [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
 
 # moves the cursor up one line and clears that line
-tput cuu1 && tput el
+[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput cuu1 && tput el
 # stores the position of cursor
-tput sc
+[ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput sc
 
 # playback & loop
 play
