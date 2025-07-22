@@ -325,7 +325,13 @@ play_episode() {
         *iina*)
             [ -n "$subs_flag" ] && subs_flag="--mpv-${subs_flag#--}"
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
-            nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            # check for existing instance
+            if pgrep -f "IINA" >/dev/null 2>&1; then
+                # using IINA instance without --keep-running to prevent hanging
+                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            else
+                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            fi
             ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
@@ -341,7 +347,16 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
-    [ "$use_external_menu" = "1" ] && wait
+    if [ "$use_external_menu" = "1" ]; then
+        case "$player_function" in
+            *iina*) 
+                # for IINA, don't wait for stopping hanging issue
+                ;;
+            *) 
+                wait 
+                ;;
+        esac
+    fi
 }
 
 play() {
