@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.3"
+version_number="4.10.4"
 
 # UI
 
@@ -282,10 +282,10 @@ update_history() {
 }
 
 download() {
-    # download subtitle if it's set
-    [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
     case $1 in
         *m3u8*)
+            # download subtitle if it's set
+            [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
             if command -v "yt-dlp" >/dev/null; then
                 yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
             else
