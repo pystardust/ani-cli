@@ -64,7 +64,7 @@ Use ani-skip to skip the intro of the episode (mpv and celluloid only)
 \fB\--no-detach\fR
 Don't detach the player (useful for in-terminal playback, mpv and celluloid only)
 \fB\--exit-after-play\fR
-Exit the player, and return the player exit code (useful for non interactive scenarios, works only if --no-detach is used, mpv and celluloid only)
+Exit the player, and return the player exit code (useful for non interactive scenarios, mpv and celluloid only)
 .TP
 \fB\--skip-title\fR \fI\,<title>\/\fR
 Specify the title to use for ani-skip
@@ -97,9 +97,6 @@ Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Def
 .TP
 \fBANI_CLI_MULTI_SELECTION\fR
 Controls the multi flag for the chosen frontend. Default is -m for fzf and --multi-select for rofi dmenu.
-.TP
-\fBANI_CLI_NON_INTERACTIVE\fR
-Enabled by default if both -e and -S are given. Disables fzf dependency check. Also disables some debug information if running with ANI_CLI_PLAYER="debug"
 .TP
 \fBANI_CLI_HIST_DIR\fR
 Controls the directory ani-cli uses for storing history. A /ani-cli subfolder is created there for the histfile if doesn't exists. Default is $XDG_STATE_HOME if set, $HOME/.local/state if not.
