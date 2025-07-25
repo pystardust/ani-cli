@@ -59,13 +59,12 @@ Play the dubbed version. Without this flag, it'll always play the subbed version
 Use rofi instead of fzf for the interactive menu
 .TP
 \fB\--skip\fR
-Use ani-skip to skip the intro of the episode (mpv only)
+Use ani-skip to skip the intro of the episode (mpv and celluloid only)
 .TP
 \fB\--no-detach\fR
-Don't detach the player (useful for in-terminal playback, mpv only)
-.TP
+Don't detach the player (useful for in-terminal playback, mpv and celluloid only)
 \fB\--exit-after-play\fR
-Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
+Exit the player, and return the player exit code (useful for non interactive scenarios, mpv and celluloid only)
 .TP
 \fB\--skip-title\fR \fI\,<title>\/\fR
 Specify the title to use for ani-skip
@@ -106,10 +105,10 @@ Controls the directory ani-cli uses for storing history. A /ani-cli subfolder is
 Controls the default source. Valid is history (equivalent to -c), everything else means search. Default is search.
 .TP
 \fBANI_CLI_SKIP_INTRO\fR
-Controls if ani-skip is used to skip intros (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
+Controls if ani-skip is used to skip intros (works with mpv and celluloid only). Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
 \fBANI_CLI_NO_DETACH\fR
-Controls if mpv is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
+Controls if mpv is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. (works with mpv and celluloid only). Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
 \fBANI_CLI_SKIP_TITLE\fR
 Overrides the anime title to query for skip times. Can be any string value. Default is empty, resolving to the anime title as given by ani-cli.
