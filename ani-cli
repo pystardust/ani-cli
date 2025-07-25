@@ -349,11 +349,11 @@ play_episode() {
     update_history
     if [ "$use_external_menu" = "1" ]; then
         case "$player_function" in
-            *iina*) 
+            *iina*)
                 # for IINA, don't wait for stopping hanging issue
                 ;;
-            *) 
-                wait 
+            *)
+                wait
                 ;;
         esac
     fi
