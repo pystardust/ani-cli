@@ -1,4 +1,4 @@
-To get invited to ani-cli matrix space please knock into the `#ani-cli-queue:matrix.org` room. 
+To get invited to ani-cli matrix space please knock into the `#ani-cli-queue:matrix.org` room.
 
 In the reason field, please mention that you want to be invited to ani-cli.
 If your main client does not support spaces, please add that to the reason.
