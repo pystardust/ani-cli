@@ -347,16 +347,6 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
-    if [ "$use_external_menu" = "1" ]; then
-        case "$player_function" in
-            *iina*)
-                # for IINA, don't wait for stopping hanging issue
-                ;;
-            *)
-                wait
-                ;;
-        esac
-    fi
 }
 
 play() {
