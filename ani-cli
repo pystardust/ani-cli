@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.3"
+version_number="4.10.4"
 
 # UI
 
@@ -325,9 +325,8 @@ play_episode() {
         *iina*)
             [ -n "$subs_flag" ] && subs_flag="--mpv-${subs_flag#--}"
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
-            # check for existing instance
             if pgrep -f "IINA" >/dev/null 2>&1; then
-                # using IINA instance without --keep-running to prevent hanging
+                # omit --keep-running when an IINA instance exists to prevent hanging
                 nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
             else
                 nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
