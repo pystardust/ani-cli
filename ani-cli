@@ -214,10 +214,12 @@ get_episode_url() {
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4"
+    pids=""
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
+        pids="$pids $!"
     done
-    wait
+    wait "$pids"
     # select the link with matching quality
     links=$(cat "$cache_dir"/* | sort -g -r -s)
     rm -r "$cache_dir"
@@ -325,7 +327,13 @@ play_episode() {
         *iina*)
             [ -n "$subs_flag" ] && subs_flag="--mpv-${subs_flag#--}"
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
-            nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            # check for existing instance
+            if pgrep -f "IINA" >/dev/null 2>&1; then
+                # using IINA instance without --keep-running to prevent hanging
+                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            else
+                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+            fi
             ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
@@ -341,7 +349,6 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
-    [ "$use_external_menu" = "1" ] && wait
 }
 
 play() {
