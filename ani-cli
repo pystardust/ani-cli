@@ -219,7 +219,7 @@ get_episode_url() {
         generate_link "$provider" >"$cache_dir"/"$provider" &
         pids="$pids $!"
     done
-    wait $pids
+    wait "$pids"
     # select the link with matching quality
     links=$(cat "$cache_dir"/* | sort -g -r -s)
     rm -r "$cache_dir"
