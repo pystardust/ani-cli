@@ -22,14 +22,25 @@ nth() {
     prompt="$1"
     multi_flag=""
     [ $# -ne 1 ] && shift && multi_flag="$1"
-    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
-    line_start=$(printf "%s" "$line" | head -n1)
-    line_end=$(printf "%s" "$line" | tail -n1)
-    [ -n "$line" ] || exit 1
-    if [ "$line_start" = "$line_end" ]; then
-        printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+    
+    # For episode selection, we need to handle the tracking info display
+    if printf "%s" "$prompt" | grep -q "episode"; then
+        # Display episodes directly without adding line numbers (episodes already have their numbers)
+        selected=$(printf "%s" "$stdin" | launcher "$multi_flag" "$prompt")
+        [ -z "$selected" ] && exit 1
+        
+        # Extract episode numbers from selection, removing tracking info
+        printf "%s" "$selected" | sed 's/ (last [^)]*)$//' | tr '\n' ' ' | sed 's/[[:space:]]*$//'
     else
-        printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+        line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+        line_start=$(printf "%s" "$line" | head -n1)
+        line_end=$(printf "%s" "$line" | tail -n1)
+        [ -n "$line" ] || exit 1
+        if [ "$line_start" = "$line_end" ]; then
+            printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+        else
+            printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+        fi
     fi
 }
 
@@ -252,31 +263,87 @@ time_until_next_ep() {
     exit 0
 }
 
-# get the episodes list of the selected anime
+# get tracking info for an anime from history
+get_tracking_info() {
+    anime_id="$1"
+    if [ -f "$histfile" ] && grep -q "^[^	]*	${anime_id}	" "$histfile"; then
+        grep "^[^	]*	${anime_id}	" "$histfile" | cut -f4 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# get the episodes list of the selected anime with tracking info
 episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
-|g; s|"||g' | sort -n -k 1
+    raw_episodes=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
+|g; s|"||g' | sort -n -k 1)
+    
+    # Get tracking info for this anime
+    tracking_info=$(get_tracking_info "$*")
+    
+    # Add tracking info to episode list
+    printf "%s\n" "$raw_episodes" | while read -r ep; do
+        [ -z "$ep" ] && continue
+        status=""
+        
+        if [ -n "$tracking_info" ]; then
+            # Check if this episode was watched
+            if printf "%s" "$tracking_info" | grep -q "w${ep}\(,\|$\)"; then
+                status=" (last watched)"
+            fi
+            # Check if this episode was downloaded (takes priority over watched)
+            if printf "%s" "$tracking_info" | grep -q "d${ep}\(,\|$\)"; then
+                status=" (last downloaded)"
+            fi
+        fi
+        
+        printf "%s%s\n" "$ep" "$status"
+    done
 }
 
 # PLAYING
 
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
-    latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
+    latest_ep=$(printf "%s\n" "$ep_list" | tail -n1 | sed 's/ (last [^)]*)$//')
     title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
-    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+    ep_no=$(printf "%s" "$ep_list" | sed 's/ (last [^)]*)$//' | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
 update_history() {
+    # Determine action type: 'w' for watched, 'd' for downloaded
+    action_type="w"
+    [ "$player_function" = "download" ] && action_type="d"
+    
     if grep -q -- "$id" "$histfile"; then
-        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
+        # Update existing entry, preserving other action types
+        if grep -q "^[^	]*	${id}	" "$histfile"; then
+            # Get existing line and update it
+            existing_line=$(grep "^[^	]*	${id}	" "$histfile")
+            existing_ep=$(printf "%s" "$existing_line" | cut -f1)
+            existing_title=$(printf "%s" "$existing_line" | cut -f3-)
+            
+            # Check if we have action info (4th field)
+            existing_actions=$(printf "%s" "$existing_line" | cut -f4 2>/dev/null || echo "")
+            
+            # Update or add action info
+            if [ -n "$existing_actions" ]; then
+                # Remove existing action of same type and add new one
+                new_actions=$(printf "%s" "$existing_actions" | sed "s/${action_type}[0-9.]*//g" | sed 's/,,*/,/g' | sed 's/^,//;s/,$//')
+                [ -n "$new_actions" ] && new_actions="${new_actions},${action_type}${ep_no}" || new_actions="${action_type}${ep_no}"
+            else
+                new_actions="${action_type}${ep_no}"
+            fi
+            
+            sed -E "s|^[^	]+	${id}	.*$|${ep_no}	${id}	${title}	${new_actions}|" "$histfile" >"${histfile}.new"
+        fi
     else
         cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
+        printf "%s\t%s\t%s\t%s\n" "$ep_no" "$id" "$title" "${action_type}${ep_no}" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
 }
@@ -345,16 +412,20 @@ play_episode() {
 }
 
 play() {
-    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
-    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
+    # Clean episode numbers from tracking info
+    clean_ep_no=$(printf "%s" "$ep_no" | sed 's/ (last [^)]*)$//')
+    clean_ep_list=$(printf "%s" "$ep_list" | sed 's/ (last [^)]*)$//')
+    
+    start=$(printf "%s" "$clean_ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+    end=$(printf "%s" "$clean_ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
+    [ "$start" = "-1" ] && clean_ep_no=$(printf "%s" "$clean_ep_list" | tail -n1) && unset start
     [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
-    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
-    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    [ "$end" = "-1" ] && end=$(printf "%s" "$clean_ep_list" | tail -n1)
+    line_count=$(printf "%s\n" "$clean_ep_no" | wc -l | tr -d "[:space:]")
     if [ "$line_count" != 1 ] || [ -n "$start" ]; then
-        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
-        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
-        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
+        [ -z "$start" ] && start=$(printf "%s\n" "$clean_ep_no" | head -n1)
+        [ -z "$end" ] && end=$(printf "%s\n" "$clean_ep_no" | tail -n1)
+        range=$(printf "%s\n" "$clean_ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
         [ -z "$range" ] && die "Invalid range!"
         for i in $range; do
             tput clear
@@ -364,6 +435,7 @@ play() {
             play_episode
         done
     else
+        ep_no="$clean_ep_no"
         play_episode
     fi
     # moves up to stored position and deletes to end
@@ -492,7 +564,7 @@ esac
 # searching
 case "$search" in
     history)
-        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
+        anime_list=$(while read -r ep_no id title actions; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
@@ -542,9 +614,15 @@ play
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
     case "$cmd" in
-        next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+        next) 
+            clean_ep_list=$(printf "%s" "$ep_list" | sed 's/ (last [^)]*)$//')
+            ep_no=$(printf "%s" "$clean_ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null 
+            ;;
         replay) episode="$replay" ;;
-        previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+        previous) 
+            clean_ep_list=$(printf "%s" "$ep_list" | sed 's/ (last [^)]*)$//')
+            ep_no=$(printf "%s" "$clean_ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null 
+            ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
         change_quality)
             new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
