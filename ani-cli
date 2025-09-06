@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.3"
+version_number="4.10.4"
 
 # UI
 
@@ -45,7 +45,7 @@ help_info() {
     %s [query] [options]
     %s [options] [query] [options]
 
-    Options:
+        Options:
       -c, --continue
         Continue watching from history
       -d, --download
@@ -62,6 +62,8 @@ help_info() {
         Specify the video quality
       -v, --vlc
         Use VLC to play the video
+      -H, --haruna
+        Use Haruna to play the video
       -V, --version
         Show the version of the script
       -h, --help
@@ -128,6 +130,9 @@ where_iina() {
 }
 
 where_mpv() {
+where_haruna() {
+    command -v "haruna" >/dev/null && printf "%s" "haruna" && return 0
+}
     command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
     printf "%s" "mpv" && return 0
 }
@@ -320,6 +325,9 @@ play_episode() {
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
+        haruna*)
+            nohup $player_function "$episode" >/dev/null 2>&1 &
+            ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         *iina*)
@@ -412,6 +420,9 @@ while [ $# -gt 0 ]; do
                 *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac
+            ;;
+        -H | --haruna)
+            player_function="haruna"
             ;;
         -s | --syncplay)
             case "$(uname -s)" in
