@@ -346,6 +346,7 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
+    [ "$use_external_menu" = "1" ] && wait
 }
 
 play() {
