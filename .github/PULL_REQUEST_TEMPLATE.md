@@ -21,12 +21,13 @@
 - [ ] `-s` syncplay works
 - [ ] `-q` quality works
 - [ ] `-v` vlc works
-- [ ] `-e` select episode works
+- [ ] `-e` (select episode) aka `-r` (range selection) works
 - [ ] `-S` select index works
-- [ ] `-r` range selection works
 - [ ] `--skip` ani-skip works
 - [ ] `--skip-title` ani-skip title argument works
 - [ ] `--no-detach` no detach works
+- [ ] `--exit-after-play` auto exit after playing works
+- [ ] `--nextep-countdown` countdown to next ep works
 - [ ] `--dub` and regular (sub) mode both work
 - [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
 ---
@@ -40,3 +41,5 @@
 - Episode 0: Saenai Heroine no Sodatekata ♭
 - Unicode: Saenai Heroine no Sodatekata ♭
 - Non-whole episodes: Tensei shitara slime datta ken (ep. 24.5, ep. 24.9)
+- All Providers: Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e (TV) (3 m3u8, 3 mp4, 1 fast4speed, 1 sharepoint)
+- The examples of the help text

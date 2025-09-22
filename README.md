@@ -36,13 +36,10 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-FreeBSD)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-freebsd)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
-- [Completion](#completion)
-  - [bash](#bash)
-  - [zsh](#zsh)
-- [Dependencies](#dependencies-1)
+- [Dependencies](#dependencies)
   - [Ani-Skip](#ani-skip)
 - [FAQ](#faq)
 - [Homies](#homies)
@@ -127,7 +124,7 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 </details></details><details><summary><b>MacOS</b></summary>
 
-Install dependencies [(See below)](#dependencies-1)
+Install dependencies [(See below)](#dependencies)
 
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
@@ -293,7 +290,7 @@ curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.l
 chmod +x ~/.local/bin/yt-dlp
 
 mkdir ~/.patch
-curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
+curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.8-1-x86_64.pkg.tar.zst
 tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
 cp ~/.patch/usr/bin/patch ~/.local/bin/
 
@@ -348,7 +345,7 @@ chmod +x ~/.local/bin/yt-dlp
 
 ```sh
 mkdir ~/.patch
-curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.7.6-10-x86_64.pkg.tar.zst
+curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.8-1-x86_64.pkg.tar.zst
 tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
 cp ~/.patch/usr/bin/patch ~/.local/bin/
 ```
@@ -415,7 +412,7 @@ rm -rf ani-cli
 
 *This method works for any unix-like operating system and is a baseline for porting efforts.*
 
-Install dependencies [(See below)](#dependencies-1)
+Install dependencies [(See below)](#dependencies)
 
 ```sh
 git clone "https://github.com/pystardust/ani-cli.git"
@@ -499,24 +496,6 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 
 </details>
 
-## Completion
-
-### bash
-
-To add tab completions using bash run the following command inside the ani-cli directory
-```
-cp _ani-cli-bash /path/to/your/completions
-echo "source /path/to/your/completions/_ani-cli-bash" >> ~/.bashrc
-```
-
-### zsh
-
-To add tab completions using zsh run the following command inside the ani-cli directory
-```
-cp _ani-cli-zsh /path/to/your/completions
-echo "source /path/to/your/completions/_ani-cli-zsh" >> ~/.zshrc
-```
-
 ## Dependencies
 
 - grep
@@ -565,7 +544,6 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allmanga, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
-* [Dantotsu](https://github.com/rebelonion/Dantotsu): Rebirth of Saikou, Best android app for anime/manga/LN with anilist integration (Kotlin)
 * [mangal](https://github.com/metafates/mangal): Download & read manga from any source with anilist sync (Go)
 * [lobster](https://github.com/justchokingaround/lobster): Watch movies and series from the terminal (Shell)
 * [mov-cli](https://github.com/mov-cli/mov-cli): Watch everything from your terminal. (Python)
@@ -574,4 +552,5 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * [doccli](https://github.com/TowarzyszFatCat/doccli):  A cli to watch anime with POLISH subtitles (Python)
 * [GoAnime](https://github.com/alvarorichard/GoAnime): A CLI tool to browse, play, and download anime in Portuguese(Go)
 * [Curd](https://github.com/Wraient/curd): A CLI tool to watch anime with Anilist, Discord RPC, Skip Intro/Outro/Filler/Recap (Go)
-- [FastAnime](https://github.com/Benex254/FastAnime): browser anime experience from the terminal (Python)
+* [FastAnime](https://github.com/Benex254/FastAnime): browser anime experience from the terminal (Python)
+* [ani-skip](https://github.com/KilDesu/ani-skip): Automatically skip opening and ending sequences for IINA on MacOS (Typescript, official IINA plugin API)
