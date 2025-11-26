@@ -540,7 +540,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 </details>
 
 ## Homies
-
+* [ani-cli-arabic](https://github.com/np4abdou1/ani-cli-arabic): A terminal-based anime streaming tool with Arabic subtitle support, inspired by ani-cli (Python)
 * [animdl](https://github.com/justfoolingaround/animdl): Ridiculously efficient, fast and light-weight (supports most sources: allmanga, zoro ... (Python)
 * [jerry](https://github.com/justchokingaround/jerry): stream anime with anilist tracking and syncing, with discord presence (Shell)
 * [anipy-cli](https://github.com/sdaqo/anipy-cli): ani-cli rewritten in python (Python)
