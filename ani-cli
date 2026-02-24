@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.4"
+version_number="4.10.5"
 
 # UI
 
@@ -109,7 +109,7 @@ update_script() {
         if printf '%s\n' "$update" | patch "$0" -; then
             printf "Script has been updated\n"
         else
-            die "Can't update for some reason!"
+            die "Update failed! Try: curl -fsSL https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli -o \"\$0\""
         fi
     fi
     exit 0
@@ -295,8 +295,12 @@ download() {
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
-            # shellcheck disable=SC2086
-            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            if command -v "yt-dlp" >/dev/null; then
+                yt-dlp --referer "$allanime_refr" -o "$download_dir/$2.mp4" "$1"
+            else
+                # shellcheck disable=SC2086
+                aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            fi
             ;;
     esac
 }
@@ -487,7 +491,10 @@ dep_ch "curl" "sed" "grep" || true
 dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
-    download) dep_ch "ffmpeg" "aria2c" ;;
+    download)
+        command -v "yt-dlp" >/dev/null || command -v "ffmpeg" >/dev/null || die "Neither yt-dlp nor ffmpeg found. Please install one."
+        command -v "yt-dlp" >/dev/null || command -v "aria2c" >/dev/null || die "Neither yt-dlp nor aria2c found. Please install one."
+        ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     flatpak_mpv) true ;; # handled out of band in where_mpv
