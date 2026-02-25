@@ -526,6 +526,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 <details>
 	
 * Can I change subtitle language or turn them off? - No, the subtitles are baked into the video.
+* I don't know what to watch. - Use `-R` or `--random` to browse a random selection of popular anime.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
 * Can I change media source? - No (unless you can scrape that source yourself).
