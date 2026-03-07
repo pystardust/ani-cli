@@ -1,7 +1,7 @@
 #!/bin/sh
 
 version_number="4.10.5"
-launcher_choice=0 
+launcher_choice=0
 
 # UI
 
@@ -77,8 +77,8 @@ help_info() {
         Play dubbed version
       --rofi
         Use rofi instead of fzf for the interactive menu
-			--dmenu
-				Use dmenu instead of fzf for the interactive menu
+      --dmenu
+        Use dmenu instead of fzf for the interactive menu
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
       --no-detach
@@ -353,7 +353,7 @@ play_episode() {
     replay="$episode"
     unset episode
     update_history
-    [ "$use_external_menu" = $launcher_choice ] && wait
+    [ "$use_external_menu" = "$launcher_choice" ] && wait
 }
 
 play() {
