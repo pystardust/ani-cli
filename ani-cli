@@ -1,7 +1,7 @@
 #!/bin/sh
 
 version_number="4.10.5"
-launcher_choice=0
+launcher_choice=0 
 
 # UI
 
