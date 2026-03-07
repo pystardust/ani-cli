@@ -6,10 +6,8 @@ launcher_choice=0
 # UI
 
 external_menu() {
-	case $launcher_choice in
-		1) rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3" ;;
-		2) dmenu -l 20 -p "$1" ;;
-	esac
+    [ "$launcher_choice" = "1" ] && rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3"
+    [ "$launcher_choice" = "2" ] && dmenu -l 20 -p "$1"
 }
 
 launcher() {
