@@ -109,7 +109,7 @@ update_script() {
         if printf '%s\n' "$update" | patch "$0" -; then
             printf "Script has been updated\n"
         else
-            die "Update failed! Try: curl -fsSL https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli -o \"\$0\""
+            die "Can't update for some reason!"
         fi
     fi
     exit 0
