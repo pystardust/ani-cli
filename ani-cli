@@ -492,9 +492,7 @@ dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
     download)
-        command -v "yt-dlp" >/dev/null || command -v "ffmpeg" >/dev/null || die "Neither yt-dlp nor ffmpeg found. Please install one."
-        command -v "yt-dlp" >/dev/null || command -v "aria2c" >/dev/null || die "Neither yt-dlp nor aria2c found. Please install one."
-        ;;
+        command -v "yt-dlp" >/dev/null || echo "ffmpeg" "aria2c" | xargs -n1 command -v >/dev/null || die "Neither yt-dlp nor ffmpeg and aria2c found. Please install one." ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     flatpak_mpv) true ;; # handled out of band in where_mpv
