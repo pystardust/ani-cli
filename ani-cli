@@ -295,12 +295,9 @@ download() {
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
-            if command -v "yt-dlp" >/dev/null; then
-                yt-dlp --referer "$allanime_refr" -o "$download_dir/$2.mp4" "$1"
-            else
-                # shellcheck disable=SC2086
-                aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
-            fi
+            command -v "yt-dlp" >/dev/null && t-dlp --referer "$allanime_refr" -o "$download_dir/$2.mp4" "$1"
+            # shellcheck disable=SC2086
+            command -v "yt-dlp" >/dev/null | aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
             ;;
     esac
 }
