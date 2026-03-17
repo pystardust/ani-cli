@@ -2,6 +2,8 @@
 
 version_number="4.10.6"
 
+ANIME_TITLE="name"
+
 # UI
 
 external_menu() {
@@ -72,6 +74,8 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
+      --en
+        Display anime name in English
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -236,10 +240,10 @@ get_episode_url() {
 # search the query and give results
 search_anime() {
     #shellcheck disable=SC2016
-    search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
+    search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id '"${ANIME_TITLE}"' availableEpisodes __typename } }}'
 
     curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
-| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
+| g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"${ANIME_TITLE}\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
 }
 
 time_until_next_ep() {
@@ -469,6 +473,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --dub) mode="dub" ;;
+        --en) ANIME_TITLE="englishName" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
         --rofi) use_external_menu=1 ;;
