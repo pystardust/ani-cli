@@ -277,11 +277,11 @@ process_hist_entry() {
 
 update_history() {
     if grep -q -- "$id" "$histfile"; then
-        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
+        grep -v -- "$id" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
     fi
+    printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
     mv "${histfile}.new" "$histfile"
 }
 
