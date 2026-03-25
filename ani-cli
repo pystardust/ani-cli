@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.10.6"
+version_number="4.10.7"
 
 # UI
 
@@ -72,6 +72,8 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
+      --en
+        Show english anime titile if available
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -233,13 +235,36 @@ get_episode_url() {
     fi
 }
 
-# search the query and give results
+
 search_anime() {
-    #shellcheck disable=SC2016
+    if [ "$english_title" = false ]; then
+        #shellcheck disable=SC2016
     search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
 
     curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\
 | g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
+
+    else
+    curl -e "$allanime_refr" -s -X POST "${allanime_api}/api" -H "Content-Type: application/json" -d "{\"query\":\"query(\$search:SearchInput,\$limit:Int,\$page:Int,\$translationType:VaildTranslationTypeEnumType,\$countryOrigin:VaildCountryOriginEnumType){shows(search:\$search,limit:\$limit,page:\$page,translationType:\$translationType,countryOrigin:\$countryOrigin){edges{_id name englishName availableEpisodes}}}\",\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}}" -A "$agent" | sed 's/\\u002F/\//g;s/\\"//g' | grep -oE '"_id":"[^"]*","name":"[^"]*","englishName":(null|"[^"]*"),"availableEpisodes":{[^}]*}' | while IFS= read -r e; do
+        id=${e#*_id\":\"}
+        id=${id%%\"*}
+        name=${e#*\"name\":\"}
+        name=${name%%\"*}
+        
+        # Check for englishName:null using case statement (POSIX compliant)
+        case "$e" in
+            *'"englishName":null'*) en="" ;;
+            *) en=${e#*\"englishName\":\"}; en=${en%%\"*} ;;
+        esac
+        
+        eps=${e#*\"$mode\":}
+        eps=${eps%%,*}
+        eps=${eps%\}*}
+        
+        title=${en:-$name}
+        echo "$id	$title (${eps:-0} episodes)"
+    done
+fi
 }
 
 time_until_next_ep() {
@@ -391,6 +416,7 @@ mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
+english_title=false
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
@@ -469,6 +495,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --dub) mode="dub" ;;
+        --en) english_title=true ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
         --rofi) use_external_menu=1 ;;
