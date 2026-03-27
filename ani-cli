@@ -72,6 +72,8 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
+      --en
+        Display English title if available
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
