@@ -306,8 +306,18 @@ download() {
 }
 
 play_episode() {
+
+    skip_flag=""
+
+    [ "$skip_intro" = 1 ] && \
+        skip_flag="$(ani-skip -q "${skip_title:-${title}}" -e "$ep_no")"
+
+    [ -z "$episode" ] && get_episode_url
+
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
+    if [ "$skip_intro" = 1 ]; then
+        skip_flag="$(ani-skip -q "${skip_title:-${title}}" -e "$ep_no")"
+    fi
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
@@ -536,6 +546,16 @@ case "$search" in
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
+
+        # ask to skip intro
+        printf "\33[2K\r\033[1;36mSkip Intro? (Y/N) > \033[0m" > /dev/tty
+        read -r choice < /dev/tty
+
+        case "$choice" in
+            [Yy]*) skip_intro=1 ;;
+            *) skip_intro=0 ;;
+        esac
+
         ep_list=$(episodes_list "$id")
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
