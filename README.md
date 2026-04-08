@@ -275,29 +275,42 @@ note that downloading is going to be very slow. This is an iSH issue, not an ani
 * Copy the script, paste it in the CLI and press Enter("A" button on Steam Deck)
 
 ```sh
-[ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:\$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
+```sh
+# 1. Setup local bin and PATH
+[ ! -d ~/.local/bin ] && mkdir -p ~/.local/bin
+echo "export PATH=\$HOME/.local/bin:\$PATH" >> ~/.bashrc
+source ~/.bashrc
 
-git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-~/.fzf/install
+# 2. Install fzf
+git clone --depth 1 [https://github.com/junegunn/fzf.git](https://github.com/junegunn/fzf.git) ~/.fzf && ~/.fzf/install --all
 
-mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+# 3. Install aria2 (Updated Source + Redirect Fix)
+mkdir -p ~/.aria2c
+curl -L -o ~/.aria2c/aria2.tar.bz2 [https://github.com/asdo92/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2](https://github.com/asdo92/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2)
+tar -jxvf ~/.aria2c/aria2.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
+rm -rf ~/.aria2c
 
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
+# 4. Install yt-dlp (Redirect Fix)
+curl -L [https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp) -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
 
-mkdir ~/.patch
-curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_64/patch-2.8-1-x86_64.pkg.tar.zst
-tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
+# 5. Install patch (Updated to Stable Arch Archive)
+mkdir -p ~/.patch
+curl -L -o ~/.patch/patch.tar.zst [https://archive.archlinux.org/packages/p/patch/patch-2.8-1-x86_64.pkg.tar.zst](https://archive.archlinux.org/packages/p/patch/patch-2.8-1-x86_64.pkg.tar.zst)
+tar -xvf ~/.patch/patch.tar.zst -C ~/.patch/
 cp ~/.patch/usr/bin/patch ~/.local/bin/
+chmod +x ~/.local/bin/patch
+rm -rf ~/.patch
 
-git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+# 6. Install ani-cli
+git clone [https://github.com/pystardust/ani-cli.git](https://github.com/pystardust/ani-cli.git) ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
+chmod +x ~/.local/bin/ani-cli
 
-flatpak install io.mpv.Mpv
+# 7. Install mpv (Flatpak version required for SteamOS)
+flatpak install io.mpv.Mpv -y
 ```
 press enter("A" button on Steam Deck) on questions
 
