@@ -325,7 +325,7 @@ download() {
 
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
@@ -564,7 +564,7 @@ case "$search" in
         [ -z "$ep_no" ] && exit 1
         ;;
 esac
-[ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
+[ "$skip_intro" = 1 ] && mal_id="$(ani-skip -i "$id" -s allanime)"
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
