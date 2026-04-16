@@ -208,13 +208,35 @@ select_quality() {
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
+decode_tobeparsed() {
+    blob="$1"
+    tmp="$(mktemp)"
+    ct="$(mktemp)"
+    key="$(printf '%s' 'SimtVuagFbGR2K7P' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
+    printf '%s' "$blob" | openssl enc -d -base64 -A >"$tmp"
+    len="$(wc -c <"$tmp" | tr -d ' ')"
+    iv="$(dd if="$tmp" bs=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
+    ct_len=$((len - 28))
+    dd if="$tmp" bs=1 skip=12 count="$ct_len" 2>/dev/null >"$ct"
+    ctr="${iv}00000002"
+    plain="$(openssl enc -d -aes-256-ctr -K "$key" -iv "$ctr" -nosalt -nopad <"$ct" 2>/dev/null)"
+    rm -f "$tmp" "$ct"
+    printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     # get the embed urls of the selected episode
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    resp=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    if printf "%s" "$api_resp" | grep -q '"tobeparsed"'; then
+        blob="$(printf "%s" "$api_resp" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')"
+        resp="$(decode_tobeparsed "$blob")"
+    else
+        resp="$(printf "%s" "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
+    fi
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4"
