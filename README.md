@@ -137,7 +137,8 @@ cd .. && rm -rf ./ani-cli
 *To install (with Homebrew) the dependencies required on Mac OS, you can run:*
 
 ```sh
-brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
+brew install curl grep aria2 ffmpeg git fzf yt-dlp python3 && \
+pip3 install pycryptodome && \
 brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
@@ -509,6 +510,8 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - fzf - User interface
 - ani-skip (optional)
 - patch - Self updating
+- python3 - Decryption
+- pycryptodome (python library) - Decryption
 
 ### Ani-Skip
 
