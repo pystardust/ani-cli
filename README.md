@@ -507,7 +507,8 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
-- ani-skip (optional)
+- openssl (for decrypting encrypted video sources)
+- ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 
 ### Ani-Skip
