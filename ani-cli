@@ -209,17 +209,12 @@ select_quality() {
 }
 
 decode_tobeparsed() {
-    blob="$1"
     tmp="$(mktemp)"
-    ct="$(mktemp)"
-    printf '%s' "$blob" | base64 -d >"$tmp"
-    len="$(wc -c <"$tmp" | tr -d ' ')"
+    printf '%s' "$1" | base64 -d >"$tmp"
     iv="$(dd if="$tmp" bs=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
-    ct_len=$((len - 28))
-    dd if="$tmp" bs=1 skip=12 count="$ct_len" 2>/dev/null >"$ct"
     ctr="${iv}00000002"
-    plain="$(openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad <"$ct" 2>/dev/null)"
-    rm -f "$tmp" "$ct"
+    plain="$(dd if="$tmp" bs=1 skip=12 2>/dev/null | openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad 2>/dev/null)"
+    rm -f "$tmp"
     printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
 }
 
