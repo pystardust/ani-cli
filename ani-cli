@@ -280,8 +280,8 @@ episodes_list() {
 is_cloudflare_challenge() {
     case "$1" in
         *"Just a moment..."* | *"Enable JavaScript and cookies to continue"* | *"cloudflare"* | *"cf-"* ) return 0 ;;
+        *) return 1 ;;
     esac
-    return 1
 }
 
 process_hist_entry() {
