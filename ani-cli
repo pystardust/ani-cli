@@ -279,7 +279,7 @@ episodes_list() {
 
 is_cloudflare_challenge() {
     case "$1" in
-        *"Just a moment..."* | *"Enable JavaScript and cookies to continue"* | *"cloudflare"* | *"cf-"* ) return 0 ;;
+        *"Just a moment..."* | *"Enable JavaScript and cookies to continue"* | *"cloudflare"* | *"cf-"*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -361,11 +361,15 @@ play_episode() {
             ;;
         mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$!
+                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+                player_pid=$!
             else
                 $player_function $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && { mark_seen; exit "$mpv_exitcode"; }
+                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && {
+                    mark_seen
+                    exit "$mpv_exitcode"
+                }
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
@@ -375,26 +379,46 @@ play_episode() {
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & player_pid=$!
+                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+                player_pid=$!
             else
-                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & player_pid=$!
+                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+                player_pid=$!
             fi
             ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$! ;;
-        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & player_pid=$! ;;
-        *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$! ;;
+        flatpak_mpv)
+            flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+            player_pid=$!
+            ;;
+        vlc*)
+            nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+            player_pid=$!
+            ;;
+        *yncpla*)
+            nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 &
+            player_pid=$!
+            ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
-        catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & player_pid=$! ;;
+        catt)
+            nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 &
+            player_pid=$!
+            ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5
             ;;
-        *) nohup $player_function "$episode" >/dev/null 2>&1 & player_pid=$! ;;
+        *)
+            nohup $player_function "$episode" >/dev/null 2>&1 &
+            player_pid=$!
+            ;;
     esac
     replay="$episode"
     unset episode
     if [ "$history_on_exit" = 1 ] && [ -n "${player_pid:-}" ] && [ "$no_detach" = 0 ]; then
-        ( wait "$player_pid"; mark_seen ) >/dev/null 2>&1 &
+        (
+            wait "$player_pid"
+            mark_seen
+        ) >/dev/null 2>&1 &
     else
         mark_seen
     fi
