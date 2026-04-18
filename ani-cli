@@ -45,11 +45,13 @@ curl_or_die() {
     desc="$1"
     shift
 
-    err="$(mktemp -t ani-cli.curl.XXXXXX)"
-    body="$(curl -sS "$@" 2>"$err")"
+    out="$(mktemp -t ani-cli.curl.out.XXXXXX)"
+    err="$(mktemp -t ani-cli.curl.err.XXXXXX)"
+    curl -sS "$@" >"$out" 2>"$err"
     rc="$?"
+    body="$(cat "$out" 2>/dev/null || true)"
     curl_err="$(cat "$err" 2>/dev/null || true)"
-    rm -f "$err" >/dev/null 2>&1 || true
+    rm -f "$out" "$err" >/dev/null 2>&1 || true
 
     [ "$rc" -eq 0 ] || die "$desc failed (curl rc=$rc): ${curl_err:-unknown error}"
     [ -n "$body" ] || die "$desc failed: empty response"
@@ -234,7 +236,10 @@ get_episode_url() {
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    resp_raw=$(curl_or_die "episode API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")
+    resp_raw_file="$(mktemp -t ani-cli.episode.XXXXXX)"
+    curl_or_die "episode API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent" >"$resp_raw_file"
+    resp_raw="$(cat "$resp_raw_file" 2>/dev/null || true)"
+    rm -f "$resp_raw_file" >/dev/null 2>&1 || true
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     resp=$(printf "%s" "$resp_raw" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
@@ -260,7 +265,10 @@ search_anime() {
     #shellcheck disable=SC2016
     search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
 
-    resp_raw=$(curl_or_die "search API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent")
+    resp_raw_file="$(mktemp -t ani-cli.searchapi.XXXXXX)"
+    curl_or_die "search API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent" >"$resp_raw_file"
+    resp_raw="$(cat "$resp_raw_file" 2>/dev/null || true)"
+    rm -f "$resp_raw_file" >/dev/null 2>&1 || true
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     printf "%s" "$resp_raw" | sed 's|Show|\
 | g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
@@ -285,7 +293,10 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    resp_raw=$(curl_or_die "episodes API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent")
+    resp_raw_file="$(mktemp -t ani-cli.episodesapi.XXXXXX)"
+    curl_or_die "episodes API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent" >"$resp_raw_file"
+    resp_raw="$(cat "$resp_raw_file" 2>/dev/null || true)"
+    rm -f "$resp_raw_file" >/dev/null 2>&1 || true
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     printf "%s" "$resp_raw" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
 |g; s|"||g' | sort -n -k 1
@@ -617,7 +628,13 @@ case "$search" in
         title=$(printf "%s" "$selection" | cut -f3)
         [ -z "$id" ] && exit 1
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
-        ep_list=$(episodes_list "$id")
+        ep_list_file="$(mktemp -t ani-cli.episodes.XXXXXX)"
+        if ! episodes_list "$id" >"$ep_list_file"; then
+            rm -f "$ep_list_file" >/dev/null 2>&1 || true
+            exit 1
+        fi
+        ep_list="$(cat "$ep_list_file" 2>/dev/null || true)"
+        rm -f "$ep_list_file" >/dev/null 2>&1 || true
         ;;
     history)
         anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
@@ -627,7 +644,13 @@ case "$search" in
         [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
         [ -z "$id" ] && exit 1
         title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
-        ep_list=$(episodes_list "$id")
+        ep_list_file="$(mktemp -t ani-cli.episodes.XXXXXX)"
+        if ! episodes_list "$id" >"$ep_list_file"; then
+            rm -f "$ep_list_file" >/dev/null 2>&1 || true
+            exit 1
+        fi
+        ep_list="$(cat "$ep_list_file" 2>/dev/null || true)"
+        rm -f "$ep_list_file" >/dev/null 2>&1 || true
         ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
@@ -644,7 +667,13 @@ case "$search" in
         [ "$search" = "nextep" ] && time_until_next_ep "$query"
 
         query=$(printf "%s" "$query" | sed "s| |+|g")
-        anime_list=$(search_anime "$query")
+        anime_list_file="$(mktemp -t ani-cli.search.XXXXXX)"
+        if ! search_anime "$query" >"$anime_list_file"; then
+            rm -f "$anime_list_file" >/dev/null 2>&1 || true
+            exit 1
+        fi
+        anime_list="$(cat "$anime_list_file" 2>/dev/null || true)"
+        rm -f "$anime_list_file" >/dev/null 2>&1 || true
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
@@ -652,7 +681,13 @@ case "$search" in
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
-        ep_list=$(episodes_list "$id")
+        ep_list_file="$(mktemp -t ani-cli.episodes.XXXXXX)"
+        if ! episodes_list "$id" >"$ep_list_file"; then
+            rm -f "$ep_list_file" >/dev/null 2>&1 || true
+            exit 1
+        fi
+        ep_list="$(cat "$ep_list_file" 2>/dev/null || true)"
+        rm -f "$ep_list_file" >/dev/null 2>&1 || true
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
         ;;
