@@ -212,7 +212,7 @@ decode_tobeparsed() {
     blob="$1"
     tmp="$(mktemp)"
     ct="$(mktemp)"
-    printf '%s' "$blob" | openssl enc -d -base64 -A >"$tmp"
+    printf '%s' "$blob" | base64 -d >"$tmp"
     len="$(wc -c <"$tmp" | tr -d ' ')"
     iv="$(dd if="$tmp" bs=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
     ct_len=$((len - 28))
