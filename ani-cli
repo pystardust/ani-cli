@@ -40,6 +40,34 @@ die() {
     exit 1
 }
 
+debug_enabled() {
+    [ "${ANI_CLI_DEBUG:-0}" = "1" ]
+}
+
+debug_dir_init() {
+    if [ -n "${ANI_CLI_DEBUG_DIR:-}" ]; then
+        mkdir -p "$ANI_CLI_DEBUG_DIR" >/dev/null 2>&1 || true
+        return
+    fi
+    ANI_CLI_DEBUG_DIR="${TMPDIR:-/tmp}/ani-cli-debug.$$"
+    mkdir -p "$ANI_CLI_DEBUG_DIR" >/dev/null 2>&1 || true
+}
+
+debug_slug() {
+    printf "%s" "$1" | tr ' ' '_' | tr -cd 'A-Za-z0-9_.-'
+}
+
+debug_save() {
+    # Usage: debug_save <name> <content>
+    name="$1"
+    content="$2"
+    debug_enabled || return 0
+    debug_dir_init
+    file="$ANI_CLI_DEBUG_DIR/$(debug_slug "$name").txt"
+    printf "%s" "$content" >"$file" 2>/dev/null || true
+    return 0
+}
+
 curl_or_die() {
     # Usage: curl_or_die <desc> <curl args...>
     desc="$1"
@@ -55,6 +83,7 @@ curl_or_die() {
 
     [ "$rc" -eq 0 ] || die "$desc failed (curl rc=$rc): ${curl_err:-unknown error}"
     [ -n "$body" ] || die "$desc failed: empty response"
+    debug_save "curl_${desc}" "$body"
     printf "%s" "$body"
 }
 
@@ -252,9 +281,15 @@ get_episode_url() {
     # select the link with matching quality
     links=$(cat "$cache_dir"/* | sort -g -r -s)
     rm -r "$cache_dir"
+    debug_save "episode_links" "$links"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
-        [ -z "$episode" ] && die "Episode is released, but no valid sources!"
+        if [ -z "$episode" ]; then
+            if debug_enabled; then
+                die "Episode is released, but no valid sources! Debug: ${ANI_CLI_DEBUG_DIR:-unset}"
+            fi
+            die "Episode is released, but no valid sources! Re-run with ANI_CLI_DEBUG=1 to capture provider output."
+        fi
     else
         [ -z "$episode" ] && die "Episode not released!"
     fi
