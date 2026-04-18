@@ -40,6 +40,22 @@ die() {
     exit 1
 }
 
+curl_or_die() {
+    # Usage: curl_or_die <desc> <curl args...>
+    desc="$1"
+    shift
+
+    err="$(mktemp -t ani-cli.curl.XXXXXX)"
+    body="$(curl -sS "$@" 2>"$err")"
+    rc="$?"
+    curl_err="$(cat "$err" 2>/dev/null || true)"
+    rm -f "$err" >/dev/null 2>&1 || true
+
+    [ "$rc" -eq 0 ] || die "$desc failed (curl rc=$rc): ${curl_err:-unknown error}"
+    [ -n "$body" ] || die "$desc failed: empty response"
+    printf "%s" "$body"
+}
+
 help_info() {
     printf "
     Usage:
@@ -218,7 +234,7 @@ get_episode_url() {
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")
+    resp_raw=$(curl_or_die "episode API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     resp=$(printf "%s" "$resp_raw" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
@@ -244,7 +260,7 @@ search_anime() {
     #shellcheck disable=SC2016
     search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
 
-    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent")
+    resp_raw=$(curl_or_die "search API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent")
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     printf "%s" "$resp_raw" | sed 's|Show|\
 | g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
@@ -269,7 +285,7 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent")
+    resp_raw=$(curl_or_die "episodes API request" -e "$allanime_refr" -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent")
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
     printf "%s" "$resp_raw" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
 |g; s|"||g' | sort -n -k 1
