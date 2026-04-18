@@ -567,7 +567,11 @@ case "$search" in
         else
             seen_src="$(cat "$seenfile")"
         fi
-        selection=$(printf "%s\n" "$seen_src" | awk -F '\t' '{printf "%s\t%s\t%s\t[%s]\n", $2, $3, $4, $1}' | launcher "$multi_selection_flag" "Select seen: ")
+        selection=$(
+            printf "%s\n" "$seen_src" |
+                sed -E 's/^([^\t]*)\t([^\t]*)\t([^\t]*)\t(.*)$/\2\t\3\t\4\t[\1]/' |
+                launcher "$multi_selection_flag" "Select seen: "
+        )
         id=$(printf "%s" "$selection" | cut -f1)
         ep_no=$(printf "%s" "$selection" | cut -f2)
         title=$(printf "%s" "$selection" | cut -f3)
