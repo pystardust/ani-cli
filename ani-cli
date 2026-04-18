@@ -82,6 +82,10 @@ help_info() {
         Don't detach the player (useful for in-terminal playback, mpv only)
       --exit-after-play
         Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
+      --history-on-exit
+        When detaching the player, update history only after the player exits (more accurate)
+      --seen
+        Browse previously seen episodes from a per-episode log
       --skip-title <title>
         Use given title as ani-skip query
       -N, --nextep-countdown
@@ -214,7 +218,9 @@ get_episode_url() {
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    resp=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")
+    is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
+    resp=$(printf "%s" "$resp_raw" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4"
@@ -238,7 +244,9 @@ search_anime() {
     #shellcheck disable=SC2016
     search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
 
-    curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent" | sed 's|Show|\
+    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"},\"query\":\"$search_gql\"}" -A "$agent")
+    is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
+    printf "%s" "$resp_raw" | sed 's|Show|\
 | g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episodes)|p" | sed 's/\\"//g'
 }
 
@@ -261,11 +269,20 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
+    resp_raw=$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent")
+    is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
+    printf "%s" "$resp_raw" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
 |g; s|"||g' | sort -n -k 1
 }
 
 # PLAYING
+
+is_cloudflare_challenge() {
+    case "$1" in
+        *"Just a moment..."* | *"Enable JavaScript and cookies to continue"* | *"cloudflare"* | *"cf-"* ) return 0 ;;
+    esac
+    return 1
+}
 
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
@@ -275,7 +292,28 @@ process_hist_entry() {
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
+hist_lock_acquire() {
+    lockdir="$hist_dir/.ani-cli.lock"
+    while ! mkdir "$lockdir" 2>/dev/null; do
+        sleep 0.05
+    done
+    printf "%s" "$lockdir"
+}
+
+hist_lock_release() {
+    rmdir "$1" 2>/dev/null || true
+}
+
+append_seen() {
+    ts="$(date "+%Y-%m-%dT%H:%M:%S%z")"
+    safe_title="$(printf "%s" "$title" | tr '\t\n\r' ' ' | sed 's/[[:space:]][[:space:]]*/ /g')"
+    lockdir="$(hist_lock_acquire)"
+    printf "%s\t%s\t%s\t%s\n" "$ts" "$id" "$ep_no" "$safe_title" >>"$seenfile"
+    hist_lock_release "$lockdir"
+}
+
 update_history() {
+    lockdir="$(hist_lock_acquire)"
     if grep -q -- "$id" "$histfile"; then
         sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
     else
@@ -283,6 +321,12 @@ update_history() {
         printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
+    hist_lock_release "$lockdir"
+}
+
+mark_seen() {
+    update_history
+    append_seen
 }
 
 download() {
@@ -317,11 +361,11 @@ play_episode() {
             ;;
         mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$!
             else
                 $player_function $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
+                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && { mark_seen; exit "$mpv_exitcode"; }
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
@@ -331,25 +375,30 @@ play_episode() {
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & player_pid=$!
             else
-                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & player_pid=$!
             fi
             ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
-        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$! ;;
+        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & player_pid=$! ;;
+        *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & player_pid=$! ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
-        catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
+        catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & player_pid=$! ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5
             ;;
-        *) nohup $player_function "$episode" >/dev/null 2>&1 & ;;
+        *) nohup $player_function "$episode" >/dev/null 2>&1 & player_pid=$! ;;
     esac
     replay="$episode"
     unset episode
-    update_history
+    if [ "$history_on_exit" = 1 ] && [ -n "${player_pid:-}" ] && [ "$no_detach" = 0 ]; then
+        ( wait "$player_pid"; mark_seen ) >/dev/null 2>&1 &
+    else
+        mark_seen
+    fi
+    unset player_pid
     [ "$use_external_menu" = "1" ] && wait
     [ "$use_external_menu" = "2" ] && wait
 }
@@ -384,9 +433,9 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-allanime_refr="https://allmanga.to"
-allanime_base="allanime.day"
-allanime_api="https://api.${allanime_base}"
+allanime_refr="${ANI_CLI_REFERER:-https://allmanga.to}"
+allanime_base="${ANI_CLI_ALLANIME_BASE:-allanime.day}"
+allanime_api="${ANI_CLI_API_URL:-https://api.${allanime_base}}"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -401,6 +450,7 @@ esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
+history_on_exit="${ANI_CLI_HISTORY_ON_EXIT:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
@@ -411,7 +461,9 @@ skip_title="$ANI_CLI_SKIP_TITLE"
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
+seenfile="$hist_dir/ani-seen"
 [ ! -f "$histfile" ] && : >"$histfile"
+[ ! -f "$seenfile" ] && : >"$seenfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
@@ -445,12 +497,14 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -c | --continue) search=history ;;
+        --seen) search=seen ;;
         -d | --download)
             [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
             player_function=download
             ;;
         -D | --delete)
             : >"$histfile"
+            : >"$seenfile"
             exit 0
             ;;
         -l | --logview)
@@ -471,6 +525,7 @@ while [ $# -gt 0 ]; do
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
+        --history-on-exit) history_on_exit=1 ;;
         --rofi) use_external_menu=1 ;;
         --dmenu) use_external_menu=2 ;;
         --skip) skip_intro=1 ;;
@@ -503,6 +558,23 @@ esac
 
 # searching
 case "$search" in
+    seen)
+        [ ! -s "$seenfile" ] && die "No seen history yet!"
+        if command -v tac >/dev/null 2>&1; then
+            seen_src="$(tac "$seenfile")"
+        elif tail -r "$seenfile" >/dev/null 2>&1; then
+            seen_src="$(tail -r "$seenfile")"
+        else
+            seen_src="$(cat "$seenfile")"
+        fi
+        selection=$(printf "%s\n" "$seen_src" | awk -F '\t' '{printf "%s\t%s\t%s\t[%s]\n", $2, $3, $4, $1}' | launcher "$multi_selection_flag" "Select seen: ")
+        id=$(printf "%s" "$selection" | cut -f1)
+        ep_no=$(printf "%s" "$selection" | cut -f2)
+        title=$(printf "%s" "$selection" | cut -f3)
+        [ -z "$id" ] && exit 1
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        ep_list=$(episodes_list "$id")
+        ;;
     history)
         anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
         wait

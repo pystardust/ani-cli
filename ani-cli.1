@@ -67,6 +67,12 @@ Don't detach the player (useful for in-terminal playback, mpv only)
 \fB\--exit-after-play\fR
 Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
 .TP
+\fB\--history-on-exit\fR
+When detaching the player, update history only after the player exits (more accurate)
+.TP
+\fB\--seen\fR
+Browse previously seen episodes from a per-episode log
+.TP
 \fB\--skip-title\fR \fI\,<title>\/\fR
 Specify the title to use for ani-skip
 .PP
@@ -113,6 +119,18 @@ Controls if mpv is detached from the main process for playback, which can be use
 .TP
 \fBANI_CLI_SKIP_TITLE\fR
 Overrides the anime title to query for skip times. Can be any string value. Default is empty, resolving to the anime title as given by ani-cli.
+.TP
+\fBANI_CLI_HISTORY_ON_EXIT\fR
+When set to 1, defer history updates until the detached player exits.
+.TP
+\fBANI_CLI_ALLANIME_BASE\fR
+Override the allanime base domain (default: allanime.day).
+.TP
+\fBANI_CLI_API_URL\fR
+Override the API base URL (default: https://api.${ANI_CLI_ALLANIME_BASE}/).
+.TP
+\fBANI_CLI_REFERER\fR
+Override the Referer header (default: https://allmanga.to).
 .PP
 .SH EPISODE SELECTION
 .PP
