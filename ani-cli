@@ -506,7 +506,11 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
-dep_ch "curl" "sed" "grep" "openssl" || true
+dep_ch "curl" "sed" "grep" || true
+case "$(uname -o 2>/dev/null)" in
+    *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
+    *) dep_ch "openssl" || true ;;
+esac
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
 case "$player_function" in
