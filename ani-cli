@@ -68,6 +68,12 @@ debug_save() {
     return 0
 }
 
+decrypt_tobeparsed() {
+    command -v node >/dev/null 2>&1 || die "tobeparsed decode requires node"
+
+    printf "%s" "$1" | node -e 'const {webcrypto}=require("crypto"); const fs=require("fs"); const input=fs.readFileSync(0,"utf8"); (async()=>{const obj=JSON.parse(input); const tb=obj?.data?.tobeparsed; if(!tb){process.stderr.write("missing tobeparsed\\n"); process.exit(2);} const secret="P7K2RGbFgauVtmiS".split("").reverse().join(""); const keyHash=await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(secret)); const key=await webcrypto.subtle.importKey("raw", keyHash,{name:"AES-GCM"},false,["decrypt"]); const buf=Buffer.from(tb,"base64"); const iv=buf.subarray(0,12); const cipherTag=buf.subarray(12); const plain=await webcrypto.subtle.decrypt({name:"AES-GCM",iv},key,cipherTag); process.stdout.write(new TextDecoder().decode(plain));})().catch(e=>{process.stderr.write(String(e)+"\\n"); process.exit(1);});' || die "Failed to decrypt tobeparsed payload"
+}
+
 curl_or_die() {
     # Usage: curl_or_die <desc> <curl args...>
     desc="$1"
@@ -270,6 +276,9 @@ get_episode_url() {
     resp_raw="$(cat "$resp_raw_file" 2>/dev/null || true)"
     rm -f "$resp_raw_file" >/dev/null 2>&1 || true
     is_cloudflare_challenge "$resp_raw" && die "Upstream blocked by a Cloudflare challenge. Try a different network, or set ANI_CLI_ALLANIME_BASE / ANI_CLI_API_URL."
+    if printf "%s" "$resp_raw" | grep -q '"tobeparsed"'; then
+        resp_raw="$(decrypt_tobeparsed "$resp_raw")"
+    fi
     resp=$(printf "%s" "$resp_raw" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
