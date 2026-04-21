@@ -84,6 +84,8 @@ help_info() {
         Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
       --skip-title <title>
         Use given title as ani-skip query
+      -t, --threads
+        Number of parallel threads for downloading (default: 1)
       -N, --nextep-countdown
         Display a countdown to the next episode
       -U, --update
@@ -301,13 +303,83 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
+download_threaded() {
+    url="$1"
+    output="$2"
+
+    # HEAD request to check Accept-Ranges and Content-Length
+    head_resp=$(curl -s -I --referer "$allanime_refr" -A "$agent" -k "$url")
+    accept_ranges=$(printf '%s' "$head_resp" | grep -i "^accept-ranges:" | grep -iv "none")
+    content_length=$(printf '%s' "$head_resp" | grep -i "^content-length:" | sed -nE 's/[^0-9]*([0-9]+).*/\1/p' | head -1)
+
+    if [ -z "$accept_ranges" ] || [ -z "$content_length" ] || [ "$content_length" -le 0 ]; then
+        printf "\033[1;33mServer does not support range requests, falling back to single-threaded download\033[0m\n" >&2
+        # shellcheck disable=SC2086
+        aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 1 -s 1 "$url" --dir="$(dirname "$output")" -o "$(basename "$output")" --download-result=hide
+        return
+    fi
+
+    tmp_dir=$(mktemp -d)
+    # Ensure temp dir is cleaned up even on interrupt or unexpected exit
+    trap 'rm -rf "$tmp_dir"' EXIT INT TERM
+
+    # Ceiling division: ensures all bytes are covered when content_length is not evenly divisible by threads
+    seg_size=$(( (content_length + threads - 1) / threads ))
+    printf "\033[1;34mStarting %d-thread download (%d bytes total)\033[0m\n" "$threads" "$content_length" >&2
+
+    # Launch one background download per segment
+    i=0
+    while [ "$i" -lt "$threads" ]; do
+        start=$(( i * seg_size ))
+        end=$(( start + seg_size - 1 ))
+        [ "$end" -ge "$content_length" ] && end=$(( content_length - 1 ))
+        seg_file="${tmp_dir}/seg_$(printf '%05d' "$i")"
+        (curl -sf --referer "$allanime_refr" -A "$agent" -k \
+            -r "${start}-${end}" "$url" -o "$seg_file" \
+            || printf "\033[1;31mThread %d failed (bytes %d-%d)\033[0m\n" "$i" "$start" "$end" >&2) &
+        i=$(( i + 1 ))
+    done
+    wait
+
+    # Verify all segments were downloaded
+    assembly_ok=1
+    i=0
+    while [ "$i" -lt "$threads" ]; do
+        seg_file="${tmp_dir}/seg_$(printf '%05d' "$i")"
+        if [ ! -s "$seg_file" ]; then
+            assembly_ok=0
+            break
+        fi
+        i=$(( i + 1 ))
+    done
+
+    if [ "$assembly_ok" = 1 ]; then
+        # Assemble segments in order into the final file
+        : > "$output"
+        i=0
+        while [ "$i" -lt "$threads" ]; do
+            cat "${tmp_dir}/seg_$(printf '%05d' "$i")" >> "$output"
+            i=$(( i + 1 ))
+        done
+        printf "\033[1;32mMulti-threaded download complete\033[0m\n" >&2
+    else
+        printf "\033[1;33mOne or more segments failed. Falling back to single-threaded download\033[0m\n" >&2
+        rm -f "$output"
+        # shellcheck disable=SC2086
+        aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 1 -s 1 "$url" --dir="$(dirname "$output")" -o "$(basename "$output")" --download-result=hide
+    fi
+
+    rm -rf "$tmp_dir"
+    trap - EXIT INT TERM
+}
+
 download() {
     # download subtitle if it's set
     [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
     case $1 in
         *m3u8*)
             if command -v "yt-dlp" >/dev/null; then
-                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N "$threads" -o "$download_dir/$2.mp4"
             else
                 ffmpeg -extension_picky 0 -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
             fi
@@ -315,8 +387,12 @@ download() {
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
-            # shellcheck disable=SC2086
-            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            if [ "$threads" -gt 1 ]; then
+                download_threaded "$1" "$download_dir/$2.mp4"
+            else
+                # shellcheck disable=SC2086
+                aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            fi
             ;;
     esac
 }
@@ -416,6 +492,7 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
     *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;           # Linux OS
 esac
 
+threads="${ANI_CLI_THREADS:-1}"
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
@@ -497,6 +574,15 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -N | --nextep-countdown) search=nextep ;;
+        -t | --threads)
+            [ $# -lt 2 ] && die "missing argument!"
+            threads="$2"
+            case "$threads" in
+                '' | *[!0-9]*) die "invalid argument for --threads: must be a positive integer" ;;
+            esac
+            [ "$threads" -lt 1 ] && die "invalid argument for --threads: must be >= 1"
+            shift
+            ;;
         -U | --update) update_script ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
