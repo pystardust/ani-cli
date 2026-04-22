@@ -211,7 +211,7 @@ select_quality() {
 decode_tobeparsed() {
     tmp="$(mktemp)"
     printf '%s' "$1" | base64 -d >"$tmp"
-    file_size="$(wc -c < "$tmp")"
+    file_size="$(wc -c <"$tmp")"
     iv="$(dd if="$tmp" bs=1 skip=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
     ctr="${iv}00000002"
     ct_len=$((file_size - 13 - 16))
