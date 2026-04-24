@@ -54,7 +54,7 @@ If after this the issue persists then open an issue.
 
 ## Install
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.12)](https://repology.org/project/ani-cli/versions)
 
 ### Tier 1 Support: Linux, Mac, Android
 
