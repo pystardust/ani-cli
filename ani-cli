@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.12.0"
+version_number="4.13.0"
 
 # UI
 
@@ -211,9 +211,11 @@ select_quality() {
 decode_tobeparsed() {
     tmp="$(mktemp)"
     printf '%s' "$1" | base64 -d >"$tmp"
-    iv="$(dd if="$tmp" bs=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
+    file_size="$(wc -c <"$tmp")"
+    iv="$(dd if="$tmp" bs=1 skip=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
     ctr="${iv}00000002"
-    plain="$(dd if="$tmp" bs=1 skip=12 2>/dev/null | openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad 2>/dev/null)"
+    ct_len=$((file_size - 13 - 16))
+    plain="$(dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad 2>/dev/null)"
     rm -f "$tmp"
     printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
 }
@@ -403,7 +405,7 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefo
 allanime_refr="https://allmanga.to"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
-allanime_key="$(printf '%s' 'SimtVuagFbGR2K7P' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
+allanime_key="$(printf '%s' 'Xot36i3lK3:v1' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
