@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.13.0"
+version_number="4.13.1"
 
 # UI
 
@@ -181,9 +181,14 @@ generate_link() {
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
         2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
-    [ -n "$provider_id" ] && get_links "$provider_id"
+    if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
+        get_filemoon_links "$provider_id"
+    else
+        [ -n "$provider_id" ] && get_links "$provider_id"
+    fi
 }
 
 select_quality() {
@@ -220,6 +225,44 @@ decode_tobeparsed() {
     printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
 }
 
+b64url_to_hex() {
+    _len=$(printf '%s' "$1" | wc -c | tr -d ' ')
+    _mod=$((_len % 4))
+    case $_mod in
+        2) _pad="==" ;;
+        3) _pad="=" ;;
+        *) _pad="" ;;
+    esac
+    printf '%s%s' "$1" "$_pad" | tr -- '-_' '+/' | base64 -d | od -A n -t x1 | tr -d ' \n'
+}
+
+get_filemoon_links() {
+    response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$1" -A "$agent")"
+    _fm_json="$(printf '%s' "$response" | tr -d '\n ' | tr ',' '\n')"
+    iv="$(printf '%s' "$_fm_json" | sed -nE 's|^"iv":"([^"]*)"$|\1|p')"
+    payload="$(printf '%s' "$_fm_json" | sed -nE 's|^"payload":"([^"]*)"$|\1|p')"
+    kp1="$(printf '%s' "$_fm_json" | sed -nE 's|^"key_parts":\["([^"]*)"$|\1|p')"
+    kp2="$(printf '%s' "$_fm_json" | sed -nE 's|^"([A-Za-z0-9_-]+)"\]$|\1|p' | head -1)"
+    key_hex="$(b64url_to_hex "$kp1")$(b64url_to_hex "$kp2")"
+    iv_hex="$(b64url_to_hex "$iv")00000002"
+    tmp="$(mktemp)"
+    _fm_len=$(printf '%s' "$payload" | wc -c | tr -d ' ')
+    _fm_mod=$((_fm_len % 4))
+    case $_fm_mod in
+        2) _fm_pad="==" ;;
+        3) _fm_pad="=" ;;
+        *) _fm_pad="" ;;
+    esac
+    printf '%s%s' "$payload" "$_fm_pad" | tr -- '-_' '+/' | base64 -d >"$tmp"
+    ct_len=$(($(wc -c <"$tmp") - 16))
+    plain="$(dd if="$tmp" bs=1 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$key_hex" -iv "$iv_hex" -nosalt -nopad 2>/dev/null)"
+    rm -f "$tmp"
+    printf '%s' "$plain" | tr '{}[]' '\n' |
+        sed -nE 's|.*"url":"([^"]*)".*"height":([0-9]+).*|\2 >\1|p;s|.*"height":([0-9]+).*"url":"([^"]*)".*|\1 >\2|p' |
+        sed 's|\\u0026|\&|g;s|\\u003D|=|g' | sort -rn
+    printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     # get the embed urls of the selected episode
@@ -235,7 +278,7 @@ get_episode_url() {
     fi
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4"
+    providers="1 2 3 4 5"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
