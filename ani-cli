@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.13.1"
+version_number="4.14.0"
 
 # UI
 
@@ -184,6 +184,7 @@ generate_link() {
         5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
+    [ -n "$provider_id" ] && provider_id="${provider_id#/https://${allanime_base}}"
     if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
         get_filemoon_links "$provider_id"
     else
@@ -265,11 +266,26 @@ get_filemoon_links() {
 
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
-    # get the embed urls of the selected episode
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    #shellcheck disable=SC2016
+    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+    query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+
+    #shellcheck disable=SC2016
+    encoded_vars=$(printf '%s' "$query_vars" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g')
+    encoded_ext=$(printf '%s' "$query_ext" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g; s/ /%20/g')
+
+    api_url="${allanime_api}/api?variables=${encoded_vars}&extensions=${encoded_ext}"
+
+    api_resp="$(curl -e "$allanime_refr" -s -A "$agent" -H "Origin: https://youtu-chan.com" "$api_url")"
+
+    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
+        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    fi
+
     if printf "%s" "$api_resp" | grep -q '"tobeparsed"'; then
         blob="$(printf "%s" "$api_resp" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')"
         resp="$(decode_tobeparsed "$blob")"
