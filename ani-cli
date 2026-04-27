@@ -184,7 +184,7 @@ generate_link() {
         5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
-    [ -n "$provider_id" ] && provider_id="${provider_id#/https://${allanime_base}}"
+    [ "${provider_id#https://}" != "$provider_id" ] || provider_id="https://${allanime_base}${provider_id}"
     if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
         get_filemoon_links "$provider_id"
     else
@@ -244,6 +244,7 @@ get_filemoon_links() {
     payload="$(printf '%s' "$_fm_json" | sed -nE 's|^"payload":"([^"]*)"$|\1|p')"
     kp1="$(printf '%s' "$_fm_json" | sed -nE 's|^"key_parts":\["([^"]*)"$|\1|p')"
     kp2="$(printf '%s' "$_fm_json" | sed -nE 's|^"([A-Za-z0-9_-]+)"\]$|\1|p' | head -1)"
+    # shellcheck disable=SC2312
     key_hex="$(b64url_to_hex "$kp1")$(b64url_to_hex "$kp2")"
     iv_hex="$(b64url_to_hex "$iv")00000002"
     tmp="$(mktemp)"
