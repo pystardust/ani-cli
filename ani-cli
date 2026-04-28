@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.13.0"
+version_number="4.14.0"
 
 # UI
 
@@ -181,9 +181,15 @@ generate_link() {
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
         2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
-    [ -n "$provider_id" ] && get_links "$provider_id"
+    [ "${provider_id#https://}" != "$provider_id" ] || provider_id="https://${allanime_base}${provider_id}"
+    if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
+        get_filemoon_links "$provider_id"
+    else
+        [ -n "$provider_id" ] && get_links "$provider_id"
+    fi
 }
 
 select_quality() {
@@ -220,13 +226,67 @@ decode_tobeparsed() {
     printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
 }
 
+b64url_to_hex() {
+    _len=$(printf '%s' "$1" | wc -c | tr -d ' ')
+    _mod=$((_len % 4))
+    case $_mod in
+        2) _pad="==" ;;
+        3) _pad="=" ;;
+        *) _pad="" ;;
+    esac
+    printf '%s%s' "$1" "$_pad" | tr -- '-_' '+/' | base64 -d | od -A n -t x1 | tr -d ' \n'
+}
+
+get_filemoon_links() {
+    response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$1" -A "$agent")"
+    _fm_json="$(printf '%s' "$response" | tr -d '\n ' | tr ',' '\n')"
+    iv="$(printf '%s' "$_fm_json" | sed -nE 's|^"iv":"([^"]*)"$|\1|p')"
+    payload="$(printf '%s' "$_fm_json" | sed -nE 's|^"payload":"([^"]*)"$|\1|p')"
+    kp1="$(printf '%s' "$_fm_json" | sed -nE 's|^"key_parts":\["([^"]*)"$|\1|p')"
+    kp2="$(printf '%s' "$_fm_json" | sed -nE 's|^"([A-Za-z0-9_-]+)"\]$|\1|p' | head -1)"
+    # shellcheck disable=SC2312
+    key_hex="$(b64url_to_hex "$kp1")$(b64url_to_hex "$kp2")"
+    iv_hex="$(b64url_to_hex "$iv")00000002"
+    tmp="$(mktemp)"
+    _fm_len=$(printf '%s' "$payload" | wc -c | tr -d ' ')
+    _fm_mod=$((_fm_len % 4))
+    case $_fm_mod in
+        2) _fm_pad="==" ;;
+        3) _fm_pad="=" ;;
+        *) _fm_pad="" ;;
+    esac
+    printf '%s%s' "$payload" "$_fm_pad" | tr -- '-_' '+/' | base64 -d >"$tmp"
+    ct_len=$(($(wc -c <"$tmp") - 16))
+    plain="$(dd if="$tmp" bs=1 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$key_hex" -iv "$iv_hex" -nosalt -nopad 2>/dev/null)"
+    rm -f "$tmp"
+    printf '%s' "$plain" | tr '{}[]' '\n' |
+        sed -nE 's|.*"url":"([^"]*)".*"height":([0-9]+).*|\2 >\1|p;s|.*"height":([0-9]+).*"url":"([^"]*)".*|\1 >\2|p' |
+        sed 's|\\u0026|\&|g;s|\\u003D|=|g' | sort -rn
+    printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
-    # get the embed urls of the selected episode
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    #shellcheck disable=SC2016
+    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+    query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+
+    #shellcheck disable=SC2016
+    encoded_vars=$(printf '%s' "$query_vars" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g')
+    encoded_ext=$(printf '%s' "$query_ext" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g; s/ /%20/g')
+
+    api_url="${allanime_api}/api?variables=${encoded_vars}&extensions=${encoded_ext}"
+
+    api_resp="$(curl -e "$allanime_refr" -s -A "$agent" -H "Origin: https://youtu-chan.com" "$api_url")"
+
+    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
+        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    fi
+
     if printf "%s" "$api_resp" | grep -q '"tobeparsed"'; then
         blob="$(printf "%s" "$api_resp" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')"
         resp="$(decode_tobeparsed "$blob")"
@@ -235,7 +295,7 @@ get_episode_url() {
     fi
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4"
+    providers="1 2 3 4 5"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
