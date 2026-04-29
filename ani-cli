@@ -244,7 +244,6 @@ get_filemoon_links() {
     payload="$(printf '%s' "$_fm_json" | sed -nE 's|^"payload":"([^"]*)"$|\1|p')"
     kp1="$(printf '%s' "$_fm_json" | sed -nE 's|^"key_parts":\["([^"]*)"$|\1|p')"
     kp2="$(printf '%s' "$_fm_json" | sed -nE 's|^"([A-Za-z0-9_-]+)"\]$|\1|p' | head -1)"
-    # shellcheck disable=SC2312
     key_hex="$(b64url_to_hex "$kp1")$(b64url_to_hex "$kp2")"
     iv_hex="$(b64url_to_hex "$iv")00000002"
     tmp="$(mktemp)"
@@ -270,12 +269,10 @@ get_episode_url() {
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    #shellcheck disable=SC2016
     query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
     query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
 
-    #shellcheck disable=SC2016
     encoded_vars=$(printf '%s' "$query_vars" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g')
     encoded_ext=$(printf '%s' "$query_ext" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g; s/ /%20/g')
 
@@ -483,7 +480,6 @@ exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
-# shellcheck disable=SC2154
 skip_title="$ANI_CLI_SKIP_TITLE"
 [ -t 0 ] || (command -v dmenu && use_external_menu=2)
 [ -t 0 ] || (command -v rofi && use_external_menu=1)
