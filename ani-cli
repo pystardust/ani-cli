@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.13.0"
+version_number="4.14.0"
 
 # UI
 
@@ -181,9 +181,14 @@ generate_link() {
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
         2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
-    [ -n "$provider_id" ] && get_links "$provider_id"
+    if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
+        get_filemoon_links "$provider_id"
+    else
+        [ -n "$provider_id" ] && get_links "$provider_id"
+    fi
 }
 
 select_quality() {
@@ -220,13 +225,66 @@ decode_tobeparsed() {
     printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
 }
 
+b64url_to_hex() {
+    _len=$(printf '%s' "$1" | wc -c | tr -d ' ')
+    _mod=$((_len % 4))
+    case $_mod in
+        2) _pad="==" ;;
+        3) _pad="=" ;;
+        *) _pad="" ;;
+    esac
+    printf '%s%s' "$1" "$_pad" | tr -- '-_' '+/' | base64 -d | od -A n -t x1 | tr -d ' \n'
+}
+
+get_filemoon_links() {
+    response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$1" -A "$agent")"
+    _fm_json="$(printf '%s' "$response" | tr -d '\n ' | tr ',' '\n')"
+    iv="$(printf '%s' "$_fm_json" | sed -nE 's|^"iv":"([^"]*)"$|\1|p')"
+    payload="$(printf '%s' "$_fm_json" | sed -nE 's|^"payload":"([^"]*)"$|\1|p')"
+    kp1="$(printf '%s' "$_fm_json" | sed -nE 's|^"key_parts":\["([^"]*)"$|\1|p')"
+    kp2="$(printf '%s' "$_fm_json" | sed -nE 's|^"([A-Za-z0-9_-]+)"\]$|\1|p' | head -1)"
+    _kp1_hex="$(b64url_to_hex "$kp1")"
+    _kp2_hex="$(b64url_to_hex "$kp2")"
+    key_hex="$_kp1_hex$_kp2_hex"
+    iv_hex="$(b64url_to_hex "$iv")00000002"
+    tmp="$(mktemp)"
+    _fm_len=$(printf '%s' "$payload" | wc -c | tr -d ' ')
+    _fm_mod=$((_fm_len % 4))
+    case $_fm_mod in
+        2) _fm_pad="==" ;;
+        3) _fm_pad="=" ;;
+        *) _fm_pad="" ;;
+    esac
+    printf '%s%s' "$payload" "$_fm_pad" | tr -- '-_' '+/' | base64 -d >"$tmp"
+    ct_len=$(($(wc -c <"$tmp") - 16))
+    plain="$(dd if="$tmp" bs=1 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$key_hex" -iv "$iv_hex" -nosalt -nopad 2>/dev/null)"
+    rm -f "$tmp"
+    printf '%s' "$plain" | tr '{}[]' '\n' |
+        sed -nE 's|.*"url":"([^"]*)".*"height":([0-9]+).*|\2 >\1|p;s|.*"height":([0-9]+).*"url":"([^"]*)".*|\1 >\2|p' |
+        sed 's|\\u0026|\&|g;s|\\u003D|=|g' | sort -rn
+    printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
-    # get the embed urls of the selected episode
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+    query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+
+    encoded_vars=$(printf '%s' "$query_vars" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g')
+    encoded_ext=$(printf '%s' "$query_ext" | sed 's/"/%22/g; s/:/%3A/g; s/{/%7B/g; s/}/%7D/g; s/,/%2C/g; s/ /%20/g')
+
+    api_url="${allanime_api}/api?variables=${encoded_vars}&extensions=${encoded_ext}"
+
+    api_resp="$(curl -e "https://youtu-chan.com" -s -A "$agent" -H "Origin: https://youtu-chan.com" "$api_url")"
+
+    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
+        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
+    fi
+
     if printf "%s" "$api_resp" | grep -q '"tobeparsed"'; then
         blob="$(printf "%s" "$api_resp" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')"
         resp="$(decode_tobeparsed "$blob")"
@@ -235,7 +293,7 @@ get_episode_url() {
     fi
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4"
+    providers="1 2 3 4 5"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
@@ -263,14 +321,39 @@ search_anime() {
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     query="$(printf "%s\n" "$*" | tr ' ' '+')"
-    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
-        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
-        status="Ongoing"
-        color="33"
-        printf "%s\n" "$data"
-        ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Finished" && color="32"
-        printf "Status:  \033[1;%sm%s\033[0m\n---\n" "$color" "$status"
-    done
+
+    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" \
+    | sed 's|"id"|\n|g' \
+    | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' \
+    | {
+        found=0
+
+        while read -r anime; do
+            data=$(curl -s "$animeschedule/anime/$anime" \
+                | sed '1,/"anime-header-list-buttons-wrapper"/d' \
+                | sed -nE '
+                    s|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;
+                    s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;
+                    s|.*english-title">([^<]*)<.*|English Title: \1|p;
+                    s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p
+                ')
+
+            if printf "%s\n" "$data" | grep -q "Next Sub Release:"; then
+                printf "%s\n" "$data"
+                printf "Status:  \033[1;33mOngoing\033[0m\n---\n"
+                found=1
+                break
+            fi
+
+            if [ "$found" -eq 0 ]; then
+                printf "%s\n" "$data"
+                printf "Status:  \033[1;32mFinished/Unknown\033[0m\n---\n"
+                found=1
+                break
+            fi
+        done
+    }
+
     exit 0
 }
 
@@ -288,9 +371,14 @@ episodes_list() {
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
     latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
+    # Update episode count in title
     title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
-    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+    next_ep=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}")
+    if [ -n "$next_ep" ]; then
+        printf "%s\t%s - episode %s\n" "$id" "$title" "$next_ep"
+    else
+        printf "%s\t%s - no new episode\n" "$id" "$title"
+    fi
 }
 
 update_history() {
@@ -329,10 +417,6 @@ play_episode() {
     [ -z "$episode" ] && get_episode_url
     # shellcheck disable=SC2086
     case "$player_function" in
-        debug)
-            printf "All links:\n%s\nSelected link:\n" "$links"
-            printf "%s\n" "$episode"
-            ;;
         mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
@@ -423,8 +507,7 @@ exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
-# shellcheck disable=SC2154
-skip_title="$ANI_CLI_SKIP_TITLE"
+skip_title="${ANI_CLI_SKIP_TITLE:-}"
 [ -t 0 ] || (command -v dmenu && use_external_menu=2)
 [ -t 0 ] || (command -v rofi && use_external_menu=1)
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
@@ -526,16 +609,33 @@ esac
 
 # searching
 case "$search" in
-    history)
-        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
-        wait
+        history)
+        anime_list=$(while read -r ep_no id title; do
+            process_hist_entry
+        done <"$histfile")
         [ -z "$anime_list" ] && die "No unwatched series in history!"
+
+        # selection 
         [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
         [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+
         [ -z "$id" ] && exit 1
-        title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
+        # get original entry from history file (correct source of truth)
+        hist_entry=$(awk -F '\t' -v id="$id" '$2 == id {print; exit}' "$histfile")
+
+        title=$(printf "%s" "$hist_entry" | cut -f3)
+        ep_no=$(printf "%s" "$hist_entry" | cut -f1)
+
         ep_list=$(episodes_list "$id")
-        ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
+        next_ep=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}")
+        if [ "$search" = "history" ] && [ -z "$next_ep" ]; then
+            echo ""
+            echo "Checking next episode for: $title"
+            echo "-------------------------------------"
+            time_until_next_ep "$title"
+            exit 0
+        fi
+
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         ;;
     *)
