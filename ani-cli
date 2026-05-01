@@ -184,7 +184,6 @@ generate_link() {
         5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
-    [ "${provider_id#https://}" != "$provider_id" ] || provider_id="https://${allanime_base}${provider_id}"
     if [ "$1" = "5" ] && [ -n "$provider_id" ]; then
         get_filemoon_links "$provider_id"
     else
@@ -280,7 +279,7 @@ get_episode_url() {
 
     api_url="${allanime_api}/api?variables=${encoded_vars}&extensions=${encoded_ext}"
 
-    api_resp="$(curl -e "$allanime_refr" -s -A "$agent" -H "Origin: https://youtu-chan.com" "$api_url")"
+    api_resp="$(curl -e "https://youtu-chan.com" -s -A "$agent" -H "Origin: https://youtu-chan.com" "$api_url")"
 
     if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
         api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
