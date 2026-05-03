@@ -122,20 +122,22 @@ update_script() {
 # compare two versions: returns 1 if v1>v2, 0 if equal, -1 if v1<v2
 #compare at each level
 ver_compare() {
-    v1="$1"
-    v2="$2"
-    awk -v a="$v1" -v b="$v2" 'BEGIN {
-        n1 = split(a, A, ".");
-        n2 = split(b, B, ".");
-        n = (n1>n2)?n1:n2;
-        for(i=1;i<=n;i++){
-            ai = (i in A) ? A[i] : 0;
-            bi = (i in B) ? B[i] : 0;
-            if(ai+0 < bi+0){ print -1; exit }
-            if(ai+0 > bi+0){ print 1; exit }
-        }
-        print 0
-    }'
+  IFS='.' read -r -a A <<< "$1"
+  IFS='.' read -r -a B <<< "$2"
+  n=${#A[@]}
+  (( ${#B[@]} > n )) && n=${#B[@]}
+  for ((i=0; i<n; i++)); do
+    ai=${A[i]:-0}
+    bi=${B[i]:-0}
+    if ((ai < bi)); then
+      echo -1
+      return
+    elif ((ai > bi)); then
+      echo 1
+      return
+    fi
+  done
+  echo 0
 }
 #check for newer version on GitHub; we can disable it by setting ANI_CLI_DISABLE_UPDATE_CHECK=1
 check_remote_version() {
