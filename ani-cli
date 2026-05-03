@@ -122,22 +122,41 @@ update_script() {
 # compare two versions: returns 1 if v1>v2, 0 if equal, -1 if v1<v2
 #compare at each level
 ver_compare() {
-  IFS='.' read -r -a A <<< "$1"
-  IFS='.' read -r -a B <<< "$2"
-  n=${#A[@]}
-  (( ${#B[@]} > n )) && n=${#B[@]}
-  for ((i=0; i<n; i++)); do
-    ai=${A[i]:-0}
-    bi=${B[i]:-0}
-    if ((ai < bi)); then
-      echo -1
-      return
-    elif ((ai > bi)); then
-      echo 1
-      return
-    fi
-  done
-  echo 0
+    v1=$1
+    v2=$2
+    while [ -n "$v1" ] || [ -n "$v2" ]; do
+        case "$v1" in
+            *.*) seg1=${v1%%.*}; v1=${v1#*.} ;;
+            "") seg1=0 ;;
+            *) seg1=$v1; v1=;;
+        esac
+        case "$v2" in
+            *.*) seg2=${v2%%.*}; v2=${v2#*.} ;;
+            "") seg2=0 ;;
+            *) seg2=$v2; v2=;;
+        esac
+        # treat non-numeric segments as 0 (like the original awk ai+0 behavior)
+        case "$seg1" in
+            ''|*[!0-9]*) seg1=0 ;;
+        esac
+        case "$seg2" in
+            ''|*[!0-9]*) seg2=0 ;;
+        esac
+        # strip leading zeros to avoid octal interpretation
+        while [ "${seg1#0}" != "$seg1" ]; do seg1=${seg1#0}; done
+        [ -z "$seg1" ] && seg1=0
+        while [ "${seg2#0}" != "$seg2" ]; do seg2=${seg2#0}; done
+        [ -z "$seg2" ] && seg2=0
+        if [ "$seg1" -lt "$seg2" ]; then
+            printf "%s\n" -1
+            return
+        fi
+        if [ "$seg1" -gt "$seg2" ]; then
+            printf "%s\n" 1
+            return
+        fi
+    done
+    printf "%s\n" 0
 }
 #check for newer version on GitHub; we can disable it by setting ANI_CLI_DISABLE_UPDATE_CHECK=1
 check_remote_version() {
