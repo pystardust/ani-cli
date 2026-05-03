@@ -164,6 +164,18 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 pkg install openssl-tool
 ```
 
+**Important Note:** To get all providers working with android MPV, Please follow below steps:
+- Run this command and allow storage permissions:
+```sh
+termux-setup-storage
+```
+- Go to MPV > Settings > Advanced > mpv.conf
+- add this line:
+```txt
+include="/storage/emulated/0/mpv/mpv.config.mp4"
+```
+- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux.
+
 </details>
 
 ### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
