@@ -165,8 +165,9 @@ get_links() {
         *master.m3u8*)
             m3u8_refr=$(printf '%s' "$response" | sed -nE 's|.*Referer":"([^"]*)".*|\1|p') && printf '%s\n' "m3u8_refr >$m3u8_refr" >"$cache_dir/m3u8_refr"
             extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
+            relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
             m3u8_streams="$(curl -e "$m3u8_refr" -s "$extract_link" -A "$agent")"
-            printf "%s" "$m3u8_streams" | grep -q "EXTM3U" && printf "%s" "$m3u8_streams" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sort -nr
+            printf "%s" "$m3u8_streams" | grep -q "EXTM3U" && printf "%s" "$m3u8_streams" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sed "s|>|>${relative_link}|g" | sort -nr
             ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
@@ -397,7 +398,7 @@ android_mpv() {
         printf "  to MPV > Settings > Advanced > mpv.conf\n"
     fi
     am start --user 0 -a android.intent.action.VIEW -d "$1" -n is.xyz.mpv/.MPVActivity -e "title" "$2" >/dev/null 2>&1
-    sleep 20 && : > "$file" >/dev/null 2>&1
+    sleep 20 && : >"$file" >/dev/null 2>&1
 }
 
 play_episode() {
