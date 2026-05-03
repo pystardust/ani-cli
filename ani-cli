@@ -119,6 +119,37 @@ update_script() {
     exit 0
 }
 
+# compare two versions: returns 1 if v1>v2, 0 if equal, -1 if v1<v2
+#compare at each level
+ver_compare() {
+    v1="$1"
+    v2="$2"
+    awk -v a="$v1" -v b="$v2" 'BEGIN {
+        n1 = split(a, A, ".");
+        n2 = split(b, B, ".");
+        n = (n1>n2)?n1:n2;
+        for(i=1;i<=n;i++){
+            ai = (i in A) ? A[i] : 0;
+            bi = (i in B) ? B[i] : 0;
+            if(ai+0 < bi+0){ print -1; exit }
+            if(ai+0 > bi+0){ print 1; exit }
+        }
+        print 0
+    }'
+}
+#check for newer version on GitHub; we can disable it by setting ANI_CLI_DISABLE_UPDATE_CHECK=1
+check_remote_version() {
+    [ "${ANI_CLI_DISABLE_UPDATE_CHECK:-0}" = "1" ] && return 0
+    rem=$(curl -fs -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli" 2>/dev/null) || return 0
+    [ -z "$rem" ] && return 0
+    remote_ver=$(printf '%s\n' "$rem" | sed -nE 's/^version_number="([^"]*)"/\1/p' | head -n1)
+    [ -z "$remote_ver" ] && return 0
+    cmp=$(ver_compare "$remote_ver" "$version_number")
+    if [ "$cmp" -eq 1 ]; then
+        printf "\33[2K\r\033[1;33mNew version available: %s (installed: %s). Run %s to update.\033[0m\n" "$remote_ver" "$version_number" "${0##*/} -U" >&2
+    fi
+}
+
 # checks if dependencies are present
 dep_ch() {
     for dep; do
@@ -565,6 +596,7 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+check_remote_version &
 dep_ch "curl" "sed" "grep" || true
 case "$(uname -o 2>/dev/null)" in
     *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
