@@ -142,7 +142,7 @@ where_mpv() {
 get_links() {
     case "$*" in
         *mp4upload*)
-            episode_link=$(curl -sLk "$*" -A "$agent" -e "$allanime_refr" | sed -nE 's|.*src: "([^"]*)"[[:space:]]*|Mp4Upload >\1|p')
+            episode_link=$(curl --max-time 15 -sLk "$*" -A "$agent" -e "$allanime_refr" | sed -nE 's|.*src: "([^"]*)"[[:space:]]*|Mp4Upload >\1|p')
             ;;
         *tools.fast4speed.rsvp*)
             episode_link=$(printf "%s\n" "Yt >$*")
@@ -420,7 +420,7 @@ play_episode() {
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
-        android_mpv) nohup "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
+        android_mpv) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         *iina*)
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
