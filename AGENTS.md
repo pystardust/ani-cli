@@ -110,7 +110,14 @@ Once a milestone affects the UI surface, treat the work as v1-quality, not as a 
 
 Commit directly to `master`. No long-lived feature branches. README is reviewed and updated only at the v1 cut, not before.
 
-## 11. Pointers
+## 11. Git hygiene
+
+- **Stage files individually, by full path.** Never use `git add .`, `git add -A`, `git add -u`, or directory-level adds like `git add docs/`. Each file goes into the index by name. This forces an intentional review of every file in every commit and prevents accidental inclusion of secrets, scratch files, or unrelated edits.
+- **Commit subjects use the conventional prefix matching the change kind**: `test(red): …`, `feat(green): …`, `fix(green): …`, `refactor: …`, `chore: …`, `docs: …`, `chore(deps): …`, `chore(ci): …`. Anything that introduces a `feat` or `fix` must have a paired predecessor `test(red): …` commit (see §2).
+- **No `git push --force` to `master`.** If a force-push is genuinely needed (e.g. accidentally committed credentials), pause and confirm with the user before doing it.
+- **Never `--no-verify` past hooks** unless the user explicitly directs it. If a pre-commit hook fails, fix the underlying issue.
+
+## 12. Pointers
 
 - `docs/architecture.md` — public architecture
 - `docs/testing.md` — test pyramid, fixture management, coverage targets
