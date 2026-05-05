@@ -53,10 +53,10 @@ fi
 # instead be a subprocess call.
 banned_symbols='search_anime\|episodes_list\|get_episode_url\|decode_tobeparsed\|allanime_key\|allanime_base\|generate_link\|provider_init'
 # shellcheck disable=SC2086
-matches=$(grep -rnE $GREP_EXCLUDE "($banned_symbols)" gui/ 2>/dev/null \
-    | grep -v 'tests/.*proxy_router.rs' \
-    | grep -v 'docs\.rs\|//[!/].*' \
-    || true)
+matches=$(grep -rnE $GREP_EXCLUDE "($banned_symbols)" gui/ 2>/dev/null |
+    grep -v 'tests/.*proxy_router.rs' |
+    grep -v 'docs\.rs\|//[!/].*' ||
+    true)
 # Filter doc-comment matches (allow them — they reference the ani-cli
 # function the GUI driver hits, which is informational).
 filtered=$(printf '%s\n' "$matches" | awk -F: '
