@@ -73,15 +73,20 @@ jobs:
       - name: Install bash test dependencies
         run: |
           sudo apt-get update
-          # kcov is not in Ubuntu 24.04's default repos; coverage.sh skips
-          # gracefully when it's missing. shellcheck/shfmt come from a
-          # dedicated GitHub Action in the lint job, no need to apt them
-          # here. xxd is in the vim-common package.
+          # Acceptance tests run the real ./ani-cli, which dep_ch's curl,
+          # sed, grep, openssl, fzf at the top of every run, plus ffmpeg
+          # and aria2c when ANI_CLI_PLAYER=download. xxd is needed by
+          # blob_builder.sh. kcov is not in Ubuntu 24.04 apt; coverage.sh
+          # skips gracefully when it's missing.
           sudo apt-get install -y \
             curl \
             openssl \
             bsdmainutils \
-            xxd
+            xxd \
+            fzf \
+            mpv \
+            ffmpeg \
+            aria2
       - name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
       - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating
