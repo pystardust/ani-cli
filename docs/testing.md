@@ -143,7 +143,7 @@ Cheap grep / AST tests under `tests/arch/`. They fail loudly when boundaries ero
 
 ## Mutation testing (deferred)
 
-Trigger condition: after M0 + M1 are green for 30 days and CI duration stays under 8 minutes total.
+Trigger condition: after the Bash retrofit and the first GUI feature slice are green on CI for 30 days and total CI duration stays under 8 minutes.
 
 - **Rust**: `cargo-mutants` nightly, scoped to `proxy/`, `cache/`, `history/`, `anicli/`. Target survival rate < 15%.
 - **TS**: `stryker-js` nightly, scoped to `lib/` (DOM mutation noise on components is too high).

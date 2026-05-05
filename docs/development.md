@@ -18,12 +18,54 @@ Tauri's per-platform prerequisites: see [Tauri prerequisites](https://v2.tauri.a
 
 ## First-time setup
 
+### Ubuntu / Debian (copy-paste)
+
+Group these by what subsystem you intend to work on. You only need a group's tools when you're building or testing in that subsystem.
+
+```sh
+# Bash subsystem (the vendored CLI script + its test suite)
+sudo apt install -y shellcheck kcov
+# shfmt is not in 24.04 apt; install the static binary:
+sudo curl -sSL -o /usr/local/bin/shfmt \
+  https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64 \
+  && sudo chmod +x /usr/local/bin/shfmt
+```
+
+```sh
+# Rust backend + Tauri shell
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo apt install -y libwebkit2gtk-4.1-dev librsvg2-dev \
+  libayatana-appindicator3-dev libsoup-3.0-dev \
+  build-essential libssl-dev pkg-config
+```
+
+```sh
+# Frontend (Node + pnpm via nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+# (open a new shell, or `source ~/.bashrc`)
+nvm install 20 && nvm use 20
+corepack enable && corepack prepare pnpm@latest --activate
+```
+
+```sh
+# End-to-end tests (optional locally — CI runs them anyway)
+sudo apt install -y webkit2gtk-driver xvfb
+cargo install tauri-driver --locked
+```
+
+```sh
+# Quality of life (optional)
+sudo apt install -y mpv jq ripgrep
+```
+
+### Then in the repo
+
 ```sh
 git clone git@github.com:JoaoPucci/ani-gui.git
 cd ani-gui
 
-# Bash test toolchain
-tests/bash/helpers/install-bats.sh
+# Bash test toolchain (vendored bats + plugins at pinned tags)
+./tests/bash/helpers/install-bats.sh
 
 # Frontend
 cd gui/frontend && pnpm install && cd ../..
@@ -31,6 +73,11 @@ cd gui/frontend && pnpm install && cd ../..
 # Verify Rust toolchain
 cd gui/src-tauri && cargo --version && cd ../..
 ```
+
+### Other distros
+
+Mostly same packages, different package manager. PRs welcome to add Fedora / Arch / openSUSE recipes here. The Tauri prereqs page covers each:
+<https://v2.tauri.app/start/prerequisites/>.
 
 ## Dev loop
 
