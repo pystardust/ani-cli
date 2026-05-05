@@ -1,0 +1,57 @@
+# Internal planning artifacts (gitignored, see docs/ for public docs)
+.planning/
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# Tauri
+gui/src-tauri/target/
+gui/src-tauri/gen/
+gui/src-tauri/WixTools/
+
+# Node / pnpm / npm
+node_modules/
+.pnpm-store/
+.npm/
+
+# SvelteKit / Vite
+.svelte-kit/
+gui/frontend/.svelte-kit/
+gui/frontend/build/
+gui/frontend/dist/
+.vite/
+
+# Test coverage & artifacts
+coverage/
+.nyc_output/
+lcov.info
+*.lcov
+test-results/
+playwright-report/
+.cache/
+
+# Bash test scratch
+.bats-tmp/
+tests/.bats-cache/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local logs
+*.log
+logs/
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Generated bindings
+gui/frontend/src/lib/bindings/

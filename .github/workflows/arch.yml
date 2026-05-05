@@ -1,0 +1,24 @@
+name: 'architectural invariants'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  invariants:
+    name: tests/arch + actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actionlint
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          sudo mv actionlint /usr/local/bin/actionlint
+      - name: actionlint (workflow syntax)
+        run: actionlint
+      - name: Run architectural invariants
+        run: bash tests/arch/run-all.sh

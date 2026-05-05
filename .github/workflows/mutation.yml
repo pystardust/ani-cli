@@ -1,0 +1,75 @@
+name: 'mutation testing (informational)'
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-mutants:
+    name: cargo-mutants (Rust)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux deps for Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui/src-tauri
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+      - name: Run cargo-mutants on scoped modules
+        working-directory: gui/src-tauri
+        run: |
+          cargo mutants \
+            --in-place \
+            --no-shuffle \
+            --timeout 120 \
+            -p ani-gui \
+            -f 'src/proxy/**/*.rs' \
+            -f 'src/cache/**/*.rs' \
+            -f 'src/anicli/**/*.rs' \
+            -f 'src/history/**/*.rs' \
+            --json > mutants.json
+      - name: Upload mutants report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-mutants-report
+          path: gui/src-tauri/mutants.json
+          retention-days: 30
+
+  stryker:
+    name: stryker-js (TS lib only)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: gui/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: gui/frontend/pnpm-lock.yaml
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: stryker (lib/ only)
+        run: pnpm exec stryker run
+      - name: Upload stryker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: gui/frontend/reports/mutation/
+          retention-days: 30

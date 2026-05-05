@@ -1,0 +1,60 @@
+name: 'bash tests'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'tests/bash/**'
+      - 'tests/fixtures/**'
+      - 'ani-cli'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Shellcheck + Shfmt (test sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint test sources with same config as ani-cli
+        uses: luizm/action-sh-checker@master
+        env:
+          SHELLCHECK_OPTS: '-s sh -o all -e 2250'
+          SHFMT_OPTS: '-i 4 -ci -d'
+        with:
+          sh_checker_only_diff: false
+          sh_checker_comment: false
+
+  bats:
+    name: bats-core suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bash test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            shellcheck \
+            shfmt \
+            kcov \
+            curl \
+            openssl \
+            bsdmainutils
+      - name: Install bats-core and plugins
+        run: ./tests/bash/helpers/install-bats.sh
+      - name: Run bats suites (unit, network, subprocess, acceptance, property)
+        run: ./tests/bash/helpers/run-suite.sh
+      - name: Coverage with bashcov / kcov
+        run: ./tests/bash/helpers/coverage.sh
+        env:
+          COVERAGE_FAIL_UNDER_PURE: '95'
+          COVERAGE_FAIL_UNDER_NETWORK: '70'
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bash-coverage
+          path: coverage/bash/
+          retention-days: 14

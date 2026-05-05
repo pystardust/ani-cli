@@ -1,0 +1,64 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/gui/src-tauri"
+    schedule:
+      interval: "weekly"
+    groups:
+      tauri:
+        patterns:
+          - "tauri*"
+      tokio-stack:
+        patterns:
+          - "tokio*"
+          - "axum*"
+          - "tower*"
+          - "hyper*"
+          - "reqwest*"
+      patch-and-minor:
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/gui/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      sveltekit:
+        patterns:
+          - "@sveltejs/*"
+          - "svelte*"
+          - "vite*"
+      lint-and-test:
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "vitest*"
+          - "@testing-library/*"
+          - "@playwright/*"
+      patch-and-minor:
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
