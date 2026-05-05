@@ -56,10 +56,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          manifest-path: gui/src-tauri/Cargo.toml
-          arguments: --all-features
+          workspaces: gui/src-tauri
+          shared-key: cargo-deny
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked --version ^0.16
+      - name: cargo deny check
+        working-directory: gui/src-tauri
+        run: cargo deny check --all-features
 
   test:
     name: cargo test

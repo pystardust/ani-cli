@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.88"
 description = "Desktop GUI for the ani-cli anime scraper"
-license = "GPL-3.0-or-later"
+license = "GPL-3.0"
 publish = false
 
 [lib]

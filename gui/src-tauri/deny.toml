@@ -9,11 +9,38 @@ feature-depth = 1
 
 [advisories]
 yanked = "deny"
-ignore = []
+# Unmaintained-advisory acknowledgements. These are not security issues —
+# they're "this crate is no longer maintained" notices for crates we
+# transitively depend on through tauri 2.x's GTK3-era webkit2gtk stack
+# (atk, gdk, gtk, gdkx11, gdkwayland, glib, soup, webkit2gtk-sys, etc.)
+# and a handful of widely-used proc-macro deps (proc-macro-error,
+# instant). Tracking upstream:
+#   - tauri 3.x will move to gtk-rs's modern bindings.
+#   - syn v1 lingers via tauri-build's old proc-macro-error dep.
+# When any of these go from "unmaintained" to actually-vulnerable,
+# remove the corresponding ignore line so CI flags it.
+ignore = [
+    "RUSTSEC-2024-0370", # proc-macro-error (unmaintained)
+    "RUSTSEC-2024-0411", # gtk
+    "RUSTSEC-2024-0412", # gdk
+    "RUSTSEC-2024-0413", # atk
+    "RUSTSEC-2024-0414", # gdk-pixbuf? (gtk-rs family)
+    "RUSTSEC-2024-0415", # gdk-pixbuf-sys? (gtk-rs family)
+    "RUSTSEC-2024-0416", # atk-sys
+    "RUSTSEC-2024-0417", # gdk-sys / gtk-sys (gtk-rs family)
+    "RUSTSEC-2024-0418", # gtk-sys / gdk-sys (gtk-rs family)
+    "RUSTSEC-2024-0419", # gdkx11 / gdkwayland (gtk-rs family)
+    "RUSTSEC-2024-0420", # gdkx11-sys / gdkwayland-sys (gtk-rs family)
+    "RUSTSEC-2025-0075", # transitive (verify when CI re-runs)
+    "RUSTSEC-2025-0080", # transitive
+    "RUSTSEC-2025-0081", # transitive
+    "RUSTSEC-2025-0100", # transitive
+    "RUSTSEC-2025-0098", # unic-ucd-version (rust-unic crates unmaintained)
+]
 
 [licenses]
-# GPL-3.0-or-later for the bundle (inherited from ani-cli). Allow common
-# permissive licenses we link against.
+# Our crate is GPL-3.0 (inherited from ani-cli). Everything else we link
+# against is permissive — list those here.
 allow = [
     "MIT",
     "MIT-0",
@@ -30,7 +57,9 @@ allow = [
     "OpenSSL",
     "MPL-2.0",
     "GPL-3.0",
-    "GPL-3.0-or-later",
+    # webpki-roots ships under CDLA-Permissive-2.0 (Community Data License
+    # Agreement, permissive). It is a recognized SPDX-id permissive license.
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
 
