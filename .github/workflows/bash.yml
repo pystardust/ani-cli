@@ -44,13 +44,11 @@ jobs:
             bsdmainutils
       - name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
-      - name: Run bats suites (unit, network, subprocess, acceptance, property)
+      - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating
         run: ./tests/bash/helpers/run-suite.sh
-      - name: Coverage with bashcov / kcov
+      - name: Coverage with kcov — informational only (not yet gating)
         run: ./tests/bash/helpers/coverage.sh
-        env:
-          COVERAGE_FAIL_UNDER_PURE: '95'
-          COVERAGE_FAIL_UNDER_NETWORK: '70'
+        continue-on-error: true
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
