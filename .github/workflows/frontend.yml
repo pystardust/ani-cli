@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'gui/frontend/**'
+      - '.github/workflows/frontend.yml'
   pull_request:
     paths:
       - 'gui/frontend/**'

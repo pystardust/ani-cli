@@ -19,7 +19,7 @@ jobs:
         SHELLCHECK_OPTS: -s sh -o all -e 2250
         SHFMT_OPTS: -i 4 -ci -d
       with:
-        sh_checker_exclude: "_ani-cli-bash _ani-cli-zsh"
+        sh_checker_exclude: "_ani-cli-bash _ani-cli-zsh tests gui"
       
   check-exec:
     name: Executable Bit

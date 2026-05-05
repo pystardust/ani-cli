@@ -14,18 +14,56 @@ permissions:
 
 jobs:
   lint:
-    name: Shellcheck + Shfmt (test sources)
+    name: Shellcheck + Shfmt (per-file dialect)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lint test sources with same config as ani-cli
-        uses: luizm/action-sh-checker@master
-        env:
-          SHELLCHECK_OPTS: '-s sh -o all -e 2250'
-          SHFMT_OPTS: '-i 4 -ci -d'
-        with:
-          sh_checker_only_diff: false
-          sh_checker_comment: false
+      - name: Install shellcheck + shfmt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          # shfmt is not in 24.04 apt; install the static binary.
+          sudo curl -sSL -o /usr/local/bin/shfmt \
+            https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64
+          sudo chmod +x /usr/local/bin/shfmt
+      - name: shfmt (formatting parity with ani-cli, all test sources)
+        run: |
+          # Same formatter settings ani-cli upstream uses, applied repo-wide
+          # to the new test sources. .bats-vendor/ is gitignored and absent
+          # in CI checkouts.
+          find tests/bash tests/arch -type f \
+            \( -name '*.bats' -o -name '*.bash' -o -name '*.sh' \) \
+            -print0 | xargs -0 shfmt -i 4 -ci -d
+      - name: shellcheck (sh dialect for *.sh helpers)
+        run: |
+          # POSIX-sh helpers and arch checks. ani-cli upstream uses
+          # `-s sh -o all -e 2250`; we additionally exclude:
+          #   SC2034 — unused variables (often used via sourced ani-cli)
+          #   SC2086 — intentional word-splitting on $files for shfmt batches
+          find tests/bash/helpers tests/arch -type f -name '*.sh' \
+            -print0 | xargs -0 shellcheck -s sh -o all -e 2250 -e SC2034 -e SC2086
+      - name: shellcheck (bash dialect for *.bash helpers and *.bats files)
+        run: |
+          # bats files run under bash. Disabled checks (test-context noise):
+          #   SC2034 — unused vars set as ani-cli globals via source
+          #   SC2086 — intentional word-splitting on batched filename lists
+          #   SC2154 — referenced-but-not-assigned (set in loader.bash)
+          #   SC2317 — "unreachable" function defs that override ani-cli's
+          #            external calls (curl, mpv, etc.) inside sourced flow
+          #   SC2030/2031 — bats runs each @test in a subshell; export
+          #            scoping is intentional (per-test-only)
+          #   SC2163 — dynamic `export -f "$cmd"` in process_stub: $cmd
+          #            holds a function name, this is the intended use
+          #   SC2181 — `$?` after a captured assignment is required when
+          #            the command was inside $(...) substitution
+          #   SC2016 — single-quoted `bash -c '...'` bodies: we deliberately
+          #            avoid host expansion so $ANI_CLI_PATH resolves in
+          #            the inner shell after sourcing the loader
+          find tests/bash -type f \( -name '*.bats' -o -name '*.bash' \) \
+            ! -path '*/.bats-vendor/*' \
+            -print0 | xargs -0 shellcheck -s bash \
+              -e SC2034 -e SC2086 -e SC2154 -e SC2317 \
+              -e SC2030 -e SC2031 -e SC2163 -e SC2181 -e SC2016
 
   bats:
     name: bats-core suite
@@ -35,13 +73,15 @@ jobs:
       - name: Install bash test dependencies
         run: |
           sudo apt-get update
+          # kcov is not in Ubuntu 24.04's default repos; coverage.sh skips
+          # gracefully when it's missing. shellcheck/shfmt come from a
+          # dedicated GitHub Action in the lint job, no need to apt them
+          # here. xxd is in the vim-common package.
           sudo apt-get install -y \
-            shellcheck \
-            shfmt \
-            kcov \
             curl \
             openssl \
-            bsdmainutils
+            bsdmainutils \
+            xxd
       - name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
       - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating

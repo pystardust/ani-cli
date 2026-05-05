@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'gui/frontend/**'
+      - 'gui/src-tauri/**'
+      - '.github/workflows/e2e.yml'
   pull_request:
     paths:
       - 'gui/frontend/**'
