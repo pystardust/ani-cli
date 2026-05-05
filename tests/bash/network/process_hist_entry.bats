@@ -44,7 +44,7 @@ setup() {
 
 @test "process_hist_entry: refreshes title's episode count from the mocked list" {
     id='abc123'
-    title='Test Anime (3 episodes)'   # caller's stale view: 3 episodes
+    title='Test Anime (3 episodes)' # caller's stale view: 3 episodes
     ep_no='1'
     output=$(process_hist_entry)
     # The list has 5 episodes, so the title gets updated.

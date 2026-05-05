@@ -27,7 +27,7 @@ hex_to_b64url_no_pad() {
 @test "b64url_to_hex: round-trip 200 random inputs of varying length (1..64 bytes)" {
     iter=0
     while [ "$iter" -lt 200 ]; do
-        len=$(( (RANDOM % 64) + 1 ))
+        len=$(((RANDOM % 64) + 1))
         input_hex=$(random_hex "$len")
         b64url=$(hex_to_b64url_no_pad "$input_hex")
         round_trip=$(b64url_to_hex "$b64url")

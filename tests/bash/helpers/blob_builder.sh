@@ -36,7 +36,7 @@ tmp=$(mktemp)
     # 12 bytes of IV
     printf '%s' "$iv_hex" | xxd -r -p
     # ciphertext
-    printf '%s' "$plaintext" | \
+    printf '%s' "$plaintext" |
         openssl enc -aes-256-ctr -K "$allanime_key" -iv "$ctr_hex" -nosalt -nopad
     # 16 bytes of trailing padding
     dd if=/dev/zero bs=1 count=16 2>/dev/null

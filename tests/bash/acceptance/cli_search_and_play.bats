@@ -22,8 +22,8 @@ setup() {
     export CURL_FIXTURE_DIR="$BATS_TEST_TMPDIR/fixtures"
     mkdir -p "$CURL_FIXTURE_DIR"
     cp "$FIXTURES_DIR/allanime/search_one_piece.json" "$CURL_FIXTURE_DIR/"
-    cp "$FIXTURES_DIR/allanime/episodes_short.json"   "$CURL_FIXTURE_DIR/"
-    cp "$FIXTURES_DIR/allanime/embed_simple.json"     "$CURL_FIXTURE_DIR/"
+    cp "$FIXTURES_DIR/allanime/episodes_short.json" "$CURL_FIXTURE_DIR/"
+    cp "$FIXTURES_DIR/allanime/embed_simple.json" "$CURL_FIXTURE_DIR/"
     bash "$REPO_ROOT/tests/bash/helpers/blob_builder.sh" "$CURL_FIXTURE_DIR/episode_blob.json"
 
     # Place curl shim on PATH.

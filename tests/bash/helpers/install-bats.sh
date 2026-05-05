@@ -44,11 +44,11 @@ clone_or_update() {
 }
 
 printf 'Installing pinned bats toolchain into %s\n' "$VENDOR_DIR"
-clone_or_update bats-core    https://github.com/bats-core/bats-core.git    "$BATS_CORE_TAG"
-clone_or_update bats-assert  https://github.com/bats-core/bats-assert.git  "$BATS_ASSERT_TAG"
-clone_or_update bats-file    https://github.com/bats-core/bats-file.git    "$BATS_FILE_TAG"
+clone_or_update bats-core https://github.com/bats-core/bats-core.git "$BATS_CORE_TAG"
+clone_or_update bats-assert https://github.com/bats-core/bats-assert.git "$BATS_ASSERT_TAG"
+clone_or_update bats-file https://github.com/bats-core/bats-file.git "$BATS_FILE_TAG"
 clone_or_update bats-support https://github.com/bats-core/bats-support.git "$BATS_SUPPORT_TAG"
-clone_or_update bats-mock    https://github.com/jasonkarns/bats-mock.git   "$BATS_MOCK_TAG"
+clone_or_update bats-mock https://github.com/jasonkarns/bats-mock.git "$BATS_MOCK_TAG"
 
 # Make bats discoverable on PATH for the rest of this shell session if sourced.
 BATS_BIN="$VENDOR_DIR/bats-core/bin/bats"

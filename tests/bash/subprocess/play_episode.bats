@@ -45,7 +45,7 @@ setup() {
 @test "play_episode: mpv default branch invokes nohup mpv with --force-media-title" {
     player_function='mpv'
     play_episode
-    wait 2>/dev/null || true   # allow backgrounded stubs to flush
+    wait 2>/dev/null || true # allow backgrounded stubs to flush
     stub_assert_called nohup '.*mpv.*--force-media-title=Test Anime Episode 1.*https://example.com/video.mp4'
 }
 
