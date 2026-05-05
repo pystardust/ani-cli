@@ -110,14 +110,29 @@ Once a milestone affects the UI surface, treat the work as v1-quality, not as a 
 
 Commit directly to `master`. No long-lived feature branches. README is reviewed and updated only at the v1 cut, not before.
 
-## 11. Git hygiene
+## 11. System-modifying actions require explicit approval
+
+This rule holds in **all modes**, including auto mode. Pause and surface a request — never silently execute — for any action that:
+
+- Requires `sudo` or any privilege escalation
+- Modifies anything under `/etc`, `/usr`, `/opt`, `/var`, system services, or systemd units
+- Modifies user-global state outside the repo: `~/.bashrc`, `~/.zshrc`, `~/.profile`, `~/.cargo/`, `~/.rustup/`, `~/.nvm/`, `~/.npm/`, `~/.local/bin/`, `~/.config/` (other than this app's own config), the user's `PATH`, `corepack enable`, `cargo install -g`, etc.
+- Installs system packages (`apt`, `dnf`, `pacman`, `brew`, `pkg`, `snap`, `flatpak install`)
+- Modifies firewall rules, network config, environment variables persisted to shell rc files
+- Affects any file outside the repo working directory tree
+
+Project-local writes inside the repo are always fine (the test toolchain installer at `tests/bash/helpers/install-bats.sh` writes only to `tests/bash/.bats-vendor/`, which is gitignored — that's project-local and proceeds).
+
+When pausing for approval, explain what the action does, why it's needed, and what the alternative is if the user declines. Examples of safe alternatives: ship a Docker dev image rather than asking the user to install system packages; vendor a tool into the repo rather than `cargo install -g`; document the requirement in `docs/development.md` so the user installs it themselves.
+
+## 12. Git hygiene
 
 - **Stage files individually, by full path.** Never use `git add .`, `git add -A`, `git add -u`, or directory-level adds like `git add docs/`. Each file goes into the index by name. This forces an intentional review of every file in every commit and prevents accidental inclusion of secrets, scratch files, or unrelated edits.
 - **Commit subjects use the conventional prefix matching the change kind**: `test(red): …`, `feat(green): …`, `fix(green): …`, `refactor: …`, `chore: …`, `docs: …`, `chore(deps): …`, `chore(ci): …`. Anything that introduces a `feat` or `fix` must have a paired predecessor `test(red): …` commit (see §2).
 - **No `git push --force` to `master`.** If a force-push is genuinely needed (e.g. accidentally committed credentials), pause and confirm with the user before doing it.
 - **Never `--no-verify` past hooks** unless the user explicitly directs it. If a pre-commit hook fails, fix the underlying issue.
 
-## 12. Pointers
+## 13. Pointers
 
 - `docs/architecture.md` — public architecture
 - `docs/testing.md` — test pyramid, fixture management, coverage targets
