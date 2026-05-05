@@ -348,7 +348,11 @@ process_hist_entry() {
     latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
     title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+    if [ -n "$ep_no" ]; then
+        printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+    else
+        printf "%s\t%s - episode %s (up to date)\n" "$id" "$title" "$latest_ep"
+    fi
 }
 
 update_history() {
@@ -594,6 +598,9 @@ case "$search" in
         ep_list=$(episodes_list "$id")
         ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        if printf "%s" "$anime_list" | grep "$id" | cut -f2 | grep -q "(up to date)"; then
+            time_until_next_ep "$allanime_title"
+        fi
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
