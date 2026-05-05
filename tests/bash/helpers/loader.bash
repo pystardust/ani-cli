@@ -1,4 +1,8 @@
 # Common loader for every .bats file in tests/bash/.
+
+# Require bats >= 1.5.0 so flags on `run` (e.g. --separate-stderr, -N) work.
+bats_require_minimum_version 1.5.0
+
 #
 # Usage at the top of a .bats file:
 #
