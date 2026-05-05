@@ -1,0 +1,44 @@
+# cargo-deny configuration. Run with `cargo deny check`.
+
+[graph]
+all-features = true
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+yanked = "deny"
+ignore = []
+
+[licenses]
+# GPL-3.0-or-later for the bundle (inherited from ani-cli). Allow common
+# permissive licenses we link against.
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "Zlib",
+    "CC0-1.0",
+    "OpenSSL",
+    "MPL-2.0",
+    "GPL-3.0",
+    "GPL-3.0-or-later",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-git = []

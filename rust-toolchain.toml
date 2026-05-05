@@ -1,0 +1,6 @@
+[toolchain]
+# Pinned to recent stable so contributors and CI stay in lockstep. Bump
+# only when there's a concrete need (a transitive dep raising MSRV).
+channel = "1.88"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
