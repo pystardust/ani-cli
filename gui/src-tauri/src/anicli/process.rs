@@ -66,29 +66,146 @@ fn is_executable(p: &std::path::Path) -> bool {
             .unwrap_or(false)
 }
 
-/// Run `ani-cli` in debug-player mode and return the parsed output. Stub —
-/// implemented in M1.2 with integration tests behind a curl shim.
-///
-/// # Errors
-/// Will return [`AniError`] variants for spawn failure, timeout, non-zero
-/// exit, and parse failure.
-pub async fn run_debug(
-    _query: &str,
-    _ep: &str,
-    _quality: &str,
-    _mode: &str,
-) -> Result<DebugOutput> {
-    // Intentional async-to-sync stub: real implementation calls
-    // tokio::process::Command which is async.
-    let _ = tokio::task::yield_now().await;
-    Err(AniError::MissingBinary)
+/// How `run_debug` finds the `ani-cli` script. Resolved once at startup and
+/// reused per invocation.
+#[derive(Debug, Clone)]
+pub struct DebugOptions {
+    /// Absolute path to the `ani-cli` script. Use [`locate_ani_cli`].
+    pub ani_cli_path: PathBuf,
+    /// Optional override for the history directory (`ANI_CLI_HIST_DIR`).
+    /// Defaults to the user's `$XDG_STATE_HOME/ani-cli/` per ani-cli.
+    pub hist_dir: Option<PathBuf>,
+    /// Wall-clock timeout. Defaults to [`DEFAULT_TIMEOUT`].
+    pub timeout: Duration,
+    /// Override `PATH` (mainly for tests that put a curl shim ahead of
+    /// system binaries). Defaults to the inherited `PATH`.
+    pub path_override: Option<String>,
 }
 
-/// Run `ani-cli` in search mode (early-exit before episode prompt) and
-/// return the parsed result list. Stub — implemented in M1.2.
+impl DebugOptions {
+    /// Construct from a located ani-cli path with all defaults.
+    #[must_use]
+    pub fn new(ani_cli_path: PathBuf) -> Self {
+        Self {
+            ani_cli_path,
+            hist_dir: None,
+            timeout: DEFAULT_TIMEOUT,
+            path_override: None,
+        }
+    }
+}
+
+/// Run `ani-cli` in debug-player mode and return the parsed output.
+///
+/// The script is invoked with `ANI_CLI_PLAYER=debug` so it prints the
+/// candidate links and selected URL to stdout instead of launching a
+/// player. The environment is scrubbed (only safe vars propagate),
+/// `TERM=dumb` and `NO_COLOR=1` suppress ANSI noise, and `kill_on_drop`
+/// is enabled so cancelled futures don't leak shell PIDs.
 ///
 /// # Errors
-/// See [`run_debug`].
+/// - [`AniError::Timeout`] if the wall-clock timeout elapses
+/// - [`AniError::Scraper`] for non-zero exit with a known stderr pattern
+/// - [`AniError::ParseFailed`] if the debug stdout doesn't contain
+///   `Selected link:` (the marker the script's debug branch emits)
+/// - [`AniError::MissingBinary`] if `ani-cli` cannot be spawned
+pub async fn run_debug(
+    opts: &DebugOptions,
+    query: &str,
+    ep: &str,
+    quality: &str,
+    mode: &str,
+) -> Result<DebugOutput> {
+    use tokio::process::Command;
+
+    let mut cmd = Command::new(&opts.ani_cli_path);
+    cmd.arg("-S")
+        .arg("1")
+        .arg("-e")
+        .arg(ep)
+        .arg("-q")
+        .arg(quality);
+    if mode == "dub" {
+        cmd.arg("--dub");
+    }
+    cmd.arg("--").arg(query);
+
+    cmd.env_clear();
+    // PATH is required so ani-cli can find curl/openssl/fzf/mpv. Tests
+    // override this to inject a curl shim ahead of system binaries.
+    let path_value = opts
+        .path_override
+        .clone()
+        .or_else(|| std::env::var("PATH").ok())
+        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
+    cmd.env("PATH", path_value);
+    if let Some(home) = std::env::var_os("HOME") {
+        cmd.env("HOME", home);
+    }
+    cmd.env("TERM", "dumb");
+    cmd.env("NO_COLOR", "1");
+    cmd.env("ANI_CLI_PLAYER", "debug");
+    if let Some(dir) = &opts.hist_dir {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    } else if let Some(dir) = std::env::var_os("ANI_CLI_HIST_DIR") {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    }
+
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true);
+
+    let mut child = cmd.spawn().map_err(|_| AniError::MissingBinary)?;
+
+    let stdout_reader = child.stdout.take().expect("stdout piped");
+    let stderr_reader = child.stderr.take().expect("stderr piped");
+
+    let collected = tokio::time::timeout(opts.timeout, async move {
+        let stdout_fut = read_to_end(stdout_reader);
+        let stderr_fut = read_to_end(stderr_reader);
+        let (out, err) = tokio::join!(stdout_fut, stderr_fut);
+        let status = child.wait().await?;
+        Result::<(Vec<u8>, Vec<u8>, std::process::ExitStatus)>::Ok((out?, err?, status))
+    })
+    .await
+    .map_err(|_| AniError::Timeout)??;
+
+    let (stdout_bytes, stderr_bytes, exit) = collected;
+
+    if !exit.success() {
+        let stderr_text = super::parser::strip_ansi(&stderr_bytes);
+        if stderr_text.contains("No results found") {
+            return Err(AniError::NoResults);
+        }
+        if stderr_text.contains("Episode not released") {
+            return Err(AniError::Scraper {
+                key: crate::i18n::keys::SCRAPER_PARSE_FAILED,
+            });
+        }
+        return Err(AniError::Scraper {
+            key: crate::i18n::keys::SCRAPER_PARSE_FAILED,
+        });
+    }
+
+    let stdout_text = super::parser::strip_ansi(&stdout_bytes);
+    super::parser::parse_debug_output(&stdout_text)
+}
+
+async fn read_to_end<R: tokio::io::AsyncRead + Unpin>(mut r: R) -> std::io::Result<Vec<u8>> {
+    use tokio::io::AsyncReadExt;
+    let mut buf = Vec::with_capacity(4096);
+    r.read_to_end(&mut buf).await?;
+    Ok(buf)
+}
+
+/// Run `ani-cli` in search mode and return the parsed result list. Stub
+/// pending either an upstream `--list-only` flag or migrating GUI search
+/// to Kitsu metadata (the planned M2 path). See
+/// `.planning/cli-contract-deviations.md` for the full rationale.
+///
+/// # Errors
+/// Always returns `Ok(Vec::new())` until the deviation is resolved.
 pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> {
     let _ = tokio::task::yield_now().await;
     Ok(Vec::new())
