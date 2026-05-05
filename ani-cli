@@ -489,6 +489,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+[ -n "$__ANI_CLI_LIB__" ] && return 0
 
 while [ $# -gt 0 ]; do
     case "$1" in
