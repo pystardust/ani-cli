@@ -18,8 +18,8 @@ fn main() {
 
     tracing::info!(version = ani_gui::VERSION, "starting ani-gui");
 
-    // The actual Tauri builder wiring lives in lib::run() and is fleshed out
-    // as commands and the streaming proxy come online. For now main exists
-    // so the binary target builds.
-    println!("ani-gui {}", ani_gui::VERSION);
+    if let Err(e) = ani_gui::run() {
+        tracing::error!(error = ?e, "ani-gui exited with error");
+        std::process::exit(1);
+    }
 }

@@ -216,7 +216,13 @@ async fn subtitle_route_proxies_vtt_with_text_vtt_content_type() {
     let url = format!("{}/s/{}/sub.vtt", h.proxy_base, id.as_string());
     let resp = reqwest::get(&url).await.expect("proxy responds");
     assert_eq!(resp.status(), 200);
-    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap().to_string();
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     assert!(ct.contains("text/vtt"));
     let body = resp.text().await.unwrap();
     assert!(body.starts_with("WEBVTT"));
