@@ -1,0 +1,33 @@
+{
+  "$schema": "https://example.com/manifest-v1",
+  "fixtures": [
+    {
+      "file": "search_one_piece.json",
+      "purpose": "Mock GraphQL response for search_anime when query='one+piece'. Three edges: the main One Piece TV series and two films, each with availableEpisodes counts.",
+      "captured_at": "2026-05-06",
+      "captured_via": "Synthetic — values match the shape of real allanime API responses; ids are real (visible in the public API).",
+      "notes": "Used by tests/bash/network/search_anime.bats."
+    },
+    {
+      "file": "search_empty.json",
+      "purpose": "Mock GraphQL response for a query that matches nothing.",
+      "captured_at": "2026-05-06",
+      "captured_via": "Synthetic.",
+      "notes": "Used by tests/bash/network/search_anime.bats."
+    },
+    {
+      "file": "episodes_attack_on_titan.json",
+      "purpose": "Mock GraphQL response for episodes_list with a 25-episode show. Lists are descending by episode number; the script sort -n is responsible for ordering.",
+      "captured_at": "2026-05-06",
+      "captured_via": "Synthetic.",
+      "notes": "Used by tests/bash/network/episodes_list.bats."
+    },
+    {
+      "file": "episodes_short.json",
+      "purpose": "Mock GraphQL response for a 4-episode show with a fractional episode (1.5). Dub list is empty so dub mode tests can assert on the empty-list shape.",
+      "captured_at": "2026-05-06",
+      "captured_via": "Synthetic.",
+      "notes": "Used by tests/bash/network/episodes_list.bats."
+    }
+  ]
+}

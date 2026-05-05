@@ -1,0 +1,1 @@
+{"links":[{"link":"https://hianime.example/master.m3u8","resolutionStr":"auto","portData":{"streams":[{"format":"hls","url":"https://hianime.example/master.m3u8","hardsub_lang":"en-US"}]},"subtitles":[{"lang":"en","label":"English","default":"default","src":"https://hianime.example/sub.vtt"}]}],"Referer":"https://hianime.example"}
