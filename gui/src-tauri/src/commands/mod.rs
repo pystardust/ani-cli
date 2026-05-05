@@ -9,9 +9,11 @@
 //! the full Tauri runtime.
 
 pub mod app_info;
+pub mod external_player;
 pub mod history;
 pub mod proxy_url;
 
 pub use app_info::app_info;
+pub use external_player::{open_external_player, LaunchArgs};
 pub use history::{history_clear, history_list};
 pub use proxy_url::proxy_base_url;

@@ -196,6 +196,43 @@ async fn invalid_session_string_returns_400() {
 }
 
 #[tokio::test]
+async fn subtitle_route_proxies_vtt_with_text_vtt_content_type() {
+    let h = start_harness().await;
+    Mock::given(method("GET"))
+        .and(path("/captions.vtt"))
+        .and(header("referer", "https://allmanga.to"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello\n"),
+        )
+        .mount(&h.mock)
+        .await;
+
+    let upstream = Url::parse(&format!("{}/master.m3u8", h.mock.uri())).unwrap();
+    let subtitle = Url::parse(&format!("{}/captions.vtt", h.mock.uri())).unwrap();
+    let sess = StreamSession::new(upstream, "https://allmanga.to", Some(subtitle));
+    let id = h.sessions.insert(sess);
+
+    let url = format!("{}/s/{}/sub.vtt", h.proxy_base, id.as_string());
+    let resp = reqwest::get(&url).await.expect("proxy responds");
+    assert_eq!(resp.status(), 200);
+    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap().to_string();
+    assert!(ct.contains("text/vtt"));
+    let body = resp.text().await.unwrap();
+    assert!(body.starts_with("WEBVTT"));
+    assert!(body.contains("Hello"));
+}
+
+#[tokio::test]
+async fn subtitle_route_returns_404_when_session_has_no_subtitle() {
+    let h = start_harness().await;
+    let session = make_session(&h, "/master.m3u8");
+    let url = format!("{}/s/{}/sub.vtt", h.proxy_base, session.as_string());
+    let resp = reqwest::get(&url).await.expect("proxy responds");
+    assert_eq!(resp.status(), 404);
+}
+
+#[tokio::test]
 async fn segment_route_rewrites_inner_m3u8_too() {
     let h = start_harness().await;
 
