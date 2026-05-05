@@ -40,8 +40,11 @@ jobs:
           # `-s sh -o all -e 2250`; we additionally exclude:
           #   SC2034 — unused variables (often used via sourced ani-cli)
           #   SC2086 — intentional word-splitting on $files for shfmt batches
+          #   SC2312 — `-o all` enables a check that flags every command
+          #            substitution; too noisy for scripts where $() is
+          #            the natural idiom
           find tests/bash/helpers tests/arch -type f -name '*.sh' \
-            -print0 | xargs -0 shellcheck -s sh -o all -e 2250 -e SC2034 -e SC2086
+            -print0 | xargs -0 shellcheck -s sh -o all -e 2250 -e SC2034 -e SC2086 -e SC2312
       - name: shellcheck (bash dialect for *.bash helpers and *.bats files)
         run: |
           # bats files run under bash. Disabled checks (test-context noise):
