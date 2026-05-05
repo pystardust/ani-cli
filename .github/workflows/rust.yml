@@ -6,7 +6,6 @@ on:
     paths:
       - 'gui/src-tauri/**'
       - 'rust-toolchain.toml'
-      - '.github/workflows/rust.yml'
   pull_request:
     paths:
       - 'gui/src-tauri/**'
