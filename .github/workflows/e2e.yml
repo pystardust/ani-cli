@@ -1,11 +1,14 @@
 name: 'e2e (tauri-driver + Playwright)'
 on:
+  # E2E exercises a real Tauri build inside Xvfb. The frontend is the
+  # critical input: it must exist on disk for actions/setup-node@v4's pnpm
+  # cache step. Trigger this workflow only when gui/frontend/ files change
+  # (push) or via PR paths that already include it.
   push:
     branches:
       - master
     paths:
       - 'gui/frontend/**'
-      - 'gui/src-tauri/**'
   pull_request:
     paths:
       - 'gui/frontend/**'
