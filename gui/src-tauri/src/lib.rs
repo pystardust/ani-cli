@@ -20,6 +20,7 @@
 #![warn(missing_docs, rust_2018_idioms)]
 
 pub mod anicli;
+pub mod app;
 pub mod cache;
 pub mod commands;
 pub mod config;

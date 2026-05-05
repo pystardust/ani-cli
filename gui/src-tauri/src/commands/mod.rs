@@ -1,10 +1,17 @@
-//! Tauri IPC commands exposed to the frontend.
+//! Tauri IPC commands the frontend invokes via `invoke('cmd_name', …)`.
 //!
-//! Each command is a typed wrapper that returns `Result<T, AniError>` so
-//! the frontend gets either a structured value or a stable i18n key. No
-//! command ever returns a localized string.
+//! Every command returns `Result<T, AniError>` so the frontend always
+//! sees either a structured value or a stable i18n key (see
+//! [`crate::i18n::keys`]). No command ever returns a localized string.
 //!
-//! Implementation begins in M1.4. The list below is the planned surface;
-//! see `docs/architecture.md` §commands for shapes.
+//! The `tauri::command` attribute lives only in this module; submodules
+//! return plain functions so they can be unit-tested without pulling in
+//! the full Tauri runtime.
 
-// Stubs come online as commands are wired up.
+pub mod app_info;
+pub mod history;
+pub mod proxy_url;
+
+pub use app_info::app_info;
+pub use history::{history_clear, history_list};
+pub use proxy_url::proxy_base_url;
