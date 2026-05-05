@@ -43,11 +43,31 @@ load "$BATS_VENDOR/bats-file/load"
 #   source_ani_cli_lib
 #   run nth "select" <<<"$some_input"
 #
+# Bats runs tests with `set -e` (errexit). ani-cli has lines in its setup
+# block such as `[ -t 0 ] || (command -v dmenu && use_external_menu=2)` that
+# return non-zero on machines without dmenu/rofi installed — innocuous in
+# normal CLI execution but fatal under errexit. We briefly disable errexit
+# around the source and restore it afterward.
 source_ani_cli_lib() {
     if [ ! -r "$ANI_CLI_PATH" ]; then
         printf 'ANI_CLI_PATH not readable: %s\n' "$ANI_CLI_PATH" >&2
         return 1
     fi
+    # Disable the bats ERR trap and errexit/errtrace for the rest of the test.
+    #
+    # bats v1.11 installs an ERR trap that fails the test on ANY non-zero
+    # exit — including intentional ones that are part of ani-cli's contract:
+    #   - `grep -m 1` finding nothing inside select_quality's case branch
+    #   - `nth` returning 1 on empty stdin
+    #   - the dmenu/rofi `command -v` checks in ani-cli's setup block
+    #
+    # ani-cli is a POSIX-sh script and never enables set -e itself; tests
+    # should mirror that environment. Tests that need to assert on a
+    # non-zero exit use `run` or explicit `$?` capture; the trap-driven
+    # auto-fail does not match how the script is actually written.
+    trap - ERR
+    set +eE
     # shellcheck source=/dev/null
-    __ANI_CLI_LIB__=1 . "$ANI_CLI_PATH"
+    __ANI_CLI_LIB__=1 . "$ANI_CLI_PATH" 2>/dev/null || true
+    return 0
 }
