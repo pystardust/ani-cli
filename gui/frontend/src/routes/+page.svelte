@@ -577,75 +577,8 @@
 		border-color: var(--bone-300);
 	}
 
-	/* Brand-coloured frosted-glass CTA. The home hero's "View →" lives
-	   above whichever trending anime is currently rotating — it reads as
-	   the app speaking, not the title — so it ties to --brand (the rail
-	   logo's sienna) instead of the per-anime --accent. The surface is a
-	   semi-transparent sheet of "glass" with a soft inner highlight; a
-	   ::before LED sits behind the content and blooms on hover, brand
-	   light diffusing through the frosted surface. */
-	.btn-glass {
-		position: relative;
-		isolation: isolate;
-		overflow: hidden;
-		background: linear-gradient(
-			180deg,
-			color-mix(in oklab, var(--bone-100) 14%, transparent) 0%,
-			color-mix(in oklab, var(--bone-100) 4%, transparent) 100%
-		);
-		color: var(--bone-100);
-		border-color: color-mix(in oklab, var(--brand) 60%, var(--bone-300));
-		backdrop-filter: blur(10px) saturate(1.2);
-		-webkit-backdrop-filter: blur(10px) saturate(1.2);
-		box-shadow:
-			inset 0 1px 0 color-mix(in oklab, var(--bone-100) 32%, transparent),
-			0 2px 8px -2px rgb(0 0 0 / 0.4);
-	}
-	.btn-glass::before {
-		content: '';
-		position: absolute;
-		inset: -30% -15%;
-		background: radial-gradient(
-			ellipse 65% 65% at 50% 50%,
-			var(--brand) 0%,
-			color-mix(in oklab, var(--brand) 50%, transparent) 38%,
-			transparent 72%
-		);
-		opacity: 0.32;
-		filter: blur(12px);
-		transform: scale(0.78);
-		transition:
-			opacity var(--dur-med) var(--ease-out-soft),
-			transform var(--dur-med) var(--ease-out-elastic);
-		z-index: -1;
-		pointer-events: none;
-	}
-	/* Children of the glass button have to sit above the LED ::before;
-	   isolation: isolate scopes z-index so this won't bleed past the
-	   button. */
-	.btn-glass > * {
-		position: relative;
-		z-index: 1;
-	}
-	.btn-glass:hover {
-		border-color: color-mix(in oklab, var(--brand) 90%, var(--bone-100));
-		box-shadow:
-			inset 0 1px 0 color-mix(in oklab, var(--bone-100) 60%, transparent),
-			0 12px 28px -10px color-mix(in oklab, var(--brand) 70%, transparent);
-	}
-	.btn-glass:hover::before {
-		opacity: 1;
-		transform: scale(1.2);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.btn-glass::before {
-			transform: none;
-			transition: opacity var(--dur-fast) linear;
-		}
-		.btn-glass:hover::before {
-			transform: none;
-		}
-	}
+	/* .btn-glass lives in tokens.css and is parametric on --btn-glow.
+	   The home hero's CTA inherits the default (--brand). */
 
 	/* Hero pager: thin underline-style dots in the bottom-right corner,
 	   scoped to the hero. Active dot fills with the current accent;

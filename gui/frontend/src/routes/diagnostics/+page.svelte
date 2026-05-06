@@ -53,64 +53,79 @@
 	onMount(refresh);
 </script>
 
-<BackButton fallback="/" />
+<main class="page">
+	<BackButton fallback="/" />
 
-<h1>ani-gui — Backend Status</h1>
+	<h1>ani-gui — Backend Status</h1>
 
-<section>
-	<h2>App info</h2>
-	{#if infoError}
-		<p>Error: {infoError}</p>
-	{:else if info}
-		<dl>
-			<dt>Version</dt>
-			<dd>{info.version}</dd>
-			<dt>ani-cli script</dt>
-			<dd>{info.ani_cli_path}</dd>
-			<dt>History file</dt>
-			<dd>{info.history_path}</dd>
-			<dt>Proxy base URL</dt>
-			<dd>{info.proxy_base_url}</dd>
-		</dl>
-	{:else}
-		<p>Loading…</p>
-	{/if}
-</section>
+	<section>
+		<h2>App info</h2>
+		{#if infoError}
+			<p>Error: {infoError}</p>
+		{:else if info}
+			<dl>
+				<dt>Version</dt>
+				<dd>{info.version}</dd>
+				<dt>ani-cli script</dt>
+				<dd>{info.ani_cli_path}</dd>
+				<dt>History file</dt>
+				<dd>{info.history_path}</dd>
+				<dt>Proxy base URL</dt>
+				<dd>{info.proxy_base_url}</dd>
+			</dl>
+		{:else}
+			<p>Loading…</p>
+		{/if}
+	</section>
 
-<section>
-	<h2>Continue Watching ({history?.length ?? '…'})</h2>
-	{#if historyError}
-		<p>Error: {historyError}</p>
-	{:else if history === null}
-		<p>Loading…</p>
-	{:else if history.length === 0}
-		<p>No entries yet. Watch something to populate ani-hsts.</p>
-	{:else}
-		<ul>
-			{#each history as entry (entry.id)}
-				<li>{entry.title} — episode {entry.ep_no} (id: {entry.id})</li>
-			{/each}
-		</ul>
-	{/if}
-	<p>
-		<button type="button" onclick={refresh} disabled={busy}>Refresh</button>
-		<button type="button" onclick={clearHistory} disabled={busy || history?.length === 0}>
-			Clear history
-		</button>
-	</p>
-</section>
+	<section>
+		<h2>Continue Watching ({history?.length ?? '…'})</h2>
+		{#if historyError}
+			<p>Error: {historyError}</p>
+		{:else if history === null}
+			<p>Loading…</p>
+		{:else if history.length === 0}
+			<p>No entries yet. Watch something to populate ani-hsts.</p>
+		{:else}
+			<ul>
+				{#each history as entry (entry.id)}
+					<li>{entry.title} — episode {entry.ep_no} (id: {entry.id})</li>
+				{/each}
+			</ul>
+		{/if}
+		<p>
+			<button type="button" onclick={refresh} disabled={busy}>Refresh</button>
+			<button type="button" onclick={clearHistory} disabled={busy || history?.length === 0}>
+				Clear history
+			</button>
+		</p>
+	</section>
 
-<section>
-	<h2>Search Kitsu</h2>
-	<p>
-		<a href={resolve('/search')}>Open Kitsu search</a> — find anime by title, browse posters and metadata.
-	</p>
-</section>
+	<section>
+		<h2>Search Kitsu</h2>
+		<p>
+			<a href={resolve('/search')}>Open Kitsu search</a> — find anime by title, browse posters and metadata.
+		</p>
+	</section>
 
-<section>
-	<h2>Test Stream</h2>
-	<p>
-		<a href={resolve('/play')}>Open Test Stream</a> — paste a public HLS URL to verify the streaming proxy
-		+ hls.js wiring end-to-end.
-	</p>
-</section>
+	<section>
+		<h2>Test Stream</h2>
+		<p>
+			<a href={resolve('/play')}>Open Test Stream</a> — paste a public HLS URL to verify the streaming
+			proxy + hls.js wiring end-to-end.
+		</p>
+	</section>
+</main>
+
+<style>
+	/* Diagnostics is a utilitarian, design-pass-exempt page. Just
+	   enough wrapping to keep the back button and prose off the rail
+	   edge — same gutter the rest of the app uses. */
+	.page {
+		max-inline-size: var(--content-max);
+		padding: var(--space-5) var(--space-8) var(--space-8);
+	}
+	.page section {
+		margin-block-start: var(--space-5);
+	}
+</style>

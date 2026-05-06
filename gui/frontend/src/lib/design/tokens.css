@@ -180,3 +180,74 @@ img {
 	display: block;
 	max-inline-size: 100%;
 }
+
+/* — Frosted-glass CTA. Layered on top of any .btn base styling. The
+   button's surface is a translucent sheet with a soft inner highlight,
+   and a parametric "LED" (--btn-glow) sits behind the content via a
+   ::before pseudo, blooming on hover. Default glow is --brand (the
+   home hero uses this — its CTA is the app speaking, not any one
+   anime). The detail page's Play button overrides with the per-anime
+   --accent so the colour belongs to the title. */
+.btn-glass {
+	--btn-glow: var(--brand);
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	background: linear-gradient(
+		180deg,
+		color-mix(in oklab, var(--bone-100) 14%, transparent) 0%,
+		color-mix(in oklab, var(--bone-100) 4%, transparent) 100%
+	);
+	color: var(--bone-100);
+	border-color: color-mix(in oklab, var(--btn-glow) 60%, var(--bone-300));
+	backdrop-filter: blur(10px) saturate(1.2);
+	-webkit-backdrop-filter: blur(10px) saturate(1.2);
+	box-shadow:
+		inset 0 1px 0 color-mix(in oklab, var(--bone-100) 32%, transparent),
+		0 2px 8px -2px rgb(0 0 0 / 0.4);
+}
+.btn-glass::before {
+	content: '';
+	position: absolute;
+	inset: -30% -15%;
+	background: radial-gradient(
+		ellipse 65% 65% at 50% 50%,
+		var(--btn-glow) 0%,
+		color-mix(in oklab, var(--btn-glow) 50%, transparent) 38%,
+		transparent 72%
+	);
+	opacity: 0.32;
+	filter: blur(12px);
+	transform: scale(0.78);
+	transition:
+		opacity var(--dur-med) var(--ease-out-soft),
+		transform var(--dur-med) var(--ease-out-elastic);
+	z-index: -1;
+	pointer-events: none;
+}
+/* Children of the glass button must sit above the LED ::before;
+   isolation: isolate scopes the z-index so this won't bleed past the
+   button. */
+.btn-glass > * {
+	position: relative;
+	z-index: 1;
+}
+.btn-glass:hover {
+	border-color: color-mix(in oklab, var(--btn-glow) 90%, var(--bone-100));
+	box-shadow:
+		inset 0 1px 0 color-mix(in oklab, var(--bone-100) 60%, transparent),
+		0 12px 28px -10px color-mix(in oklab, var(--btn-glow) 70%, transparent);
+}
+.btn-glass:hover::before {
+	opacity: 1;
+	transform: scale(1.2);
+}
+@media (prefers-reduced-motion: reduce) {
+	.btn-glass::before {
+		transform: none;
+		transition: opacity var(--dur-fast) linear;
+	}
+	.btn-glass:hover::before {
+		transform: none;
+	}
+}

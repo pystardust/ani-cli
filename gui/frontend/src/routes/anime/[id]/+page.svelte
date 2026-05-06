@@ -460,7 +460,12 @@
 
 				<!-- Action row: primary play, secondary download, ghost external -->
 				<div class="actions" aria-label="Title actions">
-					<button type="button" class="btn btn-primary" onclick={onPlay}>
+					<button
+						type="button"
+						class="btn btn-glass"
+						style:--btn-glow="var(--accent)"
+						onclick={onPlay}
+					>
 						<span aria-hidden="true">▸</span>
 						<span>Play episode 1</span>
 					</button>
@@ -1013,16 +1018,10 @@
 	.btn:hover {
 		transform: translateY(-1px);
 	}
-	.btn-primary {
-		background: var(--accent);
-		color: var(--bone-100);
-		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
-	}
-	.btn-primary:hover {
-		background: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
-		border-color: var(--bone-100);
-		box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--accent) 60%, transparent);
-	}
+	/* btn-primary is no longer used here — Play episode 1 uses
+	   .btn-glass with --btn-glow=var(--accent). Removed to satisfy the
+	   unused-selector check; restore if a future button needs the flat
+	   accent background. */
 	.btn-outline {
 		color: var(--bone-100);
 		border-color: var(--bone-300);
