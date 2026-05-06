@@ -57,21 +57,27 @@
 {/if}
 
 <style>
+	/* Horizontal band — full-width opaque black row centred on the
+	   viewport, vertical padding so the lottie has breathing room
+	   above and below. The page underneath stays visible top + bottom,
+	   only this row gets blocked while the resolution runs. */
 	.overlay {
 		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.6);
+		left: 0;
+		right: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		background: rgb(0, 0, 0);
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		padding: 1.25rem 0;
 		z-index: 1000;
-		/* Smooth fade-in so it doesn't feel like a popup glitch on a
-		   short resolution (e.g. cached pre-fetch landing instantly). */
 		animation: fade-in 160ms ease-out;
 	}
 	.anim {
-		width: min(220px, 28vmin);
-		height: min(220px, 28vmin);
+		height: 96px;
+		aspect-ratio: 1 / 1;
 	}
 	@keyframes fade-in {
 		from {
