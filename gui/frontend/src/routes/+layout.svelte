@@ -15,11 +15,13 @@
 -->
 <script lang="ts">
 	import '$lib/design/tokens.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
 
 	let { children } = $props();
 
@@ -40,6 +42,77 @@
 	let topbarQuery = $state('');
 	let topbarInputEl: HTMLInputElement | undefined = $state();
 
+	// — Live-results dropdown + recent searches + Cmd/Ctrl+K. —————————
+	// Bundled together so a single `git revert HEAD` rolls them back if
+	// they prove distracting. Each piece is small in isolation; the
+	// volume of code here is mostly the dropdown UI.
+
+	const LIVE_DEBOUNCE_MS = 250;
+	const LIVE_MIN_CHARS = 2;
+	const LIVE_MAX_HITS = 5;
+	const RECENT_KEY = 'ani-gui:recent-searches';
+	const RECENT_MAX = 5;
+
+	let liveResults = $state<KitsuAnimeRef[] | null>(null);
+	let liveBusy = $state(false);
+	let liveError = $state(false);
+	let dropdownOpen = $state(false);
+	let selectedIdx = $state(-1);
+	let recentSearches = $state<string[]>([]);
+	let liveDebounce: ReturnType<typeof setTimeout> | null = null;
+	let blurDismiss: ReturnType<typeof setTimeout> | null = null;
+
+	onMount(() => {
+		try {
+			const raw = window.localStorage.getItem(RECENT_KEY);
+			if (raw) {
+				const parsed: unknown = JSON.parse(raw);
+				if (Array.isArray(parsed)) {
+					recentSearches = parsed
+						.filter((x): x is string => typeof x === 'string')
+						.slice(0, RECENT_MAX);
+				}
+			}
+		} catch {
+			// localStorage unavailable / corrupt — ignore, recents stay empty.
+		}
+	});
+
+	function persistRecents(q: string) {
+		const next = [q, ...recentSearches.filter((x) => x !== q)].slice(0, RECENT_MAX);
+		recentSearches = next;
+		try {
+			window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+		} catch {
+			// Quota / disabled — accept; in-memory state still updates.
+		}
+	}
+
+	function scheduleLive(q: string) {
+		if (liveDebounce) clearTimeout(liveDebounce);
+		if (q.length < LIVE_MIN_CHARS) {
+			liveResults = null;
+			liveBusy = false;
+			liveError = false;
+			return;
+		}
+		liveDebounce = setTimeout(async () => {
+			liveBusy = true;
+			liveError = false;
+			try {
+				const hits = await kitsuSearch(q);
+				// If the user kept typing past this query, ignore stale results.
+				if (q !== topbarQuery.trim()) return;
+				liveResults = hits.slice(0, LIVE_MAX_HITS);
+			} catch {
+				liveResults = [];
+				liveError = true;
+			} finally {
+				liveBusy = false;
+			}
+		}, LIVE_DEBOUNCE_MS);
+	}
+
 	// Sync the topbar input with ?q= so navigating to /search shows
 	// what was searched and the field stays editable.
 	$effect(() => {
@@ -48,8 +121,9 @@
 		}
 	});
 
-	// "/" focuses the topbar search from anywhere — Netflix-style nav.
-	// Skip when the user is already typing in another field.
+	// "/" or Cmd/Ctrl+K focuses the topbar search from anywhere; Esc
+	// blurs it. Skip "/" when the user is already typing in another
+	// field — Cmd/Ctrl+K still wins because it's a deliberate chord.
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		const onKey = (e: KeyboardEvent) => {
@@ -57,30 +131,106 @@
 			const inField =
 				t &&
 				(t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable);
+			const isCmdK = (e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K');
+			if (isCmdK) {
+				e.preventDefault();
+				topbarInputEl?.focus();
+				topbarInputEl?.select();
+				dropdownOpen = true;
+				return;
+			}
 			if (e.key === '/' && !inField) {
 				e.preventDefault();
 				topbarInputEl?.focus();
 				topbarInputEl?.select();
+				dropdownOpen = true;
 			} else if (e.key === 'Escape' && document.activeElement === topbarInputEl) {
 				topbarInputEl?.blur();
+				dropdownOpen = false;
 			}
 		};
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
-	function onTopbarSubmit(e: SubmitEvent) {
-		e.preventDefault();
-		const q = topbarQuery.trim();
-		if (!q) return;
-		// Build the URL via resolve() so we honour any non-default
-		// base path. The eslint rule is intent-checked here — disable
-		// is correct because resolve() IS used, just one expression
-		// removed from the goto() call.
+	function onInput() {
+		selectedIdx = -1;
+		scheduleLive(topbarQuery.trim());
+	}
+
+	function onInputFocus() {
+		if (blurDismiss) {
+			clearTimeout(blurDismiss);
+			blurDismiss = null;
+		}
+		dropdownOpen = true;
+	}
+
+	function onInputBlur() {
+		// Defer dismissal so a click on a dropdown row registers before
+		// the dropdown unmounts. 160ms is comfortably more than the
+		// time between mousedown → click in modern browsers.
+		blurDismiss = setTimeout(() => {
+			dropdownOpen = false;
+			selectedIdx = -1;
+		}, 160);
+	}
+
+	function onInputKey(e: KeyboardEvent) {
+		const items = liveResults ?? [];
+		if (e.key === 'ArrowDown' && items.length > 0) {
+			e.preventDefault();
+			selectedIdx = (selectedIdx + 1) % items.length;
+		} else if (e.key === 'ArrowUp' && items.length > 0) {
+			e.preventDefault();
+			selectedIdx = (selectedIdx - 1 + items.length) % items.length;
+		} else if (e.key === 'Enter' && selectedIdx >= 0 && items[selectedIdx]) {
+			e.preventDefault();
+			navigateToHit(items[selectedIdx]);
+		}
+	}
+
+	function navigateToHit(hit: KitsuAnimeRef) {
+		dropdownOpen = false;
+		void goto(resolve('/anime/[id]', { id: hit.id }));
+	}
+
+	function navigateToSearch(q: string) {
 		const target = new URL(resolve('/search'), window.location.origin);
 		target.searchParams.set('q', q);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		void goto(target);
+		dropdownOpen = false;
+	}
+
+	function onTopbarSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const q = topbarQuery.trim();
+		if (!q) return;
+		// If a live result is highlighted, jump straight to it.
+		const items = liveResults ?? [];
+		if (selectedIdx >= 0 && items[selectedIdx]) {
+			navigateToHit(items[selectedIdx]);
+			return;
+		}
+		persistRecents(q);
+		navigateToSearch(q);
+	}
+
+	function onRecentClick(q: string) {
+		topbarQuery = q;
+		persistRecents(q);
+		navigateToSearch(q);
+	}
+
+	function hitPoster(hit: KitsuAnimeRef): string | null {
+		const url = hit.poster_image?.small ?? hit.poster_image?.medium ?? null;
+		return imageProxyUrl(url);
+	}
+	function hitMeta(hit: KitsuAnimeRef): string {
+		const year = hit.start_date ? hit.start_date.slice(0, 4) : null;
+		const subtype = (hit.subtype ?? 'TV').toUpperCase();
+		return year ? `${year} · ${subtype}` : subtype;
 	}
 </script>
 
@@ -199,14 +349,74 @@
 						spellcheck="false"
 						placeholder={isSearch ? 'Refine your search…' : 'Search anime…'}
 						aria-label="Search anime"
+						oninput={onInput}
+						onfocus={onInputFocus}
+						onblur={onInputBlur}
+						onkeydown={onInputKey}
 					/>
 					<span class="topbar-search-hint" aria-hidden="true">
-						<kbd>/</kbd>
+						{#if liveBusy}
+							<span class="topbar-search-busy">…</span>
+						{:else}
+							<kbd>/</kbd>
+						{/if}
 					</span>
 					<!-- Submit on Enter; the explicit button is sr-only for a11y. -->
 					<button type="submit" class="sr-only" disabled={topbarQuery.trim().length === 0}>
 						Search
 					</button>
+
+					{#if dropdownOpen}
+						<div class="topbar-dropdown" role="listbox" aria-label="Search suggestions">
+							{#if liveResults && liveResults.length > 0}
+								{#each liveResults as hit, i (hit.id)}
+									{@const poster = hitPoster(hit)}
+									<a
+										class="topbar-hit"
+										class:selected={i === selectedIdx}
+										href={resolve('/anime/[id]', { id: hit.id })}
+										role="option"
+										aria-selected={i === selectedIdx}
+										onmousedown={(e) => {
+											// mousedown fires before blur, so this handler
+											// runs while the dropdown is still open.
+											e.preventDefault();
+											navigateToHit(hit);
+										}}
+									>
+										<span class="topbar-hit-poster">
+											{#if poster}
+												<img src={poster} alt="" loading="lazy" decoding="async" />
+											{/if}
+										</span>
+										<span class="topbar-hit-text">
+											<span class="topbar-hit-title">{hit.canonical_title}</span>
+											<span class="topbar-hit-meta">{hitMeta(hit)}</span>
+										</span>
+									</a>
+								{/each}
+							{:else if liveError}
+								<p class="topbar-dropdown-empty">Couldn't reach Kitsu.</p>
+							{:else if liveResults?.length === 0 && topbarQuery.trim().length >= LIVE_MIN_CHARS}
+								<p class="topbar-dropdown-empty">No matches.</p>
+							{:else if !topbarQuery.trim() && recentSearches.length > 0}
+								<p class="topbar-dropdown-section">Recent</p>
+								{#each recentSearches as q (q)}
+									<button
+										type="button"
+										class="topbar-recent"
+										onmousedown={(e) => {
+											e.preventDefault();
+											onRecentClick(q);
+										}}
+									>
+										<span aria-hidden="true">↩</span>
+										<span>{q}</span>
+									</button>
+								{/each}
+							{/if}
+						</div>
+					{/if}
 				</form>
 			</header>
 			<main class="content">
@@ -497,6 +707,7 @@
 	   trailing edge so the BackButton stays anchored at the leading
 	   edge regardless of the input's width. */
 	.topbar-search {
+		position: relative; /* dropdown anchors absolute to this */
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
@@ -573,5 +784,108 @@
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	/* Live-results / recent-searches dropdown. Sits below the topbar
+	   pill; opaque enough to read against busy hero backgrounds. */
+	.topbar-dropdown {
+		position: absolute;
+		inset-block-start: calc(100% + var(--space-2));
+		inset-inline: 0;
+		z-index: 16;
+		padding: var(--space-2);
+		background: color-mix(in oklab, var(--ink-050) 96%, transparent);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-card);
+		box-shadow: 0 18px 36px -12px rgb(0 0 0 / 0.6);
+		max-block-size: 60vh;
+		overflow-y: auto;
+	}
+	.topbar-search-busy {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+	}
+	.topbar-hit {
+		display: grid;
+		grid-template-columns: 2.5rem 1fr;
+		gap: var(--space-3);
+		padding: var(--space-2);
+		align-items: center;
+		color: var(--bone-100);
+		border-radius: calc(var(--radius-card) - 2px);
+		text-decoration: none;
+	}
+	.topbar-hit.selected,
+	.topbar-hit:hover {
+		background: color-mix(in oklab, var(--accent) 14%, var(--ink-100));
+	}
+	.topbar-hit-poster {
+		display: block;
+		inline-size: 2.5rem;
+		block-size: 3.5rem;
+		overflow: hidden;
+		border-radius: 4px;
+		background: var(--ink-100);
+	}
+	.topbar-hit-poster img {
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+	}
+	.topbar-hit-text {
+		display: grid;
+		gap: 2px;
+		min-inline-size: 0;
+	}
+	.topbar-hit-title {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-body);
+		line-height: 1.2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.topbar-hit-meta {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.topbar-dropdown-empty {
+		margin: 0;
+		padding: var(--space-3);
+		font-family: var(--font-display);
+		font-style: italic;
+		color: var(--bone-300);
+		text-align: center;
+	}
+	.topbar-dropdown-section {
+		margin: 0;
+		padding: var(--space-2) var(--space-3);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-400);
+	}
+	.topbar-recent {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		inline-size: 100%;
+		padding: var(--space-2) var(--space-3);
+		text-align: start;
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+		border-radius: calc(var(--radius-card) - 2px);
+		cursor: pointer;
+	}
+	.topbar-recent:hover {
+		background: var(--ink-100);
+		color: var(--bone-100);
 	}
 </style>
