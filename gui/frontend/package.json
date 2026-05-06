@@ -15,7 +15,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"prepare": "lefthook install -f"
 	},
 	"dependencies": {
 		"hls.js": "1.6.16"
@@ -31,6 +32,7 @@
 		"eslint-plugin-svelte": "3.17.1",
 		"fast-check": "^4.7.0",
 		"globals": "17.6.0",
+		"lefthook": "2.1.6",
 		"prettier": "3.8.3",
 		"prettier-plugin-svelte": "3.5.1",
 		"svelte": "5.55.5",

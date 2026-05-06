@@ -56,7 +56,9 @@ cd ani-gui
 # Bash test toolchain (vendored bats + plugins at pinned tags)
 ./tests/bash/helpers/install-bats.sh
 
-# Frontend + Electron deps
+# Frontend + Electron deps. The frontend `pnpm install` also installs
+# Lefthook and writes the `pre-commit` / `pre-push` git hooks. To skip
+# the hooks for a single command set `LEFTHOOK=0`.
 cd gui/frontend && pnpm install && cd ../..
 cd gui/electron  && pnpm install && cd ../..
 

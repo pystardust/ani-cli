@@ -1,0 +1,55 @@
+# Lefthook — local pre-commit gates so the linters and tests CI runs are
+# rarely the first time we hear about a regression.
+#
+# Hook scope:
+#   pre-commit  — fast, file-scoped checks (linters + frontend tests).
+#                 Fires only when files in the relevant subtree are staged.
+#   pre-push    — heavier checks (clippy, cargo test, bash tests). Skipped
+#                 when nothing in that subtree changed.
+#
+# Setup: `pnpm install` from gui/frontend/ runs `lefthook install` via the
+# package.json `prepare` script, which writes the hooks to .git/hooks.
+#
+# Override / skip: `LEFTHOOK=0 git commit ...` disables all hooks for one
+# command. To skip a single check, prefix its name: `LEFTHOOK_EXCLUDE=rust-fmt`.
+# Hooks also auto-skip when their `glob` doesn't match any staged file.
+
+pre-commit:
+  parallel: true
+  commands:
+    frontend-lint:
+      glob: "gui/frontend/**/*.{ts,svelte,js,mjs,cjs,json,css,html}"
+      root: "gui/frontend/"
+      run: pnpm run lint
+
+    frontend-check:
+      glob: "gui/frontend/**/*.{ts,svelte}"
+      root: "gui/frontend/"
+      run: pnpm run check
+
+    frontend-test:
+      glob: "gui/frontend/**/*.{ts,svelte}"
+      root: "gui/frontend/"
+      run: pnpm test
+
+    rust-fmt:
+      glob: "gui/backend/**/*.rs"
+      root: "gui/backend/"
+      run: cargo fmt --all -- --check
+
+    shellcheck:
+      glob: "{ani-cli,tests/bash/**/*.{sh,bats},tests/arch/*.sh,tools/*.sh}"
+      run: shellcheck {staged_files}
+
+pre-push:
+  parallel: true
+  commands:
+    rust-clippy:
+      glob: "gui/backend/**/*.{rs,toml}"
+      root: "gui/backend/"
+      run: cargo clippy --all-targets --all-features -- -D warnings
+
+    rust-test:
+      glob: "gui/backend/**/*.{rs,toml}"
+      root: "gui/backend/"
+      run: cargo test --all-features
