@@ -180,7 +180,9 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
                     eprintln!("--- ani-cli -h spawn failed: {spawn_err} ---");
                 }
             }
-            for tool in ["fzf", "curl", "openssl", "sed", "grep", "mpv", "aria2c", "ffmpeg"] {
+            for tool in [
+                "fzf", "curl", "openssl", "sed", "grep", "mpv", "aria2c", "ffmpeg",
+            ] {
                 let r = std::process::Command::new("sh")
                     .env_clear()
                     .env("PATH", &path_str)
