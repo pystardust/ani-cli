@@ -3,6 +3,8 @@ import {
 	__resetApiBaseForTests,
 	appInfo,
 	createSession,
+	play,
+	playExternal,
 	historyClear,
 	historyList,
 	imageProxyUrl,
@@ -191,6 +193,54 @@ describe('openExternalPlayer', () => {
 		expect(JSON.parse(init?.body as string)).toMatchObject({
 			stream_url: 'https://cdn.example/master.m3u8',
 			player_command: 'mpv'
+		});
+	});
+});
+
+describe('play', () => {
+	it('POSTs the PlayArgs payload to /api/play and returns the session response', async () => {
+		const sessionResponse = {
+			session_id: 'abc-123',
+			master_url: 'http://127.0.0.1:42337/s/abc-123/master.m3u8',
+			subtitle_url: null
+		};
+		const fetchMock = mockFetchOnce(sessionResponse);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const resp = await play({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'sub',
+			quality: 'best'
+		});
+		expect(resp).toEqual(sessionResponse);
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toEqual({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'sub',
+			quality: 'best'
+		});
+	});
+});
+
+describe('playExternal', () => {
+	it('POSTs the PlayArgs payload to /api/play/external', async () => {
+		const fetchMock = mockFetchOnce(null, 202);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await playExternal({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'dub'
+		});
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play/external`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'dub'
 		});
 	});
 });
