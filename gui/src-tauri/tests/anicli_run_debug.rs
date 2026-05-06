@@ -51,6 +51,9 @@ fn stage_curl_shim(tmp: &std::path::Path) -> PathBuf {
     let shim_src = repo_root().join("tests/bash/helpers/curl_shim.sh");
     let shim_dst = bin.join("curl");
     std::fs::copy(&shim_src, &shim_dst).expect("copy curl shim");
+    // `mut` is only used in the cfg(unix) arm; allow(unused_mut) keeps
+    // the Windows build clean under -D warnings.
+    #[allow(unused_mut)]
     let mut perms = std::fs::metadata(&shim_dst).unwrap().permissions();
     #[cfg(unix)]
     {
@@ -91,6 +94,7 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
         repo = repo_root().display(),
     );
     std::fs::write(&wrapped_shim, shim_body).expect("write wrapped shim");
+    #[allow(unused_mut)]
     let mut perms = std::fs::metadata(&wrapped_shim).unwrap().permissions();
     #[cfg(unix)]
     {
