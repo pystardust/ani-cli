@@ -130,10 +130,97 @@ pub async fn fetch_streaming(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proxy::token::MediaKind;
 
     #[test]
     fn build_client_succeeds() {
         let _c = build_client().expect("client builds");
+    }
+
+    /// classify_via_head() resolves the media kind for upstreams whose
+    /// URL path doesn't carry a `.m3u8` / `.mp4` extension (some
+    /// providers — fast4speed.rsvp for one — hand back opaque paths
+    /// like `…/videos/<id>/sub/1`). We HEAD the URL with the right
+    /// Referer; the response's `content-type` is enough to route the
+    /// session through the manifest-rewrite or byte-stream path.
+    #[tokio::test]
+    async fn head_classify_returns_hls_for_mpegurl_content_type() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.apple.mpegurl"),
+            )
+            .mount(&server)
+            .await;
+        let client = build_client().unwrap();
+        let url = Url::parse(&format!("{}/abc/sub/1", server.uri())).unwrap();
+        let kind = classify_via_head(&client, &url, "https://allmanga.to")
+            .await
+            .unwrap();
+        assert_eq!(kind, MediaKind::Hls);
+    }
+
+    #[tokio::test]
+    async fn head_classify_returns_mp4_for_video_mp4_content_type() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).insert_header("content-type", "video/mp4"),
+            )
+            .mount(&server)
+            .await;
+        let client = build_client().unwrap();
+        let url = Url::parse(&format!("{}/x", server.uri())).unwrap();
+        let kind = classify_via_head(&client, &url, "https://allmanga.to")
+            .await
+            .unwrap();
+        assert_eq!(kind, MediaKind::Mp4);
+    }
+
+    /// Real-world case: tools.fast4speed.rsvp returns
+    /// `content-type: application/octet-stream` with a multi-hundred-MB
+    /// content-length for episodes encoded as raw MP4. Treating the
+    /// fall-through as MP4 is the right default in this codebase —
+    /// HLS manifests are tiny + always advertised, so no MP4 false
+    /// positive should also be served as HLS.
+    #[tokio::test]
+    async fn head_classify_falls_back_to_mp4_for_octet_stream() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/octet-stream")
+                    .insert_header("content-length", "290000000"),
+            )
+            .mount(&server)
+            .await;
+        let client = build_client().unwrap();
+        let url = Url::parse(&format!("{}/videos/x/sub/1", server.uri())).unwrap();
+        let kind = classify_via_head(&client, &url, "https://allmanga.to")
+            .await
+            .unwrap();
+        assert_eq!(kind, MediaKind::Mp4);
+    }
+
+    /// `application/x-mpegURL` is the older Apple HLS content type;
+    /// it still appears in the wild on hianime/megacloud manifests.
+    #[tokio::test]
+    async fn head_classify_returns_hls_for_x_mpegurl_content_type() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/x-mpegURL"),
+            )
+            .mount(&server)
+            .await;
+        let client = build_client().unwrap();
+        let url = Url::parse(&format!("{}/playlist", server.uri())).unwrap();
+        let kind = classify_via_head(&client, &url, "https://allmanga.to")
+            .await
+            .unwrap();
+        assert_eq!(kind, MediaKind::Hls);
     }
 
     #[tokio::test]
