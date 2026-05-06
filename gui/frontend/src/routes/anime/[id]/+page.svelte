@@ -19,12 +19,16 @@
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
+		kitsuSearch,
 		settingsGet,
 		settingsPut,
 		type Config,
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
+	import { fade } from 'svelte/transition';
+	import PosterCard from '$lib/components/PosterCard.svelte';
+	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
 	import BackButton from '$lib/components/BackButton.svelte';
 
@@ -85,6 +89,16 @@
 	let config = $state<Config | null>(null);
 	let configError = $state<string | null>(null);
 
+	// Synopsis collapse/expand. Default collapsed (long synopses are
+	// dominant otherwise); expands on user request.
+	let synopsisExpanded = $state(false);
+
+	// Similar titles strip (below the body). Searches Kitsu by the first
+	// 1-2 words of the canonical_title and filters out the current anime.
+	// Cheap and effective for franchise neighbours; richer
+	// recommendations come once AniList wires up (M3+).
+	let similar = $state<KitsuAnimeRef[] | null>(null);
+
 	// Inline status banner when an action isn't wired yet (Play/Download/External
 	// hit allanime, which is M2). Kept tight; not a modal.
 	let actionNotice = $state<string | null>(null);
@@ -114,7 +128,23 @@
 		}
 		// Fire detail + settings + episodes (page 1) in parallel.
 		void kitsuAnimeDetail(id)
-			.then((d) => (detail = d))
+			.then((d) => {
+				detail = d;
+				// Once we have the canonical title, kick a similar-titles
+				// search. Cheap heuristic: take the first 1-2 words.
+				const seed = (d.canonical_title ?? '').split(/\s+/).slice(0, 2).join(' ').trim();
+				if (seed.length >= 2) {
+					void kitsuSearch(seed)
+						.then((hits) => {
+							similar = hits.filter((h) => h.id !== d.id).slice(0, 12);
+						})
+						.catch(() => {
+							similar = [];
+						});
+				} else {
+					similar = [];
+				}
+			})
 			.catch((e) => (error = describeError(e)));
 		void settingsGet()
 			.then((c) => (config = c))
@@ -425,7 +455,20 @@
 			<div class="body-col body-col-prose">
 				<h2 class="section-eyebrow">Synopsis</h2>
 				{#if detail.synopsis}
-					<p class="prose">{detail.synopsis}</p>
+					<div class="prose-wrap" class:expanded={synopsisExpanded}>
+						<p class="prose">{detail.synopsis}</p>
+						<div class="prose-fade" aria-hidden="true"></div>
+					</div>
+					{#if detail.synopsis.length > 360}
+						<button
+							type="button"
+							class="prose-toggle"
+							onclick={() => (synopsisExpanded = !synopsisExpanded)}
+							aria-expanded={synopsisExpanded}
+						>
+							{synopsisExpanded ? 'Read less' : 'Read more'}
+						</button>
+					{/if}
 				{:else}
 					<p class="prose-empty">No synopsis on file at Kitsu.</p>
 				{/if}
@@ -502,73 +545,75 @@
 						</div>
 					</div>
 				{/if}
-				<ul class="ep-grid">
-					{#if episodes === null}
-						<!-- Skeleton while fetch is in flight -->
-						{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
-							<li>
-								<div class="ep-tile ep-tile-skel" aria-hidden="true">
-									<div class="ep-thumb ep-thumb-skel"></div>
-									<div class="ep-foot-skel"></div>
-								</div>
-							</li>
-						{/each}
-					{:else if episodes.length > 0}
-						<!-- Real Kitsu data path -->
-						{#each episodes as ep (ep.id)}
-							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
-							{@const num = ep.number ?? ep.relative_number ?? null}
-							<li>
-								<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
-									<span class="ep-thumb">
-										{#if thumb}
-											<img src={thumb} alt="" loading="lazy" decoding="async" />
-										{:else}
-											<span class="ep-thumb-placeholder" aria-hidden="true">
-												{num ? num.toString().padStart(2, '0') : '·'}
+				{#key episodesPage}
+					<ul class="ep-grid" in:fade={{ duration: 180 }}>
+						{#if episodes === null}
+							<!-- Skeleton while fetch is in flight -->
+							{#each Array.from({ length: 4 }, (_, k) => k) as i (i)}
+								<li>
+									<div class="ep-tile ep-tile-skel" aria-hidden="true">
+										<div class="ep-thumb ep-thumb-skel"></div>
+										<div class="ep-foot-skel"></div>
+									</div>
+								</li>
+							{/each}
+						{:else if episodes.length > 0}
+							<!-- Real Kitsu data path -->
+							{#each episodes as ep (ep.id)}
+								{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
+								{@const num = ep.number ?? ep.relative_number ?? null}
+								<li>
+									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
+										<span class="ep-thumb">
+											{#if thumb}
+												<img src={thumb} alt="" loading="lazy" decoding="async" />
+											{:else}
+												<span class="ep-thumb-placeholder" aria-hidden="true">
+													{num ? num.toString().padStart(2, '0') : '·'}
+												</span>
+											{/if}
+											<span class="ep-tag" aria-hidden="true">
+												<span class="ep-tag-key">Ep</span>
+												<span class="ep-tag-num">{num ?? '?'}</span>
 											</span>
-										{/if}
-										<span class="ep-tag" aria-hidden="true">
-											<span class="ep-tag-key">Ep</span>
-											<span class="ep-tag-num">{num ?? '?'}</span>
 										</span>
-									</span>
-									<span class="ep-foot">
-										<span class="ep-title">
-											{ep.canonical_title ?? `Episode ${num ?? ''}`}
+										<span class="ep-foot">
+											<span class="ep-title">
+												{ep.canonical_title ?? `Episode ${num ?? ''}`}
+											</span>
+											<span class="ep-meta">
+												{#if ep.length}<span>{ep.length}m</span>{/if}
+											</span>
 										</span>
-										<span class="ep-meta">
-											{#if ep.length}<span>{ep.length}m</span>{/if}
+									</button>
+								</li>
+							{/each}
+						{:else if showEpPlaceholders}
+							<!-- Fallback: Kitsu didn't have episode data, but episode_count
+							     gives us a usable count. Render numbered placeholder tiles
+							     so the user isn't blocked from poking the panel. -->
+							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n (n)}
+								<li>
+									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+										<span class="ep-thumb">
+											<span class="ep-thumb-placeholder" aria-hidden="true">
+												{n.toString().padStart(2, '0')}
+											</span>
+											<span class="ep-tag" aria-hidden="true">
+												<span class="ep-tag-key">Ep</span>
+												<span class="ep-tag-num">{n}</span>
+											</span>
 										</span>
-									</span>
-								</button>
-							</li>
-						{/each}
-					{:else if showEpPlaceholders}
-						<!-- Fallback: Kitsu didn't have episode data, but episode_count
-						     gives us a usable count. Render numbered placeholder tiles
-						     so the user isn't blocked from poking the panel. -->
-						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n (n)}
-							<li>
-								<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
-									<span class="ep-thumb">
-										<span class="ep-thumb-placeholder" aria-hidden="true">
-											{n.toString().padStart(2, '0')}
+										<span class="ep-foot">
+											<span class="ep-title">Episode {n}</span>
+											<span class="ep-meta">—</span>
 										</span>
-										<span class="ep-tag" aria-hidden="true">
-											<span class="ep-tag-key">Ep</span>
-											<span class="ep-tag-num">{n}</span>
-										</span>
-									</span>
-									<span class="ep-foot">
-										<span class="ep-title">Episode {n}</span>
-										<span class="ep-meta">—</span>
-									</span>
-								</button>
-							</li>
-						{/each}
-					{/if}
-				</ul>
+									</button>
+								</li>
+							{/each}
+						{/if}
+					</ul>
+				{/key}
 				{#if episodesError}
 					<p class="ep-grid-foot ep-grid-foot-warn">
 						Episode metadata unavailable from Kitsu — playable list above is a fallback.
@@ -582,6 +627,19 @@
 				{/if}
 			</div>
 		</section>
+
+		<!-- Similar titles strip — placeholder for AniList recommendations.
+		     Today: re-uses kitsuSearch with the canonical title's first
+		     1-2 words to surface franchise neighbours / look-alikes. -->
+		{#if similar && similar.length > 0}
+			<section class="similar">
+				<Strip eyebrow="Similar titles" caption="via Kitsu search">
+					{#each similar as hit (hit.id)}
+						<PosterCard anime={hit} />
+					{/each}
+				</Strip>
+			</section>
+		{/if}
 	{/if}
 </main>
 
@@ -1046,12 +1104,25 @@
 		font-variant-numeric: tabular-nums lining-nums;
 		letter-spacing: var(--tracking-meta);
 	}
+	/* Synopsis — collapsed by default to a 5-line preview with a soft
+	   gradient fade at the bottom; expands on user click. The font is
+	   bumped a notch (display-m, was body-l) so the prose feels like a
+	   proper editorial spread instead of body chrome. */
+	.prose-wrap {
+		position: relative;
+		max-block-size: 9.5rem;
+		overflow: hidden;
+		transition: max-block-size var(--dur-slow) var(--ease-out-soft);
+	}
+	.prose-wrap.expanded {
+		max-block-size: 200rem;
+	}
 	.prose {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: var(--type-body-l);
-		line-height: 1.65;
-		color: var(--bone-200);
+		font-size: var(--type-display-m);
+		line-height: 1.5;
+		color: var(--bone-100);
 	}
 	.prose::first-letter {
 		font-family: var(--font-display);
@@ -1063,6 +1134,35 @@
 		color: var(--bone-100);
 		font-style: italic;
 	}
+	.prose-fade {
+		position: absolute;
+		inset-block-end: 0;
+		inset-inline: 0;
+		block-size: 4rem;
+		background: linear-gradient(180deg, transparent 0%, var(--ink-000) 90%);
+		pointer-events: none;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
+	}
+	.prose-wrap.expanded .prose-fade {
+		opacity: 0;
+	}
+	.prose-toggle {
+		margin-block-start: var(--space-3);
+		padding: 4px 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-200);
+		border-block-end: 1px solid var(--bone-300);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.prose-toggle:hover {
+		color: var(--bone-100);
+		border-block-end-color: var(--bone-100);
+	}
 	.prose-empty {
 		margin: 0;
 		font-family: var(--font-display);
@@ -1070,11 +1170,11 @@
 		color: var(--bone-300);
 	}
 
-	/* — Episodes panel. Fixed 3-column grid so 12 tiles render as 4
-	     vertical rows — keeps the column tall and proportional with the
-	     synopsis next to it instead of spreading flat across the page. */
+	/* — Episodes panel. 2-column grid; bigger tiles so titles fit and
+	     thumbnails read clearly (the previous 3-col layout truncated
+	     almost every title). Column itself is wider too. */
 	.body-col-episodes {
-		inline-size: clamp(18rem, 24rem, 28rem);
+		inline-size: clamp(22rem, 30rem, 36rem);
 	}
 	@media (max-inline-size: 900px) {
 		.body-col-episodes {
@@ -1086,8 +1186,8 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: var(--space-3);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--space-4);
 	}
 	/* Tile is now thumbnail-led: 16:9 image at top, mono-numeral overlay
 	   tag in the corner, title + duration in the foot. Forward-compatible
@@ -1173,8 +1273,8 @@
 	.ep-foot {
 		display: grid;
 		gap: var(--space-1);
-		padding: var(--space-3);
-		min-block-size: 4rem;
+		padding: var(--space-3) var(--space-4);
+		min-block-size: 5rem;
 	}
 	.ep-title {
 		display: -webkit-box;
@@ -1183,7 +1283,7 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 		font-family: var(--font-display);
-		font-size: var(--type-meta);
+		font-size: var(--type-body);
 		line-height: var(--leading-tight);
 		color: var(--bone-100);
 	}
@@ -1341,6 +1441,12 @@
 	}
 	.ep-pager-of {
 		color: var(--bone-400);
+	}
+
+	/* — Similar titles strip below the body. Inherits Strip's gutter
+	     (--strip-pad = --space-8) so the row aligns with the page rhythm. */
+	.similar {
+		margin-block-start: var(--space-8);
 	}
 
 	/* — Skeletons. */
