@@ -1,0 +1,25 @@
+{
+  "$comment": "Recorded responses from kitsu.io/api/edge. Refresh via `make fixtures-refresh` once that target lands; until then re-curl with the request snippets below.",
+  "captured_at": "2026-05-06",
+  "fields_param": "canonicalTitle,titles,slug,synopsis,startDate,endDate,episodeCount,averageRating,subtype,status,posterImage,coverImage,ageRating,popularityRank",
+  "fixtures": {
+    "search_one_piece.json": {
+      "request": "GET /anime?filter[text]=one piece&page[limit]=5&fields[anime]=...",
+      "size": 11834,
+      "sha256": "e77236b36b472e0623d50ede41a75cea59b3e8097cf29fea7adaf50e382f1da8",
+      "notes": "5 hits, including anime/13623 with coverImage:null — exercises the null-cover branch in parse_search_response."
+    },
+    "anime_one_piece_detail.json": {
+      "request": "GET /anime/12?fields[anime]=...",
+      "size": 2638,
+      "sha256": "ec5c2edc76e03121d6635d3f55c8ecacafe576785f2bb22ac9d940c8be1da7ef",
+      "notes": "Single-resource response with full posterImage+coverImage, used as the canonical detail-page golden."
+    },
+    "anime_null_cover_detail.json": {
+      "request": "GET /anime/856?fields[anime]=...",
+      "size": 1931,
+      "sha256": "851c101aaa26bde147077b6f69c3813cac380d6ee2e1417baba484f2d2b719ae",
+      "notes": "Crayon Shin-chan — currently airing, coverImage:null. Exercises the detail-page banner-fallback branch."
+    }
+  }
+}
