@@ -1,7 +1,6 @@
 <!--
   Anime detail v2 — editorial spread, but no longer synopsis-dominant.
   Composition:
-    - Topbar with the global BackButton (consistent across the app).
     - Hero band (cover_image with blurred-poster fallback) + parallax.
     - Masthead: poster hangs into the hero. Right column carries title +
       action row (Play / Download / External) + Sub-Dub + Quality + meta-row.
@@ -31,7 +30,6 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
-	import BackButton from '$lib/components/BackButton.svelte';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -391,10 +389,6 @@
 <svelte:head>
 	<title>{detail?.canonical_title ?? 'Loading'} · ani-gui</title>
 </svelte:head>
-
-<header class="topbar">
-	<BackButton label="Back" fallback="/" />
-</header>
 
 <main class="page" style:--accent={accent}>
 	{#if error}
@@ -780,16 +774,6 @@
 </main>
 
 <style>
-	.topbar {
-		position: sticky;
-		inset-block-start: 0;
-		z-index: 10;
-		padding: var(--space-4) var(--space-6);
-		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
-		backdrop-filter: blur(8px); /* purposeful: top bar over hero. */
-		border-block-end: 1px solid var(--ink-200);
-	}
-
 	.page {
 		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;

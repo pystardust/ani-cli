@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import {
 		imageProxyUrl,
@@ -14,12 +15,9 @@
 		type KitsuAnimeRef
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
-	import BackButton from '$lib/components/BackButton.svelte';
-	import Icon from '$lib/components/Icon.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 
-	let query = $state('');
 	let submitted = $state(''); // the query whose results are on screen.
 	let results = $state<KitsuAnimeRef[] | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -32,8 +30,6 @@
 
 	const count = $derived(results?.length ?? 0);
 
-	let inputEl: HTMLInputElement | undefined = $state();
-
 	onMount(() => {
 		kitsuTrending()
 			.then((t) => (trending = t))
@@ -43,29 +39,18 @@
 			.catch(() => (topRated = []));
 	});
 
-	// `/` focuses the search input — Netflix-style keyboard nav lives here in spirit.
+	// Drive the search off the URL ?q=… param. The global topbar from
+	// +layout.svelte writes that param on submit; this page reacts to
+	// it. As a bonus, search history (browser back/forward) and deep
+	// links work for free.
 	$effect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === '/' && document.activeElement !== inputEl) {
-				e.preventDefault();
-				inputEl?.focus();
-				inputEl?.select();
-			}
-		};
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
+		const q = page.url.searchParams.get('q')?.trim() ?? '';
+		if (q && q !== submitted) {
+			void runSearch(q);
+		}
 	});
 
-	// Land focus in the search field on mount — saves the user a click /
-	// hunt for the slash key when they navigate to /search.
-	$effect(() => {
-		inputEl?.focus();
-	});
-
-	async function submit(event: SubmitEvent) {
-		event.preventDefault();
-		const q = query.trim();
-		if (!q) return;
+	async function runSearch(q: string) {
 		error = null;
 		busy = true;
 		submitted = q;
@@ -117,44 +102,6 @@
 <svelte:head>
 	<title>Search · ani-gui</title>
 </svelte:head>
-
-<header class="topbar">
-	<div class="topbar-inner">
-		<BackButton label="Back" fallback="/" />
-		<form
-			class="searchform"
-			class:searchform-busy={busy}
-			class:searchform-filled={query.trim().length > 0}
-			onsubmit={submit}
-			role="search"
-		>
-			<span class="searchform-icon" aria-hidden="true">
-				<Icon name="search" size={20} />
-			</span>
-			<input
-				bind:this={inputEl}
-				bind:value={query}
-				type="search"
-				autocomplete="off"
-				spellcheck="false"
-				placeholder="Search the catalogue"
-				aria-label="Search anime"
-				required
-			/>
-			<span class="searchform-hint" aria-hidden="true">
-				{#if busy}
-					<span class="searchform-busy-mark">…</span>
-				{:else}
-					<kbd>/</kbd>
-				{/if}
-			</span>
-			<!-- Submit happens on Enter; the button is sr-only for a11y. -->
-			<button type="submit" class="sr-only" disabled={busy || query.trim().length === 0}>
-				Search
-			</button>
-		</form>
-	</div>
-</header>
 
 <div class="page">
 	<section class="results-meta" aria-live="polite">
@@ -277,117 +224,6 @@
 </div>
 
 <style>
-	.topbar {
-		position: sticky;
-		inset-block-start: 0;
-		z-index: 10;
-		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
-		border-block-end: 1px solid var(--ink-200);
-		backdrop-filter: blur(8px); /* purposeful: sticky bar over scrolling content. */
-	}
-	.topbar-inner {
-		/* Match the page wrapper below so the topbar's content aligns with
-		   the result grid even on widescreens. */
-		max-inline-size: var(--content-max-wide);
-		margin-inline: auto;
-		display: flex;
-		align-items: center;
-		gap: var(--space-6);
-		padding: var(--space-4) var(--space-8);
-	}
-
-	.searchform {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex: 1;
-		/* Single visual unit: hairline-framed input with leading icon, body
-		   input, trailing keyboard hint. No separate "Search" button —
-		   Enter submits, screen readers see the sr-only button. Pill
-		   rounding because the previous square form factor felt rigid
-		   for a search affordance — search inputs read as approachable
-		   when they're rounded. */
-		padding: var(--space-3) var(--space-5);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft),
-			box-shadow var(--dur-fast) var(--ease-out-soft);
-	}
-	.searchform:focus-within {
-		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent);
-	}
-	.searchform:focus-within {
-		border-color: var(--bone-200);
-		background: var(--ink-050);
-	}
-	.searchform-filled {
-		border-color: color-mix(in oklab, var(--bone-200) 70%, var(--ink-300));
-	}
-	.searchform-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--bone-300);
-		transition: color var(--dur-fast) var(--ease-out-soft);
-	}
-	.searchform:focus-within .searchform-icon {
-		color: var(--bone-100);
-	}
-	.searchform-hint {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-inline-size: 1.5rem;
-	}
-	.searchform-hint kbd {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-300);
-		padding: 0 var(--space-2);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-control);
-	}
-	.searchform:focus-within .searchform-hint kbd {
-		opacity: 0;
-	}
-	.searchform-busy-mark {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-200);
-	}
-	.searchform input {
-		flex: 1;
-		padding: 0;
-		background: transparent;
-		border: 0;
-		outline: 0;
-		font-family: var(--font-display);
-		font-size: var(--type-display-m);
-		letter-spacing: var(--tracking-display);
-		color: var(--bone-100);
-	}
-	.searchform input::placeholder {
-		color: var(--bone-400);
-		font-style: italic;
-	}
-	.searchform input::-webkit-search-cancel-button {
-		appearance: none;
-	}
-	.sr-only {
-		position: absolute;
-		inline-size: 1px;
-		block-size: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
 	.page {
 		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;

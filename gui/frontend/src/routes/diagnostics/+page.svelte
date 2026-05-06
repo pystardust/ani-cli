@@ -7,7 +7,6 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { appInfo, historyClear, historyList, type AppInfo, type HistoryEntry } from '$lib/api';
-	import BackButton from '$lib/components/BackButton.svelte';
 
 	let info = $state<AppInfo | null>(null);
 	let history = $state<HistoryEntry[] | null>(null);
@@ -54,8 +53,6 @@
 </script>
 
 <main class="page">
-	<BackButton fallback="/" />
-
 	<h1>ani-gui — Backend Status</h1>
 
 	<section>

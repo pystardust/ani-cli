@@ -5,14 +5,21 @@
   - Persistent narrow left rail with home / search / continue / settings
     / diagnostics. Active item gets a 2px accent rule and bone-100 type;
     everything else is hairlined and quiet.
+  - Sticky glassy topbar across all routes: BackButton on the left
+    (auto-hides when there's no history to go back to), persistent
+    search input on the right. Pressing Enter routes to /search?q=…
+    so the field works from any page. Removes per-route topbars whose
+    BackButtons jumped around between pages.
   - Wires the favicon via <svelte:head>.
-  - Hides the rail on /play so the player gets the full viewport.
+  - Hides the rail + topbar on /play so the player gets the full viewport.
 -->
 <script lang="ts">
 	import '$lib/design/tokens.css';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let { children } = $props();
 
@@ -29,6 +36,52 @@
 	const isSearch = $derived(routeId.startsWith('/search'));
 	const isSettings = $derived(routeId.startsWith('/settings'));
 	const isDiagnostics = $derived(routeId.startsWith('/diagnostics'));
+
+	let topbarQuery = $state('');
+	let topbarInputEl: HTMLInputElement | undefined = $state();
+
+	// Sync the topbar input with ?q= so navigating to /search shows
+	// what was searched and the field stays editable.
+	$effect(() => {
+		if (isSearch) {
+			topbarQuery = page.url.searchParams.get('q') ?? '';
+		}
+	});
+
+	// "/" focuses the topbar search from anywhere — Netflix-style nav.
+	// Skip when the user is already typing in another field.
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		const onKey = (e: KeyboardEvent) => {
+			const t = e.target as HTMLElement | null;
+			const inField =
+				t &&
+				(t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || (t as HTMLElement).isContentEditable);
+			if (e.key === '/' && !inField) {
+				e.preventDefault();
+				topbarInputEl?.focus();
+				topbarInputEl?.select();
+			} else if (e.key === 'Escape' && document.activeElement === topbarInputEl) {
+				topbarInputEl?.blur();
+			}
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	});
+
+	function onTopbarSubmit(e: SubmitEvent) {
+		e.preventDefault();
+		const q = topbarQuery.trim();
+		if (!q) return;
+		// Build the URL via resolve() so we honour any non-default
+		// base path. The eslint rule is intent-checked here — disable
+		// is correct because resolve() IS used, just one expression
+		// removed from the goto() call.
+		const target = new URL(resolve('/search'), window.location.origin);
+		target.searchParams.set('q', q);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(target);
+	}
 </script>
 
 <svelte:head>
@@ -126,9 +179,40 @@
 			</footer>
 		</aside>
 
-		<main class="content">
-			{@render children()}
-		</main>
+		<div class="main-area">
+			<header class="topbar">
+				<BackButton fallback="/" />
+				<form
+					class="topbar-search"
+					class:topbar-search-filled={topbarQuery.trim().length > 0}
+					onsubmit={onTopbarSubmit}
+					role="search"
+				>
+					<span class="topbar-search-icon" aria-hidden="true">
+						<Icon name="search" size={18} />
+					</span>
+					<input
+						bind:this={topbarInputEl}
+						bind:value={topbarQuery}
+						type="search"
+						autocomplete="off"
+						spellcheck="false"
+						placeholder={isSearch ? 'Refine your search…' : 'Search anime…'}
+						aria-label="Search anime"
+					/>
+					<span class="topbar-search-hint" aria-hidden="true">
+						<kbd>/</kbd>
+					</span>
+					<!-- Submit on Enter; the explicit button is sr-only for a11y. -->
+					<button type="submit" class="sr-only" disabled={topbarQuery.trim().length === 0}>
+						Search
+					</button>
+				</form>
+			</header>
+			<main class="content">
+				{@render children()}
+			</main>
+		</div>
 	</div>
 {/if}
 
@@ -146,6 +230,16 @@
 		.shell {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* The right column hosts the topbar above the routed content.
+	   Flex column so the topbar sits at the top of the area and the
+	   <main> fills below; the topbar's own sticky positioning keeps
+	   it pinned against the viewport on scroll. */
+	.main-area {
+		display: flex;
+		flex-direction: column;
+		min-inline-size: 0; /* prevent overflow from blowing out the grid */
 	}
 
 	.rail {
@@ -373,5 +467,111 @@
 
 	.content {
 		min-inline-size: 0; /* prevent grid from blowing wide on long titles */
+	}
+
+	/* — Global topbar. Sticky against the viewport, glassy-translucent
+	     so it reads as an overlay rather than a solid header. Same
+	     gutter as the strip rail (--space-8) so the BackButton lines
+	     up with the leading edge of every page's content. */
+	.topbar {
+		position: sticky;
+		inset-block-start: 0;
+		z-index: 15;
+		display: flex;
+		align-items: center;
+		gap: var(--space-5);
+		padding: var(--space-3) var(--space-8);
+		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
+		backdrop-filter: blur(16px) saturate(1.3);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		border-block-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
+	}
+	@media (max-inline-size: 720px) {
+		.topbar {
+			padding-inline: var(--space-4);
+		}
+	}
+
+	/* Persistent search input. Pill-rounded to match /search; capped
+	   so it doesn't dominate on widescreen, and pushed toward the
+	   trailing edge so the BackButton stays anchored at the leading
+	   edge regardless of the input's width. */
+	.topbar-search {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		flex: 0 1 28rem;
+		margin-inline-start: auto;
+		padding: var(--space-2) var(--space-4);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft);
+	}
+	.topbar-search:focus-within {
+		border-color: var(--bone-200);
+		background: color-mix(in oklab, var(--ink-050) 90%, transparent);
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
+	}
+	.topbar-search-filled {
+		border-color: color-mix(in oklab, var(--bone-200) 70%, var(--ink-300));
+	}
+	.topbar-search-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--bone-300);
+		transition: color var(--dur-fast) var(--ease-out-soft);
+	}
+	.topbar-search:focus-within .topbar-search-icon {
+		color: var(--bone-100);
+	}
+	.topbar-search input {
+		flex: 1;
+		min-inline-size: 0;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		outline: 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-100);
+	}
+	.topbar-search input::placeholder {
+		color: var(--bone-400);
+	}
+	.topbar-search input::-webkit-search-cancel-button {
+		appearance: none;
+	}
+	.topbar-search-hint {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-inline-size: 1.5rem;
+	}
+	.topbar-search-hint kbd {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		color: var(--bone-300);
+		padding: 0 var(--space-2);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-control);
+	}
+	.topbar-search:focus-within .topbar-search-hint kbd {
+		opacity: 0;
+	}
+	.sr-only {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

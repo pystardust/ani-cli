@@ -15,7 +15,6 @@
 		type AppInfo,
 		type Config
 	} from '$lib/api';
-	import BackButton from '$lib/components/BackButton.svelte';
 
 	let cfg = $state<Config | null>(null);
 	let info = $state<AppInfo | null>(null);
@@ -127,20 +126,19 @@
 	<title>Settings · ani-gui</title>
 </svelte:head>
 
-<header class="topbar">
-	<BackButton label="Back" fallback="/" />
-	<div class="saved" class:visible={showSaved} aria-live="polite">
-		<span class="saved-mark" aria-hidden="true">✓</span>
-		<span>Saved</span>
-	</div>
-</header>
-
 <main class="page">
 	<header class="page-head">
 		<p class="eyebrow">
 			<span class="eyebrow-key">Settings</span>
 			<span class="eyebrow-rule" aria-hidden="true"></span>
 			<span class="eyebrow-value">persisted to <code>config.toml</code></span>
+			<!-- Saved indicator now lives inline with the eyebrow rather
+			     than in a per-route topbar (the global topbar from
+			     +layout.svelte already owns the back button). -->
+			<span class="saved" class:visible={showSaved} aria-live="polite">
+				<span class="saved-mark" aria-hidden="true">✓</span>
+				<span>Saved</span>
+			</span>
 		</p>
 		<h1 class="page-title">House rules.</h1>
 	</header>
@@ -346,20 +344,6 @@
 </main>
 
 <style>
-	.topbar {
-		position: sticky;
-		inset-block-start: 0;
-		z-index: 10;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		padding: var(--space-4) var(--space-6);
-		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
-		border-block-end: 1px solid var(--ink-200);
-		backdrop-filter: blur(8px);
-	}
-
 	.saved {
 		display: inline-flex;
 		align-items: center;
