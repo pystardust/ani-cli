@@ -182,12 +182,13 @@ async fn run_play_assertion(tmp: &std::path::Path) -> Result<(), String> {
         .get("media_kind")
         .and_then(|v| v.as_str())
         .ok_or("response missing media_kind")?;
-    // The shim resolves a real master.m3u8 URL, so the kind is HLS
-    // and the proxy URL points at /master.m3u8.
-    if media_kind != "hls" {
-        return Err(format!("expected media_kind=hls, got {media_kind}"));
+    // The shim resolves a wixmp MP4 (matching the fixture in
+    // tests/fixtures/allanime/embed_simple.json), so the kind is mp4
+    // and the proxy URL points at /file.mp4.
+    if media_kind != "mp4" {
+        return Err(format!("expected media_kind=mp4, got {media_kind}"));
     }
-    if !media_url.contains("/s/") || !media_url.ends_with("/master.m3u8") {
+    if !media_url.contains("/s/") || !media_url.ends_with("/file.mp4") {
         return Err(format!("unexpected media_url shape: {media_url}"));
     }
     if session_id.is_empty() {
