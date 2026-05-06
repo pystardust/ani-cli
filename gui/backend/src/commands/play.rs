@@ -77,17 +77,18 @@ fn debug_options_for(state: &AppState) -> DebugOptions {
 pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResponse> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let debug = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
+    let resolved = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
 
     // Decide media kind: cheap path-extension first, HEAD fallback
     // when the URL is opaque (fast4speed.rsvp/<id>/sub/1, etc).
-    let upstream_url = url::Url::parse(&debug.selected_url).map_err(|_| AniError::ParseFailed {
-        detail: format!("upstream_url: {} is not a valid URL", debug.selected_url),
-    })?;
+    let upstream_url =
+        url::Url::parse(&resolved.selected_url).map_err(|_| AniError::ParseFailed {
+            detail: format!("upstream_url: {} is not a valid URL", resolved.selected_url),
+        })?;
     let kind = match MediaKind::from_url(&upstream_url) {
         Some(k) => k,
         None => {
-            let referer = debug.referer.as_deref().unwrap_or("");
+            let referer = resolved.referer.as_deref().unwrap_or("");
             // HEAD failures fall back to MP4 — that's the safe default
             // (binary streams, unknown CDNs). The proxy then serves
             // /file.mp4 with byte-range support; if the upstream truly
@@ -98,11 +99,19 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
                 .unwrap_or(MediaKind::Mp4)
         }
     };
+    tracing::info!(
+        title = %args.title,
+        episode = %args.episode,
+        upstream = upstream_url.as_str(),
+        referer = resolved.referer.as_deref().unwrap_or(""),
+        kind = ?kind,
+        "play: ani-cli resolved upstream",
+    );
 
     let session_args = CreateSessionArgs {
-        upstream_url: debug.selected_url,
-        referer: debug.referer.unwrap_or_default(),
-        subtitle_url: debug.subtitle_url,
+        upstream_url: resolved.selected_url,
+        referer: resolved.referer.unwrap_or_default(),
+        subtitle_url: resolved.subtitle_url,
     };
     create_session_with_kind(state, &session_args, kind)
 }
@@ -119,7 +128,7 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let debug = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
+    let resolved = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
 
     // Player command comes from the user's settings file with the
     // documented default (`mpv`). Falling back to the default config
@@ -128,9 +137,9 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let cfg = read_config(&state.config_path).unwrap_or_default();
 
     let launch = LaunchArgs {
-        stream_url: debug.selected_url,
-        referer: debug.referer,
-        subtitle_url: debug.subtitle_url,
+        stream_url: resolved.selected_url,
+        referer: resolved.referer,
+        subtitle_url: resolved.subtitle_url,
         title: Some(format!("{} · ep {}", args.title, args.episode)),
         player_command: cfg.external_player,
     };

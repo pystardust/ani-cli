@@ -137,6 +137,12 @@ pub async fn classify_via_head(
 /// stream straight to axum, so a 600 MB MP4 doesn't get materialised in
 /// memory the way [`fetch_text`] would.
 ///
+/// Logs the (status, content-type, content-length, range) at info on
+/// success and at warn when the upstream rejects us — playback errors
+/// in the renderer are otherwise opaque, and intermittent CDN refusals
+/// (cf-cache-miss / Referer enforcement / per-IP rate-limit) only
+/// reveal themselves through this log.
+///
 /// Forwards the inbound `Range` header (when present) so byte-range
 /// requests reach upstream verbatim — the renderer's `<video>` element
 /// uses that to seek without downloading the whole file.
@@ -170,13 +176,47 @@ pub async fn fetch_streaming(
         .headers(headers)
         .send()
         .await
-        .map_err(|_| AniError::Network)?;
+        .map_err(|e| {
+            tracing::warn!(
+                upstream = url.as_str(),
+                referer = referer,
+                range = range.unwrap_or(""),
+                error = %e,
+                "fetch_streaming: network failure",
+            );
+            AniError::Network
+        })?;
     let status = resp.status();
     if !status.is_success() {
+        let server = resp
+            .headers()
+            .get("server")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let cf_ray = resp
+            .headers()
+            .get("cf-ray")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        tracing::warn!(
+            upstream = url.as_str(),
+            referer = referer,
+            range = range.unwrap_or(""),
+            status = status.as_u16(),
+            server = server,
+            cf_ray = cf_ray,
+            "fetch_streaming: upstream rejected request",
+        );
         return Err(AniError::Upstream {
             status: status.as_u16(),
         });
     }
+    tracing::debug!(
+        upstream = url.as_str(),
+        status = status.as_u16(),
+        range = range.unwrap_or(""),
+        "fetch_streaming: upstream ok",
+    );
     Ok(resp)
 }
 
