@@ -69,6 +69,35 @@ impl AppSecret {
     }
 }
 
+/// Which kind of media the upstream is serving. Drives both the
+/// proxy handler choice (manifest rewrite vs. byte-stream pass-through)
+/// and the frontend player choice (`hls.js` vs. `<video src>`).
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MediaKind {
+    /// HLS master or media playlist (.m3u8). Proxy rewrites segments.
+    Hls,
+    /// Direct MP4. Proxy streams bytes through with `Range` forwarding.
+    Mp4,
+}
+
+impl MediaKind {
+    /// Cheap classifier from the URL path's extension. Returns `None`
+    /// when the extension is missing or unknown — caller is expected
+    /// to fall back to a HEAD request in that case.
+    #[must_use]
+    pub fn from_url(url: &url::Url) -> Option<Self> {
+        let path = url.path();
+        let last_segment = path.rsplit('/').next().unwrap_or("");
+        let ext = last_segment.rsplit('.').next().unwrap_or("");
+        match ext.to_ascii_lowercase().as_str() {
+            "m3u8" => Some(Self::Hls),
+            "mp4" => Some(Self::Mp4),
+            _ => None,
+        }
+    }
+}
+
 /// Strongly typed UUID for stream sessions. Wraps [`Uuid`] for clarity at
 /// API boundaries.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
@@ -112,6 +141,10 @@ pub struct StreamSession {
     pub id: SessionId,
     /// Upstream master playlist or mp4 URL we resolved via ani-cli.
     pub upstream_url: url::Url,
+    /// What the proxy should do with `upstream_url` — rewrite a manifest
+    /// or stream bytes through with `Range` forwarding. The frontend
+    /// reads this back to pick hls.js vs `<video src>`.
+    pub media_kind: MediaKind,
     /// `Referer:` header the upstream CDN requires.
     pub referer: String,
     /// Optional subtitle (`.vtt`) URL — also proxied with referer injection.
@@ -121,16 +154,36 @@ pub struct StreamSession {
 }
 
 impl StreamSession {
-    /// Build a session with the default TTL.
+    /// Build a session with the default TTL. Infers `media_kind` from
+    /// the URL extension; defaults to [`MediaKind::Hls`] when the
+    /// extension is missing — preserves the legacy behaviour for
+    /// upstreams that lack a clean extension. Callers that have
+    /// stronger signal (e.g. a HEAD response) should use
+    /// [`Self::new_with_kind`] instead.
     #[must_use]
     pub fn new(
         upstream_url: url::Url,
         referer: impl Into<String>,
         subtitle_url: Option<url::Url>,
     ) -> Self {
+        let kind = MediaKind::from_url(&upstream_url).unwrap_or(MediaKind::Hls);
+        Self::new_with_kind(upstream_url, kind, referer, subtitle_url)
+    }
+
+    /// Build a session with an explicit [`MediaKind`]. Use this when
+    /// the caller has classified the upstream by HEAD response or
+    /// other side-channel signal.
+    #[must_use]
+    pub fn new_with_kind(
+        upstream_url: url::Url,
+        media_kind: MediaKind,
+        referer: impl Into<String>,
+        subtitle_url: Option<url::Url>,
+    ) -> Self {
         Self {
             id: SessionId::new(),
             upstream_url,
+            media_kind,
             referer: referer.into(),
             subtitle_url,
             expires_at: SystemTime::now() + DEFAULT_SESSION_TTL,

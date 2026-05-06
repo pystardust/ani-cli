@@ -32,7 +32,9 @@ use url::Url;
 use crate::error::AniError;
 
 pub use m3u8::{rewrite_master, rewrite_media, ProxyOrigin};
-pub use token::{sign_segment, verify_segment, AppSecret, SessionId, SessionTable, StreamSession};
+pub use token::{
+    sign_segment, verify_segment, AppSecret, MediaKind, SessionId, SessionTable, StreamSession,
+};
 
 /// Shared state every proxy route reads.
 #[derive(Clone)]
