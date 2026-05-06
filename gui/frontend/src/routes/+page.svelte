@@ -9,13 +9,6 @@
     4. Top Rated: kitsuTopRated().
 -->
 <script lang="ts">
-	// The Continue Watching card builds its href as
-	// `resolve('/anime/[id]', { id }) + resumeQueryString(target)` —
-	// resolve() IS used, but the eslint rule pattern-matches against a
-	// literal resolve() call inside the href attribute and doesn't see
-	// through the variable + concatenation. File-level disable is the
-	// pragmatic fix; the URL is still going through resolve().
-	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
@@ -334,14 +327,17 @@
 					null
 			)}
 			{@const image = epThumb ?? animePoster}
-			{@const href = target.kitsuId
-				? resolve('/anime/[id]', { id: target.kitsuId }) + resumeQueryString(target)
-				: resolve('/search')}
+			<!-- href IS resolve()-produced; the rule pattern-matches a literal
+			     `href={resolve(...)}` and trips on the ternary + concatenation,
+			     so the disable wraps the element. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
 				class="resume-card"
 				class:resume-card-loading={match === undefined}
 				style="--accent: {accent};"
-				{href}
+				href={target.kitsuId
+					? resolve('/anime/[id]', { id: target.kitsuId }) + resumeQueryString(target)
+					: resolve('/search')}
 			>
 				<span class="resume-poster">
 					{#if image}
@@ -369,6 +365,7 @@
 					</span>
 				</span>
 			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{/each}
 	</Strip>
 {/if}

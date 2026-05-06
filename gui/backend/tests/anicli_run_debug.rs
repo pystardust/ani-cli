@@ -126,9 +126,31 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
         path_override: Some(path),
     };
 
-    let out = run_debug(&opts, "test", "1", "best", "sub")
-        .await
-        .expect("run_debug succeeds");
+    let out = match run_debug(&opts, "test", "1", "best", "sub").await {
+        Ok(v) => v,
+        Err(e) => {
+            // CI has been failing here with `error.scraper.parse_failed`
+            // and the bare assertion gave us nothing to debug from. On
+            // failure, dump every input the test process can still
+            // observe so the next CI run carries enough breadcrumbs.
+            let dump_dir = |label: &str, p: &std::path::Path| {
+                eprintln!("--- {label}: {} ---", p.display());
+                if let Ok(entries) = std::fs::read_dir(p) {
+                    for e in entries.flatten() {
+                        eprintln!("  {}", e.path().display());
+                    }
+                }
+            };
+            eprintln!("\n=== run_debug failed: {e:?} ===");
+            dump_dir("tmp", tmp.path());
+            dump_dir("fixtures", &fixtures);
+            dump_dir("bin", &bin);
+            eprintln!("--- ani-cli script: {} ---", opts.ani_cli_path.display());
+            eprintln!("--- PATH override: {:?} ---", opts.path_override);
+            eprintln!("--- repo_root() = {} ---", repo_root().display());
+            panic!("run_debug failed; see stderr dump above for env state");
+        }
+    };
 
     assert_eq!(out.selected_url, "https://wixmp.example/video.mp4");
     assert!(out

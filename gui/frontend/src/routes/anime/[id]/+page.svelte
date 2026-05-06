@@ -15,6 +15,7 @@
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		imageProxyUrl,
 		kitsuAnimeDetail,
@@ -150,9 +151,26 @@
 		// page 1, and immediately fetches page 1 again — which lands
 		// just after the page-2 tiles finish their entrance animation,
 		// so the UI snaps back to page 1.
-		const params = new URLSearchParams(page.url.searchParams);
-		params.set('page', String(next));
-		void goto(`?${params}`, { replaceState: true, keepFocus: true, noScroll: true });
+		// Build the next query string by hand instead of mutating a
+		// URLSearchParams (svelte/prefer-svelte-reactivity flags any
+		// mutable instance of the built-in class). It's a one-shot
+		// serialization here, so we just iterate the existing params,
+		// drop any prior `page=`, and append our new value.
+		const parts: string[] = [];
+		for (const [k, v] of page.url.searchParams.entries()) {
+			if (k === 'page') continue;
+			parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+		}
+		parts.push(`page=${next}`);
+		// goto target IS resolve()-produced; the rule pattern-matches a
+		// literal `goto(resolve(...))` call and trips on the template
+		// literal that interpolates resolve() with the query string.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(`${resolve('/anime/[id]', { id })}?${parts.join('&')}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	}
 
 	function jumpToEpisode(event: SubmitEvent) {

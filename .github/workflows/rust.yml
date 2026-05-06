@@ -58,7 +58,10 @@ jobs:
           workspaces: gui/backend
           shared-key: cargo-deny
       - name: Install cargo-deny
-        run: cargo install cargo-deny --locked --version ^0.16
+        # Pinning to ^0.18 — older versions choke on RUSTSEC advisories
+        # that carry a CVSS v4.0 score (the parser only learned about
+        # CVSS 4 in 0.17).
+        run: cargo install cargo-deny --locked --version ^0.18
       - name: cargo deny check
         working-directory: gui/backend
         run: cargo deny check

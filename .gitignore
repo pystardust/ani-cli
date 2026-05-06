@@ -30,6 +30,9 @@ gui/frontend/dist/
 
 # Test coverage & artifacts
 coverage/
+gui/frontend/coverage/
+gui/backend/lcov.info
+gui/backend/target/llvm-cov-target/
 .nyc_output/
 lcov.info
 *.lcov

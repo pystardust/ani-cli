@@ -14,6 +14,18 @@ export default defineConfig({
 	// Component tests would add a separate workspace later.
 	test: {
 		environment: 'node',
-		include: ['src/**/*.{test,spec}.ts']
+		include: ['src/**/*.{test,spec}.ts'],
+		coverage: {
+			provider: 'v8',
+			reporter: ['text', 'json-summary', 'lcov'],
+			reportsDirectory: 'coverage',
+			// Scope: pure-TS modules under `src/lib/`. Svelte
+			// components and route files are out of scope until
+			// component testing lands (separate test runner setup,
+			// own coverage bar). Holding 0% components against a
+			// baseline would just be theater.
+			include: ['src/lib/**/*.ts'],
+			exclude: ['src/lib/**/*.{test,spec}.ts', 'src/lib/**/*.d.ts']
+		}
 	}
 });

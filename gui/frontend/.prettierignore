@@ -1,6 +1,7 @@
 # Generated
 .svelte-kit
 build
+coverage
 dist
 node_modules
 
