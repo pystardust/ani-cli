@@ -137,6 +137,7 @@ pub fn run() -> Result<()> {
             commands::ipc::cmd_title_match_put,
             commands::ipc::cmd_settings_get,
             commands::ipc::cmd_settings_put,
+            commands::ipc::cmd_meta_cache_clear,
         ])
         .setup(move |app| {
             // Tauri 2 owns its own runtime; we keep ours alive for the

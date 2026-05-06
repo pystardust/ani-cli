@@ -73,6 +73,48 @@ describe('resolveKitsuMatch', () => {
 		expect(putCall?.[1]).toMatchObject({ kitsuId: 'fresh-id' });
 	});
 
+	it('cour > 1 with stale cache hit (slug mismatch) falls through to slug-fetch', async () => {
+		// Pre-86e02d2 versions of the picker collapsed sequels onto
+		// Part 1 and persisted "Part 2 → Part 1's id" into the cache.
+		// On a cache hit, validate the anime's slug — if it doesn't
+		// carry the cour suffix, the mapping is stale and we re-resolve.
+		const preliminary = resolveHistoryEntry(
+			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
+			null
+		);
+		const stalePart1 = {
+			...stubKitsu('part1-stale', 'Stone Ocean'),
+			slug: 'jojo-s-bizarre-adventure-part-6-stone-ocean'
+		};
+		mockedInvoke.mockImplementation(async (cmd) => {
+			if (cmd === 'cmd_title_match_get') return 'part1-stale';
+			if (cmd === 'cmd_kitsu_anime_detail') return stalePart1;
+			if (cmd === 'cmd_kitsu_anime_by_slug') return stubKitsu('part2-correct');
+			if (cmd === 'cmd_title_match_put') return undefined;
+			throw new Error('unexpected ' + cmd);
+		});
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got?.id).toBe('part2-correct');
+	});
+
+	it('cour > 1 with cache hit whose slug DOES match returns cached without re-fetch', async () => {
+		const preliminary = resolveHistoryEntry(entry('Some Anime Part 2 (12 episodes)', '3'), null);
+		const correctlyCached = {
+			...stubKitsu('part2-cached', 'Some Anime Part 2'),
+			slug: 'some-anime-part-2'
+		};
+		mockedInvoke.mockImplementation(async (cmd) => {
+			if (cmd === 'cmd_title_match_get') return 'part2-cached';
+			if (cmd === 'cmd_kitsu_anime_detail') return correctlyCached;
+			throw new Error('unexpected ' + cmd);
+		});
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got?.id).toBe('part2-cached');
+		const calls = mockedInvoke.mock.calls.map((c) => c[0]);
+		expect(calls).not.toContain('cmd_kitsu_anime_by_slug');
+		expect(calls).not.toContain('cmd_kitsu_search');
+	});
+
 	it('falls through to live search when kitsuAnimeDetail rejects (stale cached id)', async () => {
 		const preliminary = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
 		mockedInvoke.mockImplementation(async (cmd) => {

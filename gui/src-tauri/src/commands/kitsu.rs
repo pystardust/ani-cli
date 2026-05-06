@@ -183,9 +183,18 @@ pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<
 /// (30 days) — the title→id mapping rarely changes and re-resolving
 /// is cheap when it does (just a stale-id detection on the detail
 /// fetch, then re-search).
+/// Cache key version. Bumped when the resolution rules change in a
+/// way that previous mappings would now be wrong:
+///
+///   - v1: original picker (first hit). Wrote bad mappings for all
+///         multi-cour entries since the picker collapsed siblings.
+///   - v2: slug-fetch fallback for cour > 1 (commit 86e02d2). Old v1
+///         mappings now orphaned, replaced by fresh v2 lookups.
+const TITLE_MATCH_VERSION: u32 = 2;
+
 fn title_match_key(title: &str, cour: u32) -> String {
     let normalized = title.trim().to_lowercase();
-    format!("title-match:{normalized}:c{cour}")
+    format!("title-match:v{TITLE_MATCH_VERSION}:{normalized}:c{cour}")
 }
 
 /// Read the cached `(title, cour) → kitsu_id` mapping. Returns `None`

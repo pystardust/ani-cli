@@ -6,13 +6,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { appInfo, historyClear, historyList, type AppInfo, type HistoryEntry } from '$lib/api';
+	import {
+		appInfo,
+		historyClear,
+		historyList,
+		metaCacheClear,
+		type AppInfo,
+		type HistoryEntry
+	} from '$lib/api';
 
 	let info = $state<AppInfo | null>(null);
 	let history = $state<HistoryEntry[] | null>(null);
 	let infoError = $state<string | null>(null);
 	let historyError = $state<string | null>(null);
 	let busy = $state(false);
+	let cacheStatus = $state<string | null>(null);
+	let cacheError = $state<string | null>(null);
 
 	async function refresh() {
 		infoError = null;
@@ -36,6 +45,20 @@
 			history = [];
 		} catch (e) {
 			historyError = describeError(e);
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function clearMetaCache() {
+		busy = true;
+		cacheStatus = null;
+		cacheError = null;
+		try {
+			await metaCacheClear();
+			cacheStatus = 'Metadata cache cleared.';
+		} catch (e) {
+			cacheError = describeError(e);
 		} finally {
 			busy = false;
 		}
@@ -96,6 +119,19 @@
 				Clear history
 			</button>
 		</p>
+	</section>
+
+	<section>
+		<h2>Metadata cache</h2>
+		<p>
+			Wipes the SQLite cache that holds Kitsu search results, anime details, episode lists, and
+			title→id mappings. The ani-cli history file and your settings are not affected.
+		</p>
+		<p>
+			<button type="button" onclick={clearMetaCache} disabled={busy}>Clear metadata cache</button>
+		</p>
+		{#if cacheStatus}<p>{cacheStatus}</p>{/if}
+		{#if cacheError}<p>Error: {cacheError}</p>{/if}
 	</section>
 
 	<section>

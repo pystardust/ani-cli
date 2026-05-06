@@ -204,6 +204,16 @@ export function settingsPut(cfg: Config): Promise<void> {
 }
 
 /**
+ * Wipe the SQLite metadata cache (Kitsu responses + title-match
+ * mappings). Does NOT touch the ani-cli history file or the on-disk
+ * image cache. Used by the diagnostics "Clear metadata cache" button
+ * when cached data goes stale.
+ */
+export function metaCacheClear(): Promise<void> {
+	return invoke<void>('cmd_meta_cache_clear');
+}
+
+/**
  * Convert an `https://media.kitsu.app/…` URL into the equivalent
  * `image://…` URL the Tauri custom protocol handles. Returns `null` if
  * the input isn't an https URL we can rewrite.

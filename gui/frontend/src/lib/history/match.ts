@@ -23,11 +23,27 @@ import { deriveSlug, pickKitsuMatch, type ResumeTarget } from './resolve';
 export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<KitsuAnimeRef | null> {
 	// 1) Cache lookup. If we've resolved this title→id before, fetch
 	//    the (cached, 7d-TTL) detail and short-circuit.
+	//
+	//    Defense-in-depth: for cour > 1 entries, validate that the
+	//    cached anime's slug ends with `-part-N` / `-cour-N` /
+	//    `-season-N`. A stale mapping (e.g. from a prior version
+	//    where the picker collapsed sequels onto Part 1) returns
+	//    Part 1's anime which fails the slug check; we fall through
+	//    to the slug-fetch path and let the resolution rebuild.
 	try {
 		const cachedId = await kitsuTitleMatchGet(preliminary.searchTitle, preliminary.cour);
 		if (cachedId) {
 			try {
-				return await kitsuAnimeDetail(cachedId);
+				const cached = await kitsuAnimeDetail(cachedId);
+				if (preliminary.cour > 1) {
+					const courRe = new RegExp(`(?:^|-)(?:part|cour|season)-${preliminary.cour}(?:-|$)`, 'i');
+					if (cached.slug && courRe.test(cached.slug)) {
+						return cached;
+					}
+					// Slug mismatch → cached mapping is wrong; fall through.
+				} else {
+					return cached;
+				}
 			} catch {
 				// Stale id (Kitsu removed the entry) — fall through to a
 				// live search and re-cache.

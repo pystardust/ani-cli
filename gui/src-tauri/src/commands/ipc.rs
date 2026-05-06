@@ -140,6 +140,20 @@ pub fn cmd_settings_get(state: State<'_, AppState>) -> Result<Config> {
     settings_inner::settings_get(&state)
 }
 
+/// Frontend → backend: wipe every row from the SQLite meta_cache
+/// table — Kitsu search results, anime details, episode lists,
+/// title-match mappings. Does NOT touch the ani-cli history TSV
+/// (which lives at $XDG_STATE_HOME/ani-cli/ani-hsts and is read-only
+/// to us anyway), the on-disk image cache, or settings.
+///
+/// Used by the diagnostics page when cached data goes stale (e.g. an
+/// older app version persisted a wrong title→kitsu_id mapping that
+/// the current resolution rules need to invalidate).
+#[tauri::command]
+pub fn cmd_meta_cache_clear(state: State<'_, AppState>) -> Result<()> {
+    crate::cache::meta_cache_clear(&state.cache_pool)
+}
+
 /// Frontend → backend: write the full settings struct atomically.
 #[tauri::command]
 pub fn cmd_settings_put(state: State<'_, AppState>, cfg: Config) -> Result<()> {
