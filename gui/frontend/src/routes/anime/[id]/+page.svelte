@@ -237,17 +237,16 @@
 		{ key: 'worst', label: 'Worst' }
 	];
 
-	onMount(async () => {
+	onMount(() => {
 		if (!id) {
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
 			return;
 		}
-		// Fire detail + settings + episodes (page 1) in parallel.
+		// Fire detail + settings in parallel; episodes are driven by
+		// the URL-param effect below, not from here.
 		void kitsuAnimeDetail(id)
 			.then((d) => {
 				detail = d;
-				// Once we have the canonical title, kick a similar-titles
-				// search. Cheap heuristic: take the first 1-2 words.
 				const seed = (d.canonical_title ?? '').split(/\s+/).slice(0, 2).join(' ').trim();
 				if (seed.length >= 2) {
 					void kitsuSearch(seed)
@@ -265,26 +264,45 @@
 		void settingsGet()
 			.then((c) => (config = c))
 			.catch((e) => (configError = describeErrorString(e)));
+	});
 
-		// Deep-link from Continue Watching: ?page=N positions the episode
-		// pager, ?ep=M highlights the matching tile and scrolls it into
-		// view. Both are best-effort — invalid values fall back silently.
+	// Drive the episode page off the URL ?page= param. Re-runs on
+	// every URL change, which is what makes navigation between two
+	// /anime/[id] entries with different query strings work — SvelteKit
+	// reuses the component when the route id is the same, so a plain
+	// onMount fires only once.
+	$effect(() => {
+		if (!id) return;
 		const pageParam = parseInt(page.url.searchParams.get('page') ?? '', 10);
+		const target = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+		if (episodes === null) {
+			void fetchEpisodesPage(target, { initial: true });
+		} else if (target !== episodesPage && !episodesLoading) {
+			void fetchEpisodesPage(target);
+		}
+	});
+
+	// Deep-link episode highlight. Fires once per ?ep= value (tracked
+	// via consumedEp) once the matching tile is in `episodes`. Scrolls
+	// the tile into view and auto-clears the accent ring after ~3.2s.
+	let consumedEp: number | null = null;
+	$effect(() => {
 		const epParam = parseInt(page.url.searchParams.get('ep') ?? '', 10);
-		const initialUiPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-		await fetchEpisodesPage(initialUiPage, { initial: true });
-		if (Number.isFinite(epParam) && epParam > 0) {
-			highlightEp = epParam;
-			await tick();
+		if (!Number.isFinite(epParam) || epParam <= 0) return;
+		if (epParam === consumedEp) return;
+		if (!episodes) return;
+		const found = episodes.some((e) => (e.number ?? e.relative_number) === epParam);
+		if (!found) return;
+		consumedEp = epParam;
+		highlightEp = epParam;
+		void tick().then(() => {
 			document
 				.querySelector(`[data-ep-num="${epParam}"]`)
 				?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			// Auto-clear the highlight class so the accent ring is a
-			// brief "you-are-here" cue, not permanent decoration.
-			window.setTimeout(() => {
-				highlightEp = null;
-			}, 3200);
-		}
+		});
+		window.setTimeout(() => {
+			if (highlightEp === epParam) highlightEp = null;
+		}, 3200);
 	});
 
 	$effect(() => {

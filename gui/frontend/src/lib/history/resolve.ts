@@ -2,25 +2,29 @@
  * History → Kitsu resolver.
  *
  * ani-cli (allmanga) sometimes splits one Kitsu anime across several
- * shows. Stone Ocean is the canonical example: allmanga has it as
- * Part 1 (eps 1-12), Part 2 (eps 1-12), Part 3 (eps 1-12); Kitsu has
- * it as a single 38-episode entry. A naive title-match collapses
- * both Continue Watching cards to the same Kitsu page on the same
- * episode, which is wrong.
+ * shows (Stone Ocean Part 1 / Part 2 / Part 3 in allmanga, where on
+ * Kitsu the structure varies — sometimes one parent, sometimes three
+ * separate entries). The Continue Watching cards for those entries
+ * used to render identically; this resolver is the choke point that
+ * keeps each card's display surface tied to the user's hsts entry.
  *
- * This module is the choke point for that resolution. Today's
- * implementation is the title heuristic ("...Part N" / "Cour N" /
- * "Season N" suffix → cour-offset). Tomorrow's implementation pulls
- * `(allmanga_id → anilist_id → kitsu_id, episode_offset)` from the
- * `anime-offline-database` weekly dump, cached locally. Either way,
- * call sites consume the same `ResumeTarget` shape — swap the
- * internals, leave the UI untouched.
+ * Today's implementation only uses entry.title for display
+ * disambiguation and a direct episode mapping. We tried a cour-offset
+ * heuristic ((cour-1) × courSize + ep) on the assumption that Kitsu
+ * collapses multi-cour shows; it didn't survive contact with the
+ * Stone Ocean test case (Kitsu's entry only has the first cour, so
+ * "ep 16" routed to nothing and the page rendered placeholders). The
+ * cour fields are still computed and stored on the target so the
+ * UI can show "Part N" badges if desired, but kitsuEpisode is now a
+ * direct passthrough of displayEpisode.
  *
- * TODO(post-v1): replace `cour-offset-suffix` branch with a lookup
- * against the offline-DB. AniList splits cours like allmanga does, so
- * an allmanga title resolves to an anilist_id directly; the only
- * inferred bit is the offset to Kitsu (which collapses cours). Keep
- * the title heuristic as fallback for entries not in the DB.
+ * TODO(post-v1): replace direct mapping with an offline-DB lookup.
+ * `anime-offline-database` (manami-project) maps allmanga titles → an
+ * anilist_id → kitsu_id with an explicit episode offset where the two
+ * services disagree. AniList splits cours like allmanga does, so the
+ * anilist_id resolution is exact; the kitsu offset is the only
+ * inferred bit. Cache the DB locally, refresh weekly, fall back to
+ * the title heuristic for entries the DB doesn't cover.
  */
 
 import type { HistoryEntry, KitsuAnimeRef } from '$lib/api';
@@ -41,10 +45,13 @@ export interface ResumeTarget {
 	 *  collapses cours into one row and would render two distinct
 	 *  Continue Watching cards as identical strings. */
 	displayTitle: string;
-	/** Title to feed into Kitsu's text search. Same as displayTitle
-	 *  except the trailing cour suffix is stripped so multi-cour
-	 *  allmanga entries land on the same Kitsu anime (which is the
-	 *  parent franchise). */
+	/** Title to feed into Kitsu's text search. Verbatim copy of
+	 *  displayTitle today — Kitsu often stores multi-cour shows as
+	 *  separate entries (Part 1, Part 2, …), and stripping the suffix
+	 *  collapsed Stone Ocean Part 2 onto Part 1's 12-episode page.
+	 *  Kept distinct from displayTitle so a future implementation
+	 *  (offline-DB lookup) can diverge them without churning call
+	 *  sites. */
 	searchTitle: string;
 	/** The episode number the user remembers (allmanga-relative). */
 	displayEpisode: number;
@@ -66,9 +73,8 @@ export interface ResumeTarget {
 	uiPage: number;
 
 	/** Diagnostic — which branch of the resolver fired. Surfaced in
-	 *  case we want to tag cards visually (e.g. show a "best-effort"
-	 *  badge when the cour heuristic kicks in) or log misses. */
-	mappingNote: 'direct' | 'cour-offset-suffix' | 'no-cour-detected' | 'no-kitsu-match';
+	 *  case we want to log misses or tag cards visually. */
+	mappingNote: 'direct' | 'no-kitsu-match';
 }
 
 /** Matches a `Part N` / `Cour N` / `Season N` token at the *end* of
@@ -95,27 +101,12 @@ export function resolveHistoryEntry(
 
 	const courMatch = stripped.match(COUR_SUFFIX_RE);
 	const cour = courMatch ? parseInt(courMatch[1], 10) : 1;
-	const searchTitle = courMatch ? stripped.replace(COUR_SUFFIX_RE, '').trim() : stripped;
+	// searchTitle keeps the cour suffix — see the comment on the
+	// interface field for why.
+	const searchTitle = stripped;
 
-	let kitsuEpisode: number | null = null;
-	let mappingNote: ResumeTarget['mappingNote'];
-
-	if (!kitsuMatch) {
-		mappingNote = 'no-kitsu-match';
-	} else if (cour > 1 && courSize) {
-		kitsuEpisode = (cour - 1) * courSize + displayEpisode;
-		mappingNote = 'cour-offset-suffix';
-	} else if (cour > 1) {
-		// Suffix found but we don't know how many episodes per cour.
-		// Punt to direct mapping; user will land on the wrong episode
-		// but at least the right anime.
-		kitsuEpisode = displayEpisode;
-		mappingNote = 'no-cour-detected';
-	} else {
-		kitsuEpisode = displayEpisode;
-		mappingNote = 'direct';
-	}
-
+	const kitsuEpisode = kitsuMatch ? displayEpisode : null;
+	const mappingNote: ResumeTarget['mappingNote'] = kitsuMatch ? 'direct' : 'no-kitsu-match';
 	const uiPage = kitsuEpisode ? Math.max(1, Math.ceil(kitsuEpisode / EPISODES_UI_PAGE_SIZE)) : 1;
 
 	return {
