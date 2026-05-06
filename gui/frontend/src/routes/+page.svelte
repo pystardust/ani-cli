@@ -688,8 +688,10 @@
 		border: 1px solid var(--ink-200);
 		border-radius: var(--radius-card);
 		overflow: hidden;
-		/* Scope paint per card; transitions removed (instant hover). */
-		contain: layout paint style;
+		transition:
+			transform var(--dur-med) var(--ease-out-elastic),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
 	}
 	.resume-card:hover {
 		transform: translateY(-3px);

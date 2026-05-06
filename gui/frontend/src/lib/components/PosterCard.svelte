@@ -52,18 +52,14 @@
 		scroll-snap-align: start;
 		display: block;
 		color: inherit;
-		/* contain: paint scopes paint invalidations to this card's
-		   box so a hover doesn't cascade out and force the parent
-		   strip to repaint. Combined with .content's containment
-		   one level up, paints are now scoped to individual cards
-		   instead of strips. */
-		contain: layout paint style;
-		/* No transform transition. On webkit2gtk without an
-		   always-on compositor layer (which we removed for memory
-		   reasons), animated transforms go through paint, and 40+
-		   cards × hover-in/hover-out cycles flooded the main
-		   thread. Instant hover state-change keeps the lift cue
-		   without the per-frame paint cost. */
+		transition: transform var(--dur-med) var(--ease-out-elastic);
+		/* `will-change: transform` was here unconditionally, which
+		   promoted every poster card on screen (40+ on the home
+		   strips combined) into its own compositor layer. That's
+		   significant GPU memory and composite-pass cost on
+		   widescreens. Modern browsers handle the on-hover transform
+		   efficiently without the hint; the cost outweighed the
+		   benefit. */
 	}
 	.poster-card:hover {
 		transform: translateY(-4px);
