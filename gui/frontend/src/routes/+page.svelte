@@ -36,6 +36,7 @@
 		resumeQueryString
 	} from '$lib/history/resolve';
 	import { resolveKitsuMatch } from '$lib/history/match';
+	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 
@@ -149,20 +150,24 @@
 	// transform; if we want parallax back, prefer
 	// `animation-timeline: scroll()` over imperative state writes.
 
-	// Hero auto-advance. Tied to heroRotation length + heroPaused, so
-	// hovering the hero or shrinking the rotation freezes it. Reduced
-	// motion: don't start the interval at all.
+	// Hero auto-advance. Decision rules live in $lib/hero-rotation;
+	// this effect is the runtime adapter (matchMedia probe + interval
+	// management).
 	$effect(() => {
-		if (heroRotation.length <= 1) return;
-		if (heroPaused) return;
-		if (
+		const reduced =
 			typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+		if (
+			!shouldRunHeroRotation({
+				rotationLength: heroRotation.length,
+				paused: heroPaused,
+				prefersReducedMotion: !!reduced
+			})
 		) {
 			return;
 		}
 		const id = window.setInterval(() => {
-			heroIndex = (heroIndex + 1) % heroRotation.length;
+			heroIndex = nextHeroIndex(heroIndex, heroRotation.length);
 		}, HERO_ROTATE_MS);
 		return () => window.clearInterval(id);
 	});

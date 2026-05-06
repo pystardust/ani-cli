@@ -30,6 +30,12 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
+	import {
+		decideEpisodeFetchAction,
+		parseEpParam,
+		parsePageParam,
+		shouldHighlight
+	} from '$lib/history/url-deeplink';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -270,18 +276,23 @@
 	});
 
 	// Drive the episode page off the URL ?page= param. Re-runs on
-	// every URL change, which is what makes navigation between two
-	// /anime/[id] entries with different query strings work — SvelteKit
-	// reuses the component when the route id is the same, so a plain
-	// onMount fires only once.
+	// every URL change so navigation between two /anime/[id] entries
+	// with different query strings works (SvelteKit reuses the
+	// component when the route id is the same; a plain onMount fires
+	// only once). The decision rule lives in $lib/history/url-deeplink.
 	$effect(() => {
 		if (!id) return;
-		const pageParam = parseInt(page.url.searchParams.get('page') ?? '', 10);
-		const target = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
-		if (episodes === null) {
-			void fetchEpisodesPage(target, { initial: true });
-		} else if (target !== episodesPage && !episodesLoading) {
-			void fetchEpisodesPage(target);
+		const targetPage = parsePageParam(page.url.searchParams);
+		const action = decideEpisodeFetchAction({
+			episodes,
+			episodesPage,
+			episodesLoading,
+			targetPage
+		});
+		if (action === 'fetch-initial') {
+			void fetchEpisodesPage(targetPage, { initial: true });
+		} else if (action === 'fetch') {
+			void fetchEpisodesPage(targetPage);
 		}
 	});
 
@@ -290,12 +301,10 @@
 	// the tile into view and auto-clears the accent ring after ~3.2s.
 	let consumedEp: number | null = null;
 	$effect(() => {
-		const epParam = parseInt(page.url.searchParams.get('ep') ?? '', 10);
-		if (!Number.isFinite(epParam) || epParam <= 0) return;
-		if (epParam === consumedEp) return;
-		if (!episodes) return;
-		const found = episodes.some((e) => (e.number ?? e.relative_number) === epParam);
-		if (!found) return;
+		const target = parseEpParam(page.url.searchParams);
+		if (!shouldHighlight({ target, consumed: consumedEp, episodes })) return;
+		// shouldHighlight has already validated target is non-null + present.
+		const epParam = target as number;
 		consumedEp = epParam;
 		highlightEp = epParam;
 		void tick().then(() => {

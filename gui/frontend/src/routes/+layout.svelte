@@ -23,6 +23,14 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
 	import { nextDepth, shouldShowBackButton, type NavType } from '$lib/history/nav-depth';
+	import {
+		RECENT_LIMIT,
+		RECENT_STORAGE_KEY,
+		cycleSelectedIdx,
+		decideEnterAction,
+		mergeRecents,
+		parseStoredRecents
+	} from '$lib/topbar/dropdown';
 
 	let { children } = $props();
 
@@ -80,8 +88,8 @@
 	const LIVE_DEBOUNCE_MS = 250;
 	const LIVE_MIN_CHARS = 2;
 	const LIVE_MAX_HITS = 5;
-	const RECENT_KEY = 'ani-gui:recent-searches';
-	const RECENT_MAX = 5;
+	// RECENT_LIMIT + RECENT_STORAGE_KEY come from $lib/topbar/dropdown
+	// so the constants live next to the helpers that consume them.
 
 	let liveResults = $state<KitsuAnimeRef[] | null>(null);
 	let liveBusy = $state(false);
@@ -94,25 +102,17 @@
 
 	onMount(() => {
 		try {
-			const raw = window.localStorage.getItem(RECENT_KEY);
-			if (raw) {
-				const parsed: unknown = JSON.parse(raw);
-				if (Array.isArray(parsed)) {
-					recentSearches = parsed
-						.filter((x): x is string => typeof x === 'string')
-						.slice(0, RECENT_MAX);
-				}
-			}
+			recentSearches = parseStoredRecents(window.localStorage.getItem(RECENT_STORAGE_KEY));
 		} catch {
-			// localStorage unavailable / corrupt — ignore, recents stay empty.
+			// localStorage unavailable — leave recentSearches empty.
 		}
 	});
 
 	function persistRecents(q: string) {
-		const next = [q, ...recentSearches.filter((x) => x !== q)].slice(0, RECENT_MAX);
+		const next = mergeRecents(recentSearches, q, RECENT_LIMIT);
 		recentSearches = next;
 		try {
-			window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+			window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
 		} catch {
 			// Quota / disabled — accept; in-memory state still updates.
 		}
@@ -210,10 +210,10 @@
 		const items = liveResults ?? [];
 		if (e.key === 'ArrowDown' && items.length > 0) {
 			e.preventDefault();
-			selectedIdx = (selectedIdx + 1) % items.length;
+			selectedIdx = cycleSelectedIdx(selectedIdx, 1, items.length);
 		} else if (e.key === 'ArrowUp' && items.length > 0) {
 			e.preventDefault();
-			selectedIdx = (selectedIdx - 1 + items.length) % items.length;
+			selectedIdx = cycleSelectedIdx(selectedIdx, -1, items.length);
 		} else if (e.key === 'Enter' && selectedIdx >= 0 && items[selectedIdx]) {
 			e.preventDefault();
 			navigateToHit(items[selectedIdx]);
@@ -235,16 +235,16 @@
 
 	function onTopbarSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		const q = topbarQuery.trim();
-		if (!q) return;
-		// If a live result is highlighted, jump straight to it.
 		const items = liveResults ?? [];
-		if (selectedIdx >= 0 && items[selectedIdx]) {
-			navigateToHit(items[selectedIdx]);
-			return;
+		const action = decideEnterAction(selectedIdx, items.length, topbarQuery);
+		if (action.type === 'navigate-to-hit') {
+			navigateToHit(items[action.idx]);
+		} else if (action.type === 'submit-query') {
+			const q = topbarQuery.trim();
+			persistRecents(q);
+			navigateToSearch(q);
 		}
-		persistRecents(q);
-		navigateToSearch(q);
+		// 'noop' — empty input + no selection.
 	}
 
 	function onRecentClick(q: string) {
@@ -723,10 +723,13 @@
 		align-items: center;
 		gap: var(--space-5);
 		padding: var(--space-3) var(--space-8);
-		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
-		backdrop-filter: blur(16px) saturate(1.3);
-		-webkit-backdrop-filter: blur(16px) saturate(1.3);
-		border-block-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
+		/* Opaque background — no backdrop-filter. The blur+saturate
+		   used to hammer scroll perf on maximized widescreen windows
+		   (the GPU re-blurred the entire window-width strip on every
+		   frame). The opaque bar reads as a solid header instead of
+		   glass; trade-off taken for 60 fps scroll. */
+		background: var(--ink-000);
+		border-block-end: 1px solid var(--ink-200);
 	}
 	@media (max-inline-size: 720px) {
 		.topbar {
