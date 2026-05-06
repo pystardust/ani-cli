@@ -100,7 +100,7 @@ if [ -d gui/frontend/src ]; then
         # escape src/<area>/<file>.ts → src/<area>/ → src/ → gui/frontend/.
         # shellcheck disable=SC2086
         assert_no_match \
-            'frontend/src/ may not relative-import outside its own src/ tree (chain of `../../..`)' \
+            'frontend/src/ may not relative-import outside its own src/ tree (chain of three or more ..)' \
             "from[[:space:]]+['\"]\\.\\./\\.\\./\\.\\." \
             $files
     fi

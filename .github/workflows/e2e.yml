@@ -47,6 +47,15 @@ jobs:
             gui/frontend/pnpm-lock.yaml
             gui/electron/pnpm-lock.yaml
 
+      - name: Install vendored ani-cli onto PATH
+        # The Rust backend's `AppState::build` resolves `ani-cli` via
+        # `find_in_path`. CI doesn't have it; copy the repo's vendored
+        # script into /usr/local/bin so the backend boots cleanly.
+        # Tests stub the API at the renderer layer, so we never
+        # actually invoke ani-cli — its runtime deps (fzf, mpv, etc.)
+        # are intentionally not installed here.
+        run: sudo install -m 0755 ani-cli /usr/local/bin/ani-cli
+
       - name: Linux deps for Electron + Xvfb
         # Electron's chrome process needs the standard NSS / X / GTK
         # bundle even in headless Xvfb mode. `xvfb-run` is the wrapper
