@@ -43,6 +43,7 @@ playwright-report/
 # Bash test scratch
 .bats-tmp/
 tests/.bats-cache/
+tests/bash/.bats-vendor/
 
 # Editor / OS
 .vscode/

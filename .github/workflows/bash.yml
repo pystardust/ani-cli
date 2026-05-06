@@ -90,13 +90,19 @@ jobs:
             mpv \
             ffmpeg \
             aria2
+      - name: Install kcov (for bash coverage)
+        run: sudo apt-get install -y kcov
       - name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
       - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating
         run: ./tests/bash/helpers/run-suite.sh
-      - name: Coverage with kcov — informational only (not yet gating)
+      - name: Coverage with kcov
         run: ./tests/bash/helpers/coverage.sh
-        continue-on-error: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Ratchet — fail if coverage drops
+        run: node tools/check-coverage-baseline.mjs
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4

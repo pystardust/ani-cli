@@ -49,5 +49,19 @@ jobs:
       - name: vitest run
         run: pnpm run test
 
+      - name: vitest run with coverage
+        run: pnpm exec vitest run --coverage
+
+      - name: Ratchet — fail if coverage drops
+        working-directory: ${{ github.workspace }}
+        run: node tools/check-coverage-baseline.mjs
+
+      - name: Upload lcov for downstream CRAP job
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-lcov
+          path: gui/frontend/coverage/lcov.info
+          retention-days: 7
+
       - name: production build (vite + adapter-static)
         run: pnpm run build

@@ -1,0 +1,80 @@
+name: 'crap score'
+# CRAP = Change Risk Anti-Patterns. Per-file, ccn² × (1 − cov)² + ccn.
+# Self-contained: regenerates Rust + frontend lcov files, runs lizard,
+# computes per-file CRAP, then ratchets against `coverage-baseline.json`.
+# Gates the merge — current numbers are the ceiling.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'gui/backend/**'
+      - 'gui/frontend/**'
+      - 'tools/**'
+      - 'coverage-baseline.json'
+  pull_request:
+    paths:
+      - 'gui/backend/**'
+      - 'gui/frontend/**'
+      - 'tools/**'
+      - 'coverage-baseline.json'
+      - '.github/workflows/crap.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  crap:
+    name: lizard + ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lizard (cyclomatic complexity)
+        run: pip install lizard==1.22.1
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui/backend
+          shared-key: llvm-cov
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: gui/frontend/pnpm-lock.yaml
+
+      - name: pnpm install (frontend)
+        working-directory: gui/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Rust lcov
+        working-directory: gui/backend
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+
+      - name: Generate frontend lcov
+        working-directory: gui/frontend
+        run: pnpm exec vitest run --coverage
+
+      - name: Compute CRAP
+        run: |
+          mkdir -p coverage
+          lizard --xml gui/backend/src gui/frontend/src \
+            | node tools/crap-score.mjs \
+                --lcov=gui/backend/lcov.info \
+                --lcov=gui/frontend/coverage/lcov.info:gui/frontend \
+                --root=. --json > coverage/crap-summary.json
+          cat coverage/crap-summary.json
+
+      - name: Ratchet — fail if max/p95/high_risk regressed
+        run: node tools/check-coverage-baseline.mjs

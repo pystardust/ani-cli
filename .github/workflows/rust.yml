@@ -83,6 +83,34 @@ jobs:
         working-directory: gui/backend
         run: cargo test --workspace --all-features
 
+  coverage:
+    name: cargo-llvm-cov + ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui/backend
+          shared-key: llvm-cov
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate lcov
+        working-directory: gui/backend
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Ratchet — fail if coverage drops
+        run: node tools/check-coverage-baseline.mjs
+      - name: Upload lcov for downstream CRAP job
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-lcov
+          path: gui/backend/lcov.info
+          retention-days: 7
+
   # proptests:
   #   The dedicated proptests target was scoped in plan §4 but never built —
   #   property-testing currently lives inline inside the relevant module's
