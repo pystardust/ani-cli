@@ -85,16 +85,30 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
         url::Url::parse(&resolved.selected_url).map_err(|_| AniError::ParseFailed {
             detail: format!("upstream_url: {} is not a valid URL", resolved.selected_url),
         })?;
+
+    // Infer Referer when ani-cli's debug output didn't include one.
+    // Mirrors `refr_flag` switch in ani-cli (line ~209): the
+    // tools.fast4speed.rsvp CDN enforces Referer = https://allmanga.to
+    // and 403s requests without it. ani-cli sets the header internally
+    // when invoking the player but doesn't surface it on stdout, so
+    // the parser sees None for these URLs.
+    let referer = match resolved.referer {
+        Some(r) if !r.is_empty() => r,
+        _ => match upstream_url.host_str() {
+            Some(h) if h.ends_with("fast4speed.rsvp") => "https://allmanga.to".to_string(),
+            _ => String::new(),
+        },
+    };
+
     let kind = match MediaKind::from_url(&upstream_url) {
         Some(k) => k,
         None => {
-            let referer = resolved.referer.as_deref().unwrap_or("");
             // HEAD failures fall back to MP4 — that's the safe default
             // (binary streams, unknown CDNs). The proxy then serves
             // /file.mp4 with byte-range support; if the upstream truly
             // is an HLS manifest mislabelled, hls.js never enters the
             // picture and the renderer surfaces a real error.
-            upstream::classify_via_head(&state.proxy_http, &upstream_url, referer)
+            upstream::classify_via_head(&state.proxy_http, &upstream_url, &referer)
                 .await
                 .unwrap_or(MediaKind::Mp4)
         }
@@ -103,14 +117,14 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
         title = %args.title,
         episode = %args.episode,
         upstream = upstream_url.as_str(),
-        referer = resolved.referer.as_deref().unwrap_or(""),
+        referer = referer.as_str(),
         kind = ?kind,
         "play: ani-cli resolved upstream",
     );
 
     let session_args = CreateSessionArgs {
         upstream_url: resolved.selected_url,
-        referer: resolved.referer.unwrap_or_default(),
+        referer,
         subtitle_url: resolved.subtitle_url,
     };
     create_session_with_kind(state, &session_args, kind)
@@ -130,6 +144,20 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let quality = args.quality.as_deref().unwrap_or("best");
     let resolved = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
 
+    // Same Referer-inference as the embedded path — fast4speed.rsvp
+    // 403s without `Referer: https://allmanga.to` and ani-cli's debug
+    // output doesn't surface the header it sets internally.
+    let referer = match resolved.referer.as_ref() {
+        Some(r) if !r.is_empty() => Some(r.clone()),
+        _ => match url::Url::parse(&resolved.selected_url)
+            .ok()
+            .and_then(|u| u.host_str().map(str::to_string))
+        {
+            Some(h) if h.ends_with("fast4speed.rsvp") => Some("https://allmanga.to".to_string()),
+            _ => None,
+        },
+    };
+
     // Player command comes from the user's settings file with the
     // documented default (`mpv`). Falling back to the default config
     // is intentional: a corrupt settings file shouldn't prevent the
@@ -138,7 +166,7 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
 
     let launch = LaunchArgs {
         stream_url: resolved.selected_url,
-        referer: resolved.referer,
+        referer,
         subtitle_url: resolved.subtitle_url,
         title: Some(format!("{} · ep {}", args.title, args.episode)),
         player_command: cfg.external_player,
