@@ -44,21 +44,48 @@ pub struct CreateSessionResponse {
 }
 
 /// Validate the inputs and register a new [`StreamSession`] in
-/// [`AppState::sessions`].
+/// [`AppState::sessions`]. Infers the [`MediaKind`] from the upstream
+/// URL extension; callers with stronger signal (e.g. a HEAD response)
+/// should use [`create_session_with_kind`] instead.
 ///
 /// # Errors
 /// - [`AniError::ParseFailed`] if `upstream_url` or `subtitle_url` is not a
 ///   parseable URL or uses a scheme other than `http`/`https`.
 pub fn create_session(state: &AppState, args: &CreateSessionArgs) -> Result<CreateSessionResponse> {
     let upstream = parse_http_url(&args.upstream_url, "upstream_url")?;
+    let kind = MediaKind::from_url(&upstream).unwrap_or(MediaKind::Hls);
+    create_session_inner(state, args, upstream, kind)
+}
+
+/// Like [`create_session`], but takes an explicit [`MediaKind`] decided
+/// by the caller (typically via a HEAD round-trip when the URL
+/// extension is ambiguous).
+///
+/// # Errors
+/// Same as [`create_session`].
+pub fn create_session_with_kind(
+    state: &AppState,
+    args: &CreateSessionArgs,
+    kind: MediaKind,
+) -> Result<CreateSessionResponse> {
+    let upstream = parse_http_url(&args.upstream_url, "upstream_url")?;
+    create_session_inner(state, args, upstream, kind)
+}
+
+fn create_session_inner(
+    state: &AppState,
+    args: &CreateSessionArgs,
+    upstream: Url,
+    media_kind: MediaKind,
+) -> Result<CreateSessionResponse> {
     let subtitle = match args.subtitle_url.as_deref() {
         None | Some("") => None,
         Some(s) => Some(parse_http_url(s, "subtitle_url")?),
     };
 
-    let session = StreamSession::new(upstream, args.referer.clone(), subtitle.clone());
+    let session =
+        StreamSession::new_with_kind(upstream, media_kind, args.referer.clone(), subtitle.clone());
     let id = session.id;
-    let media_kind = session.media_kind;
     state.sessions.insert(session);
 
     let session_str = id.as_string();

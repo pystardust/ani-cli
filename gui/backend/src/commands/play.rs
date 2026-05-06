@@ -22,10 +22,11 @@ use crate::anicli::process::{run_debug, DebugOptions};
 use crate::app::AppState;
 use crate::commands::{
     external_player::{self, LaunchArgs},
-    session::{create_session, CreateSessionArgs, CreateSessionResponse},
+    session::{create_session_with_kind, CreateSessionArgs, CreateSessionResponse},
 };
 use crate::config::read_config;
-use crate::error::Result;
+use crate::error::{AniError, Result};
+use crate::proxy::{upstream, MediaKind};
 
 /// Frontend → backend payload for both play endpoints.
 #[derive(Debug, Clone, Deserialize)]
@@ -78,12 +79,32 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
     let quality = args.quality.as_deref().unwrap_or("best");
     let debug = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
 
+    // Decide media kind: cheap path-extension first, HEAD fallback
+    // when the URL is opaque (fast4speed.rsvp/<id>/sub/1, etc).
+    let upstream_url = url::Url::parse(&debug.selected_url).map_err(|_| AniError::ParseFailed {
+        detail: format!("upstream_url: {} is not a valid URL", debug.selected_url),
+    })?;
+    let kind = match MediaKind::from_url(&upstream_url) {
+        Some(k) => k,
+        None => {
+            let referer = debug.referer.as_deref().unwrap_or("");
+            // HEAD failures fall back to MP4 — that's the safe default
+            // (binary streams, unknown CDNs). The proxy then serves
+            // /file.mp4 with byte-range support; if the upstream truly
+            // is an HLS manifest mislabelled, hls.js never enters the
+            // picture and the renderer surfaces a real error.
+            upstream::classify_via_head(&state.proxy_http, &upstream_url, referer)
+                .await
+                .unwrap_or(MediaKind::Mp4)
+        }
+    };
+
     let session_args = CreateSessionArgs {
         upstream_url: debug.selected_url,
         referer: debug.referer.unwrap_or_default(),
         subtitle_url: debug.subtitle_url,
     };
-    create_session(state, &session_args)
+    create_session_with_kind(state, &session_args, kind)
 }
 
 /// Resolve `args` against ani-cli and hand the upstream URL straight

@@ -79,6 +79,59 @@ pub async fn fetch_text(
     Ok((bytes, content_type))
 }
 
+/// HEAD an upstream URL and decide whether the body it would return is
+/// an HLS manifest or an MP4 byte stream. Used as a fallback when the
+/// URL path has no recognisable extension (some embed hosts hand back
+/// opaque paths like `…/videos/<id>/sub/1`).
+///
+/// Rule: any `content-type` mentioning "mpegurl" or "m3u8" is HLS.
+/// Everything else (incl. `application/octet-stream`, `video/mp4`,
+/// missing content-type) is MP4. HLS manifests always advertise
+/// themselves; MP4 streams sometimes don't, so the fall-through goes
+/// to MP4 to avoid trying to parse a multi-hundred-MB binary as text.
+///
+/// # Errors
+/// - [`AniError::Network`] for connection or DNS failures
+/// - [`AniError::Upstream`] when the HEAD response is non-2xx
+pub async fn classify_via_head(
+    client: &reqwest::Client,
+    url: &Url,
+    referer: &str,
+) -> Result<crate::proxy::token::MediaKind> {
+    use crate::proxy::token::MediaKind;
+
+    let mut headers = HeaderMap::new();
+    if let Ok(v) = HeaderValue::from_str(referer) {
+        headers.insert(REFERER, v);
+    }
+    headers.insert(USER_AGENT, HeaderValue::from_static(UA));
+
+    let resp = client
+        .head(url.as_str())
+        .headers(headers)
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+    let ct = resp
+        .headers()
+        .get(HeaderName::from_static("content-type"))
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let is_hls = ct.contains("mpegurl") || ct.contains("m3u8");
+    Ok(if is_hls {
+        MediaKind::Hls
+    } else {
+        MediaKind::Mp4
+    })
+}
+
 /// Issue a GET to upstream and return the [`reqwest::Response`] without
 /// buffering its body. The proxy's MP4 pass-through hands the response
 /// stream straight to axum, so a 600 MB MP4 doesn't get materialised in
