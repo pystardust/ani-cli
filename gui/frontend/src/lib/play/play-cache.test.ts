@@ -1,11 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CreateSessionResponse } from '$lib/api';
-import {
-	__resetPlayCacheForTests,
-	clearForShow,
-	getOrFire,
-	makeKey
-} from './play-cache';
+import { __resetPlayCacheForTests, clearForShow, getOrFire, makeKey } from './play-cache';
 
 function fakeResp(seed: string): CreateSessionResponse {
 	return {
@@ -22,9 +17,7 @@ afterEach(() => {
 
 describe('makeKey', () => {
 	it('is stable for the same inputs', () => {
-		expect(makeKey('show-1', 1, 'sub', 'best')).toBe(
-			makeKey('show-1', 1, 'sub', 'best')
-		);
+		expect(makeKey('show-1', 1, 'sub', 'best')).toBe(makeKey('show-1', 1, 'sub', 'best'));
 	});
 
 	it('differs across each axis', () => {
