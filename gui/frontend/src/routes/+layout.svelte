@@ -779,10 +779,29 @@
 		padding: 0;
 		background: transparent;
 		border: 0;
-		outline: 0;
+		outline: none;
+		/* `appearance: none` strips the UA styling on `<input type="search">`,
+		   which on Chromium otherwise paints an inset focus rectangle that
+		   our outer wrapper's box-shadow ring already covers. */
+		appearance: none;
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		box-shadow: none;
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
 		color: var(--bone-100);
+	}
+	.topbar-search input:focus,
+	.topbar-search input:focus-visible {
+		outline: none;
+		box-shadow: none;
+	}
+	/* Webkit/Chromium type="search" pseudo-elements that can render
+	   their own visuals on focus — kill all of them. */
+	.topbar-search input::-webkit-search-decoration,
+	.topbar-search input::-webkit-search-results-button,
+	.topbar-search input::-webkit-search-results-decoration {
+		display: none;
 	}
 	.topbar-search input::placeholder {
 		color: var(--bone-400);
