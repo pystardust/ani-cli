@@ -5,6 +5,9 @@ import {
 	createSession,
 	historyClear,
 	historyList,
+	imageProxyUrl,
+	kitsuAnimeDetail,
+	kitsuSearch,
 	openExternalPlayer,
 	proxyBaseUrl
 } from './api';
@@ -150,5 +153,71 @@ describe('openExternalPlayer', () => {
 				player_command: 'mpv'
 			}
 		});
+	});
+});
+
+describe('kitsuSearch', () => {
+	it('passes query under the query key the Rust handler expects', async () => {
+		mockedInvoke.mockResolvedValue([
+			{
+				id: '12',
+				canonical_title: 'One Piece',
+				slug: 'one-piece',
+				synopsis: 'Long ago…',
+				start_date: '1999-10-20',
+				end_date: null,
+				episode_count: null,
+				average_rating: 83.98,
+				subtype: 'TV',
+				status: 'current',
+				age_rating: 'PG',
+				popularity_rank: 1,
+				poster_image: null,
+				cover_image: null
+			}
+		]);
+		const hits = await kitsuSearch('one piece');
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_search', { query: 'one piece' });
+		expect(hits).toHaveLength(1);
+		expect(hits[0].canonical_title).toBe('One Piece');
+	});
+});
+
+describe('kitsuAnimeDetail', () => {
+	it('passes id under the id key', async () => {
+		mockedInvoke.mockResolvedValue({
+			id: '12',
+			canonical_title: 'One Piece',
+			slug: null,
+			synopsis: null,
+			start_date: null,
+			end_date: null,
+			episode_count: null,
+			average_rating: null,
+			subtype: null,
+			status: null,
+			age_rating: null,
+			popularity_rank: null,
+			poster_image: null,
+			cover_image: null
+		});
+		const detail = await kitsuAnimeDetail('12');
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_anime_detail', { id: '12' });
+		expect(detail.id).toBe('12');
+	});
+});
+
+describe('imageProxyUrl', () => {
+	it('rewrites https URLs to image://', () => {
+		expect(imageProxyUrl('https://media.kitsu.app/anime/12/poster.jpg')).toBe(
+			'image://media.kitsu.app/anime/12/poster.jpg'
+		);
+	});
+	it('returns null for null/undefined/empty/non-https input', () => {
+		expect(imageProxyUrl(null)).toBeNull();
+		expect(imageProxyUrl(undefined)).toBeNull();
+		expect(imageProxyUrl('')).toBeNull();
+		expect(imageProxyUrl('http://insecure.example/x.jpg')).toBeNull();
+		expect(imageProxyUrl('data:image/png;base64,…')).toBeNull();
 	});
 });

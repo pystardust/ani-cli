@@ -60,6 +60,41 @@ export interface AniErrorPayload {
 	status?: number;
 }
 
+/** Portrait poster URLs (5:7) at Kitsu's pre-rendered sizes. */
+export interface KitsuPosterImage {
+	tiny: string | null;
+	small: string | null;
+	medium: string | null;
+	large: string | null;
+	original: string | null;
+}
+
+/** Banner cover URLs (21:5). No `medium` key — Kitsu doesn't expose one. */
+export interface KitsuCoverImage {
+	tiny: string | null;
+	small: string | null;
+	large: string | null;
+	original: string | null;
+}
+
+/** Public Kitsu anime view returned by `cmd_kitsu_search` / `_anime_detail`. */
+export interface KitsuAnimeRef {
+	id: string;
+	canonical_title: string;
+	slug: string | null;
+	synopsis: string | null;
+	start_date: string | null;
+	end_date: string | null;
+	episode_count: number | null;
+	average_rating: number | null;
+	subtype: string | null;
+	status: string | null;
+	age_rating: string | null;
+	popularity_rank: number | null;
+	poster_image: KitsuPosterImage | null;
+	cover_image: KitsuCoverImage | null;
+}
+
 export function appInfo(): Promise<AppInfo> {
 	return invoke<AppInfo>('cmd_app_info');
 }
@@ -82,4 +117,25 @@ export function createSession(args: CreateSessionArgs): Promise<CreateSessionRes
 
 export function openExternalPlayer(args: LaunchExternalPlayerArgs): Promise<void> {
 	return invoke<void>('cmd_open_external_player', { args });
+}
+
+export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
+	return invoke<KitsuAnimeRef[]>('cmd_kitsu_search', { query });
+}
+
+export function kitsuAnimeDetail(id: string): Promise<KitsuAnimeRef> {
+	return invoke<KitsuAnimeRef>('cmd_kitsu_anime_detail', { id });
+}
+
+/**
+ * Convert an `https://media.kitsu.app/…` URL into the equivalent
+ * `image://…` URL the Tauri custom protocol handles. Returns `null` if
+ * the input isn't an https URL we can rewrite.
+ */
+export function imageProxyUrl(httpsUrl: string | null | undefined): string | null {
+	if (!httpsUrl) return null;
+	if (httpsUrl.startsWith('https://')) {
+		return 'image://' + httpsUrl.slice('https://'.length);
+	}
+	return null;
 }

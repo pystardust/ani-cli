@@ -98,6 +98,13 @@
 </section>
 
 <section>
+	<h2>Search Kitsu</h2>
+	<p>
+		<a href={resolve('/search')}>Open Kitsu search</a> — find anime by title, browse posters and metadata.
+	</p>
+</section>
+
+<section>
 	<h2>Test Stream</h2>
 	<p>
 		<a href={resolve('/play')}>Open Test Stream</a> — paste a public HLS URL to verify the streaming proxy
