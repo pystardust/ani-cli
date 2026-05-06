@@ -1,0 +1,9 @@
+# Generated
+.svelte-kit
+build
+dist
+node_modules
+
+# Lockfiles — the package manager owns these
+pnpm-lock.yaml
+package-lock.json
