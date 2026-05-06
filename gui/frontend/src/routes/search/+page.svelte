@@ -7,6 +7,7 @@
 	import { resolve } from '$app/paths';
 	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let query = $state('');
 	let submitted = $state(''); // the query whose results are on screen.
@@ -88,10 +89,7 @@
 </svelte:head>
 
 <header class="topbar">
-	<a class="back" href={resolve('/')}>
-		<span class="back-rule" aria-hidden="true"></span>
-		<span class="back-label">ani-gui</span>
-	</a>
+	<BackButton label="Back" fallback="/" />
 	<form class="searchform" onsubmit={submit} role="search">
 		<span class="kbd" aria-hidden="true">/</span>
 		<input
@@ -226,27 +224,6 @@
 		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
 		border-block-end: 1px solid var(--ink-200);
 		backdrop-filter: blur(8px); /* purposeful: sticky bar over scrolling content. */
-	}
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-family: var(--font-display);
-		font-size: var(--type-body-l);
-		letter-spacing: var(--tracking-display);
-		color: var(--bone-100);
-	}
-	.back-rule {
-		inline-size: 1.25rem;
-		block-size: 1px;
-		background: var(--bone-300);
-		transition: inline-size var(--dur-fast) var(--ease-out-soft);
-	}
-	.back:hover .back-rule {
-		inline-size: 2rem;
-	}
-	.back-label {
-		font-style: italic;
 	}
 
 	.searchform {

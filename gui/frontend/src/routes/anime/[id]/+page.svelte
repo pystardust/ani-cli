@@ -1,33 +1,65 @@
 <!--
-  Anime detail — editorial magazine spread. M3 design pass.
-  Hero band (cover_image with blurred-poster fallback), poster hangs in,
-  metadata pill row tinted by per-anime accent, drop-cap synopsis,
-  manga-page divider, honest "Episodes coming in M2" placeholder.
+  Anime detail v2 — editorial spread, but no longer synopsis-dominant.
+  Composition:
+    - Topbar with the global BackButton (consistent across the app).
+    - Hero band (cover_image with blurred-poster fallback) + parallax.
+    - Masthead: poster hangs into the hero. Right column carries title +
+      action row (Play / Download / External) + Sub-Dub + Quality + meta-row.
+    - 2-column body: left = synopsis (≤60ch, drop cap kept), right =
+      Episodes panel (12 placeholder tiles with per-anime accent on hover).
+      Vertical accent-tinted hairline divides the columns.
+  CLI features represented even when wiring is M2:
+    Mode (sub/dub) and Quality persist via settingsGet/settingsPut today.
+    Play / Download / External are wired to TODOs with inline notice.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
-	import { imageProxyUrl, kitsuAnimeDetail, type KitsuAnimeRef } from '$lib/api';
+	import {
+		imageProxyUrl,
+		kitsuAnimeDetail,
+		settingsGet,
+		settingsPut,
+		type Config,
+		type KitsuAnimeRef
+	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
 	let scrollY = $state(0);
 
+	let config = $state<Config | null>(null);
+	let configError = $state<string | null>(null);
+
+	// Inline status banner when an action isn't wired yet (Play/Download/External
+	// hit allanime, which is M2). Kept tight; not a modal.
+	let actionNotice = $state<string | null>(null);
+
 	const id = $derived(page.params.id ?? '');
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
+
+	const QUALITIES: Array<{ key: string; label: string }> = [
+		{ key: 'best', label: 'Best' },
+		{ key: '1080', label: '1080' },
+		{ key: '720', label: '720' },
+		{ key: '480', label: '480' },
+		{ key: 'worst', label: 'Worst' }
+	];
 
 	onMount(async () => {
 		if (!id) {
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
 			return;
 		}
-		try {
-			detail = await kitsuAnimeDetail(id);
-		} catch (e) {
-			error = describeError(e);
-		}
+		// Fire detail + settings in parallel.
+		void kitsuAnimeDetail(id)
+			.then((d) => (detail = d))
+			.catch((e) => (error = describeError(e)));
+		void settingsGet()
+			.then((c) => (config = c))
+			.catch((e) => (configError = describeErrorString(e)));
 	});
 
 	$effect(() => {
@@ -51,6 +83,14 @@
 			return { headline: "Couldn't load this title.", detail };
 		}
 		return { headline: "Couldn't load this title.", detail: String(e) };
+	}
+	function describeErrorString(e: unknown): string {
+		if (typeof e === 'object' && e !== null) {
+			const obj = e as Record<string, unknown>;
+			if (typeof obj.detail === 'string') return obj.detail;
+			if (typeof obj.kind === 'string') return obj.kind;
+		}
+		return String(e);
 	}
 
 	function heroFor(d: KitsuAnimeRef): { url: string | null; isCover: boolean } {
@@ -82,11 +122,65 @@
 	function subtypeLabel(s: string | null): string {
 		return (s ?? 'TV').toUpperCase();
 	}
-
 	function heroTransform(y: number, isCover: boolean): string {
+		// Honor prefers-reduced-motion: when set, the hero doesn't translate
+		// on scroll. Scale (which doesn't move) is kept for visual polish.
+		if (
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+		) {
+			return `translate3d(0, 0, 0) scale(${isCover ? 1.02 : 1.15})`;
+		}
 		const offset = Math.min(y * 0.25, 80);
 		const scale = isCover ? 1.02 : 1.15;
 		return `translate3d(0, ${offset}px, 0) scale(${scale})`;
+	}
+
+	async function setMode(mode: 'sub' | 'dub') {
+		if (!config || config.mode === mode) return;
+		const next: Config = { ...config, mode };
+		config = next;
+		try {
+			await settingsPut(next);
+		} catch (e) {
+			configError = describeErrorString(e);
+		}
+	}
+	async function setQuality(q: string) {
+		if (!config || config.quality === q) return;
+		const next: Config = { ...config, quality: q };
+		config = next;
+		try {
+			await settingsPut(next);
+		} catch (e) {
+			configError = describeErrorString(e);
+		}
+	}
+
+	function notify(msg: string) {
+		actionNotice = msg;
+		// auto-dismiss after a beat so it doesn't stack.
+		setTimeout(() => {
+			if (actionNotice === msg) actionNotice = null;
+		}, 4000);
+	}
+
+	function onPlay() {
+		// TODO: M2 — resolve allanime episode 1 by Kitsu→allanime title match,
+		// hand the stream URL into createSession, navigate to /play.
+		notify('Playback wires up in M2 once the allanime bridge lands.');
+	}
+	function onDownload() {
+		// TODO: M2 — invoke ani-cli -d for episode 1 via Tauri sidecar.
+		notify('Downloads wire up alongside playback in M2.');
+	}
+	function onExternal() {
+		// TODO: M2 — pass the resolved upstream URL to cmd_open_external_player.
+		notify('External player launches once a stream resolves (M2).');
+	}
+	function onPickEpisode(n: number) {
+		// TODO: M2 — needs Kitsu→allanime mapping.
+		notify(`Episode ${n} will play once the allanime bridge lands (M2).`);
 	}
 </script>
 
@@ -95,10 +189,7 @@
 </svelte:head>
 
 <header class="topbar">
-	<a class="back" href={resolve('/search')}>
-		<span class="back-rule" aria-hidden="true"></span>
-		<span class="back-label">Search</span>
-	</a>
+	<BackButton label="Back" fallback="/" />
 </header>
 
 <main class="page" style:--accent={accent}>
@@ -163,6 +254,65 @@
 
 				<h1 class="title">{detail.canonical_title}</h1>
 
+				<!-- Action row: primary play, secondary download, ghost external -->
+				<div class="actions" aria-label="Title actions">
+					<button type="button" class="btn btn-primary" onclick={onPlay}>
+						<span aria-hidden="true">▸</span>
+						<span>Play episode 1</span>
+					</button>
+					<button type="button" class="btn btn-outline" onclick={onDownload}>
+						<span aria-hidden="true">↓</span>
+						<span>Download</span>
+					</button>
+					<button type="button" class="btn btn-ghost" onclick={onExternal}>
+						<span>External player</span>
+						<span aria-hidden="true">↗</span>
+					</button>
+				</div>
+
+				<!-- Sub/Dub + Quality controls. Reads/writes ani-gui config. -->
+				<div class="controls">
+					<div class="seg-group" role="group" aria-label="Audio mode">
+						<span class="seg-label">Audio</span>
+						<div class="seg">
+							{#each ['sub', 'dub'] as mode (mode)}
+								<button
+									type="button"
+									class="seg-btn"
+									class:active={config?.mode === mode}
+									aria-pressed={config?.mode === mode}
+									disabled={!config}
+									onclick={() => setMode(mode as 'sub' | 'dub')}
+								>
+									{mode.toUpperCase()}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="seg-group" role="group" aria-label="Quality">
+						<span class="seg-label">Quality</span>
+						<div class="seg seg-narrow">
+							{#each QUALITIES as q (q.key)}
+								<button
+									type="button"
+									class="seg-btn"
+									class:active={config?.quality === q.key}
+									aria-pressed={config?.quality === q.key}
+									disabled={!config}
+									onclick={() => setQuality(q.key)}
+								>
+									{q.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					{#if configError}
+						<span class="seg-error" role="alert">Settings: {configError}</span>
+					{/if}
+				</div>
+
 				<ul class="meta-row" aria-label="Title metadata">
 					{#if year}
 						<li class="meta-pill">
@@ -202,22 +352,51 @@
 			</div>
 		</section>
 
-		{#if detail.synopsis}
-			<section class="synopsis">
-				<h2 class="section-eyebrow">Synopsis</h2>
-				<p class="prose">{detail.synopsis}</p>
-			</section>
+		{#if actionNotice}
+			<div class="action-notice" role="status">
+				<span class="action-notice-key">Note</span>
+				<span class="action-notice-rule" aria-hidden="true"></span>
+				<span>{actionNotice}</span>
+			</div>
 		{/if}
 
-		<hr class="manga-rule" aria-hidden="true" />
+		<!-- 2-column body: synopsis + episodes panel -->
+		<section class="body">
+			<div class="body-col body-col-prose">
+				<h2 class="section-eyebrow">Synopsis</h2>
+				{#if detail.synopsis}
+					<p class="prose">{detail.synopsis}</p>
+				{:else}
+					<p class="prose-empty">No synopsis on file at Kitsu.</p>
+				{/if}
+			</div>
 
-		<section class="episodes">
-			<h2 class="section-eyebrow">Episodes</h2>
-			<p class="placeholder">
-				Episodes will surface once the allanime bridge lands (M2). Until then, paste an upstream HLS
-				URL into <a class="inline-link" href={resolve('/play')}>Test Stream</a>
-				to validate playback end-to-end.
-			</p>
+			<div class="body-divider" aria-hidden="true"></div>
+
+			<div class="body-col body-col-episodes">
+				<h2 class="section-eyebrow">
+					<span>Episodes</span>
+					<span class="section-eyebrow-faint">
+						{detail.episode_count
+							? `${Math.min(12, detail.episode_count)} of ${detail.episode_count}`
+							: 'preview'}
+					</span>
+				</h2>
+				<ul class="ep-grid">
+					{#each Array.from({ length: Math.min(12, detail.episode_count ?? 12) }, (_, k) => k + 1) as n (n)}
+						<li>
+							<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+								<span class="ep-key">Ep</span>
+								<span class="ep-num">{n.toString().padStart(2, '0')}</span>
+								<span class="ep-meta">23m</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+				<p class="ep-foot">
+					Tiles are placeholders until the allanime bridge lands (M2). Tap to confirm wiring.
+				</p>
+			</div>
 		</section>
 	{/if}
 </main>
@@ -231,25 +410,6 @@
 		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
 		backdrop-filter: blur(8px); /* purposeful: top bar over hero. */
 		border-block-end: 1px solid var(--ink-200);
-	}
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-200);
-	}
-	.back-rule {
-		inline-size: 1.25rem;
-		block-size: 1px;
-		background: var(--bone-300);
-		transition: inline-size var(--dur-fast) var(--ease-out-soft);
-	}
-	.back:hover .back-rule {
-		inline-size: 2rem;
 	}
 
 	.page {
@@ -274,7 +434,6 @@
 		object-fit: cover;
 		object-position: center 30%;
 		will-change: transform;
-		/* parallax handled via style:transform; this is the entrance. */
 		animation: hero-in var(--dur-slow) var(--ease-out-soft) both;
 	}
 	@keyframes hero-in {
@@ -307,8 +466,6 @@
 		pointer-events: none;
 	}
 	.hero-grain {
-		/* SVG noise grain — gives the blurred-poster fallback a film-stock
-		   texture so it doesn't read as "broken upscale". */
 		position: absolute;
 		inset: 0;
 		opacity: 0.18;
@@ -318,7 +475,7 @@
 		mix-blend-mode: overlay;
 	}
 
-	/* — Masthead: asymmetric. Poster hangs into the hero band. */
+	/* — Masthead: poster hangs into hero. */
 	.masthead {
 		display: grid;
 		grid-template-columns: minmax(12rem, 16rem) 1fr;
@@ -410,7 +567,6 @@
 		line-height: var(--leading-tight);
 		letter-spacing: var(--tracking-display);
 		color: var(--bone-100);
-		/* Italic on the magazine-spread pull is an editorial tell. */
 		font-style: italic;
 		animation: text-in var(--dur-med) var(--ease-out-soft) both;
 		animation-delay: 60ms;
@@ -426,6 +582,121 @@
 		}
 	}
 
+	/* — Action row. */
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-block-end: var(--space-5);
+	}
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-5);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-100);
+		border: 1px solid var(--ink-300);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-soft);
+	}
+	.btn:hover {
+		transform: translateY(-1px);
+	}
+	.btn-primary {
+		background: var(--accent);
+		color: var(--ink-000);
+		border-color: var(--accent);
+	}
+	.btn-primary:hover {
+		background: color-mix(in oklab, var(--accent) 88%, var(--bone-100));
+	}
+	.btn-outline {
+		color: var(--bone-100);
+		border-color: var(--bone-300);
+	}
+	.btn-outline:hover {
+		border-color: var(--bone-100);
+	}
+	.btn-ghost {
+		color: var(--bone-300);
+		border-color: transparent;
+		padding-inline: var(--space-2);
+	}
+	.btn-ghost:hover {
+		color: var(--bone-100);
+	}
+
+	/* — Segmented controls (sub/dub + quality). */
+	.controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-5);
+		align-items: center;
+		margin-block-end: var(--space-5);
+	}
+	.seg-group {
+		display: inline-flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.seg-label {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.seg {
+		display: inline-flex;
+		border: 1px solid var(--ink-300);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+	.seg-btn {
+		padding: var(--space-2) var(--space-4);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+		background: transparent;
+		border: 0;
+		border-inline-end: 1px solid var(--ink-300);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
+	}
+	.seg-btn:last-child {
+		border-inline-end: 0;
+	}
+	.seg-btn:hover:not(:disabled):not(.active) {
+		color: var(--bone-100);
+	}
+	.seg-btn.active {
+		background: var(--accent);
+		color: var(--ink-000);
+	}
+	.seg-btn:disabled {
+		opacity: 0.5;
+		cursor: progress;
+	}
+	.seg-narrow .seg-btn {
+		padding-inline: var(--space-3);
+	}
+	.seg-error {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		color: var(--accent-oxblood);
+	}
+
+	/* — Meta row. */
 	.meta-row {
 		margin: 0;
 		padding: var(--space-3) 0 0;
@@ -434,7 +705,6 @@
 		flex-wrap: wrap;
 		gap: var(--space-5) var(--space-6);
 		border-block-start: 1px solid var(--accent);
-		/* The "thin top border in accent" the brief calls for. */
 	}
 	.meta-pill {
 		display: inline-flex;
@@ -474,20 +744,80 @@
 		margin-inline-end: 4px;
 	}
 
-	/* — Synopsis: editorial column with drop cap. */
-	.synopsis {
+	/* — Action notice (inline status banner under masthead). */
+	.action-notice {
+		margin: var(--space-6) var(--space-6) 0;
+		padding: var(--space-3) var(--space-4);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-200);
+		background: color-mix(in oklab, var(--accent) 6%, var(--ink-050));
+		border-inline-start: 2px solid var(--accent);
+		animation: text-in var(--dur-med) var(--ease-out-soft) both;
+	}
+	.action-notice-key {
+		color: var(--bone-300);
+	}
+	.action-notice-rule {
+		inline-size: 1.5rem;
+		block-size: 1px;
+		background: var(--bone-400);
+	}
+
+	/* — 2-column body (synopsis + episodes). */
+	.body {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) 1px minmax(0, 1fr);
+		gap: var(--space-7);
+		align-items: start;
 		margin: var(--space-7) auto 0;
 		padding-inline: var(--space-6);
-		max-inline-size: 65ch;
+	}
+	@media (max-inline-size: 900px) {
+		.body {
+			grid-template-columns: 1fr;
+		}
+		.body-divider {
+			display: none;
+		}
+	}
+	.body-divider {
+		align-self: stretch;
+		inline-size: 1px;
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			color-mix(in oklab, var(--accent) 50%, var(--ink-200)) 12%,
+			color-mix(in oklab, var(--accent) 50%, var(--ink-200)) 88%,
+			transparent 100%
+		);
+	}
+
+	.body-col-prose {
+		max-inline-size: 60ch;
 	}
 	.section-eyebrow {
-		margin: 0 0 var(--space-3);
+		margin: 0 0 var(--space-4);
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-3);
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
 		font-weight: 500;
+	}
+	.section-eyebrow-faint {
+		color: var(--bone-400);
+		font-variant-numeric: tabular-nums lining-nums;
+		letter-spacing: var(--tracking-meta);
 	}
 	.prose {
 		margin: 0;
@@ -506,34 +836,76 @@
 		color: var(--bone-100);
 		font-style: italic;
 	}
-
-	/* — Manga-page divider: 1px solid + 1px hairline 4px below, both muted. */
-	.manga-rule {
-		margin: var(--space-8) var(--space-6) var(--space-6);
-		border: 0;
-		block-size: 1px;
-		background: var(--ink-200);
-		box-shadow: 0 5px 0 -4px var(--ink-200);
-	}
-
-	.episodes {
-		padding-inline: var(--space-6);
-		max-inline-size: 65ch;
-	}
-	.placeholder {
+	.prose-empty {
 		margin: 0;
+		font-family: var(--font-display);
+		font-style: italic;
 		color: var(--bone-300);
-		font-size: var(--type-body);
-		line-height: var(--leading-prose);
 	}
-	.inline-link {
+
+	/* — Episodes panel. */
+	.ep-grid {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+		gap: var(--space-3);
+	}
+	.ep-tile {
+		inline-size: 100%;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: baseline;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		text-align: start;
+		background: var(--ink-050);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-card);
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-tile:hover {
+		transform: translateY(-1px);
+		border-color: color-mix(in oklab, var(--accent) 70%, var(--ink-300));
+		background: linear-gradient(
+			135deg,
+			color-mix(in oklab, var(--accent) 8%, var(--ink-050)) 0%,
+			var(--ink-050) 100%
+		);
+	}
+	.ep-key {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.ep-num {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-display-m);
+		line-height: 1;
 		color: var(--bone-100);
-		border-block-end: 1px solid var(--accent);
-		padding-block-end: 1px;
-		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
-	.inline-link:hover {
-		color: var(--accent);
+	.ep-meta {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		color: var(--bone-400);
+		justify-self: end;
+	}
+	.ep-foot {
+		margin-block-start: var(--space-4);
+		margin-block-end: 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		text-transform: uppercase;
+		color: var(--bone-400);
 	}
 
 	/* — Skeletons. */
@@ -564,6 +936,13 @@
 		}
 		50% {
 			opacity: 0.55;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.hero-skeleton-img,
+		.poster-skeleton,
+		.line {
+			animation: none;
 		}
 	}
 

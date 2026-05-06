@@ -99,6 +99,8 @@
 	--content-max: 76rem;
 	--hero-aspect: 21 / 5;
 	--poster-aspect: 5 / 7;
+	--rail-width: 5.5rem; /* 88px — narrow enough to feel like a margin, not a panel. */
+	--strip-card: 11.25rem; /* horizontal-strip card inline-size. */
 
 	/* — Focus ring: 2px outer in current accent, 2px inner offset in ink. */
 	--ring: 0 0 0 2px var(--ink-000), 0 0 0 4px var(--accent);
