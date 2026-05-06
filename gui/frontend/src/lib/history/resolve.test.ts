@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHistoryEntry, resumeQueryString } from './resolve';
+import { pickKitsuMatch, resolveHistoryEntry, resumeQueryString } from './resolve';
 import type { HistoryEntry, KitsuAnimeRef } from '$lib/api';
 
 const stubKitsu = (id = '13'): KitsuAnimeRef => ({
@@ -110,6 +110,56 @@ describe('resolveHistoryEntry — episode-number quirks', () => {
 	it('falls back to 1 when ep_no is not numeric', () => {
 		const r = resolveHistoryEntry(entry('Show (12 episodes)', 'foo'), stubKitsu());
 		expect(r.displayEpisode).toBe(1);
+	});
+});
+
+describe('pickKitsuMatch', () => {
+	const titledHit = (id: string, canonical_title: string): KitsuAnimeRef => ({
+		...stubKitsu(id),
+		canonical_title
+	});
+
+	it('returns null when there are no hits', () => {
+		const r = resolveHistoryEntry(entry('Stone Ocean Part 2 (12 episodes)', '4'), null);
+		expect(pickKitsuMatch([], r)).toBeNull();
+	});
+
+	it('returns the first hit for single-cour entries', () => {
+		const r = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
+		const hits = [titledHit('1', 'Demon Slayer'), titledHit('2', 'Demon Slayer: Mugen Train')];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('1');
+	});
+
+	it('prefers the hit whose title carries the same cour suffix', () => {
+		// Real-world Stone Ocean: searching "…Stone Ocean Part 2"
+		// returns Part 1 first because Part 1 is more popular. We
+		// post-filter for the cour-matching entry.
+		const r = resolveHistoryEntry(
+			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
+			null
+		);
+		const hits = [
+			titledHit('part1', 'JoJo no Kimyou na Bouken Part 6: Stone Ocean'),
+			titledHit('part2', 'JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2')
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('part2');
+	});
+
+	it('does not false-match the parent series number ("Part 6" in JoJo)', () => {
+		// Searching for cour 2, the only "Part 6" in any title is
+		// the JoJo series number — should not be picked.
+		const r = resolveHistoryEntry(
+			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
+			null
+		);
+		const hits = [titledHit('s1', 'JoJo no Kimyou na Bouken Part 6: Stone Ocean')];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('s1'); // falls back to first hit
+	});
+
+	it('falls back to the first hit when no cour-tagged title is in the result set', () => {
+		const r = resolveHistoryEntry(entry('Stone Ocean Part 3 (12 episodes)', '1'), null);
+		const hits = [titledHit('p1', 'Stone Ocean'), titledHit('p2', 'Stone Ocean Part 2')];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('p1');
 	});
 });
 

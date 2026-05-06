@@ -122,6 +122,28 @@ export function resolveHistoryEntry(
 	};
 }
 
+/** Pick the best Kitsu hit for a multi-cour history entry. Kitsu's
+ *  text search outranks the more-established Part 1 over its sequels
+ *  even when the query carries the cour suffix, so the first hit is
+ *  the wrong choice for Stone Ocean Part 2 / Part 3 etc. — it lands
+ *  back on Part 1.
+ *
+ *  Strategy: when the resolver detected `cour > 1`, prefer a hit
+ *  whose canonical_title contains a matching cour token (`Part N` /
+ *  `Cour N` / `Season N`, anchored on word boundaries so the parent
+ *  series number — e.g. JoJo "Part 6" — doesn't false-match). Fall
+ *  back to the first hit otherwise. */
+export function pickKitsuMatch(
+	hits: KitsuAnimeRef[],
+	preliminary: ResumeTarget
+): KitsuAnimeRef | null {
+	if (hits.length === 0) return null;
+	if (preliminary.cour <= 1) return hits[0];
+	const re = new RegExp(`\\b(?:part|cour|season)\\s+${preliminary.cour}\\b`, 'i');
+	const courMatch = hits.find((h) => re.test(h.canonical_title ?? ''));
+	return courMatch ?? hits[0];
+}
+
 /** Compose the query-string portion of a Resume URL — caller appends
  *  it to the route base built via SvelteKit's `resolve()`. Returns an
  *  empty string when there's nothing worth deep-linking (UI page 1,

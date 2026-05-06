@@ -33,6 +33,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import {
 		EPISODES_KITSU_PAGE_SIZE,
+		pickKitsuMatch,
 		resolveHistoryEntry,
 		resumeQueryString
 	} from '$lib/history/resolve';
@@ -107,7 +108,13 @@
 					const preliminary = resolveHistoryEntry(entry, null);
 					kitsuSearch(preliminary.searchTitle)
 						.then((hits: KitsuAnimeRef[]) => {
-							const match = hits[0] ?? null;
+							// Kitsu's text search outranks Part 1 over its
+							// sequels even when the query has the cour suffix.
+							// pickKitsuMatch post-filters: prefer a hit whose
+							// canonical title carries the same "Part N"
+							// (anchored on word boundaries). For non-cour
+							// entries this is equivalent to hits[0].
+							const match = pickKitsuMatch(hits, preliminary);
 							historyMatches = { ...historyMatches, [entry.id]: match };
 							if (!match) return;
 							const target = resolveHistoryEntry(entry, match);
