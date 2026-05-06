@@ -571,10 +571,9 @@
 		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
 	}
 	.btn-primary:hover {
-		/* Paint-cheap hover: only border-color toggles. The previous
-		   background + box-shadow change cost a full-area repaint on
-		   every hover; on a button-grid this multiplied. */
+		background: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
 		border-color: var(--bone-100);
+		box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--accent) 60%, transparent);
 	}
 	.btn-ghost {
 		color: var(--bone-200);
@@ -621,9 +620,7 @@
 			block-size var(--dur-fast) var(--ease-out-soft);
 	}
 	.hero-pager-dot:hover .hero-pager-track {
-		/* paint hover removed; opacity transition (composite) on the
-		   active variant remains. */
-		opacity: 0.65;
+		background: color-mix(in oklab, var(--bone-100) 60%, transparent);
 	}
 	.hero-pager-dot.active .hero-pager-track {
 		background: var(--accent);
@@ -695,8 +692,8 @@
 	}
 	.resume-card:hover {
 		transform: translateY(-3px);
-		/* border-color + background changes removed: each was
-		   triggering a paint cascade. Lift via transform is GPU-only. */
+		border-color: color-mix(in oklab, var(--accent) 60%, var(--ink-300));
+		background: color-mix(in oklab, var(--accent) 6%, var(--ink-050));
 	}
 	.resume-poster {
 		position: relative;

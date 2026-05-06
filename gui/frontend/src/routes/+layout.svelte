@@ -709,14 +709,6 @@
 
 	.content {
 		min-inline-size: 0; /* prevent grid from blowing wide on long titles */
-		/* `contain: layout paint style` is the actual fix for the
-		   widescreen scroll lag. Without it, every hover-driven paint
-		   inside the content tree was invalidating the ENTIRE window
-		   area — the WebKit Inspector showed 3,622,122 px² paint
-		   events at 60–75 ms each, so paint alone consumed every
-		   frame on a maximized 3382×1071 window. With containment,
-		   paint invalidations stay scoped to the changed subtree. */
-		contain: layout paint style;
 	}
 
 	/* — Global topbar. Sticky against the viewport, glassy-translucent

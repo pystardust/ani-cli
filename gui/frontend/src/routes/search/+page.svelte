@@ -341,9 +341,10 @@
 		border-radius: var(--radius-card);
 		overflow: hidden;
 		box-shadow: var(--shadow-card-rest);
-		/* box-shadow transition + hover change removed: every hover
-		   triggered a full-area paint cascade; the lift via transform
-		   on the parent .card-link is enough feedback. */
+		transition: box-shadow var(--dur-med) var(--ease-out-soft);
+	}
+	.card-link:hover .poster {
+		box-shadow: var(--shadow-card-hover);
 	}
 	.poster img {
 		position: absolute;

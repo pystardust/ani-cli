@@ -348,10 +348,8 @@
 			transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.strip-edge:hover .strip-edge-chev {
-		/* background + border-color removed — the visible feedback is
-		   the transform scale + the existing :active scale-down. Each
-		   strip has 2 edges so on a multi-strip page these hover
-		   paints stacked. */
+		background: var(--ink-100);
+		border-color: var(--bone-300);
 		transform: scale(1.08);
 	}
 	.strip-edge:active .strip-edge-chev {

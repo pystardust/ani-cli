@@ -1348,14 +1348,13 @@
 			box-shadow var(--dur-med) var(--ease-out-soft);
 	}
 	.ep-tile:hover {
-		/* Composite-only hover: lift + scale via transform, z-index
-		   for stacking. border-color + box-shadow changes were
-		   removed — a 12-tile grid hovering in/out cascaded paint
-		   storms across the whole episode panel. The accent border
-		   on the static .ep-tile already conveys "interactive"; the
-		   transform-driven lift conveys "hovered". */
+		/* More expressed pop: lift, scale, accent-tinted shadow halo. */
 		transform: translateY(-4px) scale(1.04);
 		z-index: 1;
+		border-color: color-mix(in oklab, var(--accent) 80%, var(--ink-300));
+		box-shadow:
+			0 12px 28px -6px color-mix(in oklab, var(--accent) 28%, transparent),
+			0 4px 10px -4px rgb(0 0 0 / 0.45);
 	}
 
 	/* Deep-link highlight: when arriving from Continue Watching with
