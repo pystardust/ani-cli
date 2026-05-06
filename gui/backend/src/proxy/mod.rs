@@ -56,6 +56,7 @@ pub fn build_router(state: ProxyState) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/s/:session/master.m3u8", get(handle_master))
+        .route("/s/:session/file.mp4", get(handle_mp4))
         .route("/s/:session/seg", get(handle_seg))
         .route("/s/:session/sub.vtt", get(handle_sub))
         .layer(
@@ -99,6 +100,16 @@ async fn handle_master(
     let Some(sess) = state.sessions.get(&session) else {
         return error_response(StatusCode::NOT_FOUND, "session not found or expired");
     };
+
+    // The HLS rewrite path only makes sense for .m3u8 sessions; an MP4
+    // would otherwise be buffered (hundreds of MB) and fail to parse.
+    // 415 tells the renderer to use /file.mp4 instead.
+    if !matches!(sess.media_kind, MediaKind::Hls) {
+        return error_response(
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "session media is not HLS — use /file.mp4",
+        );
+    }
 
     let body = match upstream::fetch_text(&state.client, &sess.upstream_url, &sess.referer).await {
         Ok((bytes, _ct)) => bytes,
@@ -150,6 +161,81 @@ async fn handle_master(
         HeaderValue::from_static("no-store"),
     );
     (StatusCode::OK, headers, rewritten).into_response()
+}
+
+/// Streaming pass-through for direct-MP4 upstreams (wixmp/sharepoint
+/// /fast4speed). The proxy doesn't parse, rewrite, or buffer the body —
+/// it forwards the inbound `Range` header upstream and pipes the
+/// response back chunk-by-chunk so the renderer's `<video>` element
+/// can seek without downloading the full file.
+async fn handle_mp4(
+    State(state): State<Arc<ProxyState>>,
+    Path(session_str): Path<String>,
+    headers_in: HeaderMap,
+) -> Response {
+    let session = match SessionId::parse(&session_str) {
+        Ok(s) => s,
+        Err(_) => return error_response(StatusCode::BAD_REQUEST, "invalid session id"),
+    };
+    let Some(sess) = state.sessions.get(&session) else {
+        return error_response(StatusCode::NOT_FOUND, "session not found or expired");
+    };
+    if !matches!(sess.media_kind, MediaKind::Mp4) {
+        return error_response(
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "session media is not MP4 — use /master.m3u8",
+        );
+    }
+
+    let range = headers_in
+        .get(axum::http::header::RANGE)
+        .and_then(|v| v.to_str().ok());
+
+    let upstream_resp =
+        match upstream::fetch_streaming(&state.client, &sess.upstream_url, &sess.referer, range)
+            .await
+        {
+            Ok(r) => r,
+            Err(AniError::Upstream { status }) => {
+                return error_response(
+                    StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_GATEWAY),
+                    "upstream error",
+                );
+            }
+            Err(_) => return error_response(StatusCode::BAD_GATEWAY, "upstream fetch failed"),
+        };
+
+    // Echo back the upstream status (200 for full, 206 for partial)
+    // and the headers a video element needs: content-type tells the
+    // renderer how to decode, content-length / content-range / accept-
+    // ranges drive the seek bar. Other headers stay upstream-side.
+    let status =
+        StatusCode::from_u16(upstream_resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    let mut out_headers = HeaderMap::new();
+    for name in [
+        "content-type",
+        "content-length",
+        "content-range",
+        "accept-ranges",
+        "last-modified",
+        "etag",
+    ] {
+        if let Some(v) = upstream_resp.headers().get(name) {
+            if let (Ok(name), Ok(value)) = (
+                HeaderName::from_bytes(name.as_bytes()),
+                HeaderValue::from_bytes(v.as_bytes()),
+            ) {
+                out_headers.insert(name, value);
+            }
+        }
+    }
+    out_headers.insert(
+        HeaderName::from_static("cache-control"),
+        HeaderValue::from_static("no-store"),
+    );
+
+    let body = Body::from_stream(upstream_resp.bytes_stream());
+    (status, out_headers, body).into_response()
 }
 
 #[derive(Debug, Deserialize)]

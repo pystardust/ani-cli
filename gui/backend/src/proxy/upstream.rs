@@ -12,7 +12,7 @@
 use std::time::Duration;
 
 use bytes::Bytes;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, REFERER, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, RANGE, REFERER, USER_AGENT};
 use url::Url;
 
 use crate::error::{AniError, Result};
@@ -77,6 +77,54 @@ pub async fn fetch_text(
         .map(str::to_string);
     let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
     Ok((bytes, content_type))
+}
+
+/// Issue a GET to upstream and return the [`reqwest::Response`] without
+/// buffering its body. The proxy's MP4 pass-through hands the response
+/// stream straight to axum, so a 600 MB MP4 doesn't get materialised in
+/// memory the way [`fetch_text`] would.
+///
+/// Forwards the inbound `Range` header (when present) so byte-range
+/// requests reach upstream verbatim — the renderer's `<video>` element
+/// uses that to seek without downloading the whole file.
+///
+/// 2xx **and** 206 are returned to the caller; only non-success
+/// responses outside of those ranges are treated as errors. (3xx
+/// redirects are followed transparently by `reqwest`.)
+///
+/// # Errors
+/// - [`AniError::Network`] for connection or DNS failures
+/// - [`AniError::Upstream`] when the response status is not 2xx
+pub async fn fetch_streaming(
+    client: &reqwest::Client,
+    url: &Url,
+    referer: &str,
+    range: Option<&str>,
+) -> Result<reqwest::Response> {
+    let mut headers = HeaderMap::new();
+    if let Ok(v) = HeaderValue::from_str(referer) {
+        headers.insert(REFERER, v);
+    }
+    headers.insert(USER_AGENT, HeaderValue::from_static(UA));
+    if let Some(r) = range {
+        if let Ok(v) = HeaderValue::from_str(r) {
+            headers.insert(RANGE, v);
+        }
+    }
+
+    let resp = client
+        .get(url.as_str())
+        .headers(headers)
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+    Ok(resp)
 }
 
 #[cfg(test)]
