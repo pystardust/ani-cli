@@ -10,7 +10,6 @@
 	import { resolve } from '$app/paths';
 	import { imageProxyUrl, kitsuAnimeDetail, type KitsuAnimeRef } from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
-	import '$lib/design/tokens.css';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);

@@ -1,8 +1,11 @@
 <!--
-  Minimal layout. Intentionally unstyled: M1.5 is wiring-validation only;
-  the design pass (M3) will define typography, color, motion, and layout.
+  Root layout — imports the design tokens once so every route shares
+  the warm-ink baseline (no white flash on the diagnostic Backend
+  Status page, no leakage of styles when navigating back).
 -->
 <script lang="ts">
+	import '$lib/design/tokens.css';
+
 	let { children } = $props();
 </script>
 

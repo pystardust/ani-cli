@@ -7,7 +7,6 @@
 	import { resolve } from '$app/paths';
 	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
-	import '$lib/design/tokens.css';
 
 	let query = $state('');
 	let submitted = $state(''); // the query whose results are on screen.
