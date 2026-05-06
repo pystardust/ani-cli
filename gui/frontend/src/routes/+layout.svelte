@@ -12,6 +12,7 @@
 	import '$lib/design/tokens.css';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import Icon from '$lib/components/Icon.svelte';
 
 	let { children } = $props();
 
@@ -56,7 +57,7 @@
 							class:active={isHome}
 							aria-current={isHome ? 'page' : undefined}
 						>
-							<span class="nav-mark" aria-hidden="true">◇</span>
+							<span class="nav-mark"><Icon name="home" size={20} /></span>
 							<span class="nav-label">Home</span>
 						</a>
 					</li>
@@ -67,7 +68,7 @@
 							class:active={isSearch}
 							aria-current={isSearch ? 'page' : undefined}
 						>
-							<span class="nav-mark" aria-hidden="true">/</span>
+							<span class="nav-mark"><Icon name="search" size={20} /></span>
 							<span class="nav-label">Search</span>
 						</a>
 					</li>
@@ -78,7 +79,7 @@
 							class:active={isSettings}
 							aria-current={isSettings ? 'page' : undefined}
 						>
-							<span class="nav-mark" aria-hidden="true">·</span>
+							<span class="nav-mark"><Icon name="settings" size={20} /></span>
 							<span class="nav-label">Settings</span>
 						</a>
 					</li>
@@ -89,7 +90,7 @@
 							class:active={isDiagnostics}
 							aria-current={isDiagnostics ? 'page' : undefined}
 						>
-							<span class="nav-mark" aria-hidden="true">#</span>
+							<span class="nav-mark"><Icon name="debug" size={18} /></span>
 							<span class="nav-label">Debug</span>
 						</a>
 					</li>
@@ -283,11 +284,11 @@
 	}
 
 	.nav-mark {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-body-l);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		color: inherit;
-		line-height: 1;
+		line-height: 0;
 	}
 	.nav-label {
 		font-family: var(--font-mono);

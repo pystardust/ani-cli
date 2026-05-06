@@ -32,6 +32,12 @@
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
+	// Land focus in the search field on mount — saves the user a click /
+	// hunt for the slash key when they navigate to /search.
+	$effect(() => {
+		inputEl?.focus();
+	});
+
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 		const q = query.trim();

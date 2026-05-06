@@ -109,7 +109,11 @@
 
 <style>
 	.strip {
-		--strip-pad: var(--space-6);
+		/* Wider gutter than space-6 so the first card on the inline-start
+		   edge has room to breathe — at 88px rail + 48px strip-pad the
+		   content begins ~136px from the viewport edge, which reads as
+		   "considered" rather than "glued to the rail". */
+		--strip-pad: var(--space-7);
 		margin-block-end: var(--space-7);
 	}
 
