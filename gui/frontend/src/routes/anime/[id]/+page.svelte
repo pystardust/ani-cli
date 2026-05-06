@@ -33,7 +33,10 @@
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
-	let scrollY = $state(0);
+	// scrollY + a scroll listener used to drive the hero parallax. Both
+	// were dropped because the per-event reactive write was the
+	// dominant scroll cost on widescreens (see git log around the perf
+	// pass). Hero now uses a static CSS transform.
 
 	// Episode list — fetched in parallel with the detail. Holds the
 	// CURRENT page only (not concatenated) so a 500-episode show doesn't
@@ -305,15 +308,6 @@
 		}, 3200);
 	});
 
-	$effect(() => {
-		const onScroll = () => {
-			scrollY = window.scrollY;
-		};
-		window.addEventListener('scroll', onScroll, { passive: true });
-		onScroll();
-		return () => window.removeEventListener('scroll', onScroll);
-	});
-
 	function describeError(e: unknown): { headline: string; detail: string | null } {
 		if (typeof e === 'object' && e !== null) {
 			const obj = e as Record<string, unknown>;
@@ -365,20 +359,6 @@
 	function subtypeLabel(s: string | null): string {
 		return (s ?? 'TV').toUpperCase();
 	}
-	function heroTransform(y: number, isCover: boolean): string {
-		// Honor prefers-reduced-motion: when set, the hero doesn't translate
-		// on scroll. Scale (which doesn't move) is kept for visual polish.
-		if (
-			typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-		) {
-			return `translate3d(0, 0, 0) scale(${isCover ? 1.02 : 1.15})`;
-		}
-		const offset = Math.min(y * 0.25, 80);
-		const scale = isCover ? 1.02 : 1.15;
-		return `translate3d(0, ${offset}px, 0) scale(${scale})`;
-	}
-
 	async function setMode(mode: 'sub' | 'dub') {
 		if (!config || config.mode === mode) return;
 		const next: Config = { ...config, mode };
@@ -460,12 +440,7 @@
 
 		<section class="hero" class:hero-fallback={!hero.isCover}>
 			{#if hero.url}
-				<img
-					class="hero-img"
-					src={hero.url}
-					alt=""
-					style:transform={heroTransform(scrollY, hero.isCover)}
-				/>
+				<img class="hero-img" src={hero.url} alt="" />
 			{/if}
 			<div class="hero-scrim" aria-hidden="true"></div>
 			{#if !hero.isCover}
@@ -868,7 +843,10 @@
 		block-size: 100%;
 		object-fit: cover;
 		object-position: center 30%;
-		will-change: transform;
+		/* Static scale (parallax killed for perf — see commit log).
+		   Cover: 1.02 to bleed past scrim corners. Fallback: 1.15
+		   because the heavy blur hides the upscale. */
+		transform: scale(1.02);
 		animation: hero-in var(--dur-slow) var(--ease-out-soft) both;
 	}
 	@keyframes hero-in {
@@ -881,6 +859,7 @@
 	}
 	.hero-fallback .hero-img {
 		filter: blur(28px) brightness(0.55) saturate(0.85);
+		transform: scale(1.15);
 	}
 	.hero-scrim {
 		position: absolute;

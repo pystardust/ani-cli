@@ -65,7 +65,6 @@
 	let historyEpisodes = $state<Record<string, KitsuEpisode | null>>({});
 	let trendingError = $state<string | null>(null);
 	let topRatedError = $state<string | null>(null);
-	let scrollY = $state(0);
 
 	const heroRotation = $derived<KitsuAnimeRef[]>(
 		trending && trending.length > 0 ? trending.slice(0, HERO_ROTATION_COUNT) : []
@@ -142,14 +141,13 @@
 			});
 	});
 
-	$effect(() => {
-		const onScroll = () => {
-			scrollY = window.scrollY;
-		};
-		window.addEventListener('scroll', onScroll, { passive: true });
-		onScroll();
-		return () => window.removeEventListener('scroll', onScroll);
-	});
+	// Hero parallax used to live here — a scroll listener that wrote
+	// scrollY into reactive state, causing Svelte to re-evaluate the
+	// hero's style:transform on every scroll event (100+ Hz on
+	// high-rate input devices). Removed because it was the dominant
+	// cost on widescreen scroll. The hero now has a static CSS
+	// transform; if we want parallax back, prefer
+	// `animation-timeline: scroll()` over imperative state writes.
 
 	// Hero auto-advance. Tied to heroRotation length + heroPaused, so
 	// hovering the hero or shrinking the rotation freezes it. Reduced
@@ -193,20 +191,6 @@
 		return trimmed.length > 280 ? trimmed.slice(0, 277) + '…' : trimmed;
 	}
 
-	function heroTransform(y: number, isCover: boolean): string {
-		// Honor prefers-reduced-motion: when the user opts out of motion,
-		// the hero stays still even on scroll.
-		if (
-			typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-		) {
-			return `translate3d(0, 0, 0) scale(${isCover ? 1.02 : 1.15})`;
-		}
-		const offset = Math.min(y * 0.25, 80);
-		const scale = isCover ? 1.02 : 1.15;
-		return `translate3d(0, ${offset}px, 0) scale(${scale})`;
-	}
-
 	// epOf / titleOf were absorbed into resolveHistoryEntry — see
 	// $lib/history/resolve.ts (target.displayEpisode / displayTitle).
 </script>
@@ -231,13 +215,7 @@
 			{@const synopsis = snippetOf(featured.synopsis)}
 			<div class="hero-layer" in:fade={{ duration: 480 }} out:fade={{ duration: 480 }}>
 				{#if hero.url}
-					<img
-						class="hero-img"
-						class:fallback={!hero.isCover}
-						src={hero.url}
-						alt=""
-						style:transform={heroTransform(scrollY, hero.isCover)}
-					/>
+					<img class="hero-img" class:fallback={!hero.isCover} src={hero.url} alt="" />
 				{/if}
 				<div class="hero-scrim" aria-hidden="true"></div>
 				{#if !hero.isCover}
@@ -434,7 +412,12 @@
 		block-size: 100%;
 		object-fit: cover;
 		object-position: center 30%;
-		will-change: transform;
+		/* Static scale: cover images get a tiny 1.02× to bleed past
+		   the scrim corners; fallback images get 1.15× because
+		   they're already blurred and the upscale is invisible. The
+		   scroll-driven parallax that used to live here was killed
+		   for perf reasons (see the comment in the script block). */
+		transform: scale(1.02);
 		animation: hero-in var(--dur-slow) var(--ease-out-soft) both;
 	}
 	@keyframes hero-in {
@@ -447,6 +430,7 @@
 	}
 	.hero-img.fallback {
 		filter: blur(28px) brightness(0.55) saturate(0.85);
+		transform: scale(1.15);
 	}
 	.hero-scrim {
 		position: absolute;
