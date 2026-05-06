@@ -18,6 +18,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
+use tower_http::cors::CorsLayer;
 
 use crate::app::AppState;
 use crate::commands::{
@@ -80,6 +81,13 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/settings", get(get_settings).put(put_settings))
         .route("/api/cache", delete(delete_cache))
         .with_state(state)
+        // The Electron renderer in dev runs at `http://localhost:<vite>`
+        // while we bind 127.0.0.1:<random> — that's cross-origin, so
+        // every response (and every preflight) needs permissive CORS
+        // headers. Safe at the loopback boundary: the listener never
+        // accepts non-loopback connections, so `*` here only opens the
+        // door to other apps on the same machine, not the internet.
+        .layer(CorsLayer::permissive())
 }
 
 // — Handlers ——————————————————————————————————————————————————————————
@@ -486,5 +494,76 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
         let body = body_string(resp).await;
         assert!(body.contains("\"kind\":\"no_results\""), "body: {body}");
+    }
+
+    /// In Electron-dev the renderer lives on `http://localhost:<vite>`
+    /// while the backend binds 127.0.0.1:<random>. Browsers treat that
+    /// as cross-origin, so every response must carry permissive CORS
+    /// headers — otherwise the renderer's `fetch()` calls fail with no
+    /// useful error. The packaged build (file:// origin) needs the same
+    /// headers for the same reason.
+    #[tokio::test]
+    async fn cors_get_response_carries_acao_for_external_origin() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/app-info")
+                    .header("origin", "http://localhost:5173")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let acao = response
+            .headers()
+            .get("access-control-allow-origin")
+            .map(|v| v.to_str().unwrap_or("").to_string());
+        assert!(
+            acao.is_some(),
+            "missing access-control-allow-origin header; got headers: {:?}",
+            response.headers()
+        );
+    }
+
+    #[tokio::test]
+    async fn cors_preflight_options_returns_2xx_with_allow_methods() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri("/api/kitsu/search")
+                    .header("origin", "http://localhost:5173")
+                    .header("access-control-request-method", "POST")
+                    .header("access-control-request-headers", "content-type")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert!(
+            response.status().is_success(),
+            "preflight failed: {}",
+            response.status()
+        );
+        assert!(
+            response
+                .headers()
+                .contains_key("access-control-allow-origin"),
+            "missing access-control-allow-origin"
+        );
+        assert!(
+            response
+                .headers()
+                .contains_key("access-control-allow-methods"),
+            "missing access-control-allow-methods"
+        );
     }
 }

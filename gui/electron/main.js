@@ -126,7 +126,20 @@ async function createWindow(apiBase) {
 		return { action: 'allow' };
 	});
 
+	// Renderer-side diagnostics surface in the main process log so we
+	// can tell whether the page actually loaded and whether scripts
+	// are throwing. Without this, a blank window looks identical to a
+	// successful load from the outside.
+	win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+		console.error(`[renderer] did-fail-load ${url}: ${code} ${desc}`);
+	});
+	win.webContents.on('console-message', (_e, level, msg, line, source) => {
+		const tag = ['log', 'warning', 'error'][level] || 'log';
+		console.log(`[renderer:${tag}] ${msg} (${source}:${line})`);
+	});
+
 	if (IS_DEV) {
+		win.webContents.openDevTools({ mode: 'detach' });
 		await win.loadURL(VITE_DEV_URL);
 	} else {
 		// Packaged static SvelteKit bundle. M-E4 wires the path.

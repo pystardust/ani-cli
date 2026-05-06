@@ -5,7 +5,7 @@
 	"private": true,
 	"main": "main.js",
 	"scripts": {
-		"dev": "ELECTRON_DEV=1 electron .",
+		"dev": "ELECTRON_DEV=1 electron --no-sandbox .",
 		"start": "electron ."
 	},
 	"devDependencies": {
