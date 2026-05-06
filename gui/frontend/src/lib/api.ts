@@ -269,6 +269,12 @@ export interface PlayArgs {
 	episode: string;
 	mode: 'sub' | 'dub';
 	quality?: string;
+	/** Kitsu's authoritative episode count. The backend uses this to
+	 *  disambiguate allanime candidates that share a title — e.g.
+	 *  picking the 500-ep "Naruto: Shippuden" main show over the
+	 *  1-ep side story. Optional: if missing, the backend falls back
+	 *  to allanime's first match. */
+	episode_count?: number | null;
 }
 
 /** Play an episode in the embedded player. Returns the session URLs

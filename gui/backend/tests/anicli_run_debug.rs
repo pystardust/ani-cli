@@ -126,7 +126,7 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
         path_override: Some(path),
     };
 
-    let out = run_debug(&opts, "test", "1", "best", "sub")
+    let out = run_debug(&opts, "test", "1", "best", "sub", 1)
         .await
         .expect("run_debug succeeds");
 

@@ -27,12 +27,13 @@ use crate::commands::{
 use crate::config::read_config;
 use crate::error::{AniError, Result};
 use crate::proxy::{upstream, MediaKind};
+use crate::scraper;
 
 /// Frontend → backend payload for both play endpoints.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PlayArgs {
     /// Canonical title from the Kitsu metadata. Fed to ani-cli's
-    /// `-S` (search) flag, which picks the first allanime match.
+    /// search step (after we've picked the right candidate index).
     pub title: String,
     /// Episode number, as a string to match the CLI's positional arg
     /// shape (`-e 5` accepts `"5"` literally).
@@ -42,12 +43,52 @@ pub struct PlayArgs {
     /// `"best"` / `"worst"` / `"1080"` / etc. Defaults to `"best"`.
     #[serde(default)]
     pub quality: Option<String>,
+    /// Kitsu's authoritative episode count. Used to disambiguate
+    /// allanime candidates that share a title (e.g. the 1-ep
+    /// "Konoha Gakuen Den" side-story vs. the 500-ep main "Naruto:
+    /// Shippuuden"). When `None`, we fall back to the legacy `-S 1`
+    /// behaviour.
+    #[serde(default)]
+    pub episode_count: Option<u32>,
 }
 
 /// Spawn timeout for the ani-cli search+resolve step. Real-world
 /// allanime queries take 5-30s; 60s is a comfortable upper bound
 /// before the user is better served by an error than a stuck spinner.
 const RUN_DEBUG_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Resolve which 1-based candidate index to pass to ani-cli's `-S`
+/// flag. Calls our own allanime search, picks the candidate whose
+/// `availableEpisodes` is closest to Kitsu's, and returns that index.
+/// Falls through to 1 (legacy behaviour) on any failure or missing
+/// signal — playback should never block on the disambiguator.
+async fn pick_index_or_default(state: &AppState, args: &PlayArgs) -> usize {
+    let Some(expected) = args.episode_count else {
+        return 1;
+    };
+    let mode = if args.mode == "dub" { "dub" } else { "sub" };
+    match scraper::search(&state.proxy_http, &args.title, mode, None).await {
+        Ok(cands) => {
+            let pick = scraper::pick_by_ep_count(&cands, expected, mode).unwrap_or(1);
+            tracing::info!(
+                title = %args.title,
+                expected_eps = expected,
+                candidates = cands.len(),
+                pick = pick,
+                "play: disambiguated allanime candidate by episode count",
+            );
+            pick
+        }
+        Err(e) => {
+            tracing::warn!(
+                title = %args.title,
+                error = ?e,
+                "play: allanime search failed; falling back to -S 1",
+            );
+            1
+        }
+    }
+}
 
 fn debug_options_for(state: &AppState) -> DebugOptions {
     DebugOptions {
@@ -77,7 +118,25 @@ fn debug_options_for(state: &AppState) -> DebugOptions {
 pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResponse> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let resolved = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
+
+    // Disambiguate which allanime candidate ani-cli should pick. When
+    // we know Kitsu's expected episode_count, run our own search GraphQL
+    // call and pick the candidate whose ep_count is closest. Drives
+    // ani-cli's `-S <n>` so the embed pipeline still owns the play.
+    // Falls back to `-S 1` (the legacy behaviour) on any failure or
+    // when episode_count is unknown — never blocks a play on the
+    // disambiguator.
+    let select_index = pick_index_or_default(state, args).await;
+
+    let resolved = run_debug(
+        &opts,
+        &args.title,
+        &args.episode,
+        quality,
+        &args.mode,
+        select_index,
+    )
+    .await?;
 
     // Decide media kind: cheap path-extension first, HEAD fallback
     // when the URL is opaque (fast4speed.rsvp/<id>/sub/1, etc).
@@ -142,7 +201,16 @@ pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResp
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let resolved = run_debug(&opts, &args.title, &args.episode, quality, &args.mode).await?;
+    let select_index = pick_index_or_default(state, args).await;
+    let resolved = run_debug(
+        &opts,
+        &args.title,
+        &args.episode,
+        quality,
+        &args.mode,
+        select_index,
+    )
+    .await?;
 
     // Same Referer-inference as the embedded path — fast4speed.rsvp
     // 403s without `Referer: https://allmanga.to` and ani-cli's debug
@@ -237,6 +305,7 @@ mod tests {
             episode: "1".into(),
             mode: "sub".into(),
             quality: None,
+            episode_count: None,
         };
         assert_eq!(args.quality.as_deref().unwrap_or("best"), "best");
     }

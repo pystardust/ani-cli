@@ -115,12 +115,18 @@ pub async fn run_debug(
     ep: &str,
     quality: &str,
     mode: &str,
+    select_index: usize,
 ) -> Result<DebugOutput> {
     use tokio::process::Command;
 
+    // ani-cli's `-S` flag is 1-based; the caller passes 1 to keep the
+    // legacy "first match" behaviour or a higher index after running
+    // its own search disambiguation (see `crate::scraper::allanime`).
+    let select_str = select_index.max(1).to_string();
+
     let mut cmd = Command::new(&opts.ani_cli_path);
     cmd.arg("-S")
-        .arg("1")
+        .arg(&select_str)
         .arg("-e")
         .arg(ep)
         .arg("-q")

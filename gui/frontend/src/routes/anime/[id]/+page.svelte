@@ -322,7 +322,13 @@
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
 		void getOrFire(makeKey(id, ep, mode, quality), () =>
-			play({ title, episode: String(ep), mode, quality })
+			play({
+				title,
+				episode: String(ep),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null
+			})
 		).catch(() => {
 			/* the click handler will see the error if it ever fires */
 		});
@@ -506,7 +512,13 @@
 			// completes instantly here. Fresh resolutions land in the
 			// cache for the next click within this session.
 			const session = await getOrFire(makeKey(id, ep, mode, quality), () =>
-				play({ title, episode: String(ep), mode, quality })
+				play({
+					title,
+					episode: String(ep),
+					mode,
+					quality,
+					episode_count: detail?.episode_count ?? null
+				})
 			);
 			actionNotice = null;
 			// The target is built from `resolve()` plus a query string;

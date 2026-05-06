@@ -231,7 +231,13 @@
 		const quality = config.quality ?? 'best';
 		const targetEp = episodeNum + 1;
 		void getOrFire(makeKey(id, targetEp, mode, quality), () =>
-			play({ title, episode: String(targetEp), mode, quality })
+			play({
+				title,
+				episode: String(targetEp),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null
+			})
 		).catch(() => {
 			/* the prev/next click handler surfaces errors when it fires */
 		});
@@ -249,7 +255,13 @@
 			// Hits the play-cache: ep+1 was prefetched on mount, so the
 			// next-episode click is usually instant.
 			const session = await getOrFire(makeKey(id, targetEp, mode, quality), () =>
-				play({ title, episode: String(targetEp), mode, quality })
+				play({
+					title,
+					episode: String(targetEp),
+					mode,
+					quality,
+					episode_count: detail?.episode_count ?? null
+				})
 			);
 			// goto navigates within the same route, so the page doesn't
 			// fully unmount — `$effect` above re-fires with the new
