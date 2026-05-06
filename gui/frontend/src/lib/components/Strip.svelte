@@ -155,11 +155,21 @@
 		onpointerup={onPointerUp}
 		onpointercancel={onPointerUp}
 		onclickcapture={onClickCapture}
+		ondragstart={(e) => e.preventDefault()}
 		role="region"
 		aria-label={eyebrow}
 		tabindex="0"
 	>
-		{@render children()}
+		<!--
+		  Inner rail holds the gutter padding, NOT the scroll container.
+		  This keeps the first card aligned with the eyebrow above it
+		  on initial render, and lets the leading gutter scroll OFF the
+		  viewport when the user pages right (so cards can touch the
+		  inline-start edge once scrolled, per user feedback).
+		-->
+		<div class="strip-rail">
+			{@render children()}
+		</div>
 	</div>
 </section>
 
@@ -241,12 +251,6 @@
 	}
 
 	.strip-scroll {
-		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: var(--strip-card);
-		gap: var(--space-5);
-		padding-inline: var(--strip-pad);
-		padding-block-end: var(--space-3);
 		overflow-x: auto;
 		scroll-snap-type: inline mandatory;
 		scrollbar-width: thin;
@@ -254,6 +258,24 @@
 		cursor: grab;
 		-webkit-user-select: none;
 		user-select: none;
+	}
+	.strip-rail {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: var(--strip-card);
+		gap: var(--space-5);
+		/* Padding lives on the rail, not the scroll container — keeps
+		   first-card alignment matching the eyebrow on initial render. */
+		padding-inline: var(--strip-pad);
+		padding-block-end: var(--space-3);
+	}
+	/* Suppress native HTML5 image drag inside cards — without this, mousing
+	   on a poster triggers the browser's image-drag ghost, which fights
+	   our pointer-drag scroll and kills its perf. pointer-events: none
+	   forwards clicks to the parent <a>, which still navigates fine. */
+	.strip-scroll :global(img) {
+		-webkit-user-drag: none;
+		pointer-events: none;
 	}
 	.strip-scroll.dragging {
 		cursor: grabbing;
