@@ -51,6 +51,8 @@ pub struct AppState {
     pub cache_pool: SqlitePool,
     /// Kitsu metadata client (shares the same reqwest pool as the proxy).
     pub kitsu: KitsuClient,
+    /// Path to the user's TOML settings file (`config.toml`).
+    pub config_path: PathBuf,
 }
 
 impl AppState {
@@ -79,6 +81,7 @@ impl AppState {
         }
         let cache_pool = crate::cache::open_pool(&metadata_db)?;
         let kitsu = KitsuClient::new(proxy_http.clone());
+        let config_path = paths::config_file().ok_or(AniError::Io)?;
         Ok(Self {
             secret: AppSecret::random(),
             sessions: SessionTable::new(),
@@ -90,6 +93,7 @@ impl AppState {
             image_cache_dir,
             cache_pool,
             kitsu,
+            config_path,
         })
     }
 
@@ -132,6 +136,7 @@ mod tests {
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
             kitsu: KitsuClient::new(reqwest::Client::new()),
+            config_path: PathBuf::from("/tmp/ani-gui-config.toml"),
         }
     }
 

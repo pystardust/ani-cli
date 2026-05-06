@@ -240,6 +240,54 @@ impl KitsuClient {
         parse_search_response(&body)
     }
 
+    /// Currently-airing anime sorted by user count descending — a usable
+    /// proxy for "trending" until the AniList client lands. `limit` caps
+    /// `page[limit]`.
+    ///
+    /// # Errors
+    /// Same as [`Self::search`].
+    pub async fn currently_airing_by_user_count(&self, limit: u8) -> Result<Vec<KitsuAnimeRef>> {
+        self.list(&[
+            ("filter[status]", "current".to_string()),
+            ("sort", "-userCount".to_string()),
+            ("page[limit]", limit.to_string()),
+            ("fields[anime]", ANIME_FIELDS.to_string()),
+        ])
+        .await
+    }
+
+    /// Top-rated anime above the noise floor (averageRating ≥ 70/100).
+    ///
+    /// # Errors
+    /// Same as [`Self::search`].
+    pub async fn top_rated(&self, limit: u8) -> Result<Vec<KitsuAnimeRef>> {
+        self.list(&[
+            ("filter[averageRating]", "70..".to_string()),
+            ("sort", "-averageRating".to_string()),
+            ("page[limit]", limit.to_string()),
+            ("fields[anime]", ANIME_FIELDS.to_string()),
+        ])
+        .await
+    }
+
+    async fn list(&self, params: &[(&str, String)]) -> Result<Vec<KitsuAnimeRef>> {
+        let resp = self
+            .http
+            .get(format!("{}/anime", self.base))
+            .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+            .query(params)
+            .send()
+            .await
+            .map_err(|_| AniError::Network)?;
+        if !resp.status().is_success() {
+            return Err(AniError::Upstream {
+                status: resp.status().as_u16(),
+            });
+        }
+        let body = resp.bytes().await.map_err(|_| AniError::Network)?;
+        parse_search_response(&body)
+    }
+
     /// Fetch a single anime by Kitsu id.
     ///
     /// # Errors

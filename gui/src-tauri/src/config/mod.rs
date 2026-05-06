@@ -5,7 +5,11 @@
 
 pub mod paths;
 
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
+
+use crate::error::{AniError, Result};
 
 /// Application configuration. Values default to upstream `ani-cli`'s
 /// defaults so a fresh install behaves identically until the user opens
@@ -37,6 +41,40 @@ impl Default for Config {
     }
 }
 
+/// Read the config file at `path`. Missing-file returns
+/// `Config::default()` so a fresh install behaves like an unconfigured
+/// `ani-cli` user.
+///
+/// # Errors
+/// - [`AniError::Io`] if the file exists but cannot be read.
+/// - [`AniError::Config`] if the file isn't valid TOML or has
+///   incompatible types.
+pub fn read_config(path: &Path) -> Result<Config> {
+    if !path.exists() {
+        return Ok(Config::default());
+    }
+    let body = std::fs::read_to_string(path)?;
+    let cfg: Config = toml::from_str(&body)?;
+    Ok(cfg)
+}
+
+/// Atomically write `cfg` to `path` (writes to `path.new` then renames).
+/// Creates the parent directory if absent.
+///
+/// # Errors
+/// - [`AniError::Io`] on filesystem failures.
+/// - [`AniError::Config`] if TOML serialization fails (shouldn't in practice).
+pub fn write_config(path: &Path, cfg: &Config) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|_| AniError::Io)?;
+    }
+    let body = toml::to_string_pretty(cfg).map_err(|_| AniError::Config)?;
+    let tmp = path.with_extension("toml.new");
+    std::fs::write(&tmp, body).map_err(|_| AniError::Io)?;
+    std::fs::rename(&tmp, path).map_err(|_| AniError::Io)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,5 +96,47 @@ mod tests {
         let s = toml::to_string(&c).unwrap();
         let parsed: Config = toml::from_str(&s).unwrap();
         assert_eq!(c, parsed);
+    }
+
+    #[test]
+    fn read_config_returns_defaults_when_file_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nope.toml");
+        let c = read_config(&path).expect("ok");
+        assert_eq!(c, Config::default());
+    }
+
+    #[test]
+    fn write_then_read_round_trips_through_disk() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nested").join("config.toml");
+        let c = Config {
+            mode: "dub".into(),
+            quality: "1080".into(),
+            external_player: "vlc".into(),
+            ..Config::default()
+        };
+        write_config(&path, &c).expect("write");
+        let back = read_config(&path).expect("read");
+        assert_eq!(back, c);
+    }
+
+    #[test]
+    fn write_config_is_atomic_via_temp_rename() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        write_config(&path, &Config::default()).unwrap();
+        // The .new sidecar should not survive the write.
+        let sidecar = path.with_extension("toml.new");
+        assert!(!sidecar.exists(), "atomic-rename leaves no .new behind");
+    }
+
+    #[test]
+    fn read_config_rejects_non_toml_body() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        std::fs::write(&path, "this is not toml: [[[").unwrap();
+        let r = read_config(&path);
+        assert!(matches!(r, Err(AniError::Config)));
     }
 }

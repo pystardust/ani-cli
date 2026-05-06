@@ -14,7 +14,7 @@
 //!   change rarely.
 
 use crate::app::AppState;
-use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL};
+use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL, TRENDING_TTL};
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
 use crate::meta::kitsu::KitsuAnimeRef;
@@ -43,6 +43,70 @@ pub async fn kitsu_search(state: &AppState, query: &str) -> Result<Vec<KitsuAnim
     if let Ok(body) = serde_json::to_string(&hits) {
         // TTL conversion can't fail in practice; clamp via try_from.
         let _ = meta_cache_put(&state.cache_pool, &key, &body, DISCOVERY_TTL.as_secs());
+    }
+    Ok(hits)
+}
+
+/// Currently-airing anime ranked by user count — a usable proxy for
+/// "trending" until the AniList client lands. Cache key: `kitsu:trending`,
+/// TTL [`TRENDING_TTL`] (1 hour).
+///
+/// # Errors
+/// Inherits from [`crate::meta::kitsu::KitsuClient::currently_airing_by_user_count`]
+/// on cache miss.
+pub async fn kitsu_trending(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
+    discovery_cached(
+        state,
+        "kitsu:trending",
+        TRENDING_TTL.as_secs(),
+        |limit| async move { state.kitsu.currently_airing_by_user_count(limit).await },
+    )
+    .await
+}
+
+/// Top-rated anime (averageRating ≥ 70/100). Cache key:
+/// `kitsu:top_rated`, TTL [`DISCOVERY_TTL`] (6 hours).
+///
+/// # Errors
+/// Inherits from [`crate::meta::kitsu::KitsuClient::top_rated`] on miss.
+pub async fn kitsu_top_rated(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
+    discovery_cached(
+        state,
+        "kitsu:top_rated",
+        DISCOVERY_TTL.as_secs(),
+        |limit| async move { state.kitsu.top_rated(limit).await },
+    )
+    .await
+}
+
+/// Page size used by the discovery rows. Hard-coded so the cache key is
+/// stable; if we ever expose `limit` as an arg, the cache key has to
+/// include it.
+const DISCOVERY_PAGE_LIMIT: u8 = 20;
+
+/// Generic cached-fetch helper for the discovery rows.
+///
+/// On a hit, the cached body is JSON-deserialized back into the typed list.
+/// On a miss, the supplied async fetcher runs, the result is cached, and
+/// returned. Errors aren't cached (next call retries).
+async fn discovery_cached<F, Fut>(
+    state: &AppState,
+    cache_key: &str,
+    ttl_seconds: u64,
+    fetch: F,
+) -> Result<Vec<KitsuAnimeRef>>
+where
+    F: FnOnce(u8) -> Fut,
+    Fut: std::future::Future<Output = Result<Vec<KitsuAnimeRef>>>,
+{
+    if let Some(body) = meta_cache_get(&state.cache_pool, cache_key)? {
+        if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
+            return Ok(hits);
+        }
+    }
+    let hits = fetch(DISCOVERY_PAGE_LIMIT).await?;
+    if let Ok(body) = serde_json::to_string(&hits) {
+        let _ = meta_cache_put(&state.cache_pool, cache_key, &body, ttl_seconds);
     }
     Ok(hits)
 }
@@ -104,6 +168,7 @@ mod tests {
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
             kitsu: KitsuClient::with_base(reqwest::Client::new(), uri),
+            config_path: PathBuf::from("/tmp/ani-gui-config.toml"),
         }
     }
 
@@ -177,6 +242,50 @@ mod tests {
         let second = kitsu_anime_detail(&state, "12").await.unwrap();
         assert_eq!(first.canonical_title, "One Piece");
         assert_eq!(first, second);
+    }
+
+    #[tokio::test]
+    async fn kitsu_trending_caches_after_first_call_and_uses_filter_status_current() {
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/anime"))
+            .and(query_param("filter[status]", "current"))
+            .and(query_param("sort", "-userCount"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(SEARCH_FIXTURE.to_vec()),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let first = kitsu_trending(&state).await.expect("ok");
+        let second = kitsu_trending(&state).await.expect("ok");
+        assert_eq!(first.len(), 5);
+        assert_eq!(first, second);
+    }
+
+    #[tokio::test]
+    async fn kitsu_top_rated_caches_and_filters_by_minimum_average_rating() {
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/anime"))
+            .and(query_param("filter[averageRating]", "70.."))
+            .and(query_param("sort", "-averageRating"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(SEARCH_FIXTURE.to_vec()),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let _ = kitsu_top_rated(&state).await.expect("ok");
+        let _ = kitsu_top_rated(&state).await.expect("ok");
     }
 
     #[tokio::test]

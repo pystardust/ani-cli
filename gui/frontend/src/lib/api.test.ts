@@ -8,8 +8,13 @@ import {
 	imageProxyUrl,
 	kitsuAnimeDetail,
 	kitsuSearch,
+	kitsuTopRated,
+	kitsuTrending,
 	openExternalPlayer,
-	proxyBaseUrl
+	proxyBaseUrl,
+	settingsGet,
+	settingsPut,
+	type Config
 } from './api';
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -204,6 +209,53 @@ describe('kitsuAnimeDetail', () => {
 		const detail = await kitsuAnimeDetail('12');
 		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_anime_detail', { id: '12' });
 		expect(detail.id).toBe('12');
+	});
+});
+
+describe('kitsuTrending', () => {
+	it('invokes cmd_kitsu_trending with no args', async () => {
+		mockedInvoke.mockResolvedValue([]);
+		await kitsuTrending();
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_trending');
+	});
+});
+
+describe('kitsuTopRated', () => {
+	it('invokes cmd_kitsu_top_rated with no args', async () => {
+		mockedInvoke.mockResolvedValue([]);
+		await kitsuTopRated();
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_top_rated');
+	});
+});
+
+describe('settingsGet', () => {
+	it('invokes cmd_settings_get with no args and returns Config', async () => {
+		const cfg: Config = {
+			locale: 'en',
+			mode: 'sub',
+			quality: 'best',
+			external_player: 'mpv',
+			image_cache_cap_mb: 500
+		};
+		mockedInvoke.mockResolvedValue(cfg);
+		const got = await settingsGet();
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_settings_get');
+		expect(got.mode).toBe('sub');
+	});
+});
+
+describe('settingsPut', () => {
+	it('passes cfg under the cfg key the Rust handler expects', async () => {
+		const cfg: Config = {
+			locale: 'pt-BR',
+			mode: 'dub',
+			quality: '1080',
+			external_player: 'vlc',
+			image_cache_cap_mb: 1000
+		};
+		mockedInvoke.mockResolvedValue(undefined);
+		await settingsPut(cfg);
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_settings_put', { cfg });
 	});
 });
 

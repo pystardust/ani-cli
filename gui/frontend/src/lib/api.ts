@@ -77,6 +77,15 @@ export interface KitsuCoverImage {
 	original: string | null;
 }
 
+/** User-editable settings persisted to ~/.config/ani-gui/config.toml. */
+export interface Config {
+	locale: string;
+	mode: string; // "sub" | "dub"
+	quality: string; // "best" | "worst" | "1080" | "720" | "480"
+	external_player: string;
+	image_cache_cap_mb: number;
+}
+
 /** Public Kitsu anime view returned by `cmd_kitsu_search` / `_anime_detail`. */
 export interface KitsuAnimeRef {
 	id: string;
@@ -125,6 +134,22 @@ export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
 
 export function kitsuAnimeDetail(id: string): Promise<KitsuAnimeRef> {
 	return invoke<KitsuAnimeRef>('cmd_kitsu_anime_detail', { id });
+}
+
+export function kitsuTrending(): Promise<KitsuAnimeRef[]> {
+	return invoke<KitsuAnimeRef[]>('cmd_kitsu_trending');
+}
+
+export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
+	return invoke<KitsuAnimeRef[]>('cmd_kitsu_top_rated');
+}
+
+export function settingsGet(): Promise<Config> {
+	return invoke<Config>('cmd_settings_get');
+}
+
+export function settingsPut(cfg: Config): Promise<void> {
+	return invoke<void>('cmd_settings_put', { cfg });
 }
 
 /**

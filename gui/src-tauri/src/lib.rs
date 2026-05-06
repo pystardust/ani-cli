@@ -129,6 +129,10 @@ pub fn run() -> Result<()> {
             commands::ipc::cmd_create_session,
             commands::ipc::cmd_kitsu_search,
             commands::ipc::cmd_kitsu_anime_detail,
+            commands::ipc::cmd_kitsu_trending,
+            commands::ipc::cmd_kitsu_top_rated,
+            commands::ipc::cmd_settings_get,
+            commands::ipc::cmd_settings_put,
         ])
         .setup(move |app| {
             // Tauri 2 owns its own runtime; we keep ours alive for the

@@ -10,8 +10,9 @@ use tauri::State;
 use crate::app::AppState;
 use crate::commands::{
     app_info, external_player, history as h_inner, kitsu as kitsu_inner,
-    proxy_url::proxy_base_url as inner_proxy, session as session_inner,
+    proxy_url::proxy_base_url as inner_proxy, session as session_inner, settings as settings_inner,
 };
+use crate::config::Config;
 use crate::error::Result;
 use crate::history::HistoryEntry;
 use crate::meta::kitsu::KitsuAnimeRef;
@@ -72,4 +73,28 @@ pub async fn cmd_kitsu_anime_detail(
     id: String,
 ) -> Result<KitsuAnimeRef> {
     kitsu_inner::kitsu_anime_detail(&state, &id).await
+}
+
+/// Frontend → backend: trending row (currently-airing, ranked by users).
+#[tauri::command]
+pub async fn cmd_kitsu_trending(state: State<'_, AppState>) -> Result<Vec<KitsuAnimeRef>> {
+    kitsu_inner::kitsu_trending(&state).await
+}
+
+/// Frontend → backend: top-rated row.
+#[tauri::command]
+pub async fn cmd_kitsu_top_rated(state: State<'_, AppState>) -> Result<Vec<KitsuAnimeRef>> {
+    kitsu_inner::kitsu_top_rated(&state).await
+}
+
+/// Frontend → backend: read user settings (defaults when file is absent).
+#[tauri::command]
+pub fn cmd_settings_get(state: State<'_, AppState>) -> Result<Config> {
+    settings_inner::settings_get(&state)
+}
+
+/// Frontend → backend: write the full settings struct atomically.
+#[tauri::command]
+pub fn cmd_settings_put(state: State<'_, AppState>, cfg: Config) -> Result<()> {
+    settings_inner::settings_put(&state, &cfg)
 }

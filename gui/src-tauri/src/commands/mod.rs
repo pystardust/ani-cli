@@ -15,6 +15,7 @@ pub mod ipc;
 pub mod kitsu;
 pub mod proxy_url;
 pub mod session;
+pub mod settings;
 
 pub use app_info::app_info;
 pub use external_player::{open_external_player, LaunchArgs};
