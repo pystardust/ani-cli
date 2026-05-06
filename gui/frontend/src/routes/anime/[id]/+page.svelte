@@ -21,6 +21,8 @@
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
+		play,
+		playExternal,
 		settingsGet,
 		settingsPut,
 		type Config,
@@ -252,6 +254,10 @@
 	// Inline status banner when an action isn't wired yet (Play/Download/External
 	// hit allanime, which is M2). Kept tight; not a modal.
 	let actionNotice = $state<string | null>(null);
+	// True while a play/playExternal request is in flight. Buttons
+	// disable themselves to keep the user from double-clicking ani-cli
+	// into a stack of concurrent spawns.
+	let actionBusy = $state(false);
 
 	const id = $derived(page.params.id ?? '');
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
@@ -445,22 +451,88 @@
 		}, 4000);
 	}
 
+	// Title we feed to ani-cli's search. The backend's run_debug picks
+	// the first allanime match, so a stable canonical title is the
+	// best signal we have. KitsuAnimeRef.canonical_title is non-null
+	// per the type, but the detail isn't populated until kitsuAnimeDetail
+	// resolves — guard for the null pre-load state.
+	function playTitle(): string {
+		return detail?.canonical_title ?? '';
+	}
+
+	/** Default to the show's first episode for the hero "Play" button. */
+	function defaultEpisode(): number {
+		return 1;
+	}
+
+	async function startPlay(ep: number) {
+		const title = playTitle();
+		if (!title) {
+			notify('No title available for playback yet.');
+			return;
+		}
+		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		actionBusy = true;
+		notify(`Resolving episode ${ep}…`);
+		try {
+			const session = await play({
+				title,
+				episode: String(ep),
+				mode,
+				quality: config?.quality
+			});
+			actionBusy = false;
+			actionNotice = null;
+			// goto target IS resolve()-produced; the rule pattern-matches a
+			// literal `goto(resolve(...))` and trips on the template literal
+			// that interpolates resolve() with the session query string.
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			void goto(`${resolve('/play')}?session=${encodeURIComponent(session.session_id)}`);
+		} catch (e) {
+			actionBusy = false;
+			notify(describeErrorString(e));
+		}
+	}
+
+	async function startExternal(ep: number) {
+		const title = playTitle();
+		if (!title) {
+			notify('No title available for playback yet.');
+			return;
+		}
+		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		actionBusy = true;
+		notify(`Launching external player for episode ${ep}…`);
+		try {
+			await playExternal({
+				title,
+				episode: String(ep),
+				mode,
+				quality: config?.quality
+			});
+			actionBusy = false;
+			notify(`Episode ${ep} sent to external player.`);
+		} catch (e) {
+			actionBusy = false;
+			notify(describeErrorString(e));
+		}
+	}
+
 	function onPlay() {
-		// TODO: M2 — resolve allanime episode 1 by Kitsu→allanime title match,
-		// hand the stream URL into createSession, navigate to /play.
-		notify('Playback wires up in M2 once the allanime bridge lands.');
+		void startPlay(defaultEpisode());
 	}
 	function onDownload() {
-		// TODO: M2 — POST /api/sessions for episode 1 to drive ani-cli.
-		notify('Downloads wire up alongside playback in M2.');
+		// Download is a separate flow (-d) that's not part of this M2
+		// slice — the upstream URL resolution path is the same, but
+		// the terminal action would invoke aria2c via ani-cli. Tracked
+		// as a follow-up; the toast keeps the button discoverable.
+		notify('Downloads land in a follow-up — the backend chain is the same.');
 	}
 	function onExternal() {
-		// TODO: M2 — pass the resolved upstream URL to cmd_open_external_player.
-		notify('External player launches once a stream resolves (M2).');
+		void startExternal(defaultEpisode());
 	}
 	function onPickEpisode(n: number) {
-		// TODO: M2 — needs Kitsu→allanime mapping.
-		notify(`Episode ${n} will play once the allanime bridge lands (M2).`);
+		void startPlay(n);
 	}
 </script>
 
@@ -537,6 +609,7 @@
 						class="btn btn-glass"
 						style:--btn-glow="var(--accent)"
 						onclick={onPlay}
+						disabled={actionBusy}
 					>
 						<span aria-hidden="true">▸</span>
 						<span>Play episode 1</span>
@@ -545,7 +618,7 @@
 						<span aria-hidden="true">↓</span>
 						<span>Download</span>
 					</button>
-					<button type="button" class="btn btn-ghost" onclick={onExternal}>
+					<button type="button" class="btn btn-ghost" onclick={onExternal} disabled={actionBusy}>
 						<span>External player</span>
 						<span aria-hidden="true">↗</span>
 					</button>

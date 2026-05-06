@@ -250,6 +250,30 @@ export function openExternalPlayer(args: LaunchExternalPlayerArgs): Promise<void
 	return postJson<void>('/api/external-player', args);
 }
 
+/** Body for the play endpoints — same shape on both `/api/play` and
+ *  `/api/play/external`. The backend takes the canonical title (from
+ *  Kitsu metadata), resolves it through ani-cli, and either wraps the
+ *  result in a session or hands it to the OS player. */
+export interface PlayArgs {
+	title: string;
+	episode: string;
+	mode: 'sub' | 'dub';
+	quality?: string;
+}
+
+/** Play an episode in the embedded player. Returns the session URLs
+ *  the renderer feeds to hls.js after navigating to /play. */
+export function play(args: PlayArgs): Promise<CreateSessionResponse> {
+	return postJson<CreateSessionResponse>('/api/play', args);
+}
+
+/** Play an episode in the user's external media player (default mpv).
+ *  No session is registered — the player streams from the upstream
+ *  directly with the resolved Referer. */
+export function playExternal(args: PlayArgs): Promise<void> {
+	return postJson<void>('/api/play/external', args);
+}
+
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
 	return postJson<KitsuAnimeRef[]>('/api/kitsu/search', { query });
 }
