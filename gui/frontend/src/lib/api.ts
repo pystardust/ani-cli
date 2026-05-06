@@ -1,30 +1,28 @@
 /**
  * Typed wrappers around the Rust backend's HTTP API.
  *
- * Originally Tauri IPC (`invoke('cmd_*')`); the migration to Electron
- * means we now talk to the same Rust process via `fetch()` against
- * its localhost axum server. The function signatures are unchanged
- * — every backend command surfaces here as a Promise-returning
- * function so call sites don't see the transport switch.
+ * The Electron renderer talks to the Rust sidecar via `fetch()`
+ * against its localhost axum server. Every backend command surfaces
+ * here as a Promise-returning function.
  *
- * Field names still mirror the Rust types byte-for-byte (snake_case)
+ * Field names mirror the Rust types byte-for-byte (snake_case)
  * because `AniError` and the DTOs serialize that way; changing
  * casing here would break round-tripping. The TypeScript style guide
  * accepts snake_case in API DTO interfaces only.
  */
-
-import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Resolve the base URL of the local backend (e.g.
  * `http://127.0.0.1:42337`). Cached after the first call.
  *
  * Detection order:
- *   1. `window.aniGui.apiBase` — Electron preload script injection (M-E3+).
- *   2. `import.meta.env.VITE_ANI_GUI_API_BASE` — set during browser-only
- *      dev (run the Rust binary, then `pnpm dev` with the env var).
- *   3. Tauri `invoke('cmd_proxy_base_url')` — the only remaining
- *      `invoke` call; gone after M-E5 decommissions Tauri.
+ *   1. `window.aniGui.apiBase` — Electron preload script injection.
+ *   2. `import.meta.env.VITE_ANI_GUI_API_BASE` — browser-only dev
+ *      (run `cargo run --bin ani-gui-backend` and `pnpm dev` with
+ *      the env var set to the printed URL).
+ *
+ * Throws if neither is available — the renderer can't function
+ * without a backend address.
  */
 let apiBaseCache: string | null = null;
 
@@ -46,8 +44,10 @@ async function apiBase(): Promise<string> {
 		apiBaseCache = envBase;
 		return apiBaseCache;
 	}
-	apiBaseCache = await invoke<string>('cmd_proxy_base_url');
-	return apiBaseCache;
+	throw new Error(
+		'ani-gui apiBase is not configured — Electron preload should set window.aniGui.apiBase, ' +
+			'or set VITE_ANI_GUI_API_BASE for browser-only dev.'
+	);
 }
 
 /**
@@ -325,20 +325,16 @@ export function metaCacheClear(): Promise<void> {
  * Convert an `https://…` upstream image URL into a URL the renderer
  * can drop into `<img src=>`.
  *
- * Under Electron the backend serves `/api/image?url=…` over HTTP; we
- * need the apiBase synchronously, so we read it directly off
- * `window.aniGui.apiBase` (set by the preload before any component
- * mounts). Under the legacy Tauri build that property is absent, and
- * the answer is the `image://` custom URI scheme registered in
- * `lib::run`.
+ * The backend serves `/api/image?url=…` over HTTP; we need the
+ * apiBase synchronously (Svelte renders the `src` attribute eagerly),
+ * so we read it directly off `window.aniGui.apiBase` set by the
+ * Electron preload before any component mounts.
  *
- * Returns `null` for non-https input — same defensive contract the
- * Tauri version had.
+ * Returns `null` for non-https input or when the apiBase isn't
+ * available yet — components show a placeholder in that case.
  */
 export function imageProxyUrl(httpsUrl: string | null | undefined): string | null {
 	if (!httpsUrl || !httpsUrl.startsWith('https://')) return null;
-	if (typeof window !== 'undefined' && window.aniGui?.apiBase) {
-		return `${window.aniGui.apiBase}/api/image?url=${encodeURIComponent(httpsUrl)}`;
-	}
-	return 'image://' + httpsUrl.slice('https://'.length);
+	if (typeof window === 'undefined' || !window.aniGui?.apiBase) return null;
+	return `${window.aniGui.apiBase}/api/image?url=${encodeURIComponent(httpsUrl)}`;
 }

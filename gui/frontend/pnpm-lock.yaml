@@ -8,15 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@tauri-apps/api':
-        specifier: 2.11.0
-        version: 2.11.0
-      '@tauri-apps/plugin-dialog':
-        specifier: 2.7.1
-        version: 2.7.1
-      '@tauri-apps/plugin-shell':
-        specifier: 2.3.5
-        version: 2.3.5
       hls.js:
         specifier: 1.6.16
         version: 1.6.16
@@ -301,15 +292,6 @@ packages:
     peerDependencies:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
-
-  '@tauri-apps/api@2.11.0':
-    resolution: {integrity: sha512-7CinYODhky9lmO23xHnUFv0Xt43fbtWMyxZcLcRBlFkcgXKuEirBvHpmtJ89YMhyeGcq20Wuc47Fa4XjyniywA==}
-
-  '@tauri-apps/plugin-dialog@2.7.1':
-    resolution: {integrity: sha512-OK1UBXYt+ojcmxMktzzuyonYIFta8CmAASpX+CA+DTGK24KlHjhYI6x2iOJ/TjZF4N7/ACK1oFmEOjIY9IhzOQ==}
-
-  '@tauri-apps/plugin-shell@2.3.5':
-    resolution: {integrity: sha512-jewtULhiQ7lI7+owCKAjc8tYLJr92U16bPOeAa472LHJdgaibLP83NcfAF2e+wkEcA53FxKQAZ7byDzs2eeizg==}
 
   '@tybys/wasm-util@0.10.2':
     resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
@@ -1320,16 +1302,6 @@ snapshots:
       svelte: 5.55.5(@typescript-eslint/types@8.59.2)
       vite: 8.0.10(@types/node@25.6.0)
       vitefu: 1.1.3(vite@8.0.10(@types/node@25.6.0))
-
-  '@tauri-apps/api@2.11.0': {}
-
-  '@tauri-apps/plugin-dialog@2.7.1':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
-
-  '@tauri-apps/plugin-shell@2.3.5':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
 
   '@tybys/wasm-util@0.10.2':
     dependencies:

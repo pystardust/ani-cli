@@ -7,9 +7,9 @@ target/
 Cargo.lock.bak
 
 # Tauri
-gui/src-tauri/target/
-gui/src-tauri/gen/
-gui/src-tauri/WixTools/
+gui/backend/target/
+gui/backend/gen/
+gui/backend/WixTools/
 
 # Electron packaging output (electron-builder + manual --appimage-extract)
 gui/electron/dist/

@@ -14,18 +14,14 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Install Linux deps for Tauri
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: gui/src-tauri
+          workspaces: gui/backend
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
       - name: Run cargo-mutants on scoped modules
-        working-directory: gui/src-tauri
+        working-directory: gui/backend
         run: |
           cargo mutants \
             --in-place \
@@ -42,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cargo-mutants-report
-          path: gui/src-tauri/mutants.json
+          path: gui/backend/mutants.json
           retention-days: 30
 
   stryker:

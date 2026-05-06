@@ -71,15 +71,15 @@ function resolveBackendBinary() {
 	if (IS_DEV) {
 		const repoRoot = path.resolve(__dirname, '..', '..');
 		const candidates = [
-			path.join(repoRoot, 'gui', 'src-tauri', 'target', 'release', 'ani-gui-backend'),
-			path.join(repoRoot, 'gui', 'src-tauri', 'target', 'debug', 'ani-gui-backend')
+			path.join(repoRoot, 'gui', 'backend', 'target', 'release', 'ani-gui-backend'),
+			path.join(repoRoot, 'gui', 'backend', 'target', 'debug', 'ani-gui-backend')
 		];
 		for (const p of candidates) {
 			if (fs.existsSync(p)) return p;
 		}
 		throw new Error(
 			`ani-gui-backend not found. Build it first:\n  ` +
-				`cd gui/src-tauri && cargo build --bin ani-gui-backend`
+				`cd gui/backend && cargo build --bin ani-gui-backend`
 		);
 	}
 	const packaged = path.join(process.resourcesPath, 'ani-gui-backend');

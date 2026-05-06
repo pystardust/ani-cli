@@ -3,7 +3,7 @@ name = "ani-gui"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.88"
-description = "Desktop GUI for the ani-cli anime scraper"
+description = "Headless backend for the ani-gui Electron desktop app"
 license = "GPL-3.0"
 publish = false
 
@@ -11,30 +11,15 @@ publish = false
 name = "ani_gui"
 path = "src/lib.rs"
 
-[[bin]]
-name = "ani-gui"
-path = "src/main.rs"
-
-# Standalone backend binary used by the Electron main process as a
-# sidecar. Same Rust logic as the Tauri-bundled binary, minus Tauri.
-# See `src/bin/backend.rs`.
+# The only binary is the standalone backend the Electron main process
+# spawns as a sidecar. The pre-Electron Tauri entrypoint lived in
+# `src/main.rs` and was removed in M-E5.
 [[bin]]
 name = "ani-gui-backend"
 path = "src/bin/backend.rs"
 
-[build-dependencies]
-tauri-build = { version = "2.0", features = [] }
-
 [dependencies]
-# Tauri 2.x — desktop shell
-# `devtools` feature ships the inspector in release builds. M1-era only —
-# remove before v1 user-facing packaging (security: lets a malicious page
-# inspect / poke at the webview).
-tauri = { version = "2.1", features = ["devtools"] }
-tauri-plugin-shell = "2.0"
-tauri-plugin-dialog = "2.0"
-
-# Async runtime + HTTP server (streaming proxy)
+# Async runtime + HTTP server (streaming proxy + API)
 tokio = { version = "1.41", features = ["full"] }
 axum = { version = "0.7", features = ["http2"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "timeout"] }

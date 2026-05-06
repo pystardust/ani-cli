@@ -23,8 +23,8 @@ use std::sync::Arc;
 use ani_gui::{api, app, proxy, AniError};
 
 fn main() -> std::process::ExitCode {
-    // Logging — same defaults as the Tauri main.rs. RUST_LOG honoured.
-    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "ani_gui=info,tauri=warn".into());
+    // Logging — RUST_LOG honoured, default keeps the noise down.
+    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "ani_gui=info".into());
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::new(filter))
         .with_target(true)

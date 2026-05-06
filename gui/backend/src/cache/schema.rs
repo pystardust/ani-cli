@@ -1,6 +1,6 @@
 //! Refinery-managed schema migrations for the SQLite cache.
 //!
-//! Migration files live under `gui/src-tauri/migrations/` and are
+//! Migration files live under `gui/backend/migrations/` and are
 //! embedded into the binary at compile time by `refinery::embed_migrations!`.
 //! Add new versions as `V<N>__<name>.sql` files; refinery enforces strict
 //! ordering through its `refinery_schema_history` table.

@@ -3,7 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [sveltekit()],
-	// Tauri dev server expects a fixed port (matches tauri.conf.json devUrl).
+	// Electron's main.js loads VITE_DEV_URL || http://localhost:5173 in dev,
+	// so this port has to be deterministic.
 	server: {
 		port: 5173,
 		strictPort: true,

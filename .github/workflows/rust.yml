@@ -4,11 +4,11 @@ on:
     branches:
       - master
     paths:
-      - 'gui/src-tauri/**'
+      - 'gui/backend/**'
       - 'rust-toolchain.toml'
   pull_request:
     paths:
-      - 'gui/src-tauri/**'
+      - 'gui/backend/**'
       - 'rust-toolchain.toml'
       - '.github/workflows/rust.yml'
 
@@ -29,7 +29,7 @@ jobs:
         with:
           components: rustfmt
       - name: cargo fmt --check
-        working-directory: gui/src-tauri
+        working-directory: gui/backend
         run: cargo fmt --all --check
 
   clippy:
@@ -37,18 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Linux deps for Tauri
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: gui/src-tauri
+          workspaces: gui/backend
       - name: cargo clippy
-        working-directory: gui/src-tauri
+        working-directory: gui/backend
         run: cargo clippy --workspace --all-targets -- -D warnings
 
   deny:
@@ -59,12 +55,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: gui/src-tauri
+          workspaces: gui/backend
           shared-key: cargo-deny
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked --version ^0.16
       - name: cargo deny check
-        working-directory: gui/src-tauri
+        working-directory: gui/backend
         run: cargo deny check
 
   test:
@@ -76,17 +72,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Linux deps for Tauri
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: gui/src-tauri
+          workspaces: gui/backend
       - name: cargo test --workspace
-        working-directory: gui/src-tauri
+        working-directory: gui/backend
         run: cargo test --workspace --all-features
 
   # proptests:

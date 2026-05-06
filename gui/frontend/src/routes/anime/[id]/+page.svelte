@@ -433,7 +433,7 @@
 		notify('Playback wires up in M2 once the allanime bridge lands.');
 	}
 	function onDownload() {
-		// TODO: M2 — invoke ani-cli -d for episode 1 via Tauri sidecar.
+		// TODO: M2 — POST /api/sessions for episode 1 to drive ani-cli.
 		notify('Downloads wire up alongside playback in M2.');
 	}
 	function onExternal() {

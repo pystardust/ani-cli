@@ -377,8 +377,7 @@ describe('metaCacheClear', () => {
 describe('imageProxyUrl', () => {
 	// vitest runs in `environment: 'node'` (vite.config.ts), so `window`
 	// isn't defined by default. Stub it on `globalThis` per test to
-	// exercise the Electron path (preload-injected `aniGui.apiBase`)
-	// and clear it for the legacy Tauri-only branch.
+	// exercise the Electron path (preload-injected `aniGui.apiBase`).
 	type WinHolder = { window?: { aniGui?: { apiBase?: string } } };
 	const g = globalThis as unknown as WinHolder;
 
@@ -386,7 +385,7 @@ describe('imageProxyUrl', () => {
 		delete g.window;
 	});
 
-	it('rewrites https URLs to /api/image when apiBase is exposed (Electron)', () => {
+	it('rewrites https URLs to /api/image when apiBase is exposed', () => {
 		g.window = { aniGui: { apiBase: 'http://127.0.0.1:42337' } };
 		expect(imageProxyUrl('https://media.kitsu.app/anime/12/poster.jpg')).toBe(
 			'http://127.0.0.1:42337/api/image?url=' +
@@ -394,11 +393,11 @@ describe('imageProxyUrl', () => {
 		);
 	});
 
-	it('falls back to image:// when apiBase is absent (legacy Tauri)', () => {
-		// no `window` stub → `typeof window === 'undefined'` → fallback
-		expect(imageProxyUrl('https://media.kitsu.app/anime/12/poster.jpg')).toBe(
-			'image://media.kitsu.app/anime/12/poster.jpg'
-		);
+	it('returns null when apiBase is unavailable', () => {
+		// No `window` stub → `typeof window === 'undefined'` → null. The
+		// legacy `image://` Tauri-protocol fallback was removed in M-E5;
+		// callers render the placeholder instead.
+		expect(imageProxyUrl('https://media.kitsu.app/anime/12/poster.jpg')).toBeNull();
 	});
 
 	it('returns null for null/undefined/empty/non-https input', () => {

@@ -12,7 +12,7 @@
 	"scripts": {
 		"dev": "ELECTRON_DEV=1 electron --no-sandbox .",
 		"start": "electron .",
-		"build:backend": "cd ../src-tauri && cargo build --bin ani-gui-backend --release",
+		"build:backend": "cd ../backend && cargo build --bin ani-gui-backend --release",
 		"build:frontend": "cd ../frontend && pnpm build",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
 		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
@@ -46,7 +46,7 @@
 				"to": "frontend/build"
 			},
 			{
-				"from": "../src-tauri/target/release/ani-gui-backend",
+				"from": "../backend/target/release/ani-gui-backend",
 				"to": "ani-gui-backend"
 			}
 		],
