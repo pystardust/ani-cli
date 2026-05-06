@@ -51,29 +51,37 @@
 </script>
 
 {#if visible}
-	<div class="overlay" role="status" aria-live="polite" aria-label="Loading">
-		<div bind:this={container} class="anim"></div>
+	<div class="backdrop" role="status" aria-live="polite" aria-label="Loading">
+		<div class="band">
+			<div bind:this={container} class="anim"></div>
+		</div>
 	</div>
 {/if}
 
 <style>
-	/* Horizontal band — full-width opaque black row centred on the
-	   viewport, vertical padding so the lottie has breathing room
-	   above and below. The page underneath stays visible top + bottom,
-	   only this row gets blocked while the resolution runs. */
-	.overlay {
+	/* Two layers:
+	   1. backdrop — fullscreen rgba dim that puts the rest of the page
+	      out of focus while we resolve.
+	   2. band     — full-width opaque-black row centred on the viewport
+	      that frames the Lottie. The page above and below the band
+	      remains dimly visible, so spatial context is preserved. */
+	.backdrop {
 		position: fixed;
-		left: 0;
-		right: 0;
-		top: 50%;
-		transform: translateY(-50%);
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		animation: fade-in 160ms ease-out;
+	}
+	.band {
+		width: 100%;
 		background: rgb(0, 0, 0);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		padding: 1.5rem 0;
-		z-index: 1000;
-		animation: fade-in 160ms ease-out;
 	}
 	.anim {
 		height: 180px;
