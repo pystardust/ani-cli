@@ -1341,11 +1341,12 @@
 		/* Origin sits low so scale-up on hover lifts upward toward the
 		   poster + thumbnail rather than pushing into the next row. */
 		transform-origin: 50% 80%;
-		transition:
-			transform var(--dur-med) var(--ease-out-elastic),
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft),
-			box-shadow var(--dur-med) var(--ease-out-soft);
+		/* Scope paint to this tile so a hover doesn't repaint the
+		   whole episode panel. Transitions removed: the previous list
+		   (transform / border-color / background / box-shadow) made
+		   hover-in/hover-out a paint storm on the 12-tile grid.
+		   Hover is instant now — feels snappier on top of cheaper. */
+		contain: layout paint style;
 	}
 	.ep-tile:hover {
 		/* Composite-only hover: lift + scale via transform, z-index

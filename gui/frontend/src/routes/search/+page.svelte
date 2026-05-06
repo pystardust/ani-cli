@@ -316,10 +316,10 @@
 	.card-link {
 		display: block;
 		color: inherit;
-		transition: transform var(--dur-med) var(--ease-out-elastic);
-		/* `will-change: transform` removed for the same reason as
-		   PosterCard — too many composited layers on a busy result
-		   grid. Hover transform still works without the hint. */
+		/* Same scope-paint + drop-transition treatment as PosterCard.
+		   Search result grid is even denser (~30+ cards on a query)
+		   so containment matters more here. */
+		contain: layout paint style;
 	}
 	.card-link:hover {
 		transform: translateY(-4px);
