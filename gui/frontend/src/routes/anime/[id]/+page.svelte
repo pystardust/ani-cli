@@ -26,7 +26,8 @@
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
-	import { fade } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
@@ -450,7 +451,11 @@
 			</div>
 		{/if}
 
-		<!-- 2-column body: synopsis + episodes panel -->
+		<!-- Body: synopsis + episodes stacked vertically. The previous
+		     side-by-side layout looked unbalanced when one was much taller
+		     than the other (long synopsis + 12-ep show, or short synopsis
+		     + 1100-ep show). Stacked, both panels use the full editorial
+		     column width and visually breathe. -->
 		<section class="body">
 			<div class="body-col body-col-prose">
 				<h2 class="section-eyebrow">Synopsis</h2>
@@ -473,8 +478,6 @@
 					<p class="prose-empty">No synopsis on file at Kitsu.</p>
 				{/if}
 			</div>
-
-			<div class="body-divider" aria-hidden="true"></div>
 
 			<div class="body-col body-col-episodes">
 				<h2 class="section-eyebrow">
@@ -546,10 +549,10 @@
 					</div>
 				{/if}
 				{#key episodesPage}
-					<ul class="ep-grid" in:fade={{ duration: 180 }}>
+					<ul class="ep-grid">
 						{#if episodes === null}
 							<!-- Skeleton while fetch is in flight -->
-							{#each Array.from({ length: 4 }, (_, k) => k) as i (i)}
+							{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
 								<li>
 									<div class="ep-tile ep-tile-skel" aria-hidden="true">
 										<div class="ep-thumb ep-thumb-skel"></div>
@@ -558,11 +561,12 @@
 								</li>
 							{/each}
 						{:else if episodes.length > 0}
-							<!-- Real Kitsu data path -->
-							{#each episodes as ep (ep.id)}
+							<!-- Real Kitsu data path; per-tile staggered enter for a
+							     premium feel — tiles flow in left-to-right, top-to-bottom. -->
+							{#each episodes as ep, i (ep.id)}
 								{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 								{@const num = ep.number ?? ep.relative_number ?? null}
-								<li>
+								<li in:fly={{ y: 14, duration: 320, delay: i * 28, easing: cubicOut }}>
 									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
 										<span class="ep-thumb">
 											{#if thumb}
@@ -592,8 +596,8 @@
 							<!-- Fallback: Kitsu didn't have episode data, but episode_count
 							     gives us a usable count. Render numbered placeholder tiles
 							     so the user isn't blocked from poking the panel. -->
-							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n (n)}
-								<li>
+							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
+								<li in:fly={{ y: 14, duration: 280, delay: i * 24, easing: cubicOut }}>
 									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
 										<span class="ep-thumb">
 											<span class="ep-thumb-placeholder" aria-hidden="true">
@@ -1050,41 +1054,22 @@
 		background: var(--bone-400);
 	}
 
-	/* — 2-column body (synopsis + episodes). Capped tighter than the
-	     hero so the page doesn't feel "all horizontal" on widescreen.
-	     Hero stays full-bleed; only the prose + episode block narrows.
-	     The episode column is fixed-width so it doesn't keep spreading. */
+	/* — Body: vertical stack of synopsis → episodes. The earlier 2-col
+	     layout produced an imbalance whenever one block was much taller
+	     than the other (long synopsis + 12-ep show, or short synopsis +
+	     1100-ep show). Stacked, both panels span the full editorial
+	     column width and never compete for vertical alignment. */
 	.body {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) 1px auto;
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-8);
-		align-items: start;
 		max-inline-size: var(--content-max);
 		margin: var(--space-7) auto 0;
 		padding-inline: var(--space-8);
 	}
-	@media (max-inline-size: 900px) {
-		.body {
-			grid-template-columns: 1fr;
-		}
-		.body-divider {
-			display: none;
-		}
-	}
-	.body-divider {
-		align-self: stretch;
-		inline-size: 1px;
-		background: linear-gradient(
-			180deg,
-			transparent 0%,
-			color-mix(in oklab, var(--accent) 50%, var(--ink-200)) 12%,
-			color-mix(in oklab, var(--accent) 50%, var(--ink-200)) 88%,
-			transparent 100%
-		);
-	}
 
 	.body-col-prose {
-		max-inline-size: 60ch;
+		max-inline-size: 70ch;
 	}
 	.section-eyebrow {
 		margin: 0 0 var(--space-4);
@@ -1170,23 +1155,18 @@
 		color: var(--bone-300);
 	}
 
-	/* — Episodes panel. 2-column grid; bigger tiles so titles fit and
-	     thumbnails read clearly (the previous 3-col layout truncated
-	     almost every title). Column itself is wider too. */
+	/* — Episodes panel. Auto-fill grid that adapts to the viewport:
+	     ~3-4 columns at standard widths, 4-5 at widescreen. Tiles always
+	     ≥ 18rem wide so thumbnails stay readable and titles fit. */
 	.body-col-episodes {
-		inline-size: clamp(22rem, 30rem, 36rem);
-	}
-	@media (max-inline-size: 900px) {
-		.body-col-episodes {
-			inline-size: 100%;
-		}
+		inline-size: 100%;
 	}
 	.ep-grid {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
 		gap: var(--space-4);
 	}
 	/* Tile is now thumbnail-led: 16:9 image at top, mono-numeral overlay
@@ -1204,14 +1184,23 @@
 		border: 1px solid var(--ink-200);
 		border-radius: var(--radius-card);
 		overflow: hidden;
+		/* Origin sits low so scale-up on hover lifts upward toward the
+		   poster + thumbnail rather than pushing into the next row. */
+		transform-origin: 50% 80%;
 		transition:
+			transform var(--dur-med) var(--ease-out-elastic),
 			border-color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
-			transform var(--dur-fast) var(--ease-out-soft);
+			box-shadow var(--dur-med) var(--ease-out-soft);
 	}
 	.ep-tile:hover {
-		transform: translateY(-1px);
-		border-color: color-mix(in oklab, var(--accent) 70%, var(--ink-300));
+		/* More expressed pop: lift, scale, accent-tinted shadow halo. */
+		transform: translateY(-4px) scale(1.04);
+		z-index: 1;
+		border-color: color-mix(in oklab, var(--accent) 80%, var(--ink-300));
+		box-shadow:
+			0 12px 28px -6px color-mix(in oklab, var(--accent) 28%, transparent),
+			0 4px 10px -4px rgb(0 0 0 / 0.45);
 	}
 	.ep-tile:hover .ep-thumb img {
 		filter: brightness(1);
