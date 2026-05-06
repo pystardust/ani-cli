@@ -1,0 +1,94 @@
+name: 'e2e (Playwright + Electron)'
+# Runs the Electron e2e harness in `gui/electron/e2e/`. Self-contained:
+# rebuilds the Rust backend, the SvelteKit bundle, and the unpacked
+# Electron app, then drives the packaged binary via `_electron.launch()`
+# under Xvfb. The test suite is deliberately small (~3 hermetic
+# scenarios); add more cases here when feature work crosses the UI.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'gui/backend/**'
+      - 'gui/frontend/**'
+      - 'gui/electron/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    paths:
+      - 'gui/backend/**'
+      - 'gui/frontend/**'
+      - 'gui/electron/**'
+      - '.github/workflows/e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright + _electron
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui/backend
+          shared-key: e2e
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: |
+            gui/frontend/pnpm-lock.yaml
+            gui/electron/pnpm-lock.yaml
+
+      - name: Linux deps for Electron + Xvfb
+        # Electron's chrome process needs the standard NSS / X / GTK
+        # bundle even in headless Xvfb mode. `xvfb-run` is the wrapper
+        # we invoke playwright through. The list mirrors what the
+        # AppImage runtime expects on a clean runner.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 \
+            libcups2t64 libdrm2 libxkbcommon0 libxcomposite1 \
+            libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
+            libcairo2 libasound2t64
+
+      - name: pnpm install (frontend)
+        working-directory: gui/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm install (electron)
+        working-directory: gui/electron
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Rust backend (release)
+        working-directory: gui/electron
+        run: pnpm run build:backend
+
+      - name: Build SvelteKit static bundle
+        working-directory: gui/electron
+        run: pnpm run build:frontend
+
+      - name: Package the Electron app (produces dist/linux-unpacked/)
+        working-directory: gui/electron
+        run: pnpm run dist
+
+      - name: Run Playwright tests under Xvfb
+        working-directory: gui/electron
+        run: xvfb-run --auto-servernum pnpm run e2e:fast
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: gui/electron/playwright-report/
+          retention-days: 14

@@ -18,14 +18,19 @@
 		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
 		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
 		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
-		"repack-appimage": "node scripts/repack-appimage.mjs"
+		"repack-appimage": "node scripts/repack-appimage.mjs",
+		"e2e": "pnpm run package && playwright test",
+		"e2e:fast": "playwright test"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.59.1",
 		"electron": "^33.2.0",
 		"electron-builder": "^25.1.8"
 	},
 	"pnpm": {
-		"onlyBuiltDependencies": ["electron"]
+		"onlyBuiltDependencies": [
+			"electron"
+		]
 	},
 	"build": {
 		"appId": "net.thirdmovement.ani-gui",

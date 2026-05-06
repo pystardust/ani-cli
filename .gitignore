@@ -16,6 +16,11 @@ gui/electron/dist/
 gui/electron/squashfs-root/
 gui/electron/.appimage-cache/
 
+# Playwright outputs
+gui/electron/test-results/
+gui/electron/playwright-report/
+gui/electron/playwright/.cache/
+
 # Node / pnpm / npm
 node_modules/
 .pnpm-store/
