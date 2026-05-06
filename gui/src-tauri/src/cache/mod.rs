@@ -13,5 +13,11 @@
 //! Image bytes never live in SQLite; only the index does. Files live at
 //! `$XDG_CACHE_HOME/ani-gui/images/<hash[0..2]>/<hash>.<ext>`.
 
+pub mod db;
 pub mod schema;
 pub mod ttl;
+
+pub use db::{
+    meta_cache_clear, meta_cache_get, meta_cache_put, open_in_memory, open_pool, title_match_get,
+    title_match_put, SqlitePool, TitleMatch,
+};
