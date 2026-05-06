@@ -114,7 +114,12 @@ test('app launches, hero renders, no unexpected console errors', async () => {
 
 		// "Trending now" eyebrow is the first DOM signal the stubs
 		// were consumed and the page is past the loading state.
-		await expect(page.getByText(/trending now/i).first()).toBeVisible({ timeout: 15_000 });
+		// "Top rated" eyebrow is the load signal we use across e2e —
+		// it renders for every trending-result count, including 1 (a
+		// single-entry fixture leaves "Trending now" without a Strip
+		// because that single entry becomes the hero, which uses a
+		// different eyebrow).
+		await expect(page.getByText(/top rated/i).first()).toBeVisible({ timeout: 15_000 });
 
 		// Allow a tick for any async errors to fire after render.
 		await page.waitForTimeout(250);
@@ -169,7 +174,12 @@ test('home page hides the Continue Watching strip when history is empty', async 
 		// exist, the renderer gets an empty list, and the Continue
 		// Watching strip's `{#if history && history.length > 0}`
 		// guard keeps the heading out of the DOM.
-		await expect(page.getByText(/trending now/i).first()).toBeVisible({ timeout: 15_000 });
+		// "Top rated" eyebrow is the load signal we use across e2e —
+		// it renders for every trending-result count, including 1 (a
+		// single-entry fixture leaves "Trending now" without a Strip
+		// because that single entry becomes the hero, which uses a
+		// different eyebrow).
+		await expect(page.getByText(/top rated/i).first()).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByRole('heading', { name: /continue watching/i })).toHaveCount(0);
 	} finally {
 		await app.close();
