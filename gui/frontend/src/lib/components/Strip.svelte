@@ -75,14 +75,34 @@
 		didMove = false;
 		dragOriginX = e.clientX;
 		dragOriginScroll = scrollerEl.scrollLeft;
-		scrollerEl.setPointerCapture(e.pointerId);
+		// Pointer capture is deliberately deferred to pointermove —
+		// see the comment there. Capturing here breaks plain clicks
+		// in Chromium.
 	}
 
 	function onPointerMove(e: PointerEvent) {
 		if (!isDragging || !scrollerEl) return;
 		const dx = e.clientX - dragOriginX;
 		if (!didMove && Math.abs(dx) < DRAG_DEADZONE_PX) return;
-		didMove = true;
+		if (!didMove) {
+			// First time across the deadzone — now we're definitely
+			// dragging, not clicking. Capture so the drag keeps
+			// tracking even if the cursor leaves the scroller.
+			//
+			// Capturing on pointerdown (the obvious-looking spot)
+			// breaks navigation in Chromium: the synthesized click
+			// for a no-move release is dispatched to the captured
+			// element, not to the <a> under the cursor — so the
+			// poster cards became unclickable under Electron even
+			// though they worked under Tauri's webkit2gtk webview.
+			didMove = true;
+			try {
+				scrollerEl.setPointerCapture(e.pointerId);
+			} catch {
+				// Some browsers reject capture mid-gesture; the drag
+				// still works without it, just less smoothly off-edge.
+			}
+		}
 		scrollerEl.scrollLeft = dragOriginScroll - dx;
 	}
 
@@ -92,7 +112,8 @@
 		try {
 			scrollerEl.releasePointerCapture(e.pointerId);
 		} catch {
-			// Pointer might already be released; ignore.
+			// Capture might never have been set (pure click) or
+			// already released; either way, nothing to do.
 		}
 	}
 
