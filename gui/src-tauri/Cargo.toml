@@ -20,10 +20,9 @@ tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
 # Tauri 2.x — desktop shell
-tauri = { version = "2.1" }
+tauri = { version = "2.1", features = [] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
-tauri-plugin-log = "2.0"
 
 # Async runtime + HTTP server (streaming proxy)
 tokio = { version = "1.41", features = ["full"] }

@@ -82,7 +82,6 @@ pub fn run() -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::default().build())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::ipc::cmd_app_info,
