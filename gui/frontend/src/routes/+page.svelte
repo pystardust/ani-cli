@@ -10,6 +10,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import {
 		historyList,
@@ -26,9 +27,22 @@
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 
+	// Hero cycles through the top N trending titles. Rotation is slow
+	// (~9s) and pauses while the cursor is over the hero, so it never
+	// snatches a title out from under a user mid-read. Honors
+	// prefers-reduced-motion (cycle disabled, first item shown
+	// statically). Not a carousel — there's no scroll, no auto-advance
+	// faster than read-time, and every item is one click away from the
+	// strip below. AGENTS.md §7 anti-pattern is "auto-rotating carousels"
+	// in the marketing-page sense; this is a programmed marquee.
+	const HERO_ROTATION_COUNT = 3;
+	const HERO_ROTATE_MS = 9000;
+
 	let trending = $state<KitsuAnimeRef[] | null>(null);
 	let topRated = $state<KitsuAnimeRef[] | null>(null);
 	let history = $state<HistoryEntry[] | null>(null);
+	let heroIndex = $state(0);
+	let heroPaused = $state(false);
 	// Per-history-entry Kitsu match, keyed by allanime id. Populated lazily
 	// after history loads so Continue Watching cards can show posters.
 	let historyMatches = $state<Record<string, KitsuAnimeRef | null>>({});
@@ -41,8 +55,15 @@
 	let topRatedError = $state<string | null>(null);
 	let scrollY = $state(0);
 
-	const featured = $derived(trending && trending.length > 0 ? trending[0] : null);
-	const trendingTail = $derived(trending ? trending.slice(1) : []);
+	const heroRotation = $derived<KitsuAnimeRef[]>(
+		trending && trending.length > 0 ? trending.slice(0, HERO_ROTATION_COUNT) : []
+	);
+	const featured = $derived(
+		heroRotation.length > 0 ? heroRotation[heroIndex % heroRotation.length] : null
+	);
+	// Tail starts after the rotation set so the user doesn't see the
+	// hero title also pinned as the first card of the row below.
+	const trendingTail = $derived(trending ? trending.slice(HERO_ROTATION_COUNT) : []);
 	const featuredAccent = $derived(featured ? accentFor(featured.id) : 'var(--accent-ink)');
 
 	onMount(() => {
@@ -107,6 +128,24 @@
 		return () => window.removeEventListener('scroll', onScroll);
 	});
 
+	// Hero auto-advance. Tied to heroRotation length + heroPaused, so
+	// hovering the hero or shrinking the rotation freezes it. Reduced
+	// motion: don't start the interval at all.
+	$effect(() => {
+		if (heroRotation.length <= 1) return;
+		if (heroPaused) return;
+		if (
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+		) {
+			return;
+		}
+		const id = window.setInterval(() => {
+			heroIndex = (heroIndex + 1) % heroRotation.length;
+		}, HERO_ROTATE_MS);
+		return () => window.clearInterval(id);
+	});
+
 	function describeError(e: unknown): string {
 		if (typeof e === 'object' && e !== null) {
 			const obj = e as Record<string, unknown>;
@@ -162,46 +201,74 @@
 	<title>ani-gui</title>
 </svelte:head>
 
-<!-- Hero -->
-<section class="hero" style:--accent={featuredAccent}>
+<!-- Hero. -->
+<section
+	class="hero"
+	style:--accent={featuredAccent}
+	aria-label="Featured"
+	onmouseenter={() => (heroPaused = true)}
+	onmouseleave={() => (heroPaused = false)}
+	onfocusin={() => (heroPaused = true)}
+	onfocusout={() => (heroPaused = false)}
+>
 	{#if featured}
-		{@const hero = heroFor(featured)}
-		{@const synopsis = snippetOf(featured.synopsis)}
-		{#if hero.url}
-			<img
-				class="hero-img"
-				class:fallback={!hero.isCover}
-				src={hero.url}
-				alt=""
-				style:transform={heroTransform(scrollY, hero.isCover)}
-			/>
-		{/if}
-		<div class="hero-scrim" aria-hidden="true"></div>
-		{#if !hero.isCover}
-			<div class="hero-grain" aria-hidden="true"></div>
-		{/if}
+		{#key featured.id}
+			{@const hero = heroFor(featured)}
+			{@const synopsis = snippetOf(featured.synopsis)}
+			<div class="hero-layer" in:fade={{ duration: 480 }} out:fade={{ duration: 480 }}>
+				{#if hero.url}
+					<img
+						class="hero-img"
+						class:fallback={!hero.isCover}
+						src={hero.url}
+						alt=""
+						style:transform={heroTransform(scrollY, hero.isCover)}
+					/>
+				{/if}
+				<div class="hero-scrim" aria-hidden="true"></div>
+				{#if !hero.isCover}
+					<div class="hero-grain" aria-hidden="true"></div>
+				{/if}
 
-		<div class="hero-body">
-			<p class="eyebrow">
-				<span class="eyebrow-key">Tonight's marquee</span>
-				<span class="eyebrow-rule" aria-hidden="true"></span>
-				<span class="eyebrow-value">via Kitsu · trending</span>
-			</p>
-			<h1 class="hero-title">{featured.canonical_title}</h1>
-			{#if synopsis}
-				<p class="hero-snippet">{synopsis}</p>
-			{/if}
-			<div class="hero-actions">
-				<a class="btn btn-primary" href={resolve('/anime/[id]', { id: featured.id })}>
-					<span>View</span>
-					<span aria-hidden="true">→</span>
-				</a>
-				<a class="btn btn-ghost" href={resolve('/search')}>
-					<span aria-hidden="true">/</span>
-					<span>Browse the catalogue</span>
-				</a>
+				<div class="hero-body">
+					<p class="eyebrow">
+						<span class="eyebrow-key">Tonight's marquee</span>
+						<span class="eyebrow-rule" aria-hidden="true"></span>
+						<span class="eyebrow-value">via Kitsu · trending</span>
+					</p>
+					<h1 class="hero-title">{featured.canonical_title}</h1>
+					{#if synopsis}
+						<p class="hero-snippet">{synopsis}</p>
+					{/if}
+					<div class="hero-actions">
+						<a class="btn btn-primary" href={resolve('/anime/[id]', { id: featured.id })}>
+							<span>View</span>
+							<span aria-hidden="true">→</span>
+						</a>
+						<a class="btn btn-ghost" href={resolve('/search')}>
+							<span aria-hidden="true">/</span>
+							<span>Browse the catalogue</span>
+						</a>
+					</div>
+				</div>
 			</div>
-		</div>
+		{/key}
+		{#if heroRotation.length > 1}
+			<div class="hero-pager" aria-label="Featured rotation">
+				{#each heroRotation as item, i (item.id)}
+					<button
+						type="button"
+						class="hero-pager-dot"
+						class:active={i === heroIndex}
+						onclick={() => (heroIndex = i)}
+						aria-label={`Show ${item.canonical_title}`}
+						aria-current={i === heroIndex ? 'true' : undefined}
+					>
+						<span class="hero-pager-track" aria-hidden="true"></span>
+					</button>
+				{/each}
+			</div>
+		{/if}
 	{:else if trendingError}
 		<div class="hero-empty">
 			<p class="eyebrow">
@@ -327,11 +394,20 @@
 	.hero {
 		position: relative;
 		min-block-size: clamp(28rem, 70dvh, 44rem);
-		display: flex;
-		align-items: flex-end;
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
+	}
+
+	/* Each rotation tick mounts a new .hero-layer; the previous one
+	   fades out simultaneously, giving a crossfade. Layer is absolute
+	   so multiple can overlap during the transition without shifting
+	   layout. */
+	.hero-layer {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: flex-end;
 	}
 
 	.hero-img {
@@ -464,26 +540,34 @@
 		padding: var(--space-3) var(--space-5);
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
+		font-weight: 600;
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-100);
 		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-control);
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft),
 			transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.btn:hover {
 		transform: translateY(-1px);
 	}
 	.btn-primary {
+		/* Light text on accent bg — the previous ink-on-accent failed
+		   contrast on dark accents (oxblood + black text was the user
+		   complaint). Bone-100 on the brightened accents hits AA. */
 		background: var(--accent);
-		color: var(--ink-000);
-		border-color: var(--accent);
+		color: var(--bone-100);
+		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
 	}
 	.btn-primary:hover {
-		background: color-mix(in oklab, var(--accent) 88%, var(--bone-100));
+		background: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
+		border-color: var(--bone-100);
+		box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--accent) 60%, transparent);
 	}
 	.btn-ghost {
 		color: var(--bone-200);
@@ -491,6 +575,47 @@
 	.btn-ghost:hover {
 		color: var(--bone-100);
 		border-color: var(--bone-300);
+	}
+
+	/* Hero pager: thin underline-style dots in the bottom-right corner,
+	   scoped to the hero. Active dot fills with the current accent;
+	   inactive dots are hairlines. Click jumps the rotation. */
+	.hero-pager {
+		position: absolute;
+		z-index: 3;
+		inset-block-end: var(--space-5);
+		inset-inline-end: var(--space-8);
+		display: inline-flex;
+		gap: var(--space-2);
+		align-items: center;
+	}
+	.hero-pager-dot {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2.5rem;
+		block-size: 1.25rem;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		cursor: pointer;
+	}
+	.hero-pager-track {
+		display: block;
+		inline-size: 100%;
+		block-size: 2px;
+		background: color-mix(in oklab, var(--bone-100) 25%, transparent);
+		border-radius: 999px;
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			block-size var(--dur-fast) var(--ease-out-soft);
+	}
+	.hero-pager-dot:hover .hero-pager-track {
+		background: color-mix(in oklab, var(--bone-100) 60%, transparent);
+	}
+	.hero-pager-dot.active .hero-pager-track {
+		background: var(--accent);
+		block-size: 3px;
 	}
 
 	/* — Skeletons. */

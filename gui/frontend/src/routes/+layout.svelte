@@ -46,20 +46,23 @@
 				<svg
 					class="brand-mark"
 					viewBox="0 0 32 32"
-					width="32"
-					height="32"
+					width="40"
+					height="40"
 					fill="none"
 					aria-hidden="true"
 				>
-					<rect x="3" y="3" width="26" height="26" stroke="currentColor" stroke-width="1.5" />
-					<rect x="6" y="6" width="2" height="2" fill="currentColor" />
-					<rect x="6" y="11" width="2" height="2" fill="currentColor" />
-					<rect x="6" y="16" width="2" height="2" fill="currentColor" />
-					<rect x="6" y="21" width="2" height="2" fill="currentColor" />
-					<rect x="24" y="6" width="2" height="2" fill="currentColor" />
-					<rect x="24" y="11" width="2" height="2" fill="currentColor" />
-					<rect x="24" y="16" width="2" height="2" fill="currentColor" />
-					<rect x="24" y="21" width="2" height="2" fill="currentColor" />
+					<!-- Filled brand-color tile reads as a logo, not another
+					     hairline nav item. Inner perforation pattern in the
+					     ink keeps the filmstrip motif visible. -->
+					<rect x="2" y="2" width="28" height="28" rx="6" fill="var(--brand)" />
+					<rect x="6" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="6" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="6" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="6" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="23.5" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="23.5" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="23.5" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+					<rect x="23.5" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
 				</svg>
 				<span class="brand-word" aria-hidden="true">
 					<span class="brand-word-italic">ani</span><span class="brand-word-dot">·</span><span
@@ -191,10 +194,10 @@
 		}
 	}
 	.brand-mark {
-		color: var(--bone-100);
 		display: block;
-		inline-size: 2.25rem;
-		block-size: 2.25rem;
+		inline-size: 2.5rem;
+		block-size: 2.5rem;
+		filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.4));
 	}
 	.brand-word {
 		display: inline-flex;

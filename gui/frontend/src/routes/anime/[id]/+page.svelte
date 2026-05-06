@@ -870,14 +870,17 @@
 		padding: var(--space-3) var(--space-5);
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
+		font-weight: 600;
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-100);
 		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-control);
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft),
 			transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.btn:hover {
@@ -885,11 +888,13 @@
 	}
 	.btn-primary {
 		background: var(--accent);
-		color: var(--ink-000);
-		border-color: var(--accent);
+		color: var(--bone-100);
+		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
 	}
 	.btn-primary:hover {
-		background: color-mix(in oklab, var(--accent) 88%, var(--bone-100));
+		background: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
+		border-color: var(--bone-100);
+		box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--accent) 60%, transparent);
 	}
 	.btn-outline {
 		color: var(--bone-100);

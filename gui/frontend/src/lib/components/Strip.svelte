@@ -114,62 +114,69 @@
 			<span class="eyebrow-rule" aria-hidden="true"></span>
 			{#if caption}<span class="eyebrow-value">{caption}</span>{/if}
 		</h2>
-		<div class="strip-nav" aria-hidden="true">
-			<button
-				type="button"
-				class="strip-nav-btn"
-				onclick={() => nudge(-1)}
-				disabled={!canScrollLeft}
-				tabindex="-1"
-			>
-				←
-			</button>
-			<button
-				type="button"
-				class="strip-nav-btn"
-				onclick={() => nudge(1)}
-				disabled={!canScrollRight}
-				tabindex="-1"
-			>
-				→
-			</button>
-		</div>
 	</header>
 
-	<!--
-	  Region with tabindex=0 so keyboard users can focus the strip and
-	  page through it with ←/→. The arrow-key handler on the scroller is
-	  the whole point — silence the lint rules that flag it as "non-
-	  interactive element with keyboard handler". This is a deliberate
-	  scroll-container affordance, not a click stand-in.
-	-->
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<div
-		class="strip-scroll"
-		class:dragging={isDragging}
-		bind:this={scrollerEl}
-		onkeydown={onKey}
-		onpointerdown={onPointerDown}
-		onpointermove={onPointerMove}
-		onpointerup={onPointerUp}
-		onpointercancel={onPointerUp}
-		onclickcapture={onClickCapture}
-		ondragstart={(e) => e.preventDefault()}
-		role="region"
-		aria-label={eyebrow}
-		tabindex="0"
-	>
+	<div class="strip-frame">
 		<!--
-		  Inner rail holds the gutter padding, NOT the scroll container.
-		  This keeps the first card aligned with the eyebrow above it
-		  on initial render, and lets the leading gutter scroll OFF the
-		  viewport when the user pages right (so cards can touch the
-		  inline-start edge once scrolled, per user feedback).
+		  Region with tabindex=0 so keyboard users can focus the strip and
+		  page through it with ←/→. The arrow-key handler on the scroller is
+		  the whole point — silence the lint rules that flag it as "non-
+		  interactive element with keyboard handler". This is a deliberate
+		  scroll-container affordance, not a click stand-in.
 		-->
-		<div class="strip-rail">
-			{@render children()}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			class="strip-scroll"
+			class:dragging={isDragging}
+			bind:this={scrollerEl}
+			onkeydown={onKey}
+			onpointerdown={onPointerDown}
+			onpointermove={onPointerMove}
+			onpointerup={onPointerUp}
+			onpointercancel={onPointerUp}
+			onclickcapture={onClickCapture}
+			ondragstart={(e) => e.preventDefault()}
+			role="region"
+			aria-label={eyebrow}
+			tabindex="0"
+		>
+			<!--
+			  Inner rail holds the gutter padding, NOT the scroll container.
+			  This keeps the first card aligned with the eyebrow above it
+			  on initial render, and lets the leading gutter scroll OFF the
+			  viewport when the user pages right (so cards can touch the
+			  inline-start edge once scrolled, per user feedback).
+			-->
+			<div class="strip-rail">
+				{@render children()}
+			</div>
 		</div>
+
+		<!-- Edge fades + page buttons: the visible scrollbar is gone, so
+		     the row's edges have to do the indicating. The fades say "more
+		     content this way" without taking up vertical real estate; the
+		     chevron buttons let the user advance without dragging. -->
+		<button
+			type="button"
+			class="strip-edge strip-edge-start"
+			class:visible={canScrollLeft}
+			onclick={() => nudge(-1)}
+			aria-label="Previous"
+			tabindex="-1"
+		>
+			<span class="strip-edge-chev" aria-hidden="true">‹</span>
+		</button>
+		<button
+			type="button"
+			class="strip-edge strip-edge-end"
+			class:visible={canScrollRight}
+			onclick={() => nudge(1)}
+			aria-label="Next"
+			tabindex="-1"
+		>
+			<span class="strip-edge-chev" aria-hidden="true">›</span>
+		</button>
 	</div>
 </section>
 
@@ -216,38 +223,8 @@
 		color: var(--bone-300);
 	}
 
-	.strip-nav {
-		display: flex;
-		gap: var(--space-2);
-		opacity: 0;
-		transition: opacity var(--dur-fast) var(--ease-out-soft);
-	}
-	.strip:hover .strip-nav,
-	.strip:focus-within .strip-nav {
-		opacity: 1;
-	}
-	.strip-nav-btn {
-		inline-size: 2rem;
-		block-size: 2rem;
-		display: grid;
-		place-items: center;
-		font-family: var(--font-display);
-		font-size: var(--type-body-l);
-		color: var(--bone-200);
-		border: 1px solid var(--ink-300);
-		border-radius: 2px;
-		transition:
-			color var(--dur-fast) var(--ease-out-soft),
-			border-color var(--dur-fast) var(--ease-out-soft);
-	}
-	.strip-nav-btn:hover:not(:disabled) {
-		color: var(--bone-100);
-		border-color: var(--bone-300);
-	}
-	.strip-nav-btn:disabled {
-		color: var(--bone-400);
-		border-color: var(--ink-200);
-		cursor: not-allowed;
+	.strip-frame {
+		position: relative;
 	}
 
 	.strip-scroll {
@@ -258,11 +235,16 @@
 		   It also caused the "snaps to next item on release" feel the
 		   user flagged. Free scroll, native momentum, user parks where
 		   they want. */
-		scrollbar-width: thin;
-		scrollbar-color: var(--ink-300) transparent;
+		/* Hide the native scrollbar — the edge fades + chevron buttons
+		   below do the indicating. The bar took up a vertical band of
+		   space and felt utilitarian; this row should feel curated. */
+		scrollbar-width: none;
 		cursor: grab;
 		-webkit-user-select: none;
 		user-select: none;
+	}
+	.strip-scroll::-webkit-scrollbar {
+		display: none;
 	}
 	.strip-rail {
 		display: grid;
@@ -290,14 +272,70 @@
 		box-shadow: var(--ring);
 		border-radius: 2px;
 	}
-	.strip-scroll::-webkit-scrollbar {
-		block-size: 6px;
+
+	/* Edge-mounted page buttons. They sit absolutely positioned over the
+	   scroller, with a horizontal gradient fading the strip's background
+	   color in over the trailing cards. This both hints at the next set
+	   of items and gives the chevron a substrate to land on. */
+	.strip-edge {
+		position: absolute;
+		inset-block: 0;
+		display: grid;
+		place-items: center;
+		inline-size: 4rem;
+		padding: 0;
+		border: 0;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--dur-med) var(--ease-out-soft);
+		z-index: 2;
 	}
-	.strip-scroll::-webkit-scrollbar-thumb {
-		background: var(--ink-300);
-		border-radius: 999px;
+	.strip-edge.visible {
+		opacity: 1;
+		pointer-events: auto;
 	}
-	.strip-scroll::-webkit-scrollbar-track {
-		background: transparent;
+	.strip-edge-start {
+		inset-inline-start: 0;
+		background: linear-gradient(
+			to right,
+			var(--ink-000) 0%,
+			color-mix(in oklab, var(--ink-000) 80%, transparent) 55%,
+			transparent 100%
+		);
+	}
+	.strip-edge-end {
+		inset-inline-end: 0;
+		background: linear-gradient(
+			to left,
+			var(--ink-000) 0%,
+			color-mix(in oklab, var(--ink-000) 80%, transparent) 55%,
+			transparent 100%
+		);
+	}
+	.strip-edge-chev {
+		display: grid;
+		place-items: center;
+		inline-size: 2.25rem;
+		block-size: 2.25rem;
+		font-family: var(--font-display);
+		font-size: 1.75rem;
+		line-height: 1;
+		color: var(--bone-100);
+		background: color-mix(in oklab, var(--ink-100) 80%, transparent);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		backdrop-filter: blur(4px);
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-soft);
+	}
+	.strip-edge:hover .strip-edge-chev {
+		background: var(--ink-100);
+		border-color: var(--bone-300);
+		transform: scale(1.08);
+	}
+	.strip-edge:active .strip-edge-chev {
+		transform: scale(0.96);
 	}
 </style>

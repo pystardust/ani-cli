@@ -30,17 +30,26 @@
 
 	/* Per-anime accents (8). Deterministic pick by id hash on detail page.
 	   Tones lifted from film-poster ink: oxblood, ink, persimmon, jade,
-	   dusk, ochre, plum, slate. Muted on purpose — they sit next to bone
-	   text without screaming. */
-	--accent-oxblood: #b04a3c;
-	--accent-ink: #4a6c8c;
-	--accent-persimmon: #d77a3b;
-	--accent-jade: #6b8e6f;
-	--accent-dusk: #8a6b94;
-	--accent-ochre: #c89b3c;
-	--accent-plum: #7a4a5e;
-	--accent-slate: #5a6e7a;
+	   dusk, ochre, plum, slate. Brightened from the M3.1 originals so
+	   bone-100 text on these as a button background hits WCAG AA, and
+	   so they read as accents rather than scrim tints. The originals
+	   were too desaturated for CTA work. */
+	--accent-oxblood: #c45947;
+	--accent-ink: #5d83a5;
+	--accent-persimmon: #e88a47;
+	--accent-jade: #7fa385;
+	--accent-dusk: #a07eaa;
+	--accent-ochre: #dcaf4a;
+	--accent-plum: #905b6e;
+	--accent-slate: #7088a0;
 	--accent: var(--accent-ink); /* default; detail page overrides via inline style. */
+
+	/* Brand identity: dedicated colour for the app's own surface (rail
+	   mark, favicon background, app launcher icon). Distinct from the
+	   per-anime accents — those rotate; the brand stays. Warm sienna
+	   reads as "film print" without competing with content. */
+	--brand: #d77a3b;
+	--brand-ink: #1c1815;
 
 	/* — Typography: real system fallback chain, no webfont LARP. */
 	--font-display: ui-serif, 'New York', 'DejaVu Serif', 'Liberation Serif', Cambria, Georgia, serif;
@@ -51,14 +60,18 @@
 		ui-monospace, 'SF Mono', 'Cascadia Mono', 'DejaVu Sans Mono', 'JetBrains Mono',
 		'Liberation Mono', Consolas, monospace;
 
-	--type-display-xl: 3.25rem; /* hero title. */
-	--type-display-l: 2.25rem;
-	--type-display-m: 1.5rem;
-	--type-body-l: 1.0625rem;
-	--type-body: 0.9375rem;
-	--type-meta: 0.8125rem;
-	--type-micro: 0.6875rem;
-	--type-numeral-xl: 2.5rem; /* the oversized-numeral motif. */
+	/* Bumped one notch from the M3.1 baseline — the original scale started
+	   at 11px micro / 13px meta which read as too small on widescreens.
+	   New floor is 12px micro / 14px meta / 16px body, which is the
+	   modern web minimum without losing the editorial hierarchy. */
+	--type-display-xl: 3.5rem; /* hero title. */
+	--type-display-l: 2.5rem;
+	--type-display-m: 1.625rem;
+	--type-body-l: 1.125rem;
+	--type-body: 1rem;
+	--type-meta: 0.875rem;
+	--type-micro: 0.75rem;
+	--type-numeral-xl: 2.75rem; /* the oversized-numeral motif. */
 
 	--leading-tight: 1.15;
 	--leading-prose: 1.55;
@@ -77,9 +90,11 @@
 	--space-8: 4.5rem;
 	--space-9: 6rem;
 
-	/* — Radii: mostly square. Cards 4px. Pills only when something reads as
-	   a button; the metadata "pills" here are hairline-bound text. */
-	--radius-card: 4px;
+	/* — Radii: editorial rather than aggressive. Cards + tiles + buttons
+	   round selectively (the registration frame motif stays sharp because
+	   it IS the brand). 8px on cards, 6px on controls, 999 for pills. */
+	--radius-card: 8px;
+	--radius-control: 6px;
 	--radius-pill: 999px;
 
 	/* — Motion: every duration + curve named. No anonymous transitions. */
