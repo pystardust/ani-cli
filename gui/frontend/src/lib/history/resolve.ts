@@ -41,6 +41,11 @@ export interface ResumeTarget {
 	 *  collapses cours into one row and would render two distinct
 	 *  Continue Watching cards as identical strings. */
 	displayTitle: string;
+	/** Title to feed into Kitsu's text search. Same as displayTitle
+	 *  except the trailing cour suffix is stripped so multi-cour
+	 *  allmanga entries land on the same Kitsu anime (which is the
+	 *  parent franchise). */
+	searchTitle: string;
 	/** The episode number the user remembers (allmanga-relative). */
 	displayEpisode: number;
 	/** Cour size taken from the "(N episodes)" tail. Null when the
@@ -90,6 +95,7 @@ export function resolveHistoryEntry(
 
 	const courMatch = stripped.match(COUR_SUFFIX_RE);
 	const cour = courMatch ? parseInt(courMatch[1], 10) : 1;
+	const searchTitle = courMatch ? stripped.replace(COUR_SUFFIX_RE, '').trim() : stripped;
 
 	let kitsuEpisode: number | null = null;
 	let mappingNote: ResumeTarget['mappingNote'];
@@ -114,6 +120,7 @@ export function resolveHistoryEntry(
 
 	return {
 		displayTitle: stripped,
+		searchTitle,
 		displayEpisode,
 		courSize,
 		cour,

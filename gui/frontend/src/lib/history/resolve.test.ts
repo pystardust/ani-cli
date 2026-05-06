@@ -53,6 +53,8 @@ describe('resolveHistoryEntry — single-cour shows', () => {
 		expect(r.kitsuEpisode).toBe(4);
 		expect(r.uiPage).toBe(1);
 		expect(r.mappingNote).toBe('direct');
+		// Single-cour shows: searchTitle equals displayTitle.
+		expect(r.searchTitle).toBe(r.displayTitle);
 	});
 });
 
@@ -68,6 +70,11 @@ describe('resolveHistoryEntry — multi-cour shows split across allmanga entries
 		expect(r.kitsuEpisode).toBe(16); // (2-1) * 12 + 4
 		expect(r.uiPage).toBe(2); // ceil(16 / 12)
 		expect(r.mappingNote).toBe('cour-offset-suffix');
+		// displayTitle keeps Part 2 so the card disambiguates from the
+		// other Stone Ocean row; searchTitle drops it so Kitsu's text
+		// search hits the same parent anime as Stone Ocean (Part 1).
+		expect(r.displayTitle).toBe('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2');
+		expect(r.searchTitle).toBe('JoJo no Kimyou na Bouken Part 6: Stone Ocean');
 	});
 
 	it('handles Part 3 the same way', () => {

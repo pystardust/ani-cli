@@ -9,6 +9,13 @@
     4. Top Rated: kitsuTopRated().
 -->
 <script lang="ts">
+	// The Continue Watching card builds its href as
+	// `resolve('/anime/[id]', { id }) + resumeQueryString(target)` —
+	// resolve() IS used, but the eslint rule pattern-matches against a
+	// literal resolve() call inside the href attribute and doesn't see
+	// through the variable + concatenation. File-level disable is the
+	// pragmatic fix; the URL is still going through resolve().
+	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
@@ -24,6 +31,11 @@
 		type KitsuEpisode
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
+	import {
+		EPISODES_KITSU_PAGE_SIZE,
+		resolveHistoryEntry,
+		resumeQueryString
+	} from '$lib/history/resolve';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 
@@ -77,31 +89,38 @@
 		historyList()
 			.then((h) => {
 				history = h;
-				// Two-stage lookup per entry:
-				//   1. kitsuSearch by title → matches the anime, gives us
-				//      the kitsu id we need for step 2 + a poster fallback.
-				//   2. kitsuEpisodes(kitsuId) → find the entry's last-watched
-				//      episode by number; gives us the real thumbnail + title.
-				// Both stages are fire-and-forget per entry; if either
-				// fails the card degrades gracefully (anime poster + anime
-				// title is the floor).
+				// Two-stage lookup per entry, all routed through the
+				// resolver in lib/history/resolve.ts so cour-split shows
+				// (Stone Ocean Part 2 etc.) hit the right Kitsu episode
+				// instead of collapsing onto Part 1's episode 1.
+				//   1. resolveHistoryEntry(entry, null) — gives us the
+				//      cour-stripped searchTitle + the episode number
+				//      translated into Kitsu numbering.
+				//   2. kitsuSearch(searchTitle) → first hit is the
+				//      parent Kitsu anime (same for every cour).
+				//   3. kitsuEpisodes(kitsuId, kitsuPage) → find the
+				//      Kitsu-numbered episode we want; gives us the real
+				//      thumbnail + title.
+				// Fire-and-forget per entry; on failure the card
+				// degrades gracefully (anime poster + entry's own title).
 				h.forEach((entry: HistoryEntry) => {
-					kitsuSearch(titleOf(entry))
+					const preliminary = resolveHistoryEntry(entry, null);
+					kitsuSearch(preliminary.searchTitle)
 						.then((hits: KitsuAnimeRef[]) => {
 							const match = hits[0] ?? null;
 							historyMatches = { ...historyMatches, [entry.id]: match };
 							if (!match) return;
-							const wantNum = parseInt(entry.ep_no, 10);
-							// Kitsu caps page[limit] at 20 — for entries past episode 20
-							// (One Piece, Detective Conan, etc.) we need to compute the
-							// right page or the lookup misses every time.
-							const targetPage =
-								Number.isFinite(wantNum) && wantNum > 0 ? Math.ceil(wantNum / 20) : 1;
-							void kitsuEpisodes(match.id, targetPage)
+							const target = resolveHistoryEntry(entry, match);
+							if (!target.kitsuEpisode) return;
+							const kitsuPage = Math.max(
+								1,
+								Math.ceil(target.kitsuEpisode / EPISODES_KITSU_PAGE_SIZE)
+							);
+							void kitsuEpisodes(match.id, kitsuPage)
 								.then((eps: KitsuEpisode[]) => {
 									const ep =
-										eps.find((e) => e.number === wantNum) ??
-										eps.find((e) => e.relative_number === wantNum) ??
+										eps.find((e) => e.number === target.kitsuEpisode) ??
+										eps.find((e) => e.relative_number === target.kitsuEpisode) ??
 										null;
 									historyEpisodes = { ...historyEpisodes, [entry.id]: ep };
 								})
@@ -184,17 +203,8 @@
 		return `translate3d(0, ${offset}px, 0) scale(${scale})`;
 	}
 
-	function epOf(entry: HistoryEntry): string {
-		// Strip non-digits and pad. Some hsts entries have ranges like "1-12";
-		// take the head.
-		const head = entry.ep_no.split(/[^0-9]+/)[0] ?? entry.ep_no;
-		return head || entry.ep_no;
-	}
-
-	function titleOf(entry: HistoryEntry): string {
-		// Trim "( 26 episodes )" trailing parenthetical from ani-cli's hsts format.
-		return entry.title.replace(/\s*\(\s*\d+\s+episodes?\s*\)\s*$/i, '').trim();
-	}
+	// epOf / titleOf were absorbed into resolveHistoryEntry — see
+	// $lib/history/resolve.ts (target.displayEpisode / displayTitle).
 </script>
 
 <svelte:head>
@@ -305,6 +315,7 @@
 		{#each history as entry (entry.id)}
 			{@const match = historyMatches[entry.id]}
 			{@const ep = historyEpisodes[entry.id]}
+			{@const target = resolveHistoryEntry(entry, match ?? null)}
 			{@const accent = accentFor(match?.id ?? entry.id)}
 			{@const epThumb = imageProxyUrl(ep?.thumbnail?.original ?? null)}
 			{@const animePoster = imageProxyUrl(
@@ -314,32 +325,34 @@
 					null
 			)}
 			{@const image = epThumb ?? animePoster}
-			{@const targetId = match?.id ?? null}
+			{@const href = target.kitsuId
+				? resolve('/anime/[id]', { id: target.kitsuId }) + resumeQueryString(target)
+				: resolve('/search')}
 			<a
 				class="resume-card"
 				class:resume-card-loading={match === undefined}
 				style="--accent: {accent};"
-				href={targetId ? resolve('/anime/[id]', { id: targetId }) : resolve('/search')}
+				{href}
 			>
 				<span class="resume-poster">
 					{#if image}
 						<img src={image} alt="" loading="lazy" decoding="async" />
 					{:else}
 						<span class="resume-poster-placeholder" aria-hidden="true">
-							{titleOf(entry).slice(0, 2).toUpperCase()}
+							{target.displayTitle.slice(0, 2).toUpperCase()}
 						</span>
 					{/if}
 					<span class="resume-ep-tag" aria-hidden="true">
 						<span class="resume-ep-key">EP</span>
-						<span class="resume-ep-num">{epOf(entry)}</span>
+						<span class="resume-ep-num">{target.displayEpisode}</span>
 					</span>
 				</span>
 				<span class="resume-body">
-					<span class="resume-show">{titleOf(entry)}</span>
+					<span class="resume-show">{target.displayTitle}</span>
 					{#if ep?.canonical_title}
 						<span class="resume-title">{ep.canonical_title}</span>
 					{:else}
-						<span class="resume-title resume-title-faint">Episode {epOf(entry)}</span>
+						<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
 					{/if}
 					<span class="resume-cta">
 						<span aria-hidden="true">↺</span>

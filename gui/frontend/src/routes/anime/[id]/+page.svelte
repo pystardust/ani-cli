@@ -12,7 +12,7 @@
     Play / Download / External are wired to TODOs with inline notice.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import {
 		imageProxyUrl,
@@ -55,6 +55,10 @@
 	let episodesPage = $state(1);
 	let episodesLoading = $state(false);
 	let jumpInput = $state('');
+	// Episode number to highlight after a deep link from Continue
+	// Watching (?ep=…). Cleared on a timeout so the accent ring isn't
+	// sticky.
+	let highlightEp = $state<number | null>(null);
 	const UI_PAGE_SIZE = 12;
 	const KITSU_PAGE_SIZE = 20;
 	// SvelteMap (vs plain Map) keeps the eslint reactivity rule happy.
@@ -261,7 +265,26 @@
 		void settingsGet()
 			.then((c) => (config = c))
 			.catch((e) => (configError = describeErrorString(e)));
-		void fetchEpisodesPage(1, { initial: true });
+
+		// Deep-link from Continue Watching: ?page=N positions the episode
+		// pager, ?ep=M highlights the matching tile and scrolls it into
+		// view. Both are best-effort — invalid values fall back silently.
+		const pageParam = parseInt(page.url.searchParams.get('page') ?? '', 10);
+		const epParam = parseInt(page.url.searchParams.get('ep') ?? '', 10);
+		const initialUiPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+		await fetchEpisodesPage(initialUiPage, { initial: true });
+		if (Number.isFinite(epParam) && epParam > 0) {
+			highlightEp = epParam;
+			await tick();
+			document
+				.querySelector(`[data-ep-num="${epParam}"]`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			// Auto-clear the highlight class so the accent ring is a
+			// brief "you-are-here" cue, not permanent decoration.
+			window.setTimeout(() => {
+				highlightEp = null;
+			}, 3200);
+		}
 	});
 
 	$effect(() => {
@@ -688,6 +711,8 @@
 							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 							{@const num = ep.number ?? ep.relative_number ?? null}
 							<li
+								class:ep-highlight={num !== null && num === highlightEp}
+								data-ep-num={num ?? ''}
 								in:settle={{ duration: 620, delay: i * 45 }}
 								out:settleOut={{ duration: 320, delay: i * 18 }}
 							>
@@ -722,6 +747,8 @@
 						     so the user isn't blocked from poking the panel. -->
 						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
 							<li
+								class:ep-highlight={n === highlightEp}
+								data-ep-num={n}
 								in:settle={{ duration: 580, delay: i * 40 }}
 								out:settleOut={{ duration: 300, delay: i * 16 }}
 							>
@@ -1322,6 +1349,40 @@
 		box-shadow:
 			0 12px 28px -6px color-mix(in oklab, var(--accent) 28%, transparent),
 			0 4px 10px -4px rgb(0 0 0 / 0.45);
+	}
+
+	/* Deep-link highlight: when arriving from Continue Watching with
+	   ?ep=N, the matching tile pulses an accent ring twice and stays
+	   ringed for a beat so the user sees "this is the one you were
+	   on." Class is auto-removed after ~3.2s by the script. */
+	.ep-grid li.ep-highlight .ep-tile {
+		border-color: color-mix(in oklab, var(--accent) 90%, var(--bone-100));
+		box-shadow:
+			0 0 0 2px color-mix(in oklab, var(--accent) 80%, transparent),
+			0 16px 32px -8px color-mix(in oklab, var(--accent) 38%, transparent);
+		animation: ep-highlight-pulse 1.6s ease-out 2;
+	}
+	@keyframes ep-highlight-pulse {
+		0% {
+			box-shadow:
+				0 0 0 0 color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 0 0 color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+		35% {
+			box-shadow:
+				0 0 0 4px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 24px 4px color-mix(in oklab, var(--accent) 35%, transparent);
+		}
+		100% {
+			box-shadow:
+				0 0 0 2px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 16px 32px -8px color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ep-grid li.ep-highlight .ep-tile {
+			animation: none;
+		}
 	}
 	.ep-tile:hover .ep-thumb img {
 		filter: brightness(1);
