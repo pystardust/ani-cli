@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { invoke } from '@tauri-apps/api/core';
 import {
+	__resetApiBaseForTests,
 	appInfo,
 	createSession,
 	historyClear,
 	historyList,
 	imageProxyUrl,
+	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
 	kitsuEpisodes,
 	kitsuSearch,
@@ -13,6 +14,7 @@ import {
 	kitsuTitleMatchPut,
 	kitsuTopRated,
 	kitsuTrending,
+	metaCacheClear,
 	openExternalPlayer,
 	proxyBaseUrl,
 	settingsGet,
@@ -20,28 +22,53 @@ import {
 	type Config
 } from './api';
 
-vi.mock('@tauri-apps/api/core', () => ({
-	invoke: vi.fn()
-}));
+const BASE = 'http://127.0.0.1:1234';
 
-const mockedInvoke = vi.mocked(invoke);
+/**
+ * Build a mock `fetch` that returns one canned JSON response. Status
+ * defaults to 200; pass a 4xx/5xx to exercise the error path. The
+ * api wrappers call `expect2xx` internally which throws the parsed
+ * body when `ok` is false, so the same helper covers both paths.
+ */
+function mockFetchOnce(payload: unknown, status = 200): ReturnType<typeof vi.fn> {
+	const response = {
+		ok: status >= 200 && status < 300,
+		status,
+		async json() {
+			return payload;
+		}
+	} as unknown as Response;
+	return vi.fn(async () => response);
+}
 
 beforeEach(() => {
-	mockedInvoke.mockReset();
+	__resetApiBaseForTests(BASE);
 });
 
+// — Convenience: pull the URL and the optional init off the most-recent
+// fetch call. Strongly typed so individual tests can assert on body
+// shape without re-casting.
+function lastCall(mock: ReturnType<typeof vi.fn>): { url: string; init: RequestInit | undefined } {
+	const call = mock.mock.calls.at(-1);
+	expect(call).toBeDefined();
+	return { url: call![0] as string, init: call![1] as RequestInit | undefined };
+}
+
 describe('appInfo', () => {
-	it('invokes cmd_app_info with no args', async () => {
-		mockedInvoke.mockResolvedValue({
+	it('GETs /api/app-info and returns the parsed body', async () => {
+		const fetchMock = mockFetchOnce({
 			version: '0.1.0',
 			ani_cli_path: '/usr/local/bin/ani-cli',
 			history_path: '/home/u/.local/state/ani-cli/ani-hsts',
 			proxy_base_url: 'http://127.0.0.1:42337'
 		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const info = await appInfo();
 
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_app_info');
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/app-info`);
+		expect(init).toBeUndefined(); // GET, no body
 		expect(info.version).toBe('0.1.0');
 		expect(info.proxy_base_url).toBe('http://127.0.0.1:42337');
 	});
@@ -49,71 +76,78 @@ describe('appInfo', () => {
 
 describe('proxyBaseUrl', () => {
 	it('returns the string the backend hands back', async () => {
-		mockedInvoke.mockResolvedValue('http://127.0.0.1:42337');
+		const fetchMock = mockFetchOnce('http://127.0.0.1:42337');
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		const url = await proxyBaseUrl();
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_proxy_base_url');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/proxy-base-url`);
 		expect(url).toBe('http://127.0.0.1:42337');
 	});
 });
 
 describe('historyList', () => {
-	it('returns the entries the backend hands back', async () => {
-		mockedInvoke.mockResolvedValue([
+	it('GETs /api/history and returns the parsed entries', async () => {
+		const fetchMock = mockFetchOnce([
 			{ ep_no: '1', id: 'aaa', title: 'One Piece (1100 episodes)' },
 			{ ep_no: '5', id: 'bbb', title: 'Demon Slayer (26 episodes)' }
 		]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const entries = await historyList();
 
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_history_list');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/history`);
 		expect(entries).toHaveLength(2);
 		expect(entries[0].ep_no).toBe('1');
 		expect(entries[1].title).toContain('Demon Slayer');
 	});
 
 	it('returns an empty array when the backend does', async () => {
-		mockedInvoke.mockResolvedValue([]);
+		globalThis.fetch = mockFetchOnce([]) as unknown as typeof fetch;
 		expect(await historyList()).toEqual([]);
 	});
 });
 
 describe('historyClear', () => {
-	it('invokes cmd_history_clear with no args', async () => {
-		mockedInvoke.mockResolvedValue(undefined);
+	it('DELETEs /api/history with no body', async () => {
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await historyClear();
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_history_clear');
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/history`);
+		expect(init?.method).toBe('DELETE');
 	});
 });
 
 describe('createSession', () => {
-	it('passes args under the args key the Rust handler expects', async () => {
-		mockedInvoke.mockResolvedValue({
+	it('POSTs JSON to /api/sessions', async () => {
+		const fetchMock = mockFetchOnce({
 			session_id: '11111111-1111-1111-1111-111111111111',
 			master_url: 'http://127.0.0.1:42337/s/11111111-.../master.m3u8',
 			subtitle_url: null
 		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		const resp = await createSession({
 			upstream_url: 'https://cdn.example/master.m3u8',
 			referer: 'https://allmanga.to'
 		});
 
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_create_session', {
-			args: {
-				upstream_url: 'https://cdn.example/master.m3u8',
-				referer: 'https://allmanga.to'
-			}
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/sessions`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			upstream_url: 'https://cdn.example/master.m3u8',
+			referer: 'https://allmanga.to'
 		});
 		expect(resp.session_id).toBe('11111111-1111-1111-1111-111111111111');
-		expect(resp.subtitle_url).toBeNull();
 	});
 
-	it('forwards optional subtitle_url through the args wrapper', async () => {
-		mockedInvoke.mockResolvedValue({
+	it('forwards optional subtitle_url through the JSON body', async () => {
+		const fetchMock = mockFetchOnce({
 			session_id: 'sid',
 			master_url: 'http://127.0.0.1:1/s/sid/master.m3u8',
 			subtitle_url: 'http://127.0.0.1:1/s/sid/sub.vtt'
 		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		await createSession({
 			upstream_url: 'https://cdn.example/master.m3u8',
@@ -121,17 +155,15 @@ describe('createSession', () => {
 			subtitle_url: 'https://cdn.example/cap.vtt'
 		});
 
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_create_session', {
-			args: {
-				upstream_url: 'https://cdn.example/master.m3u8',
-				referer: 'https://allmanga.to',
-				subtitle_url: 'https://cdn.example/cap.vtt'
-			}
+		const { init } = lastCall(fetchMock);
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			subtitle_url: 'https://cdn.example/cap.vtt'
 		});
 	});
 
 	it('propagates rejection so callers can render the error', async () => {
-		mockedInvoke.mockRejectedValue({ kind: 'parse_failed', detail: 'upstream_url: invalid' });
+		const fetchMock = mockFetchOnce({ kind: 'parse_failed', detail: 'upstream_url: invalid' }, 400);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		await expect(
 			createSession({
@@ -143,8 +175,9 @@ describe('createSession', () => {
 });
 
 describe('openExternalPlayer', () => {
-	it('passes the LaunchArgs payload under the args key', async () => {
-		mockedInvoke.mockResolvedValue(undefined);
+	it('POSTs the LaunchArgs payload to /api/external-player', async () => {
+		const fetchMock = mockFetchOnce(null, 202);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await openExternalPlayer({
 			stream_url: 'https://cdn.example/master.m3u8',
 			referer: 'https://allmanga.to',
@@ -152,21 +185,19 @@ describe('openExternalPlayer', () => {
 			title: 'Some Anime EP 5',
 			player_command: 'mpv'
 		});
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_open_external_player', {
-			args: {
-				stream_url: 'https://cdn.example/master.m3u8',
-				referer: 'https://allmanga.to',
-				subtitle_url: null,
-				title: 'Some Anime EP 5',
-				player_command: 'mpv'
-			}
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/external-player`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			stream_url: 'https://cdn.example/master.m3u8',
+			player_command: 'mpv'
 		});
 	});
 });
 
 describe('kitsuSearch', () => {
-	it('passes query under the query key the Rust handler expects', async () => {
-		mockedInvoke.mockResolvedValue([
+	it('POSTs the query under the `query` key the backend expects', async () => {
+		const fetchMock = mockFetchOnce([
 			{
 				id: '12',
 				canonical_title: 'One Piece',
@@ -184,16 +215,20 @@ describe('kitsuSearch', () => {
 				cover_image: null
 			}
 		]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		const hits = await kitsuSearch('one piece');
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_search', { query: 'one piece' });
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/kitsu/search`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toEqual({ query: 'one piece' });
 		expect(hits).toHaveLength(1);
 		expect(hits[0].canonical_title).toBe('One Piece');
 	});
 });
 
 describe('kitsuAnimeDetail', () => {
-	it('passes id under the id key', async () => {
-		mockedInvoke.mockResolvedValue({
+	it('GETs /api/kitsu/anime/:id with the id encoded into the path', async () => {
+		const fetchMock = mockFetchOnce({
 			id: '12',
 			canonical_title: 'One Piece',
 			slug: null,
@@ -209,79 +244,91 @@ describe('kitsuAnimeDetail', () => {
 			poster_image: null,
 			cover_image: null
 		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		const detail = await kitsuAnimeDetail('12');
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_anime_detail', { id: '12' });
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/anime/12`);
 		expect(detail.id).toBe('12');
 	});
 });
 
+describe('kitsuAnimeBySlug', () => {
+	it('GETs /api/kitsu/anime-by-slug/:slug', async () => {
+		globalThis.fetch = mockFetchOnce(null) as unknown as typeof fetch;
+		await kitsuAnimeBySlug('jojo-stone-ocean-part-2');
+		// no further assertion needed — the URL alone proves shape
+	});
+});
+
 describe('kitsuTrending', () => {
-	it('invokes cmd_kitsu_trending with no args', async () => {
-		mockedInvoke.mockResolvedValue([]);
+	it('GETs /api/kitsu/trending', async () => {
+		const fetchMock = mockFetchOnce([]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await kitsuTrending();
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_trending');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/trending`);
 	});
 });
 
 describe('kitsuTopRated', () => {
-	it('invokes cmd_kitsu_top_rated with no args', async () => {
-		mockedInvoke.mockResolvedValue([]);
+	it('GETs /api/kitsu/top-rated', async () => {
+		const fetchMock = mockFetchOnce([]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await kitsuTopRated();
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_top_rated');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/top-rated`);
 	});
 });
 
 describe('kitsuTitleMatchGet', () => {
-	it('passes title + cour and returns the cached kitsu id', async () => {
-		mockedInvoke.mockResolvedValue('kitsu-id-42');
+	it('GETs /api/title-match with title + cour as query params', async () => {
+		const fetchMock = mockFetchOnce('kitsu-id-42');
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		const got = await kitsuTitleMatchGet('Stone Ocean Part 2', 2);
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_title_match_get', {
-			title: 'Stone Ocean Part 2',
-			cour: 2
-		});
+		const { url } = lastCall(fetchMock);
+		// URLSearchParams emits `+` for spaces in `application/x-www-form-urlencoded`.
+		expect(url).toBe(`${BASE}/api/title-match?title=Stone+Ocean+Part+2&cour=2`);
 		expect(got).toBe('kitsu-id-42');
 	});
 
 	it('returns null on cache miss', async () => {
-		mockedInvoke.mockResolvedValue(null);
+		globalThis.fetch = mockFetchOnce(null) as unknown as typeof fetch;
 		const got = await kitsuTitleMatchGet('Whatever', 1);
 		expect(got).toBeNull();
 	});
 });
 
 describe('kitsuTitleMatchPut', () => {
-	it('passes title + cour + kitsuId under the camelCase keys the IPC handler expects', async () => {
-		mockedInvoke.mockResolvedValue(undefined);
+	it('PUTs the JSON body the backend expects (kitsu_id snake_case)', async () => {
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await kitsuTitleMatchPut('Demon Slayer', 1, 'kitsu-x');
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_title_match_put', {
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/title-match`);
+		expect(init?.method).toBe('PUT');
+		// Wire format is snake_case to match Rust DTOs.
+		expect(JSON.parse(init?.body as string)).toEqual({
 			title: 'Demon Slayer',
 			cour: 1,
-			kitsuId: 'kitsu-x'
+			kitsu_id: 'kitsu-x'
 		});
 	});
 });
 
 describe('kitsuEpisodes', () => {
-	it('passes animeId + page=1 by default', async () => {
-		mockedInvoke.mockResolvedValue([]);
+	it('GETs /api/kitsu/episodes/:anime_id with page=1 by default', async () => {
+		const fetchMock = mockFetchOnce([]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await kitsuEpisodes('12');
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', {
-			animeId: '12',
-			page: 1
-		});
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/episodes/12?page=1`);
 	});
 	it('passes the explicit page through', async () => {
-		mockedInvoke.mockResolvedValue([]);
+		const fetchMock = mockFetchOnce([]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await kitsuEpisodes('12', 3);
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', {
-			animeId: '12',
-			page: 3
-		});
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/episodes/12?page=3`);
 	});
 });
 
 describe('settingsGet', () => {
-	it('invokes cmd_settings_get with no args and returns Config', async () => {
+	it('GETs /api/settings and returns Config', async () => {
 		const cfg: Config = {
 			locale: 'en',
 			mode: 'sub',
@@ -289,15 +336,16 @@ describe('settingsGet', () => {
 			external_player: 'mpv',
 			image_cache_cap_mb: 500
 		};
-		mockedInvoke.mockResolvedValue(cfg);
+		const fetchMock = mockFetchOnce(cfg);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		const got = await settingsGet();
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_settings_get');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/settings`);
 		expect(got.mode).toBe('sub');
 	});
 });
 
 describe('settingsPut', () => {
-	it('passes cfg under the cfg key the Rust handler expects', async () => {
+	it('PUTs the Config payload directly (no wrapper key)', async () => {
 		const cfg: Config = {
 			locale: 'pt-BR',
 			mode: 'dub',
@@ -305,9 +353,24 @@ describe('settingsPut', () => {
 			external_player: 'vlc',
 			image_cache_cap_mb: 1000
 		};
-		mockedInvoke.mockResolvedValue(undefined);
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
 		await settingsPut(cfg);
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_settings_put', { cfg });
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/settings`);
+		expect(init?.method).toBe('PUT');
+		expect(JSON.parse(init?.body as string)).toEqual(cfg);
+	});
+});
+
+describe('metaCacheClear', () => {
+	it('DELETEs /api/cache', async () => {
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await metaCacheClear();
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/cache`);
+		expect(init?.method).toBe('DELETE');
 	});
 });
 

@@ -1,15 +1,119 @@
 /**
- * Typed wrappers around Tauri IPC commands. Every backend command surfaces
- * here as a Promise-returning function so the rest of the frontend never
- * touches `invoke()` directly.
+ * Typed wrappers around the Rust backend's HTTP API.
  *
- * Field names mirror the Rust types byte-for-byte (snake_case) — the
- * `AniError` enum already serializes that way and changing the casing here
- * would break round-tripping. The TypeScript style guide for the project
- * accepts snake_case in IPC DTO interfaces only.
+ * Originally Tauri IPC (`invoke('cmd_*')`); the migration to Electron
+ * means we now talk to the same Rust process via `fetch()` against
+ * its localhost axum server. The function signatures are unchanged
+ * — every backend command surfaces here as a Promise-returning
+ * function so call sites don't see the transport switch.
+ *
+ * Field names still mirror the Rust types byte-for-byte (snake_case)
+ * because `AniError` and the DTOs serialize that way; changing
+ * casing here would break round-tripping. The TypeScript style guide
+ * accepts snake_case in API DTO interfaces only.
  */
 
 import { invoke } from '@tauri-apps/api/core';
+
+/**
+ * Resolve the base URL of the local backend (e.g.
+ * `http://127.0.0.1:42337`). Cached after the first call.
+ *
+ * Detection order:
+ *   1. `window.aniGui.apiBase` — Electron preload script injection (M-E3+).
+ *   2. `import.meta.env.VITE_ANI_GUI_API_BASE` — set during browser-only
+ *      dev (run the Rust binary, then `pnpm dev` with the env var).
+ *   3. Tauri `invoke('cmd_proxy_base_url')` — the only remaining
+ *      `invoke` call; gone after M-E5 decommissions Tauri.
+ */
+let apiBaseCache: string | null = null;
+
+declare global {
+	interface Window {
+		aniGui?: { apiBase?: string };
+	}
+}
+
+async function apiBase(): Promise<string> {
+	if (apiBaseCache !== null) return apiBaseCache;
+	if (typeof window !== 'undefined' && window.aniGui?.apiBase) {
+		apiBaseCache = window.aniGui.apiBase;
+		return apiBaseCache;
+	}
+	const envBase =
+		typeof import.meta !== 'undefined' ? import.meta.env?.VITE_ANI_GUI_API_BASE : undefined;
+	if (typeof envBase === 'string' && envBase.length > 0) {
+		apiBaseCache = envBase;
+		return apiBaseCache;
+	}
+	apiBaseCache = await invoke<string>('cmd_proxy_base_url');
+	return apiBaseCache;
+}
+
+/**
+ * Test seam: reset the cached base URL so unit tests can rebind it.
+ * Not exported in production paths — only used by `api.test.ts`.
+ */
+export function __resetApiBaseForTests(next: string | null = null): void {
+	apiBaseCache = next;
+}
+
+/**
+ * Internal: build a URL by joining the cached base with a path. Path
+ * is taken verbatim, so callers control any query-string encoding.
+ */
+async function url(path: string): Promise<string> {
+	const base = await apiBase();
+	return base.replace(/\/+$/, '') + path;
+}
+
+/**
+ * Read the JSON body or throw the parsed error payload. The backend
+ * serializes `AniError` as `{ kind, key?, detail?, status? }`; tests
+ * downstream of api.ts inspect the same shape that Tauri's reject
+ * payloads carried, so call-site error parsing is unchanged.
+ */
+async function expect2xx<T>(resp: Response): Promise<T> {
+	if (!resp.ok) {
+		let detail: unknown;
+		try {
+			detail = await resp.json();
+		} catch {
+			detail = { kind: 'http', status: resp.status };
+		}
+		throw detail;
+	}
+	if (resp.status === 204) return undefined as T;
+	return (await resp.json()) as T;
+}
+
+async function getJson<T>(path: string): Promise<T> {
+	const resp = await fetch(await url(path));
+	return expect2xx<T>(resp);
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+	const resp = await fetch(await url(path), {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+	return expect2xx<T>(resp);
+}
+
+async function putJson<T>(path: string, body: unknown): Promise<T> {
+	const resp = await fetch(await url(path), {
+		method: 'PUT',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+	return expect2xx<T>(resp);
+}
+
+async function deleteJson<T>(path: string): Promise<T> {
+	const resp = await fetch(await url(path), { method: 'DELETE' });
+	return expect2xx<T>(resp);
+}
 
 /** Output of `cmd_app_info`. */
 export interface AppInfo {
@@ -123,35 +227,35 @@ export interface KitsuAnimeRef {
 }
 
 export function appInfo(): Promise<AppInfo> {
-	return invoke<AppInfo>('cmd_app_info');
+	return getJson<AppInfo>('/api/app-info');
 }
 
 export function proxyBaseUrl(): Promise<string> {
-	return invoke<string>('cmd_proxy_base_url');
+	return getJson<string>('/api/proxy-base-url');
 }
 
 export function historyList(): Promise<HistoryEntry[]> {
-	return invoke<HistoryEntry[]>('cmd_history_list');
+	return getJson<HistoryEntry[]>('/api/history');
 }
 
 export function historyClear(): Promise<void> {
-	return invoke<void>('cmd_history_clear');
+	return deleteJson<void>('/api/history');
 }
 
 export function createSession(args: CreateSessionArgs): Promise<CreateSessionResponse> {
-	return invoke<CreateSessionResponse>('cmd_create_session', { args });
+	return postJson<CreateSessionResponse>('/api/sessions', args);
 }
 
 export function openExternalPlayer(args: LaunchExternalPlayerArgs): Promise<void> {
-	return invoke<void>('cmd_open_external_player', { args });
+	return postJson<void>('/api/external-player', args);
 }
 
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
-	return invoke<KitsuAnimeRef[]>('cmd_kitsu_search', { query });
+	return postJson<KitsuAnimeRef[]>('/api/kitsu/search', { query });
 }
 
 export function kitsuAnimeDetail(id: string): Promise<KitsuAnimeRef> {
-	return invoke<KitsuAnimeRef>('cmd_kitsu_anime_detail', { id });
+	return getJson<KitsuAnimeRef>(`/api/kitsu/anime/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -161,19 +265,22 @@ export function kitsuAnimeDetail(id: string): Promise<KitsuAnimeRef> {
  * Part 2 from its results entirely, but `filter[slug]` finds it.
  */
 export function kitsuAnimeBySlug(slug: string): Promise<KitsuAnimeRef | null> {
-	return invoke<KitsuAnimeRef | null>('cmd_kitsu_anime_by_slug', { slug });
+	return getJson<KitsuAnimeRef | null>(`/api/kitsu/anime-by-slug/${encodeURIComponent(slug)}`);
 }
 
 export function kitsuTrending(): Promise<KitsuAnimeRef[]> {
-	return invoke<KitsuAnimeRef[]>('cmd_kitsu_trending');
+	return getJson<KitsuAnimeRef[]>('/api/kitsu/trending');
 }
 
 export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
-	return invoke<KitsuAnimeRef[]>('cmd_kitsu_top_rated');
+	return getJson<KitsuAnimeRef[]>('/api/kitsu/top-rated');
 }
 
 export function kitsuEpisodes(animeId: string, page: number = 1): Promise<KitsuEpisode[]> {
-	return invoke<KitsuEpisode[]>('cmd_kitsu_episodes', { animeId, page });
+	const qs = new URLSearchParams({ page: String(page) });
+	return getJson<KitsuEpisode[]>(
+		`/api/kitsu/episodes/${encodeURIComponent(animeId)}?${qs.toString()}`
+	);
 }
 
 /**
@@ -184,7 +291,8 @@ export function kitsuEpisodes(animeId: string, page: number = 1): Promise<KitsuE
  * (30 days) — the title→id mapping rarely changes.
  */
 export function kitsuTitleMatchGet(title: string, cour: number): Promise<string | null> {
-	return invoke<string | null>('cmd_title_match_get', { title, cour });
+	const qs = new URLSearchParams({ title, cour: String(cour) });
+	return getJson<string | null>(`/api/title-match?${qs.toString()}`);
 }
 
 /**
@@ -192,15 +300,15 @@ export function kitsuTitleMatchGet(title: string, cour: number): Promise<string 
  * frontend picker. Idempotent — re-puts overwrite any prior value.
  */
 export function kitsuTitleMatchPut(title: string, cour: number, kitsuId: string): Promise<void> {
-	return invoke<void>('cmd_title_match_put', { title, cour, kitsuId });
+	return putJson<void>('/api/title-match', { title, cour, kitsu_id: kitsuId });
 }
 
 export function settingsGet(): Promise<Config> {
-	return invoke<Config>('cmd_settings_get');
+	return getJson<Config>('/api/settings');
 }
 
 export function settingsPut(cfg: Config): Promise<void> {
-	return invoke<void>('cmd_settings_put', { cfg });
+	return putJson<void>('/api/settings', cfg);
 }
 
 /**
@@ -210,7 +318,7 @@ export function settingsPut(cfg: Config): Promise<void> {
  * when cached data goes stale.
  */
 export function metaCacheClear(): Promise<void> {
-	return invoke<void>('cmd_meta_cache_clear');
+	return deleteJson<void>('/api/cache');
 }
 
 /**
