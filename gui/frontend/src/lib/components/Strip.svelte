@@ -188,15 +188,6 @@
 		   as "designed" rather than "glued to the rail". */
 		--strip-pad: var(--space-8);
 		margin-block-end: var(--space-7);
-		/* Skip layout/paint for off-screen strips entirely. The home
-		   page renders 4–5 strips of 20+ cards each; without this,
-		   scrolling forces the renderer to process all of them every
-		   frame even though only one or two are visible. The
-		   intrinsic-size hint keeps scroll-position stable while the
-		   strip is collapsed (~22rem covers the eyebrow + card row +
-		   bottom margin). */
-		content-visibility: auto;
-		contain-intrinsic-size: auto 22rem;
 	}
 
 	.strip-header {
