@@ -322,14 +322,23 @@ export function metaCacheClear(): Promise<void> {
 }
 
 /**
- * Convert an `https://media.kitsu.app/…` URL into the equivalent
- * `image://…` URL the Tauri custom protocol handles. Returns `null` if
- * the input isn't an https URL we can rewrite.
+ * Convert an `https://…` upstream image URL into a URL the renderer
+ * can drop into `<img src=>`.
+ *
+ * Under Electron the backend serves `/api/image?url=…` over HTTP; we
+ * need the apiBase synchronously, so we read it directly off
+ * `window.aniGui.apiBase` (set by the preload before any component
+ * mounts). Under the legacy Tauri build that property is absent, and
+ * the answer is the `image://` custom URI scheme registered in
+ * `lib::run`.
+ *
+ * Returns `null` for non-https input — same defensive contract the
+ * Tauri version had.
  */
 export function imageProxyUrl(httpsUrl: string | null | undefined): string | null {
-	if (!httpsUrl) return null;
-	if (httpsUrl.startsWith('https://')) {
-		return 'image://' + httpsUrl.slice('https://'.length);
+	if (!httpsUrl || !httpsUrl.startsWith('https://')) return null;
+	if (typeof window !== 'undefined' && window.aniGui?.apiBase) {
+		return `${window.aniGui.apiBase}/api/image?url=${encodeURIComponent(httpsUrl)}`;
 	}
-	return null;
+	return 'image://' + httpsUrl.slice('https://'.length);
 }

@@ -80,6 +80,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         )
         .route("/api/settings", get(get_settings).put(put_settings))
         .route("/api/cache", delete(delete_cache))
+        .route("/api/image", get(get_image))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -226,6 +227,41 @@ async fn put_settings(
 async fn delete_cache(State(state): State<Arc<AppState>>) -> Result<StatusCode, AniError> {
     crate::cache::meta_cache_clear(&state.cache_pool)?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct ImageQuery {
+    url: String,
+}
+
+/// Serve a cached/freshly-fetched image. The Tauri build used a custom
+/// `image://` URI scheme; under Electron the renderer can't reach
+/// that, so it asks for the bytes over plain HTTP. Same on-disk cache
+/// (`meta::images`) backs both transports.
+///
+/// Only `https://` upstreams are accepted — refusing other schemes
+/// avoids letting a malicious renderer turn the loopback server into
+/// an SSRF springboard for `file://`, `http://localhost:*`, etc.
+async fn get_image(State(state): State<Arc<AppState>>, Query(q): Query<ImageQuery>) -> Response {
+    if !q.url.starts_with("https://") {
+        return (StatusCode::BAD_REQUEST, "url must be https://").into_response();
+    }
+    match crate::meta::images::get_or_fetch(&state.proxy_http, &state.image_cache_dir, &q.url).await
+    {
+        Ok((bytes, mime)) => (
+            StatusCode::OK,
+            [
+                (axum::http::header::CONTENT_TYPE, mime),
+                // 24h is enough — Kitsu/AniList CDN URLs are stable
+                // per anime, and the on-disk cache makes refetches
+                // cheap if a header eviction happens early.
+                (axum::http::header::CACHE_CONTROL, "public, max-age=86400"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(e) => e.into_response(),
+    }
 }
 
 #[cfg(test)]
@@ -565,5 +601,96 @@ mod tests {
                 .contains_key("access-control-allow-methods"),
             "missing access-control-allow-methods"
         );
+    }
+
+    /// Cross-origin `<img src=>` loads can't ride Tauri's `image://`
+    /// custom protocol from Electron — the renderer fetches via plain
+    /// HTTP. The route must serve cached bytes with the right
+    /// Content-Type, and refuse non-https upstreams (defense in depth
+    /// against an XSS asking the loopback server to fetch arbitrary
+    /// schemes).
+    #[tokio::test]
+    async fn image_route_serves_cached_bytes_with_content_type() {
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        // Pre-populate the cache so the route doesn't try to fetch
+        // upstream during the test.
+        let upstream = "https://media.kitsu.app/anime/12/poster.jpg";
+        let hash = crate::meta::images::hash_url(upstream);
+        let on_disk = state.image_cache_dir.join(&hash[..2]);
+        std::fs::create_dir_all(&on_disk).expect("mkdir cache bucket");
+        std::fs::write(
+            on_disk.join(format!("{hash}.jpg")),
+            b"\xff\xd8\xff\xe0fake-jpeg",
+        )
+        .expect("seed cache");
+
+        let router = build_api_router(Arc::new(state));
+        // %3A %2F are `:` and `/`. URL is short and stable so hardcoding
+        // the encoded form is clearer than pulling in a serde-urlencoded
+        // helper just for the test.
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/image?url=https%3A%2F%2Fmedia.kitsu.app%2Fanime%2F12%2Fposter.jpg")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok()),
+            Some("image/jpeg")
+        );
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("collect")
+            .to_bytes();
+        assert_eq!(body.as_ref(), b"\xff\xd8\xff\xe0fake-jpeg");
+    }
+
+    #[tokio::test]
+    async fn image_route_rejects_non_https_url() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/image?url=http%3A%2F%2Finsecure.example%2Fx.jpg")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn image_route_rejects_missing_url_param() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/image")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        // axum's Query extractor rejects with 400 for missing required fields.
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }
