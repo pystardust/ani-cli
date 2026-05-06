@@ -87,13 +87,15 @@ pub async fn cmd_kitsu_top_rated(state: State<'_, AppState>) -> Result<Vec<Kitsu
     kitsu_inner::kitsu_top_rated(&state).await
 }
 
-/// Frontend → backend: episodes list for an anime detail page.
+/// Frontend → backend: a page of episodes for an anime detail page.
+/// `page` is 1-based; defaults to 1 if omitted.
 #[tauri::command]
 pub async fn cmd_kitsu_episodes(
     state: State<'_, AppState>,
     anime_id: String,
+    page: Option<u32>,
 ) -> Result<Vec<KitsuEpisode>> {
-    kitsu_inner::kitsu_episodes(&state, &anime_id).await
+    kitsu_inner::kitsu_episodes(&state, &anime_id, page.unwrap_or(1)).await
 }
 
 /// Frontend → backend: read user settings (defaults when file is absent).

@@ -14,11 +14,13 @@
 	import {
 		historyList,
 		imageProxyUrl,
+		kitsuEpisodes,
 		kitsuSearch,
 		kitsuTopRated,
 		kitsuTrending,
 		type HistoryEntry,
-		type KitsuAnimeRef
+		type KitsuAnimeRef,
+		type KitsuEpisode
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import Strip from '$lib/components/Strip.svelte';
@@ -30,6 +32,11 @@
 	// Per-history-entry Kitsu match, keyed by allanime id. Populated lazily
 	// after history loads so Continue Watching cards can show posters.
 	let historyMatches = $state<Record<string, KitsuAnimeRef | null>>({});
+	// Per-history-entry Kitsu episode (by ep_no), keyed by allanime id.
+	// Populated after the matching kitsuEpisodes() call resolves so cards
+	// can show the actual episode thumbnail + canonical title rather than
+	// generic anime-poster + anime-title.
+	let historyEpisodes = $state<Record<string, KitsuEpisode | null>>({});
 	let trendingError = $state<string | null>(null);
 	let topRatedError = $state<string | null>(null);
 	let scrollY = $state(0);
@@ -49,13 +56,32 @@
 		historyList()
 			.then((h) => {
 				history = h;
-				// Kick a Kitsu lookup per entry so each card can render its
-				// real poster. Fire in parallel; on failure leave the slot
-				// null and fall back to the typeset card.
+				// Two-stage lookup per entry:
+				//   1. kitsuSearch by title → matches the anime, gives us
+				//      the kitsu id we need for step 2 + a poster fallback.
+				//   2. kitsuEpisodes(kitsuId) → find the entry's last-watched
+				//      episode by number; gives us the real thumbnail + title.
+				// Both stages are fire-and-forget per entry; if either
+				// fails the card degrades gracefully (anime poster + anime
+				// title is the floor).
 				h.forEach((entry: HistoryEntry) => {
 					kitsuSearch(titleOf(entry))
 						.then((hits: KitsuAnimeRef[]) => {
-							historyMatches = { ...historyMatches, [entry.id]: hits[0] ?? null };
+							const match = hits[0] ?? null;
+							historyMatches = { ...historyMatches, [entry.id]: match };
+							if (!match) return;
+							void kitsuEpisodes(match.id)
+								.then((eps: KitsuEpisode[]) => {
+									const wantNum = parseInt(entry.ep_no, 10);
+									const ep =
+										eps.find((e) => e.number === wantNum) ??
+										eps.find((e) => e.relative_number === wantNum) ??
+										null;
+									historyEpisodes = { ...historyEpisodes, [entry.id]: ep };
+								})
+								.catch(() => {
+									historyEpisodes = { ...historyEpisodes, [entry.id]: null };
+								});
 						})
 						.catch(() => {
 							historyMatches = { ...historyMatches, [entry.id]: null };
@@ -206,13 +232,16 @@
 	<Strip eyebrow="Continue watching" caption="resume from history">
 		{#each history as entry (entry.id)}
 			{@const match = historyMatches[entry.id]}
+			{@const ep = historyEpisodes[entry.id]}
 			{@const accent = accentFor(match?.id ?? entry.id)}
-			{@const poster = imageProxyUrl(
+			{@const epThumb = imageProxyUrl(ep?.thumbnail?.original ?? null)}
+			{@const animePoster = imageProxyUrl(
 				match?.poster_image?.medium ??
 					match?.poster_image?.large ??
 					match?.poster_image?.small ??
 					null
 			)}
+			{@const image = epThumb ?? animePoster}
 			{@const targetId = match?.id ?? null}
 			<a
 				class="resume-card"
@@ -221,8 +250,8 @@
 				href={targetId ? resolve('/anime/[id]', { id: targetId }) : resolve('/search')}
 			>
 				<span class="resume-poster">
-					{#if poster}
-						<img src={poster} alt="" loading="lazy" decoding="async" />
+					{#if image}
+						<img src={image} alt="" loading="lazy" decoding="async" />
 					{:else}
 						<span class="resume-poster-placeholder" aria-hidden="true">
 							{titleOf(entry).slice(0, 2).toUpperCase()}
@@ -234,7 +263,12 @@
 					</span>
 				</span>
 				<span class="resume-body">
-					<span class="resume-title">{titleOf(entry)}</span>
+					<span class="resume-show">{titleOf(entry)}</span>
+					{#if ep?.canonical_title}
+						<span class="resume-title">{ep.canonical_title}</span>
+					{:else}
+						<span class="resume-title resume-title-faint">Episode {epOf(entry)}</span>
+					{/if}
 					<span class="resume-cta">
 						<span aria-hidden="true">↺</span>
 						<span>Resume</span>
@@ -584,6 +618,19 @@
 		gap: var(--space-2);
 		padding: var(--space-3) var(--space-4) var(--space-4);
 	}
+	/* Anime title above the episode title — small mono eyebrow voice. */
+	.resume-show {
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		line-clamp: 1;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
 	.resume-title {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
@@ -595,6 +642,9 @@
 		font-size: var(--type-body-l);
 		line-height: var(--leading-tight);
 		color: var(--bone-100);
+	}
+	.resume-title-faint {
+		color: var(--bone-300);
 	}
 	.resume-cta {
 		display: inline-flex;

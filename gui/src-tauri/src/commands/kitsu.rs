@@ -122,18 +122,28 @@ where
 /// the anime search endpoint which allows 24. Hard-coded ceiling here.
 const EPISODES_PAGE_LIMIT: u8 = 20;
 
-/// Fetch episodes for an anime, capped at [`EPISODES_PAGE_LIMIT`].
+/// Fetch a page of episodes for an anime. `page` is 1-based and
+/// translates to a Kitsu `page[offset]` of `(page-1)*limit`. Each page
+/// caches independently under `kitsu:episodes:<id>:p<n>`.
 ///
 /// # Errors
 /// Inherits from [`crate::meta::kitsu::KitsuClient::episodes`] on miss.
-pub async fn kitsu_episodes(state: &AppState, anime_id: &str) -> Result<Vec<KitsuEpisode>> {
-    let key = format!("kitsu:episodes:{anime_id}");
+pub async fn kitsu_episodes(
+    state: &AppState,
+    anime_id: &str,
+    page: u32,
+) -> Result<Vec<KitsuEpisode>> {
+    let p = page.max(1);
+    let key = format!("kitsu:episodes:{anime_id}:p{p}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(eps) = serde_json::from_str::<Vec<KitsuEpisode>>(&body) {
             return Ok(eps);
         }
     }
-    let eps = state.kitsu.episodes(anime_id, EPISODES_PAGE_LIMIT).await?;
+    let eps = state
+        .kitsu
+        .episodes(anime_id, p, EPISODES_PAGE_LIMIT)
+        .await?;
     if let Ok(body) = serde_json::to_string(&eps) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
     }
@@ -318,12 +328,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn kitsu_episodes_caches_after_first_call() {
+    async fn kitsu_episodes_caches_per_page_after_first_call() {
         let mock = MockServer::start().await;
         const EPISODES_FIXTURE: &[u8] =
             include_bytes!("../../../../tests/fixtures/kitsu/episodes_one_piece.json");
         Mock::given(method("GET"))
             .and(path("/anime/12/episodes"))
+            .and(query_param("page[offset]", "0"))
             .respond_with(
                 ResponseTemplate::new(200)
                     .insert_header("content-type", "application/vnd.api+json")
@@ -334,10 +345,33 @@ mod tests {
             .await;
 
         let state = state_with_kitsu_at(&mock.uri());
-        let first = kitsu_episodes(&state, "12").await.expect("ok");
-        let second = kitsu_episodes(&state, "12").await.expect("ok");
+        let first = kitsu_episodes(&state, "12", 1).await.expect("ok");
+        let second = kitsu_episodes(&state, "12", 1).await.expect("ok");
         assert_eq!(first.len(), 12);
         assert_eq!(first, second, "cache hit returns identical body");
+    }
+
+    #[tokio::test]
+    async fn kitsu_episodes_uses_offset_for_higher_pages() {
+        let mock = MockServer::start().await;
+        const EPISODES_FIXTURE: &[u8] =
+            include_bytes!("../../../../tests/fixtures/kitsu/episodes_one_piece.json");
+        Mock::given(method("GET"))
+            .and(path("/anime/12/episodes"))
+            .and(query_param("page[offset]", "20"))
+            .and(query_param("page[limit]", "20"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(EPISODES_FIXTURE.to_vec()),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let _ = kitsu_episodes(&state, "12", 2).await.expect("ok");
+        // Asserted by mock.expect(1) — offset 20 hit exactly once.
     }
 
     #[tokio::test]

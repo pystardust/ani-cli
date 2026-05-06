@@ -230,10 +230,21 @@ describe('kitsuTopRated', () => {
 });
 
 describe('kitsuEpisodes', () => {
-	it('passes animeId under the camelCase animeId key', async () => {
+	it('passes animeId + page=1 by default', async () => {
 		mockedInvoke.mockResolvedValue([]);
 		await kitsuEpisodes('12');
-		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', { animeId: '12' });
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', {
+			animeId: '12',
+			page: 1
+		});
+	});
+	it('passes the explicit page through', async () => {
+		mockedInvoke.mockResolvedValue([]);
+		await kitsuEpisodes('12', 3);
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', {
+			animeId: '12',
+			page: 3
+		});
 	});
 });
 

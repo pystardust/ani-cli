@@ -162,8 +162,8 @@ export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
 	return invoke<KitsuAnimeRef[]>('cmd_kitsu_top_rated');
 }
 
-export function kitsuEpisodes(animeId: string): Promise<KitsuEpisode[]> {
-	return invoke<KitsuEpisode[]>('cmd_kitsu_episodes', { animeId });
+export function kitsuEpisodes(animeId: string, page: number = 1): Promise<KitsuEpisode[]> {
+	return invoke<KitsuEpisode[]>('cmd_kitsu_episodes', { animeId, page });
 }
 
 export function settingsGet(): Promise<Config> {

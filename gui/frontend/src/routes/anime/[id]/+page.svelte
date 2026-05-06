@@ -34,9 +34,40 @@
 
 	// Episode list — fetched in parallel with the detail. null while in-
 	// flight, [] once we know the response was empty (e.g. an upcoming
-	// title that hasn't aired yet).
+	// title that hasn't aired yet). Pagination appends pages onto this
+	// array via the "Load more" button below the grid.
 	let episodes = $state<KitsuEpisode[] | null>(null);
 	let episodesError = $state<string | null>(null);
+	let episodesPage = $state(1);
+	let episodesLoadingMore = $state(false);
+	const EPISODES_PAGE_SIZE = 20;
+	const hasMoreEpisodes = $derived.by(() => {
+		if (!episodes) return false;
+		const total = detail?.episode_count;
+		if (!total) return episodes.length > 0 && episodes.length % EPISODES_PAGE_SIZE === 0;
+		return episodes.length < total;
+	});
+
+	async function loadMoreEpisodes() {
+		if (episodesLoadingMore || !id) return;
+		episodesLoadingMore = true;
+		const next = episodesPage + 1;
+		try {
+			const more = await kitsuEpisodes(id, next);
+			if (more.length > 0) {
+				episodes = [...(episodes ?? []), ...more];
+				episodesPage = next;
+			} else if (episodes && episodes.length > 0) {
+				// Reached the end — flip a flag by setting episode_count if
+				// it wasn't known. Cheap state nudge.
+				episodesPage = next;
+			}
+		} catch (e) {
+			episodesError = describeErrorString(e);
+		} finally {
+			episodesLoadingMore = false;
+		}
+	}
 
 	let config = $state<Config | null>(null);
 	let configError = $state<string | null>(null);
@@ -476,6 +507,20 @@
 						{/each}
 					{/if}
 				</ul>
+				{#if episodes && episodes.length > 0 && hasMoreEpisodes}
+					<button
+						type="button"
+						class="ep-load-more"
+						onclick={loadMoreEpisodes}
+						disabled={episodesLoadingMore}
+					>
+						<span class="ep-load-more-rule" aria-hidden="true"></span>
+						<span class="ep-load-more-label">
+							{episodesLoadingMore ? 'Loading…' : 'Load more episodes'}
+						</span>
+						<span class="ep-load-more-rule" aria-hidden="true"></span>
+					</button>
+				{/if}
 				{#if episodesError}
 					<p class="ep-grid-foot ep-grid-foot-warn">
 						Episode metadata unavailable from Kitsu — playable list above is a fallback.
@@ -1133,6 +1178,43 @@
 	}
 	.ep-grid-foot-warn {
 		color: color-mix(in oklab, var(--accent-oxblood) 60%, var(--bone-400));
+	}
+
+	/* Load-more button: hairline rules either side of a mono label, no
+	   button-shape — fits the editorial register, doesn't read as a CTA. */
+	.ep-load-more {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: var(--space-4);
+		inline-size: 100%;
+		margin-block-start: var(--space-5);
+		padding: var(--space-3) var(--space-4);
+		background: transparent;
+		border: 0;
+		color: var(--bone-300);
+		cursor: pointer;
+		transition: color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-load-more:hover:not(:disabled) {
+		color: var(--bone-100);
+	}
+	.ep-load-more:disabled {
+		cursor: progress;
+		color: var(--bone-400);
+	}
+	.ep-load-more-rule {
+		block-size: 1px;
+		background: var(--ink-200);
+	}
+	.ep-load-more:hover:not(:disabled) .ep-load-more-rule {
+		background: color-mix(in oklab, var(--accent) 50%, var(--ink-300));
+	}
+	.ep-load-more-label {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
 	}
 
 	/* — Skeletons. */

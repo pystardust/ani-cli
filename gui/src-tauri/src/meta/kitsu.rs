@@ -375,18 +375,26 @@ impl KitsuClient {
         parse_search_response(&body)
     }
 
-    /// Fetch the first `limit` episodes for an anime, sorted by absolute
-    /// number ascending.
+    /// Fetch a page of episodes for an anime, sorted by absolute number
+    /// ascending. `page` is 1-based; the Kitsu offset is computed as
+    /// `(page - 1) * limit`.
     ///
     /// # Errors
     /// Same as [`Self::search`] / [`Self::anime_detail`].
-    pub async fn episodes(&self, anime_id: &str, limit: u8) -> Result<Vec<KitsuEpisode>> {
+    pub async fn episodes(
+        &self,
+        anime_id: &str,
+        page: u32,
+        limit: u8,
+    ) -> Result<Vec<KitsuEpisode>> {
+        let offset = page.saturating_sub(1).saturating_mul(u32::from(limit));
         let resp = self
             .http
             .get(format!("{}/anime/{}/episodes", self.base, anime_id))
             .header(reqwest::header::ACCEPT, "application/vnd.api+json")
             .query(&[
                 ("page[limit]", limit.to_string()),
+                ("page[offset]", offset.to_string()),
                 ("fields[episodes]", EPISODE_FIELDS.to_string()),
                 ("sort", "number".to_string()),
             ])
