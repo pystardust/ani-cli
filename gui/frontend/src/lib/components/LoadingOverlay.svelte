@@ -96,7 +96,7 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.overlay {
+		.backdrop {
 			animation: none;
 		}
 	}

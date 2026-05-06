@@ -117,15 +117,32 @@
 		if (!videoEl || !mediaUrl) return;
 		teardown();
 		playerError = null;
+
+		// Native <video> error events fire for HTTP 4xx/5xx and codec
+		// failures alike. Wire one listener that covers both the MP4
+		// path and the native-HLS fallback so the user sees something
+		// when upstream returns 403 / the byte-stream is unreadable.
+		const onVideoError = () => {
+			const err = videoEl?.error;
+			const code = err?.code ?? 0;
+			const codeName =
+				{
+					1: 'aborted',
+					2: 'network',
+					3: 'decode',
+					4: 'not-supported'
+				}[code] ?? 'unknown';
+			playerError = `Playback error: ${codeName}${err?.message ? ` (${err.message})` : ''}`;
+		};
+		videoEl.addEventListener('error', onVideoError);
+
 		// MP4 sessions stream from the local proxy with byte-range
 		// support; the <video> element handles seek natively, no need
 		// for hls.js. HLS sessions still go through hls.js so that
 		// chromium without native HLS works (it doesn't, on Linux).
 		if (mediaKind === 'mp4') {
 			videoEl.src = mediaUrl;
-			return;
-		}
-		if (Hls.isSupported()) {
+		} else if (Hls.isSupported()) {
 			hls = new Hls({ lowLatencyMode: false });
 			hls.loadSource(mediaUrl);
 			hls.attachMedia(videoEl);
@@ -139,6 +156,10 @@
 		} else {
 			playerError = 'HLS playback is not supported in this webview.';
 		}
+
+		return () => {
+			videoEl?.removeEventListener('error', onVideoError);
+		};
 	});
 
 	onDestroy(teardown);
