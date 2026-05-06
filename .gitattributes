@@ -1,0 +1,49 @@
+# Enforce LF line endings across all platforms — Git on Windows would
+# otherwise check out shell scripts and our fixtures with CRLF, which
+# breaks byte-identity checks (e.g. tests::serialize_byte_identical_to_bash_fixture)
+# and POSIX shell parsing of the vendored ani-cli.
+
+# Default: text files are normalized to LF in the working tree.
+* text=auto eol=lf
+
+# Shell scripts and POSIX-shell artifacts.
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.bats      text eol=lf
+ani-cli     text eol=lf
+ani-cli.1   text eol=lf
+
+# TSV / JSON / Markdown / TOML / YAML — all source files we author.
+*.tsv       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.toml      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.svelte    text eol=lf
+*.ts        text eol=lf
+*.js        text eol=lf
+*.rs        text eol=lf
+*.sql       text eol=lf
+
+# m3u8 manifests — line-oriented format with no Windows tooling.
+*.m3u8      text eol=lf
+
+# Binary blobs that must NEVER be auto-converted.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.webp      binary
+*.gif       binary
+*.icns      binary
+*.ico       binary
+*.AppImage  binary
+*.deb       binary
+*.dmg       binary
+*.msi       binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.bin       binary
