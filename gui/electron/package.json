@@ -2,6 +2,11 @@
 	"name": "ani-gui-electron",
 	"version": "0.1.0",
 	"description": "Electron shell for ani-gui — spawns the Rust backend as a sidecar and renders the SvelteKit frontend",
+	"homepage": "https://github.com/pucci/ani-gui",
+	"author": {
+		"name": "ani-gui contributors",
+		"email": "dev@thirdmovement.net"
+	},
 	"private": true,
 	"main": "main.js",
 	"scripts": {
@@ -10,7 +15,8 @@
 		"build:backend": "cd ../src-tauri && cargo build --bin ani-gui-backend --release",
 		"build:frontend": "cd ../frontend && pnpm build",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
-		"dist": "electron-builder"
+		"dist": "electron-builder && pnpm run repack-appimage",
+		"repack-appimage": "node scripts/repack-appimage.mjs"
 	},
 	"devDependencies": {
 		"electron": "^33.2.0",
@@ -44,11 +50,13 @@
 		],
 		"linux": {
 			"target": [
-				"AppImage"
+				"AppImage",
+				"deb"
 			],
 			"category": "AudioVideo",
 			"executableName": "ani-gui",
-			"artifactName": "${productName}-${version}-${arch}.${ext}"
+			"artifactName": "${productName}-${version}-${arch}.${ext}",
+			"maintainer": "ani-gui contributors <dev@thirdmovement.net>"
 		}
 	}
 }

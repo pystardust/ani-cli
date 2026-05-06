@@ -14,6 +14,7 @@ gui/src-tauri/WixTools/
 # Electron packaging output (electron-builder + manual --appimage-extract)
 gui/electron/dist/
 gui/electron/squashfs-root/
+gui/electron/.appimage-cache/
 
 # Node / pnpm / npm
 node_modules/
