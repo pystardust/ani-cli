@@ -47,6 +47,7 @@
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
+	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 
@@ -373,6 +374,8 @@
 		</Strip>
 	{/if}
 </main>
+
+<LoadingOverlay visible={switchBusy} />
 
 <style>
 	.page {

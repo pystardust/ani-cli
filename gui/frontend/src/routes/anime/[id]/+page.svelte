@@ -31,6 +31,7 @@
 	} from '$lib/api';
 	import { cubicOut } from 'svelte/easing';
 	import { SvelteMap } from 'svelte/reactivity';
+	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
@@ -472,8 +473,11 @@
 			return;
 		}
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		// LoadingOverlay binds to actionBusy; it stays up until goto
+		// fires (which unmounts this page) or the catch branch resets
+		// busy and surfaces an error toast.
 		actionBusy = true;
-		notify(`Resolving episode ${ep}…`);
+		actionNotice = null;
 		try {
 			const session = await play({
 				title,
@@ -481,7 +485,6 @@
 				mode,
 				quality: config?.quality
 			});
-			actionBusy = false;
 			actionNotice = null;
 			// The target is built from `resolve()` plus a query string;
 			// the no-resolve lint rule's pattern matcher only recognises
@@ -508,8 +511,10 @@
 			return;
 		}
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		// Same overlay pattern as the embedded path — the resolution
+		// wait is the same chain, only the terminal action differs.
 		actionBusy = true;
-		notify(`Launching external player for episode ${ep}…`);
+		actionNotice = null;
 		try {
 			await playExternal({
 				title,
@@ -934,6 +939,8 @@
 		{/if}
 	{/if}
 </main>
+
+<LoadingOverlay visible={actionBusy} />
 
 <style>
 	.page {
