@@ -25,6 +25,11 @@ pub const KITSU_BASE: &str = "https://kitsu.io/api/edge";
 /// HTTP requests in tests can match the same string.
 pub const ANIME_FIELDS: &str = "canonicalTitle,titles,slug,synopsis,startDate,endDate,episodeCount,averageRating,subtype,status,posterImage,coverImage,ageRating,popularityRank";
 
+/// Sparse fieldset for the episode resource. Same convention as
+/// [`ANIME_FIELDS`] — kept verbatim so wiremock can match exactly.
+pub const EPISODE_FIELDS: &str =
+    "canonicalTitle,seasonNumber,number,relativeNumber,length,synopsis,airdate,thumbnail";
+
 /// Public, framework-free Kitsu anime view. Mirrors the attributes our UI
 /// consumes — search hits and detail responses share this shape because
 /// our `fields[anime]` request asks for the same set in both.
@@ -90,6 +95,41 @@ pub struct KitsuCoverImage {
     pub original: Option<String>,
 }
 
+/// One episode in a Kitsu anime's episode list. Kitsu only renders the
+/// `original` size for thumbnails — no tiny/small variants like for the
+/// poster + cover. The frontend can downscale via the image-cache layer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KitsuEpisode {
+    /// Stringified Kitsu episode id (e.g. `"103482"` for One Piece ep 1).
+    pub id: String,
+    /// Title Kitsu considers canonical for this episode.
+    pub canonical_title: Option<String>,
+    /// Season this episode belongs to. `1` for shows that don't break
+    /// into multiple seasons in Kitsu's data model.
+    pub season_number: Option<u32>,
+    /// Overall episode number across the show (`1`-based).
+    pub number: Option<u32>,
+    /// Episode number within the season (`1`-based).
+    pub relative_number: Option<u32>,
+    /// Length in minutes. Null for unaired or unknown.
+    pub length: Option<u32>,
+    /// Long-form description of the episode. Spoiler-heavy — UIs may
+    /// want to gate behind a "show synopsis" toggle.
+    pub synopsis: Option<String>,
+    /// Airdate as `YYYY-MM-DD`.
+    pub airdate: Option<String>,
+    /// Thumbnail still — only `original` is exposed by Kitsu.
+    pub thumbnail: Option<KitsuEpisodeThumbnail>,
+}
+
+/// Single-size thumbnail Kitsu exposes for episodes. Unlike posters
+/// + covers, no tiny/small/large variants — just the original upload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KitsuEpisodeThumbnail {
+    /// Source-resolution upload (Kitsu doesn't resample).
+    pub original: Option<String>,
+}
+
 // --- Wire types (private to this module) ---------------------------------
 
 #[derive(Deserialize)]
@@ -106,6 +146,39 @@ struct ApiSingle<T> {
 struct AnimeResource {
     id: String,
     attributes: AnimeAttributes,
+}
+
+#[derive(Deserialize)]
+struct EpisodeResource {
+    id: String,
+    attributes: EpisodeAttributes,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EpisodeAttributes {
+    canonical_title: Option<String>,
+    season_number: Option<u32>,
+    number: Option<u32>,
+    relative_number: Option<u32>,
+    length: Option<u32>,
+    synopsis: Option<String>,
+    airdate: Option<String>,
+    thumbnail: Option<KitsuEpisodeThumbnail>,
+}
+
+fn into_episode(r: EpisodeResource) -> KitsuEpisode {
+    KitsuEpisode {
+        id: r.id,
+        canonical_title: r.attributes.canonical_title,
+        season_number: r.attributes.season_number,
+        number: r.attributes.number,
+        relative_number: r.attributes.relative_number,
+        length: r.attributes.length,
+        synopsis: r.attributes.synopsis,
+        airdate: r.attributes.airdate,
+        thumbnail: r.attributes.thumbnail,
+    }
 }
 
 #[derive(Deserialize)]
@@ -186,6 +259,20 @@ pub fn parse_anime_response(body: &[u8]) -> Result<KitsuAnimeRef> {
             detail: format!("kitsu detail parse: {e}"),
         })?;
     Ok(into_ref(parsed.data))
+}
+
+/// Parse `{ "data": [...] }` into a list of episodes. Used for
+/// `/anime/:id/episodes`.
+///
+/// # Errors
+/// Returns [`AniError::ParseFailed`] when the body isn't valid JSON:API
+/// for an episode collection.
+pub fn parse_episodes_response(body: &[u8]) -> Result<Vec<KitsuEpisode>> {
+    let parsed: ApiList<EpisodeResource> =
+        serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+            detail: format!("kitsu episodes parse: {e}"),
+        })?;
+    Ok(parsed.data.into_iter().map(into_episode).collect())
 }
 
 // --- Async client --------------------------------------------------------
@@ -288,6 +375,33 @@ impl KitsuClient {
         parse_search_response(&body)
     }
 
+    /// Fetch the first `limit` episodes for an anime, sorted by absolute
+    /// number ascending.
+    ///
+    /// # Errors
+    /// Same as [`Self::search`] / [`Self::anime_detail`].
+    pub async fn episodes(&self, anime_id: &str, limit: u8) -> Result<Vec<KitsuEpisode>> {
+        let resp = self
+            .http
+            .get(format!("{}/anime/{}/episodes", self.base, anime_id))
+            .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+            .query(&[
+                ("page[limit]", limit.to_string()),
+                ("fields[episodes]", EPISODE_FIELDS.to_string()),
+                ("sort", "number".to_string()),
+            ])
+            .send()
+            .await
+            .map_err(|_| AniError::Network)?;
+        if !resp.status().is_success() {
+            return Err(AniError::Upstream {
+                status: resp.status().as_u16(),
+            });
+        }
+        let body = resp.bytes().await.map_err(|_| AniError::Network)?;
+        parse_episodes_response(&body)
+    }
+
     /// Fetch a single anime by Kitsu id.
     ///
     /// # Errors
@@ -321,6 +435,8 @@ mod tests {
         include_bytes!("../../../../tests/fixtures/kitsu/anime_one_piece_detail.json");
     const NULL_COVER_FIXTURE: &[u8] =
         include_bytes!("../../../../tests/fixtures/kitsu/anime_null_cover_detail.json");
+    const EPISODES_FIXTURE: &[u8] =
+        include_bytes!("../../../../tests/fixtures/kitsu/episodes_one_piece.json");
 
     #[test]
     fn parse_search_returns_all_hits_with_canonical_titles() {
@@ -421,6 +537,49 @@ mod tests {
     fn parse_anime_detail_rejects_data_array_when_expecting_object() {
         let body = br#"{"data":[]}"#;
         let r = parse_anime_response(body);
+        assert!(matches!(r, Err(AniError::ParseFailed { .. })));
+    }
+
+    #[test]
+    fn parse_episodes_returns_all_with_canonical_titles() {
+        let eps = parse_episodes_response(EPISODES_FIXTURE).expect("parses");
+        assert_eq!(eps.len(), 12, "fixture has 12 episodes");
+        let first = &eps[0];
+        assert_eq!(first.id, "103482");
+        assert_eq!(first.number, Some(1));
+        assert_eq!(first.season_number, Some(1));
+        assert_eq!(first.length, Some(24));
+        assert_eq!(first.airdate.as_deref(), Some("1999-10-20"));
+        assert!(first
+            .canonical_title
+            .as_deref()
+            .unwrap_or("")
+            .contains("King of the Pirates"));
+    }
+
+    #[test]
+    fn parse_episodes_extracts_thumbnail_original_when_present() {
+        let eps = parse_episodes_response(EPISODES_FIXTURE).expect("parses");
+        let first = &eps[0];
+        let thumb = first.thumbnail.as_ref().expect("thumbnail present");
+        let url = thumb.original.as_deref().unwrap_or_default();
+        assert!(
+            url.starts_with("https://media.kitsu.app/"),
+            "thumbnail.original is a Kitsu CDN URL: {url}"
+        );
+    }
+
+    #[test]
+    fn parse_episodes_handles_null_thumbnail_gracefully() {
+        let body = br#"{"data":[{"id":"1","type":"episodes","attributes":{"canonicalTitle":"x","number":1,"thumbnail":null}}]}"#;
+        let eps = parse_episodes_response(body).expect("parses");
+        assert_eq!(eps.len(), 1);
+        assert!(eps[0].thumbnail.is_none());
+    }
+
+    #[test]
+    fn parse_episodes_rejects_non_jsonapi_body() {
+        let r = parse_episodes_response(b"<html>not json</html>");
         assert!(matches!(r, Err(AniError::ParseFailed { .. })));
     }
 

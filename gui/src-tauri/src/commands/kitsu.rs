@@ -17,7 +17,7 @@ use crate::app::AppState;
 use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL, TRENDING_TTL};
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
-use crate::meta::kitsu::KitsuAnimeRef;
+use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
 
 /// Max search result page size we ask Kitsu for. Keeping this conservative
 /// because the UI only renders a handful of cards before scrolling needs
@@ -109,6 +109,31 @@ where
         let _ = meta_cache_put(&state.cache_pool, cache_key, &body, ttl_seconds);
     }
     Ok(hits)
+}
+
+/// First N episodes for a Kitsu anime. Cache key: `kitsu:episodes:<id>`,
+/// TTL [`ANIME_DETAIL_TTL`] (7 days). Note that for currently-airing
+/// shows new episodes appear weekly; the 7-day TTL means a busy fan can
+/// see a stale list for up to a week, which is the right tradeoff for a
+/// catalog browse — better than hammering Kitsu on every detail-page open.
+const EPISODES_PAGE_LIMIT: u8 = 24;
+
+/// Fetch episodes for an anime, capped at [`EPISODES_PAGE_LIMIT`].
+///
+/// # Errors
+/// Inherits from [`crate::meta::kitsu::KitsuClient::episodes`] on miss.
+pub async fn kitsu_episodes(state: &AppState, anime_id: &str) -> Result<Vec<KitsuEpisode>> {
+    let key = format!("kitsu:episodes:{anime_id}");
+    if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
+        if let Ok(eps) = serde_json::from_str::<Vec<KitsuEpisode>>(&body) {
+            return Ok(eps);
+        }
+    }
+    let eps = state.kitsu.episodes(anime_id, EPISODES_PAGE_LIMIT).await?;
+    if let Ok(body) = serde_json::to_string(&eps) {
+        let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
+    }
+    Ok(eps)
 }
 
 /// Fetch a single anime by Kitsu id. Cache key: `kitsu:anime:<id>`.
@@ -286,6 +311,29 @@ mod tests {
         let state = state_with_kitsu_at(&mock.uri());
         let _ = kitsu_top_rated(&state).await.expect("ok");
         let _ = kitsu_top_rated(&state).await.expect("ok");
+    }
+
+    #[tokio::test]
+    async fn kitsu_episodes_caches_after_first_call() {
+        let mock = MockServer::start().await;
+        const EPISODES_FIXTURE: &[u8] =
+            include_bytes!("../../../../tests/fixtures/kitsu/episodes_one_piece.json");
+        Mock::given(method("GET"))
+            .and(path("/anime/12/episodes"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(EPISODES_FIXTURE.to_vec()),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let first = kitsu_episodes(&state, "12").await.expect("ok");
+        let second = kitsu_episodes(&state, "12").await.expect("ok");
+        assert_eq!(first.len(), 12);
+        assert_eq!(first, second, "cache hit returns identical body");
     }
 
     #[tokio::test]

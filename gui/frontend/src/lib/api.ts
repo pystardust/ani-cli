@@ -86,6 +86,24 @@ export interface Config {
 	image_cache_cap_mb: number;
 }
 
+/** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */
+export interface KitsuEpisodeThumbnail {
+	original: string | null;
+}
+
+/** One episode in a Kitsu anime's episode list. */
+export interface KitsuEpisode {
+	id: string;
+	canonical_title: string | null;
+	season_number: number | null;
+	number: number | null;
+	relative_number: number | null;
+	length: number | null;
+	synopsis: string | null;
+	airdate: string | null;
+	thumbnail: KitsuEpisodeThumbnail | null;
+}
+
 /** Public Kitsu anime view returned by `cmd_kitsu_search` / `_anime_detail`. */
 export interface KitsuAnimeRef {
 	id: string;
@@ -142,6 +160,10 @@ export function kitsuTrending(): Promise<KitsuAnimeRef[]> {
 
 export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
 	return invoke<KitsuAnimeRef[]>('cmd_kitsu_top_rated');
+}
+
+export function kitsuEpisodes(animeId: string): Promise<KitsuEpisode[]> {
+	return invoke<KitsuEpisode[]>('cmd_kitsu_episodes', { animeId });
 }
 
 export function settingsGet(): Promise<Config> {

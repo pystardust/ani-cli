@@ -15,7 +15,7 @@ use crate::commands::{
 use crate::config::Config;
 use crate::error::Result;
 use crate::history::HistoryEntry;
-use crate::meta::kitsu::KitsuAnimeRef;
+use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
 
 /// Frontend → backend: meta about the running backend.
 #[tauri::command]
@@ -85,6 +85,15 @@ pub async fn cmd_kitsu_trending(state: State<'_, AppState>) -> Result<Vec<KitsuA
 #[tauri::command]
 pub async fn cmd_kitsu_top_rated(state: State<'_, AppState>) -> Result<Vec<KitsuAnimeRef>> {
     kitsu_inner::kitsu_top_rated(&state).await
+}
+
+/// Frontend → backend: episodes list for an anime detail page.
+#[tauri::command]
+pub async fn cmd_kitsu_episodes(
+    state: State<'_, AppState>,
+    anime_id: String,
+) -> Result<Vec<KitsuEpisode>> {
+    kitsu_inner::kitsu_episodes(&state, &anime_id).await
 }
 
 /// Frontend → backend: read user settings (defaults when file is absent).

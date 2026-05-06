@@ -131,6 +131,7 @@ pub fn run() -> Result<()> {
             commands::ipc::cmd_kitsu_anime_detail,
             commands::ipc::cmd_kitsu_trending,
             commands::ipc::cmd_kitsu_top_rated,
+            commands::ipc::cmd_kitsu_episodes,
             commands::ipc::cmd_settings_get,
             commands::ipc::cmd_settings_put,
         ])

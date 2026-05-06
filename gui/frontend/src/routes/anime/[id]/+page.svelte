@@ -18,10 +18,12 @@
 	import {
 		imageProxyUrl,
 		kitsuAnimeDetail,
+		kitsuEpisodes,
 		settingsGet,
 		settingsPut,
 		type Config,
-		type KitsuAnimeRef
+		type KitsuAnimeRef,
+		type KitsuEpisode
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import BackButton from '$lib/components/BackButton.svelte';
@@ -29,6 +31,12 @@
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
 	let scrollY = $state(0);
+
+	// Episode list — fetched in parallel with the detail. null while in-
+	// flight, [] once we know the response was empty (e.g. an upcoming
+	// title that hasn't aired yet).
+	let episodes = $state<KitsuEpisode[] | null>(null);
+	let episodesError = $state<string | null>(null);
 
 	let config = $state<Config | null>(null);
 	let configError = $state<string | null>(null);
@@ -53,13 +61,19 @@
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
 			return;
 		}
-		// Fire detail + settings in parallel.
+		// Fire detail + settings + episodes in parallel.
 		void kitsuAnimeDetail(id)
 			.then((d) => (detail = d))
 			.catch((e) => (error = describeError(e)));
 		void settingsGet()
 			.then((c) => (config = c))
 			.catch((e) => (configError = describeErrorString(e)));
+		void kitsuEpisodes(id)
+			.then((e) => (episodes = e))
+			.catch((e) => {
+				episodes = [];
+				episodesError = describeErrorString(e);
+			});
 	});
 
 	$effect(() => {
@@ -377,24 +391,67 @@
 				<h2 class="section-eyebrow">
 					<span>Episodes</span>
 					<span class="section-eyebrow-faint">
-						{detail.episode_count
-							? `${Math.min(12, detail.episode_count)} of ${detail.episode_count}`
-							: 'preview'}
+						{#if episodes && episodes.length > 0 && detail.episode_count}
+							{episodes.length} of {detail.episode_count}
+						{:else if episodes && episodes.length > 0}
+							{episodes.length} loaded
+						{:else if episodesError}
+							unavailable
+						{:else}
+							loading
+						{/if}
 					</span>
 				</h2>
 				<ul class="ep-grid">
-					{#each Array.from({ length: Math.min(12, detail.episode_count ?? 12) }, (_, k) => k + 1) as n (n)}
-						<li>
-							<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
-								<span class="ep-key">Ep</span>
-								<span class="ep-num">{n.toString().padStart(2, '0')}</span>
-								<span class="ep-meta">23m</span>
-							</button>
+					{#if episodes === null}
+						{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
+							<li>
+								<div class="ep-tile ep-tile-skel" aria-hidden="true">
+									<div class="ep-thumb ep-thumb-skel"></div>
+									<div class="ep-foot-skel"></div>
+								</div>
+							</li>
+						{/each}
+					{:else if episodes.length === 0}
+						<li class="ep-empty">
+							{episodesError
+								? "Couldn't load episodes from Kitsu."
+								: 'No episodes on file at Kitsu yet.'}
 						</li>
-					{/each}
+					{:else}
+						{#each episodes as ep (ep.id)}
+							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
+							{@const num = ep.number ?? ep.relative_number ?? null}
+							<li>
+								<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
+									<span class="ep-thumb">
+										{#if thumb}
+											<img src={thumb} alt="" loading="lazy" decoding="async" />
+										{:else}
+											<span class="ep-thumb-placeholder" aria-hidden="true">
+												{num ? num.toString().padStart(2, '0') : '·'}
+											</span>
+										{/if}
+										<span class="ep-tag" aria-hidden="true">
+											<span class="ep-tag-key">Ep</span>
+											<span class="ep-tag-num">{num ?? '?'}</span>
+										</span>
+									</span>
+									<span class="ep-foot">
+										<span class="ep-title">
+											{ep.canonical_title ?? `Episode ${num ?? ''}`}
+										</span>
+										<span class="ep-meta">
+											{#if ep.length}<span>{ep.length}m</span>{/if}
+										</span>
+									</span>
+								</button>
+							</li>
+						{/each}
+					{/if}
 				</ul>
-				<p class="ep-foot">
-					Tiles are placeholders until the allanime bridge lands (M2). Tap to confirm wiring.
+				<p class="ep-grid-foot">
+					Tap to play once the allanime bridge lands. Thumbnails + titles via Kitsu.
 				</p>
 			</div>
 		</section>
@@ -905,17 +962,21 @@
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--space-3);
 	}
+	/* Tile is now thumbnail-led: 16:9 image at top, mono-numeral overlay
+	   tag in the corner, title + duration in the foot. Forward-compatible
+	   with future episodes with no thumbnail (placeholder gradient
+	   showing the episode number). */
 	.ep-tile {
 		inline-size: 100%;
 		display: grid;
-		grid-template-columns: auto 1fr auto;
-		align-items: baseline;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
+		grid-template-rows: auto 1fr;
+		gap: 0;
+		padding: 0;
 		text-align: start;
 		background: var(--ink-050);
 		border: 1px solid var(--ink-200);
 		border-radius: var(--radius-card);
+		overflow: hidden;
 		transition:
 			border-color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
@@ -924,24 +985,79 @@
 	.ep-tile:hover {
 		transform: translateY(-1px);
 		border-color: color-mix(in oklab, var(--accent) 70%, var(--ink-300));
+	}
+	.ep-tile:hover .ep-thumb img {
+		filter: brightness(1);
+	}
+	.ep-thumb {
+		position: relative;
+		display: block;
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		background: var(--ink-100);
+	}
+	.ep-thumb img {
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+		filter: brightness(0.85);
+		transition: filter var(--dur-med) var(--ease-out-soft);
+	}
+	.ep-thumb-placeholder {
+		display: grid;
+		place-items: center;
+		inline-size: 100%;
+		block-size: 100%;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-display-m);
+		color: var(--bone-300);
 		background: linear-gradient(
 			135deg,
-			color-mix(in oklab, var(--accent) 8%, var(--ink-050)) 0%,
-			var(--ink-050) 100%
+			var(--ink-100),
+			color-mix(in oklab, var(--accent) 18%, var(--ink-100))
 		);
 	}
-	.ep-key {
+	.ep-tag {
+		position: absolute;
+		inset-block-start: var(--space-2);
+		inset-inline-start: var(--space-2);
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-1);
+		padding: 2px var(--space-2);
+		background: color-mix(in oklab, var(--ink-000) 78%, transparent);
+		backdrop-filter: blur(4px);
+		border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--bone-400));
+	}
+	.ep-tag-key {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
 	}
-	.ep-num {
+	.ep-tag-num {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-display-m);
-		line-height: 1;
+		font-size: var(--type-meta);
+		color: var(--bone-100);
+	}
+	.ep-foot {
+		display: grid;
+		gap: var(--space-1);
+		padding: var(--space-3);
+		min-block-size: 4rem;
+	}
+	.ep-title {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		font-family: var(--font-display);
+		font-size: var(--type-meta);
+		line-height: var(--leading-tight);
 		color: var(--bone-100);
 	}
 	.ep-meta {
@@ -949,9 +1065,39 @@
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-meta);
 		color: var(--bone-400);
-		justify-self: end;
 	}
-	.ep-foot {
+
+	/* Skeleton + empty states for the episodes panel. */
+	.ep-tile-skel {
+		cursor: default;
+	}
+	.ep-thumb-skel {
+		aspect-ratio: 16 / 9;
+		background: var(--ink-100);
+		animation: pulse 1.6s var(--ease-in-out) infinite;
+	}
+	.ep-foot-skel {
+		block-size: 4rem;
+		background: var(--ink-050);
+	}
+	.ep-empty {
+		grid-column: 1 / -1;
+		padding: var(--space-5);
+		font-family: var(--font-display);
+		font-style: italic;
+		color: var(--bone-300);
+		text-align: center;
+		border: 1px dashed var(--ink-300);
+		border-radius: var(--radius-card);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ep-thumb-skel {
+			animation: none;
+		}
+	}
+
+	/* Old tile foot caption — kept for the placeholder note below the grid. */
+	.ep-grid-foot {
 		margin-block-start: var(--space-4);
 		margin-block-end: 0;
 		font-family: var(--font-mono);

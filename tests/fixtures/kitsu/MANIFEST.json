@@ -20,6 +20,12 @@
       "size": 1931,
       "sha256": "851c101aaa26bde147077b6f69c3813cac380d6ee2e1417baba484f2d2b719ae",
       "notes": "Crayon Shin-chan — currently airing, coverImage:null. Exercises the detail-page banner-fallback branch."
+    },
+    "episodes_one_piece.json": {
+      "request": "GET /anime/12/episodes?page[limit]=12&fields[episodes]=canonicalTitle,seasonNumber,number,relativeNumber,length,synopsis,airdate,thumbnail&sort=number",
+      "size": 7841,
+      "sha256": "400a794eb049d3af05edc56fed5fa20c1b78c77e9070d865f67540c2098f544c",
+      "notes": "First 12 episodes of One Piece. Each carries thumbnail.original; airdate populated; episode number + season number as integers. Exercises the episodes panel + thumbnail-tile branch on the detail page."
     }
   }
 }

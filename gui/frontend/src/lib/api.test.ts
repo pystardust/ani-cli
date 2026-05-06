@@ -7,6 +7,7 @@ import {
 	historyList,
 	imageProxyUrl,
 	kitsuAnimeDetail,
+	kitsuEpisodes,
 	kitsuSearch,
 	kitsuTopRated,
 	kitsuTrending,
@@ -225,6 +226,14 @@ describe('kitsuTopRated', () => {
 		mockedInvoke.mockResolvedValue([]);
 		await kitsuTopRated();
 		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_top_rated');
+	});
+});
+
+describe('kitsuEpisodes', () => {
+	it('passes animeId under the camelCase animeId key', async () => {
+		mockedInvoke.mockResolvedValue([]);
+		await kitsuEpisodes('12');
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_episodes', { animeId: '12' });
 	});
 });
 
