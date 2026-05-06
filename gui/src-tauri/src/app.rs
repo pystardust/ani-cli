@@ -18,6 +18,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 use crate::anicli::process::{locate_ani_cli, DebugOptions};
+use crate::cache::SqlitePool;
 use crate::config::paths;
 use crate::error::{AniError, Result};
 use crate::proxy::{AppSecret, ProxyOrigin, ProxyState, SessionTable};
@@ -43,6 +44,10 @@ pub struct AppState {
     pub history_path: PathBuf,
     /// Concurrency limiter for ani-cli subprocess spawns.
     pub scraper_slots: Arc<Semaphore>,
+    /// On-disk image-cache directory served by the `image://` protocol.
+    pub image_cache_dir: PathBuf,
+    /// Connection pool for the SQLite metadata cache.
+    pub cache_pool: SqlitePool,
 }
 
 impl AppState {
@@ -63,6 +68,13 @@ impl AppState {
         let fallback = ani_cli_resource_dir.map(|d| d.join("ani-cli"));
         let ani_cli_path = locate_ani_cli(fallback.as_ref())?;
         let history_path = paths::ani_cli_history().ok_or(AniError::Io)?;
+        let image_cache_dir = paths::image_cache_dir().ok_or(AniError::Io)?;
+        std::fs::create_dir_all(&image_cache_dir).map_err(|_| AniError::Io)?;
+        let metadata_db = paths::metadata_db().ok_or(AniError::Io)?;
+        if let Some(parent) = metadata_db.parent() {
+            std::fs::create_dir_all(parent).map_err(|_| AniError::Io)?;
+        }
+        let cache_pool = crate::cache::open_pool(&metadata_db)?;
         Ok(Self {
             secret: AppSecret::random(),
             sessions: SessionTable::new(),
@@ -71,6 +83,8 @@ impl AppState {
             ani_cli_path,
             history_path,
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
+            image_cache_dir,
+            cache_pool,
         })
     }
 
@@ -110,6 +124,8 @@ mod tests {
             ani_cli_path: PathBuf::from("/tmp/ani-cli"),
             history_path: PathBuf::from("/tmp/ani-cli/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
+            image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
+            cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
         }
     }
 

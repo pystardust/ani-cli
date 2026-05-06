@@ -49,6 +49,8 @@ mod tests {
             ani_cli_path: PathBuf::from("/usr/local/bin/ani-cli"),
             history_path: PathBuf::from("/home/u/.local/state/ani-cli/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(2)),
+            image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
+            cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
         }
     }
 

@@ -33,6 +33,19 @@ pub fn cache_dir() -> Option<PathBuf> {
     project_dirs().map(|d| d.cache_dir().to_path_buf())
 }
 
+/// `$XDG_CACHE_HOME/ani-gui/images/` — backing store for the `image://`
+/// custom protocol.
+#[must_use]
+pub fn image_cache_dir() -> Option<PathBuf> {
+    cache_dir().map(|d| d.join("images"))
+}
+
+/// `$XDG_CACHE_HOME/ani-gui/metadata.sqlite` — SQLite metadata cache.
+#[must_use]
+pub fn metadata_db() -> Option<PathBuf> {
+    cache_dir().map(|d| d.join("metadata.sqlite"))
+}
+
 /// `$XDG_DATA_HOME/ani-gui/logs/`.
 #[must_use]
 pub fn logs_dir() -> Option<PathBuf> {

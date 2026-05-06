@@ -96,12 +96,7 @@ pub fn meta_cache_get(pool: &SqlitePool, key: &str) -> Result<Option<String>> {
 ///
 /// # Errors
 /// [`AniError::Cache`] on write failure.
-pub fn meta_cache_put(
-    pool: &SqlitePool,
-    key: &str,
-    body: &str,
-    ttl_seconds: u64,
-) -> Result<()> {
+pub fn meta_cache_put(pool: &SqlitePool, key: &str, body: &str, ttl_seconds: u64) -> Result<()> {
     let conn = pool.get().map_err(|_| AniError::Cache)?;
     let ttl_i64 = i64::try_from(ttl_seconds).unwrap_or(i64::MAX);
     conn.execute(
@@ -247,7 +242,10 @@ mod tests {
         let pool = open_in_memory().unwrap();
         meta_cache_put(&pool, "k", "first", 60).unwrap();
         meta_cache_put(&pool, "k", "second", 60).unwrap();
-        assert_eq!(meta_cache_get(&pool, "k").unwrap().as_deref(), Some("second"));
+        assert_eq!(
+            meta_cache_get(&pool, "k").unwrap().as_deref(),
+            Some("second")
+        );
     }
 
     #[test]
@@ -264,7 +262,9 @@ mod tests {
     fn title_match_round_trips_with_both_ids() {
         let pool = open_in_memory().unwrap();
         title_match_put(&pool, "one piece", Some("12"), Some(21)).unwrap();
-        let row = title_match_get(&pool, "one piece").unwrap().expect("present");
+        let row = title_match_get(&pool, "one piece")
+            .unwrap()
+            .expect("present");
         assert_eq!(row.kitsu_id.as_deref(), Some("12"));
         assert_eq!(row.anilist_id, Some(21));
         assert!(row.fetched_at > 0);

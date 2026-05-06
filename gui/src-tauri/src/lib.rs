@@ -79,10 +79,47 @@ pub fn run() -> Result<()> {
     // Hand the runtime to Tauri so #[tauri::command] async fns run on it.
     let runtime_for_tauri = runtime.clone();
 
+    let runtime_for_protocol = runtime.clone();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
+        .register_asynchronous_uri_scheme_protocol("image", move |ctx, request, responder| {
+            use tauri::http::Response as HttpResponse;
+            use tauri::Manager;
+
+            // Pull the live state + http client from Tauri's managed state,
+            // hand the actual fetch/cache work to our tokio runtime so the
+            // webview thread isn't blocked on disk + network.
+            let handle = ctx.app_handle();
+            let state = handle.state::<app::AppState>();
+            let client = state.proxy_http.clone();
+            let cache_dir = state.image_cache_dir.clone();
+            let runtime = runtime_for_protocol.clone();
+            let uri = request.uri().to_string();
+            runtime.spawn(async move {
+                let response: HttpResponse<Vec<u8>> =
+                    match meta::images::handle_protocol_request(&client, &cache_dir, &uri).await {
+                        Ok((bytes, mime)) => HttpResponse::builder()
+                            .status(200)
+                            .header("content-type", mime)
+                            // 24h: poster URLs are stable; the URL itself
+                            // changes when the upstream image changes.
+                            .header("cache-control", "public, max-age=86400")
+                            .body(bytes)
+                            .unwrap_or_else(|_| HttpResponse::new(Vec::new())),
+                        Err(e) => {
+                            tracing::warn!(uri = %uri, error = ?e, "image:// protocol miss");
+                            HttpResponse::builder()
+                                .status(502)
+                                .body(Vec::new())
+                                .unwrap_or_else(|_| HttpResponse::new(Vec::new()))
+                        }
+                    };
+                responder.respond(response);
+            });
+        })
         .invoke_handler(tauri::generate_handler![
             commands::ipc::cmd_app_info,
             commands::ipc::cmd_proxy_base_url,
