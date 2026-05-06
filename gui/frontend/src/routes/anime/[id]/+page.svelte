@@ -26,7 +26,6 @@
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
-	import { fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { SvelteMap } from 'svelte/reactivity';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -152,9 +151,18 @@
 	// decelerates as it lands. With a per-index delay this gives a
 	// staggered "settle" feel between page transitions. Reduced motion
 	// drops to a flat fade.
+	//
+	// css(t, u): for `in:`, t goes 0→1 and u = 1−t. So at t=0 the tile
+	// starts at opacity 0, scaled to 0.9, translated +28px below its
+	// final position, and blurred by 8px; it eases out to its rest
+	// state by t=1. The same function is reused for `out:` via
+	// settleOut, which mirrors the easing curve on the way out (drop
+	// down + fade + soft blur). Stagger comes from `delay` chosen by
+	// the caller, not the function itself, so cards on different
+	// indices run with different offsets.
 	function settle(
 		_node: Element,
-		{ delay = 0, duration = 520 }: { delay?: number; duration?: number } = {}
+		{ delay = 0, duration = 620 }: { delay?: number; duration?: number } = {}
 	) {
 		const reduced =
 			typeof window !== 'undefined' &&
@@ -166,7 +174,29 @@
 			css: (t: number, u: number) =>
 				reduced
 					? `opacity: ${t};`
-					: `opacity: ${t}; transform: translateY(${u * 22}px) scale(${0.94 + t * 0.06}); filter: blur(${u * 5}px);`
+					: `opacity: ${t}; transform: translateY(${u * 28}px) scale(${0.9 + t * 0.1}); filter: blur(${u * 8}px);`
+		};
+	}
+
+	function settleOut(
+		_node: Element,
+		{ delay = 0, duration = 320 }: { delay?: number; duration?: number } = {}
+	) {
+		const reduced =
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+		return {
+			delay,
+			duration: reduced ? 0 : duration,
+			easing: cubicOut,
+			// For `out:` transitions Svelte runs t from 1→0; u = 1−t. So
+			// at the start t=1 (rest), at the end t=0 (gone). Mirror the
+			// in: shape but drop downward instead of up so it doesn't
+			// feel like the same gesture playing in reverse.
+			css: (t: number, u: number) =>
+				reduced
+					? `opacity: ${t};`
+					: `opacity: ${t}; transform: translateY(${u * -16}px) scale(${0.94 + t * 0.06}); filter: blur(${u * 4}px);`
 		};
 	}
 
@@ -631,76 +661,90 @@
 						</div>
 					</div>
 				{/if}
-				{#key episodesPage}
-					<ul class="ep-grid">
-						{#if episodes === null}
-							<!-- Skeleton while fetch is in flight -->
-							{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
-								<li>
-									<div class="ep-tile ep-tile-skel" aria-hidden="true">
-										<div class="ep-thumb ep-thumb-skel"></div>
-										<div class="ep-foot-skel"></div>
-									</div>
-								</li>
-							{/each}
-						{:else if episodes.length > 0}
-							<!-- Real Kitsu data path; per-tile staggered enter for a
-							     premium feel — tiles flow in left-to-right, top-to-bottom. -->
-							{#each episodes as ep, i (ep.id)}
-								{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
-								{@const num = ep.number ?? ep.relative_number ?? null}
-								<li in:settle={{ duration: 520, delay: i * 32 }} out:fade={{ duration: 220 }}>
-									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
-										<span class="ep-thumb">
-											{#if thumb}
-												<img src={thumb} alt="" loading="lazy" decoding="async" />
-											{:else}
-												<span class="ep-thumb-placeholder" aria-hidden="true">
-													{num ? num.toString().padStart(2, '0') : '·'}
-												</span>
-											{/if}
-											<span class="ep-tag" aria-hidden="true">
-												<span class="ep-tag-key">Ep</span>
-												<span class="ep-tag-num">{num ?? '?'}</span>
-											</span>
-										</span>
-										<span class="ep-foot">
-											<span class="ep-title">
-												{ep.canonical_title ?? `Episode ${num ?? ''}`}
-											</span>
-											<span class="ep-meta">
-												{#if ep.length}<span>{ep.length}m</span>{/if}
-											</span>
-										</span>
-									</button>
-								</li>
-							{/each}
-						{:else if showEpPlaceholders}
-							<!-- Fallback: Kitsu didn't have episode data, but episode_count
-							     gives us a usable count. Render numbered placeholder tiles
-							     so the user isn't blocked from poking the panel. -->
-							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
-								<li in:settle={{ duration: 480, delay: i * 30 }} out:fade={{ duration: 200 }}>
-									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
-										<span class="ep-thumb">
+				<!--
+				  No {#key episodesPage} wrapping the <ul>: that destroyed
+				  the parent on every page change, taking the children with
+				  it before their out: transitions could run, which is why
+				  the previous build looked like an instant swap. Now the
+				  <ul> stays mounted; the keyed each block (key=ep.id) does
+				  the diff. Old LIs run out:settleOut, new LIs run
+				  in:settle, with a stagger via per-index delay so episodes
+				  land left-to-right, top-to-bottom.
+				-->
+				<ul class="ep-grid">
+					{#if episodes === null}
+						<!-- Skeleton while fetch is in flight -->
+						{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
+							<li>
+								<div class="ep-tile ep-tile-skel" aria-hidden="true">
+									<div class="ep-thumb ep-thumb-skel"></div>
+									<div class="ep-foot-skel"></div>
+								</div>
+							</li>
+						{/each}
+					{:else if episodes.length > 0}
+						<!-- Real Kitsu data path; per-tile staggered enter for a
+						     premium feel — tiles flow in left-to-right, top-to-bottom. -->
+						{#each episodes as ep, i (ep.id)}
+							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
+							{@const num = ep.number ?? ep.relative_number ?? null}
+							<li
+								in:settle={{ duration: 620, delay: i * 45 }}
+								out:settleOut={{ duration: 320, delay: i * 18 }}
+							>
+								<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
+									<span class="ep-thumb">
+										{#if thumb}
+											<img src={thumb} alt="" loading="lazy" decoding="async" />
+										{:else}
 											<span class="ep-thumb-placeholder" aria-hidden="true">
-												{n.toString().padStart(2, '0')}
+												{num ? num.toString().padStart(2, '0') : '·'}
 											</span>
-											<span class="ep-tag" aria-hidden="true">
-												<span class="ep-tag-key">Ep</span>
-												<span class="ep-tag-num">{n}</span>
-											</span>
+										{/if}
+										<span class="ep-tag" aria-hidden="true">
+											<span class="ep-tag-key">Ep</span>
+											<span class="ep-tag-num">{num ?? '?'}</span>
 										</span>
-										<span class="ep-foot">
-											<span class="ep-title">Episode {n}</span>
-											<span class="ep-meta">—</span>
+									</span>
+									<span class="ep-foot">
+										<span class="ep-title">
+											{ep.canonical_title ?? `Episode ${num ?? ''}`}
 										</span>
-									</button>
-								</li>
-							{/each}
-						{/if}
-					</ul>
-				{/key}
+										<span class="ep-meta">
+											{#if ep.length}<span>{ep.length}m</span>{/if}
+										</span>
+									</span>
+								</button>
+							</li>
+						{/each}
+					{:else if showEpPlaceholders}
+						<!-- Fallback: Kitsu didn't have episode data, but episode_count
+						     gives us a usable count. Render numbered placeholder tiles
+						     so the user isn't blocked from poking the panel. -->
+						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
+							<li
+								in:settle={{ duration: 580, delay: i * 40 }}
+								out:settleOut={{ duration: 300, delay: i * 16 }}
+							>
+								<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+									<span class="ep-thumb">
+										<span class="ep-thumb-placeholder" aria-hidden="true">
+											{n.toString().padStart(2, '0')}
+										</span>
+										<span class="ep-tag" aria-hidden="true">
+											<span class="ep-tag-key">Ep</span>
+											<span class="ep-tag-num">{n}</span>
+										</span>
+									</span>
+									<span class="ep-foot">
+										<span class="ep-title">Episode {n}</span>
+										<span class="ep-meta">—</span>
+									</span>
+								</button>
+							</li>
+						{/each}
+					{/if}
+				</ul>
 				{#if episodesError}
 					<p class="ep-grid-foot ep-grid-foot-warn">
 						Episode metadata unavailable from Kitsu — playable list above is a fallback.
