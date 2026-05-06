@@ -30,7 +30,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; media-src http://127.0.0.1:* image://*; img-src 'self' data: image://* https://media.kitsu.app https://s4.anilist.co; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:* https://kitsu.io https://graphql.anilist.co"
+      "csp": "default-src 'self'; media-src 'self' blob: http://127.0.0.1:* image://*; img-src 'self' data: blob: image://* https://media.kitsu.app https://s4.anilist.co; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* https://kitsu.io https://graphql.anilist.co"
     }
   },
   "bundle": {
