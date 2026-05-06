@@ -36,8 +36,13 @@ sudo curl -sSL -o /usr/local/bin/shfmt \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sudo apt install -y libwebkit2gtk-4.1-dev librsvg2-dev \
   libayatana-appindicator3-dev libsoup-3.0-dev \
-  build-essential libssl-dev pkg-config
+  build-essential libssl-dev pkg-config \
+  patchelf
 ```
+
+`patchelf` is required by `linuxdeploy-plugin-gstreamer` when
+`cargo tauri build --bundles appimage` packs the GStreamer plugins
+the embedded webview needs for media playback.
 
 ```sh
 # Frontend (Node + pnpm via nvm)

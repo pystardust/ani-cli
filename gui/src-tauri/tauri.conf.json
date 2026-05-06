@@ -50,6 +50,9 @@
     "linux": {
       "deb": {
         "depends": ["curl", "openssl", "fzf", "mpv", "ffmpeg", "aria2"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
       }
     }
   }

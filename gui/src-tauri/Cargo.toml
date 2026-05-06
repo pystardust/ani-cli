@@ -20,7 +20,10 @@ tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
 # Tauri 2.x — desktop shell
-tauri = { version = "2.1", features = [] }
+# `devtools` feature ships the inspector in release builds. M1-era only —
+# remove before v1 user-facing packaging (security: lets a malicious page
+# inspect / poke at the webview).
+tauri = { version = "2.1", features = ["devtools"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-dialog = "2.0"
 
