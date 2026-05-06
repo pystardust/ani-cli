@@ -71,12 +71,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 1.25rem 0;
+		padding: 1.5rem 0;
 		z-index: 1000;
 		animation: fade-in 160ms ease-out;
 	}
 	.anim {
-		height: 96px;
+		height: 180px;
 		aspect-ratio: 1 / 1;
 	}
 	@keyframes fade-in {
