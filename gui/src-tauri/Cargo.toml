@@ -86,6 +86,10 @@ proptest = "1.5"
 wiremock = "0.6"
 tempfile = "3.13"
 tokio-test = "0.4"
+# `tower::ServiceExt::oneshot` lets us drive the axum router under test
+# without binding a real socket. Used by `api::tests`.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 
 [profile.release]
 opt-level = 3

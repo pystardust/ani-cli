@@ -14,7 +14,9 @@
 //!   change rarely.
 
 use crate::app::AppState;
-use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL, EPISODES_TTL, TITLE_MATCH_TTL, TRENDING_TTL};
+use crate::cache::ttl::{
+    ANIME_DETAIL_TTL, DISCOVERY_TTL, EPISODES_TTL, TITLE_MATCH_TTL, TRENDING_TTL,
+};
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
 use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
@@ -186,10 +188,10 @@ pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<
 /// Cache key version. Bumped when the resolution rules change in a
 /// way that previous mappings would now be wrong:
 ///
-///   - v1: original picker (first hit). Wrote bad mappings for all
-///         multi-cour entries since the picker collapsed siblings.
-///   - v2: slug-fetch fallback for cour > 1 (commit 86e02d2). Old v1
-///         mappings now orphaned, replaced by fresh v2 lookups.
+/// - v1: original picker (first hit). Wrote bad mappings for all
+///   multi-cour entries since the picker collapsed siblings.
+/// - v2: slug-fetch fallback for cour > 1 (commit 86e02d2). Old v1
+///   mappings now orphaned, replaced by fresh v2 lookups.
 const TITLE_MATCH_VERSION: u32 = 2;
 
 fn title_match_key(title: &str, cour: u32) -> String {
@@ -498,7 +500,9 @@ mod tests {
             .await;
 
         let state = state_with_kitsu_at(&mock.uri());
-        let first = kitsu_anime_by_slug(&state, "demon-slayer").await.expect("ok");
+        let first = kitsu_anime_by_slug(&state, "demon-slayer")
+            .await
+            .expect("ok");
         let second = kitsu_anime_by_slug(&state, "demon-slayer")
             .await
             .expect("ok");

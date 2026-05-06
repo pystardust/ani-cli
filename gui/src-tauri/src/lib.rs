@@ -20,6 +20,7 @@
 #![warn(missing_docs, rust_2018_idioms)]
 
 pub mod anicli;
+pub mod api;
 pub mod app;
 pub mod cache;
 pub mod commands;
@@ -60,11 +61,17 @@ pub fn run() -> Result<()> {
         let origin = proxy::ProxyOrigin::new(&addr.ip().to_string(), addr.port());
         let state = app::AppState::build(proxy_http, origin, None)?;
 
-        // Spawn the axum proxy router with a clone of state's proxy view.
-        let router = proxy::build_router(state.proxy_state());
+        // Spawn the axum router. Two routers are merged onto one
+        // listener: the streaming-proxy routes (under /healthz and /s)
+        // and the command API (under /api). Both are localhost-only.
+        // The /api router is the post-Tauri IPC surface — frontend
+        // talks to it via fetch() instead of invoke().
+        let proxy_router = proxy::build_router(state.proxy_state());
+        let api_router = api::build_api_router(Arc::new(state.clone()));
+        let router = proxy_router.merge(api_router);
         tokio::spawn(async move {
             if let Err(e) = axum::serve(listener, router).await {
-                tracing::error!(error = %e, "stream proxy server stopped");
+                tracing::error!(error = %e, "localhost server stopped");
             }
         });
         tracing::info!(
