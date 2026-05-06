@@ -274,15 +274,16 @@
 	}
 
 	/* Edge-mounted page buttons. They sit absolutely positioned over the
-	   scroller, with a horizontal gradient fading the strip's background
-	   color in over the trailing cards. This both hints at the next set
-	   of items and gives the chevron a substrate to land on. */
+	   scroller, with a horizontal gradient fading IN against a slightly
+	   darker tone than the page background — that bumps the contrast
+	   against the (also-dark) cards so the fade actually reads as a
+	   gradient instead of just disappearing into the background. */
 	.strip-edge {
 		position: absolute;
 		inset-block: 0;
 		display: grid;
 		place-items: center;
-		inline-size: 4rem;
+		inline-size: 6rem;
 		padding: 0;
 		border: 0;
 		opacity: 0;
@@ -298,8 +299,9 @@
 		inset-inline-start: 0;
 		background: linear-gradient(
 			to right,
-			var(--ink-000) 0%,
-			color-mix(in oklab, var(--ink-000) 80%, transparent) 55%,
+			var(--ink-100) 0%,
+			color-mix(in oklab, var(--ink-100) 92%, transparent) 35%,
+			color-mix(in oklab, var(--ink-100) 55%, transparent) 70%,
 			transparent 100%
 		);
 	}
@@ -307,8 +309,9 @@
 		inset-inline-end: 0;
 		background: linear-gradient(
 			to left,
-			var(--ink-000) 0%,
-			color-mix(in oklab, var(--ink-000) 80%, transparent) 55%,
+			var(--ink-100) 0%,
+			color-mix(in oklab, var(--ink-100) 92%, transparent) 35%,
+			color-mix(in oklab, var(--ink-100) 55%, transparent) 70%,
 			transparent 100%
 		);
 	}
