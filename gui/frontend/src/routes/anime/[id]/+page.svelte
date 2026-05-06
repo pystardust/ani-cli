@@ -483,11 +483,15 @@
 			});
 			actionBusy = false;
 			actionNotice = null;
-			// goto target IS resolve()-produced; the rule pattern-matches a
-			// literal `goto(resolve(...))` and trips on the template literal
-			// that interpolates resolve() with the session query string.
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			void goto(`${resolve('/play')}?session=${encodeURIComponent(session.session_id)}`);
+			// The target is built from `resolve()` plus a query string;
+			// the no-resolve lint rule's pattern matcher only recognises
+			// a literal `goto(resolve(...))`, so we suppress around it.
+			/* eslint-disable svelte/no-navigation-without-resolve */
+			void goto(
+				resolve('/play/[id]', { id }) +
+					`?session=${encodeURIComponent(session.session_id)}&episode=${ep}`
+			);
+			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			actionBusy = false;
 			notify(describeErrorString(e));
