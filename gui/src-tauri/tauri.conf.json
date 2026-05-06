@@ -40,7 +40,13 @@
     "shortDescription": "Desktop GUI for ani-cli",
     "longDescription": "Browse and watch anime through a graphical interface backed by the ani-cli scraper.",
     "resources": ["../../ani-cli"],
-    "icon": [],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "linux": {
       "deb": {
         "depends": ["curl", "openssl", "fzf", "mpv", "ffmpeg", "aria2"]
