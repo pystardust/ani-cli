@@ -1,0 +1,165 @@
+/* ani-gui visual system. Philosophy in six lines:
+ * Late-night repertory cinema, not streaming-service bombast. Warm near-black,
+ * bone-white type, one accent per title. A serif voice for prose and titles,
+ * a mono voice for numerals — episode counts get to be physical. Motion is
+ * structural: pages enter, posters lift, the hero parallaxes; nothing
+ * decorative twitches. RTL stays one locale-flip away (logical properties only).
+ */
+
+/* TODO(design): self-host display + body faces as .woff2 once we settle on
+ * the bundle. Candidates under consideration: Söhne / GT America for body,
+ * Tiempos Headline or IBM Plex Serif for display. Until then, ui-serif /
+ * ui-sans-serif / ui-monospace resolve to honest system book faces (New York
+ * on macOS, DejaVu / Liberation on Linux, Cambria / Segoe on Windows). No
+ * fake CDN @import here — Tauri CSP defaults font-src to 'self' only. */
+
+:root {
+	color-scheme: dark;
+
+	/* — Color: warm near-black, bone whites, one neutral mid for hairlines.
+	   Hex picked off real ink/paper, not a Tailwind palette. ——————————— */
+	--ink-000: #0c0a09; /* page background. warmer than #000, no blue cast. */
+	--ink-050: #14110f; /* card background, hero scrim base. */
+	--ink-100: #1c1815; /* elevated surface. */
+	--ink-200: #2a2521; /* hairline-on-dark, divider. */
+	--ink-300: #3d3631; /* subdued borders, disabled fg. */
+	--bone-100: #f4ece1; /* primary text. NOT #fff. Warmth carries. */
+	--bone-200: #d8cfc2; /* secondary text. */
+	--bone-300: #9b9388; /* tertiary, captions, metadata. */
+	--bone-400: #6b6359; /* placeholder, deep mute. */
+
+	/* Per-anime accents (8). Deterministic pick by id hash on detail page.
+	   Tones lifted from film-poster ink: oxblood, ink, persimmon, jade,
+	   dusk, ochre, plum, slate. Muted on purpose — they sit next to bone
+	   text without screaming. */
+	--accent-oxblood: #b04a3c;
+	--accent-ink: #4a6c8c;
+	--accent-persimmon: #d77a3b;
+	--accent-jade: #6b8e6f;
+	--accent-dusk: #8a6b94;
+	--accent-ochre: #c89b3c;
+	--accent-plum: #7a4a5e;
+	--accent-slate: #5a6e7a;
+	--accent: var(--accent-ink); /* default; detail page overrides via inline style. */
+
+	/* — Typography: real system fallback chain, no webfont LARP. */
+	--font-display: ui-serif, 'New York', 'DejaVu Serif', 'Liberation Serif', Cambria, Georgia, serif;
+	--font-body:
+		ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Cantarell,
+		'Noto Sans', sans-serif;
+	--font-mono:
+		ui-monospace, 'SF Mono', 'Cascadia Mono', 'DejaVu Sans Mono', 'JetBrains Mono',
+		'Liberation Mono', Consolas, monospace;
+
+	--type-display-xl: 3.25rem; /* hero title. */
+	--type-display-l: 2.25rem;
+	--type-display-m: 1.5rem;
+	--type-body-l: 1.0625rem;
+	--type-body: 0.9375rem;
+	--type-meta: 0.8125rem;
+	--type-micro: 0.6875rem;
+	--type-numeral-xl: 2.5rem; /* the oversized-numeral motif. */
+
+	--leading-tight: 1.15;
+	--leading-prose: 1.55;
+	--tracking-display: -0.015em;
+	--tracking-meta: 0.04em; /* small caps voice. */
+	--tracking-micro: 0.12em; /* uppercase eyebrows. */
+
+	/* — Spacing on a 4px base. */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 3rem;
+	--space-8: 4.5rem;
+	--space-9: 6rem;
+
+	/* — Radii: mostly square. Cards 4px. Pills only when something reads as
+	   a button; the metadata "pills" here are hairline-bound text. */
+	--radius-card: 4px;
+	--radius-pill: 999px;
+
+	/* — Motion: every duration + curve named. No anonymous transitions. */
+	--ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1); /* default entrances. */
+	--ease-out-elastic: cubic-bezier(0.18, 0.89, 0.32, 1.18); /* card lift, poster overshoot. */
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+	--dur-fast: 140ms; /* hover, focus. */
+	--dur-med: 260ms; /* card lift, page-section enter. */
+	--dur-slow: 480ms; /* hero parallax settle, page transition. */
+	--dur-stagger: 40ms; /* per-card delay multiplier in result grid. */
+
+	/* — Elevation: shadows tinted with the warm ink, not pure black. */
+	--shadow-card-rest: 0 1px 2px rgb(0 0 0 / 0.5);
+	--shadow-card-hover: 0 12px 24px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
+
+	/* — Layout. */
+	--content-max: 76rem;
+	--hero-aspect: 21 / 5;
+	--poster-aspect: 5 / 7;
+
+	/* — Focus ring: 2px outer in current accent, 2px inner offset in ink. */
+	--ring: 0 0 0 2px var(--ink-000), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--dur-fast: 0ms;
+		--dur-med: 0ms;
+		--dur-slow: 0ms;
+		--dur-stagger: 0ms;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: var(--ink-000);
+	color: var(--bone-100);
+	font-family: var(--font-body);
+	font-size: var(--type-body);
+	line-height: var(--leading-prose);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+::selection {
+	background: var(--accent);
+	color: var(--ink-000);
+}
+
+:focus-visible {
+	outline: none;
+	box-shadow: var(--ring);
+	border-radius: 2px;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+input {
+	font: inherit;
+	color: inherit;
+}
+img {
+	display: block;
+	max-inline-size: 100%;
+}
