@@ -29,6 +29,7 @@
 		"@vitest/coverage-v8": "^4.1.5",
 		"eslint": "10.3.0",
 		"eslint-plugin-svelte": "3.17.1",
+		"fast-check": "^4.7.0",
 		"globals": "17.6.0",
 		"prettier": "3.8.3",
 		"prettier-plugin-svelte": "3.5.1",

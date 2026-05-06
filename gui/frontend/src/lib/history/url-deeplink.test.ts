@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as fc from 'fast-check';
 import {
 	decideEpisodeFetchAction,
 	episodesContainEpisode,
@@ -146,5 +147,119 @@ describe('shouldHighlight', () => {
 
 	it('returns true when target is set, unconsumed, and present', () => {
 		expect(shouldHighlight({ target: 4, consumed: null, episodes: [ep(4)] })).toBe(true);
+	});
+});
+
+// — Properties ──────────────────────────────────────────────────────
+//
+// Both URL parsers must coerce *any* user-controlled query-string
+// value into the type the downstream effect expects, never throw,
+// and never return out-of-range numbers. fast-check exercises the
+// space of inputs (numbers, garbage, exotic unicode) and shrinks any
+// failure to a minimal counter-example.
+
+describe('parsePageParam (properties)', () => {
+	it('returns >= 1 for any input', () => {
+		fc.assert(
+			fc.property(fc.string({ maxLength: 50 }), (raw) => {
+				const sp = new URLSearchParams();
+				sp.set('page', raw);
+				return parsePageParam(sp) >= 1;
+			})
+		);
+	});
+
+	it('returns the integer value for any positive integer string', () => {
+		fc.assert(
+			fc.property(fc.integer({ min: 1, max: 1_000_000 }), (n) => {
+				const sp = new URLSearchParams();
+				sp.set('page', String(n));
+				return parsePageParam(sp) === n;
+			})
+		);
+	});
+
+	it('returns 1 for any non-positive integer or non-numeric input', () => {
+		fc.assert(
+			fc.property(
+				fc.oneof(
+					fc.integer({ max: 0 }).map(String),
+					// Non-numeric strings: anything that fails parseInt to a
+					// finite positive number. Bias toward letter-only.
+					fc.string({ minLength: 1, maxLength: 10 }).filter((s) => {
+						const n = parseInt(s, 10);
+						return !(Number.isFinite(n) && n > 0);
+					})
+				),
+				(raw) => {
+					const sp = new URLSearchParams();
+					sp.set('page', raw);
+					return parsePageParam(sp) === 1;
+				}
+			)
+		);
+	});
+});
+
+describe('parseEpParam (properties)', () => {
+	it('returns null or a positive integer — never NaN, zero, or negative', () => {
+		fc.assert(
+			fc.property(fc.string({ maxLength: 50 }), (raw) => {
+				const sp = new URLSearchParams();
+				sp.set('ep', raw);
+				const r = parseEpParam(sp);
+				return r === null || (Number.isFinite(r) && r > 0);
+			})
+		);
+	});
+
+	it('returns the integer value for any positive integer string', () => {
+		fc.assert(
+			fc.property(fc.integer({ min: 1, max: 100_000 }), (n) => {
+				const sp = new URLSearchParams();
+				sp.set('ep', String(n));
+				return parseEpParam(sp) === n;
+			})
+		);
+	});
+});
+
+describe('decideEpisodeFetchAction (properties)', () => {
+	it("returns 'fetch-initial' iff episodes is null", () => {
+		fc.assert(
+			fc.property(
+				fc.boolean(),
+				fc.integer({ min: 1, max: 10 }),
+				fc.boolean(),
+				fc.integer({ min: 1, max: 10 }),
+				(episodesNull, episodesPage, episodesLoading, targetPage) => {
+					const action = decideEpisodeFetchAction({
+						episodes: episodesNull ? null : [],
+						episodesPage,
+						episodesLoading,
+						targetPage
+					});
+					return episodesNull ? action === 'fetch-initial' : action !== 'fetch-initial';
+				}
+			)
+		);
+	});
+
+	it("never returns 'fetch' while a fetch is already in flight", () => {
+		fc.assert(
+			fc.property(
+				fc.integer({ min: 1, max: 10 }),
+				fc.integer({ min: 1, max: 10 }),
+				(episodesPage, targetPage) => {
+					const action = decideEpisodeFetchAction({
+						episodes: [],
+						episodesPage,
+						episodesLoading: true,
+						targetPage
+					});
+					return action === 'noop';
+				}
+			)
+		);
 	});
 });
