@@ -303,13 +303,21 @@
 		flex: 1;
 		/* Single visual unit: hairline-framed input with leading icon, body
 		   input, trailing keyboard hint. No separate "Search" button —
-		   Enter submits, screen readers see the sr-only button. */
-		padding: var(--space-3) var(--space-4);
+		   Enter submits, screen readers see the sr-only button. Pill
+		   rounding because the previous square form factor felt rigid
+		   for a search affordance — search inputs read as approachable
+		   when they're rounded. */
+		padding: var(--space-3) var(--space-5);
 		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
 		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 		transition:
 			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft);
+	}
+	.searchform:focus-within {
+		box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent);
 	}
 	.searchform:focus-within {
 		border-color: var(--bone-200);
@@ -340,7 +348,7 @@
 		color: var(--bone-300);
 		padding: 0 var(--space-2);
 		border: 1px solid var(--ink-300);
-		border-radius: 2px;
+		border-radius: var(--radius-control);
 	}
 	.searchform:focus-within .searchform-hint kbd {
 		opacity: 0;

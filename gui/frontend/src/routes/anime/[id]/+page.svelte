@@ -26,8 +26,9 @@
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
-	import { fly } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { SvelteMap } from 'svelte/reactivity';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
@@ -40,34 +41,93 @@
 	// Episode list — fetched in parallel with the detail. Holds the
 	// CURRENT page only (not concatenated) so a 500-episode show doesn't
 	// produce a 500-tile vertical wall. Pagination replaces these.
+	//
+	// Two page sizes exist:
+	//   UI_PAGE_SIZE  — visible tile count per UI page. ~3 rows × 4 cols
+	//                   on widescreen, 4 × 3 on the narrower body width.
+	//                   Smaller than the Kitsu cap so the row count feels
+	//                   contained instead of running past the fold.
+	//   KITSU_PAGE_SIZE — Kitsu's hard `page[limit]` cap. Backend fetches
+	//                   come in multiples of this; the UI window slices
+	//                   into them.
+	// One UI page therefore maps to 1 or 2 Kitsu pages, kept in an
+	// in-memory cache (kitsuPageCache) so prev/next is instant after
+	// the first hop. Adjacent UI pages are prefetched after every load.
 	let episodes = $state<KitsuEpisode[] | null>(null);
 	let episodesError = $state<string | null>(null);
 	let episodesPage = $state(1);
 	let episodesLoading = $state(false);
 	let jumpInput = $state('');
-	const EPISODES_PAGE_SIZE = 20;
+	const UI_PAGE_SIZE = 12;
+	const KITSU_PAGE_SIZE = 20;
+	// SvelteMap (vs plain Map) keeps the eslint reactivity rule happy.
+	// The cache itself doesn't drive any reactive UI — the windowed slice
+	// gets stored back into `episodes`.
+	const kitsuPageCache = new SvelteMap<number, KitsuEpisode[]>();
 	const totalEpisodePages = $derived.by(() => {
 		const total = detail?.episode_count;
 		if (!total) return null;
-		return Math.max(1, Math.ceil(total / EPISODES_PAGE_SIZE));
+		return Math.max(1, Math.ceil(total / UI_PAGE_SIZE));
 	});
-	const epStart = $derived((episodesPage - 1) * EPISODES_PAGE_SIZE + 1);
-	const epEnd = $derived((episodesPage - 1) * EPISODES_PAGE_SIZE + (episodes?.length ?? 0));
+	const epStart = $derived((episodesPage - 1) * UI_PAGE_SIZE + 1);
+	const epEnd = $derived((episodesPage - 1) * UI_PAGE_SIZE + (episodes?.length ?? 0));
+
+	function kitsuPagesForUiPage(uiPage: number): number[] {
+		const start = (uiPage - 1) * UI_PAGE_SIZE + 1;
+		const end = uiPage * UI_PAGE_SIZE;
+		const first = Math.ceil(start / KITSU_PAGE_SIZE);
+		const last = Math.ceil(end / KITSU_PAGE_SIZE);
+		const out: number[] = [];
+		for (let k = first; k <= last; k++) out.push(k);
+		return out;
+	}
+
+	async function getKitsuPage(p: number): Promise<KitsuEpisode[]> {
+		if (!id) return [];
+		const cached = kitsuPageCache.get(p);
+		if (cached) return cached;
+		const eps = await kitsuEpisodes(id, p);
+		kitsuPageCache.set(p, eps);
+		return eps;
+	}
 
 	async function fetchEpisodesPage(p: number, opts: { initial?: boolean } = {}) {
 		if (!id) return;
 		const wantPage = Math.max(1, p);
 		episodesLoading = true;
 		try {
-			const eps = await kitsuEpisodes(id, wantPage);
-			episodes = eps;
+			const start = (wantPage - 1) * UI_PAGE_SIZE + 1;
+			const end = wantPage * UI_PAGE_SIZE;
+			const merged = (await Promise.all(kitsuPagesForUiPage(wantPage).map(getKitsuPage))).flat();
+			const windowed = merged.filter((ep) => {
+				const n = ep.number ?? ep.relative_number ?? -1;
+				return n >= start && n <= end;
+			});
+			episodes = windowed;
 			episodesPage = wantPage;
 			episodesError = null;
+			void prefetchAdjacent(wantPage);
 		} catch (e) {
 			if (opts.initial) episodes = [];
 			episodesError = describeErrorString(e);
 		} finally {
 			episodesLoading = false;
+		}
+	}
+
+	// Warm the cache for ±1 UI pages so prev/next feels instant. Quietly
+	// swallows failures — the user-driven path surfaces errors itself.
+	function prefetchAdjacent(uiPage: number) {
+		const cap = totalEpisodePages;
+		const targets: number[] = [];
+		if (cap === null || uiPage + 1 <= cap) targets.push(uiPage + 1);
+		if (uiPage - 1 >= 1) targets.push(uiPage - 1);
+		for (const t of targets) {
+			for (const k of kitsuPagesForUiPage(t)) {
+				if (!kitsuPageCache.has(k)) {
+					void getKitsuPage(k).catch(() => {});
+				}
+			}
 		}
 	}
 
@@ -82,9 +142,32 @@
 		event.preventDefault();
 		const n = parseInt(jumpInput, 10);
 		if (Number.isNaN(n) || n < 1) return;
-		const target = Math.ceil(n / EPISODES_PAGE_SIZE);
+		const target = Math.ceil(n / UI_PAGE_SIZE);
 		gotoPage(target);
 		jumpInput = '';
+	}
+
+	// Custom transition: tiles fade up + scale + de-blur into place.
+	// Combined with cubicOut, the early motion is fast and the tile
+	// decelerates as it lands. With a per-index delay this gives a
+	// staggered "settle" feel between page transitions. Reduced motion
+	// drops to a flat fade.
+	function settle(
+		_node: Element,
+		{ delay = 0, duration = 520 }: { delay?: number; duration?: number } = {}
+	) {
+		const reduced =
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+		return {
+			delay,
+			duration: reduced ? 0 : duration,
+			easing: cubicOut,
+			css: (t: number, u: number) =>
+				reduced
+					? `opacity: ${t};`
+					: `opacity: ${t}; transform: translateY(${u * 22}px) scale(${0.94 + t * 0.06}); filter: blur(${u * 5}px);`
+		};
 	}
 
 	let config = $state<Config | null>(null);
@@ -110,7 +193,7 @@
 	// Episodes-fallback derivations live in script so they can be used in
 	// the markup without {@const} (which only accepts Svelte-block parents).
 	const epPlaceholderCount = $derived(
-		detail?.episode_count ? Math.min(12, detail.episode_count) : 12
+		detail?.episode_count ? Math.min(UI_PAGE_SIZE, detail.episode_count) : UI_PAGE_SIZE
 	);
 	const showEpPlaceholders = $derived(episodes !== null && episodes.length === 0);
 
@@ -495,7 +578,7 @@
 					</span>
 				</h2>
 
-				{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === EPISODES_PAGE_SIZE)}
+				{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
 					<div class="ep-controls">
 						<form class="ep-jump" onsubmit={jumpToEpisode}>
 							<label class="ep-jump-label">
@@ -540,7 +623,7 @@
 								onclick={() => gotoPage(episodesPage + 1)}
 								disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
 									episodesLoading ||
-									(episodes !== null && episodes.length < EPISODES_PAGE_SIZE)}
+									(episodes !== null && episodes.length < UI_PAGE_SIZE)}
 								aria-label="Next page"
 							>
 								→
@@ -566,7 +649,7 @@
 							{#each episodes as ep, i (ep.id)}
 								{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 								{@const num = ep.number ?? ep.relative_number ?? null}
-								<li in:fly={{ y: 14, duration: 320, delay: i * 28, easing: cubicOut }}>
+								<li in:settle={{ duration: 520, delay: i * 32 }} out:fade={{ duration: 220 }}>
 									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
 										<span class="ep-thumb">
 											{#if thumb}
@@ -597,7 +680,7 @@
 							     gives us a usable count. Render numbered placeholder tiles
 							     so the user isn't blocked from poking the panel. -->
 							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
-								<li in:fly={{ y: 14, duration: 280, delay: i * 24, easing: cubicOut }}>
+								<li in:settle={{ duration: 480, delay: i * 30 }} out:fade={{ duration: 200 }}>
 									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
 										<span class="ep-thumb">
 											<span class="ep-thumb-placeholder" aria-hidden="true">
@@ -1389,9 +1472,9 @@
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
 		color: var(--bone-300);
-		padding: 2px var(--space-2);
+		padding: 2px var(--space-3);
 		border: 1px solid var(--ink-300);
-		border-radius: 2px;
+		border-radius: var(--radius-control);
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft);
@@ -1412,13 +1495,13 @@
 	.ep-pager-btn {
 		display: grid;
 		place-items: center;
-		inline-size: 1.75rem;
-		block-size: 1.75rem;
+		inline-size: 2rem;
+		block-size: 2rem;
 		font-family: var(--font-display);
 		font-size: var(--type-body-l);
 		color: var(--bone-200);
 		border: 1px solid var(--ink-300);
-		border-radius: 2px;
+		border-radius: var(--radius-pill);
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft);
