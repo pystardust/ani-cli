@@ -48,6 +48,13 @@
 	const id = $derived(page.params.id ?? '');
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
 
+	// Episodes-fallback derivations live in script so they can be used in
+	// the markup without {@const} (which only accepts Svelte-block parents).
+	const epPlaceholderCount = $derived(
+		detail?.episode_count ? Math.min(12, detail.episode_count) : 12
+	);
+	const showEpPlaceholders = $derived(episodes !== null && episodes.length === 0);
+
 	const QUALITIES: Array<{ key: string; label: string }> = [
 		{ key: 'best', label: 'Best' },
 		{ key: '1080', label: '1080' },
@@ -404,6 +411,7 @@
 				</h2>
 				<ul class="ep-grid">
 					{#if episodes === null}
+						<!-- Skeleton while fetch is in flight -->
 						{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
 							<li>
 								<div class="ep-tile ep-tile-skel" aria-hidden="true">
@@ -412,13 +420,8 @@
 								</div>
 							</li>
 						{/each}
-					{:else if episodes.length === 0}
-						<li class="ep-empty">
-							{episodesError
-								? "Couldn't load episodes from Kitsu."
-								: 'No episodes on file at Kitsu yet.'}
-						</li>
-					{:else}
+					{:else if episodes.length > 0}
+						<!-- Real Kitsu data path -->
 						{#each episodes as ep (ep.id)}
 							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 							{@const num = ep.number ?? ep.relative_number ?? null}
@@ -448,11 +451,42 @@
 								</button>
 							</li>
 						{/each}
+					{:else if showEpPlaceholders}
+						<!-- Fallback: Kitsu didn't have episode data, but episode_count
+						     gives us a usable count. Render numbered placeholder tiles
+						     so the user isn't blocked from poking the panel. -->
+						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n (n)}
+							<li>
+								<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+									<span class="ep-thumb">
+										<span class="ep-thumb-placeholder" aria-hidden="true">
+											{n.toString().padStart(2, '0')}
+										</span>
+										<span class="ep-tag" aria-hidden="true">
+											<span class="ep-tag-key">Ep</span>
+											<span class="ep-tag-num">{n}</span>
+										</span>
+									</span>
+									<span class="ep-foot">
+										<span class="ep-title">Episode {n}</span>
+										<span class="ep-meta">—</span>
+									</span>
+								</button>
+							</li>
+						{/each}
 					{/if}
 				</ul>
-				<p class="ep-grid-foot">
-					Tap to play once the allanime bridge lands. Thumbnails + titles via Kitsu.
-				</p>
+				{#if episodesError}
+					<p class="ep-grid-foot ep-grid-foot-warn">
+						Episode metadata unavailable from Kitsu — playable list above is a fallback.
+					</p>
+				{:else if episodes && episodes.length > 0}
+					<p class="ep-grid-foot">
+						Thumbnails + titles via Kitsu. Tap to play once the allanime bridge lands.
+					</p>
+				{:else}
+					<p class="ep-grid-foot">Tap to play once the allanime bridge lands.</p>
+				{/if}
 			</div>
 		</section>
 	{/if}
@@ -1080,23 +1114,14 @@
 		block-size: 4rem;
 		background: var(--ink-050);
 	}
-	.ep-empty {
-		grid-column: 1 / -1;
-		padding: var(--space-5);
-		font-family: var(--font-display);
-		font-style: italic;
-		color: var(--bone-300);
-		text-align: center;
-		border: 1px dashed var(--ink-300);
-		border-radius: var(--radius-card);
-	}
 	@media (prefers-reduced-motion: reduce) {
 		.ep-thumb-skel {
 			animation: none;
 		}
 	}
 
-	/* Old tile foot caption — kept for the placeholder note below the grid. */
+	/* Caption beneath the grid — informational on the Kitsu-real path,
+	   warning when we're rendering numbered fallbacks. */
 	.ep-grid-foot {
 		margin-block-start: var(--space-4);
 		margin-block-end: 0;
@@ -1105,6 +1130,9 @@
 		letter-spacing: var(--tracking-meta);
 		text-transform: uppercase;
 		color: var(--bone-400);
+	}
+	.ep-grid-foot-warn {
+		color: color-mix(in oklab, var(--accent-oxblood) 60%, var(--bone-400));
 	}
 
 	/* — Skeletons. */

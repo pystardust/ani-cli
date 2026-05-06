@@ -116,7 +116,11 @@ where
 /// shows new episodes appear weekly; the 7-day TTL means a busy fan can
 /// see a stale list for up to a week, which is the right tradeoff for a
 /// catalog browse — better than hammering Kitsu on every detail-page open.
-const EPISODES_PAGE_LIMIT: u8 = 24;
+///
+/// Kitsu's episodes endpoint caps `page[limit]` at 20 (`code: 118 —
+/// "Limit exceeds maximum page size of 20"` if you push higher), unlike
+/// the anime search endpoint which allows 24. Hard-coded ceiling here.
+const EPISODES_PAGE_LIMIT: u8 = 20;
 
 /// Fetch episodes for an anime, capped at [`EPISODES_PAGE_LIMIT`].
 ///
