@@ -486,10 +486,13 @@
 			// The target is built from `resolve()` plus a query string;
 			// the no-resolve lint rule's pattern matcher only recognises
 			// a literal `goto(resolve(...))`, so we suppress around it.
+			// `kind` rides along so the player page knows whether to
+			// mount hls.js or a plain `<video src>`.
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(
 				resolve('/play/[id]', { id }) +
-					`?session=${encodeURIComponent(session.session_id)}&episode=${ep}`
+					`?session=${encodeURIComponent(session.session_id)}` +
+					`&episode=${ep}&kind=${session.media_kind}`
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {

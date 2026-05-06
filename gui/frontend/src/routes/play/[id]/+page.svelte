@@ -42,15 +42,23 @@
 		settingsGet,
 		type Config,
 		type KitsuAnimeRef,
-		type KitsuEpisode
+		type KitsuEpisode,
+		type MediaKind
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
+	import { buildMediaUrl } from '$lib/play/media-url';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 
 	const id = $derived(page.params.id ?? '');
 	const sessionId = $derived(page.url.searchParams.get('session') ?? '');
 	const episodeNum = $derived(parseInt(page.url.searchParams.get('episode') ?? '1', 10));
+	// kind defaults to hls — the legacy URL shape didn't carry one. The
+	// detail page now always appends &kind=<hls|mp4>, so this default
+	// only kicks in when a refresh on a stale URL drops the param.
+	const mediaKind = $derived<MediaKind>(
+		page.url.searchParams.get('kind') === 'mp4' ? 'mp4' : 'hls'
+	);
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
 
 	let detail = $state<KitsuAnimeRef | null>(null);
@@ -64,14 +72,15 @@
 	let videoEl: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
 
-	/** Reconstruct the master playlist URL from the session id. The
-	 *  proxy mounts every session at /s/<id>/master.m3u8, so we don't
-	 *  need a backend round-trip just to learn the URL — the pattern
-	 *  is stable. window.aniGui.apiBase is set by the Electron preload. */
-	const masterUrl = $derived.by(() => {
+	/** Reconstruct the proxy URL from the session id + kind. The proxy
+	 *  mounts each session at /s/<id>/master.m3u8 (HLS) or /s/<id>/file.mp4
+	 *  (MP4) — the pattern is stable, so we don't round-trip the backend
+	 *  just to learn the URL. window.aniGui.apiBase is set by Electron's
+	 *  preload script before the renderer mounts. */
+	const mediaUrl = $derived.by(() => {
 		if (!sessionId) return null;
 		const base = (typeof window !== 'undefined' && window.aniGui?.apiBase) || '';
-		return base ? `${base}/s/${encodeURIComponent(sessionId)}/master.m3u8` : null;
+		return base ? buildMediaUrl(base, sessionId, mediaKind) : null;
 	});
 
 	const totalEpisodes = $derived(detail?.episode_count ?? null);
@@ -104,12 +113,20 @@
 	}
 
 	$effect(() => {
-		if (!videoEl || !masterUrl) return;
+		if (!videoEl || !mediaUrl) return;
 		teardown();
 		playerError = null;
+		// MP4 sessions stream from the local proxy with byte-range
+		// support; the <video> element handles seek natively, no need
+		// for hls.js. HLS sessions still go through hls.js so that
+		// chromium without native HLS works (it doesn't, on Linux).
+		if (mediaKind === 'mp4') {
+			videoEl.src = mediaUrl;
+			return;
+		}
 		if (Hls.isSupported()) {
 			hls = new Hls({ lowLatencyMode: false });
-			hls.loadSource(masterUrl);
+			hls.loadSource(mediaUrl);
 			hls.attachMedia(videoEl);
 			hls.on(Hls.Events.ERROR, (_, data) => {
 				if (data.fatal) {
@@ -117,7 +134,7 @@
 				}
 			});
 		} else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-			videoEl.src = masterUrl;
+			videoEl.src = mediaUrl;
 		} else {
 			playerError = 'HLS playback is not supported in this webview.';
 		}
@@ -199,7 +216,8 @@
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(
 				resolve('/play/[id]', { id }) +
-					`?session=${encodeURIComponent(session.session_id)}&episode=${targetEp}`
+					`?session=${encodeURIComponent(session.session_id)}` +
+					`&episode=${targetEp}&kind=${session.media_kind}`
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
