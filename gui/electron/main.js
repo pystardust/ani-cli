@@ -25,6 +25,14 @@ const { pathToFileURL } = require('node:url');
 const IS_DEV = process.env.ELECTRON_DEV === '1';
 const VITE_DEV_URL = process.env.VITE_DEV_URL || 'http://localhost:5173';
 
+// Pin the X11 WM_CLASS / Wayland app_id so GNOME matches the running
+// window to our `.desktop` entry's `StartupWMClass=ani-gui`. Without
+// this, the dock falls back to a generic icon — the .desktop's
+// `Icon=` line is only used in the app grid, not for live-window
+// matching. Must be set before app.whenReady().
+app.setName('ani-gui');
+process.title = 'ani-gui';
+
 // Custom scheme used in packaged builds to serve the SvelteKit
 // static bundle. Loading the index.html via plain `file://` works
 // for the root document but breaks SvelteKit's chunk graph — the

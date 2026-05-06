@@ -1,5 +1,5 @@
 {
-	"name": "ani-gui-electron",
+	"name": "ani-gui",
 	"version": "0.1.0",
 	"description": "Electron shell for ani-gui — spawns the Rust backend as a sidecar and renders the SvelteKit frontend",
 	"homepage": "https://github.com/pucci/ani-gui",
