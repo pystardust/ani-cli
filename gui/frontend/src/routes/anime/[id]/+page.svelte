@@ -35,6 +35,7 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
+	import { getOrFire, makeKey } from '$lib/play/play-cache';
 	import {
 		decideEpisodeFetchAction,
 		parseEpParam,
@@ -307,6 +308,26 @@
 			.catch((e) => (configError = describeErrorString(e)));
 	});
 
+	// Background prefetch: as soon as we have the show title + the
+	// user's current mode/quality, fire a play() for the default
+	// episode in the background so the eventual hero-button click is
+	// instant. The play-cache dedupes against the click handler — both
+	// share the same promise, so there's never a duplicate ani-cli
+	// spawn. Failures are swallowed here; the click handler surfaces
+	// them when the user actually wants to play.
+	$effect(() => {
+		const title = detail?.canonical_title;
+		if (!id || !title || !config) return;
+		const ep = defaultEpisode();
+		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config.quality ?? 'best';
+		void getOrFire(makeKey(id, ep, mode, quality), () =>
+			play({ title, episode: String(ep), mode, quality })
+		).catch(() => {
+			/* the click handler will see the error if it ever fires */
+		});
+	});
+
 	// Drive the episode page off the URL ?page= param. Re-runs on
 	// every URL change so navigation between two /anime/[id] entries
 	// with different query strings works (SvelteKit reuses the
@@ -473,18 +494,20 @@
 			return;
 		}
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config?.quality ?? 'best';
 		// LoadingOverlay binds to actionBusy; it stays up until goto
 		// fires (which unmounts this page) or the catch branch resets
 		// busy and surfaces an error toast.
 		actionBusy = true;
 		actionNotice = null;
 		try {
-			const session = await play({
-				title,
-				episode: String(ep),
-				mode,
-				quality: config?.quality
-			});
+			// Hits the play-cache: a prefetch from onMount or an earlier
+			// click against the same (show, ep, mode, quality) tuple
+			// completes instantly here. Fresh resolutions land in the
+			// cache for the next click within this session.
+			const session = await getOrFire(makeKey(id, ep, mode, quality), () =>
+				play({ title, episode: String(ep), mode, quality })
+			);
 			actionNotice = null;
 			// The target is built from `resolve()` plus a query string;
 			// the no-resolve lint rule's pattern matcher only recognises
