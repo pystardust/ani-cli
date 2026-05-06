@@ -295,23 +295,28 @@
 		opacity: 1;
 		pointer-events: auto;
 	}
+	/* Radial gradient anchored to the leading/trailing edge — wider
+	   than tall so it fades horizontally first, taller-than-the-box so
+	   the falloff at top + bottom is gradual. The corners get softer
+	   instead of cutting into a flat rectangle, while the interior
+	   contrast against the cards stays the same. */
 	.strip-edge-start {
 		inset-inline-start: 0;
-		background: linear-gradient(
-			to right,
+		background: radial-gradient(
+			ellipse 100% 180% at 0% 50%,
 			var(--ink-100) 0%,
-			color-mix(in oklab, var(--ink-100) 92%, transparent) 35%,
-			color-mix(in oklab, var(--ink-100) 55%, transparent) 70%,
+			color-mix(in oklab, var(--ink-100) 88%, transparent) 30%,
+			color-mix(in oklab, var(--ink-100) 50%, transparent) 60%,
 			transparent 100%
 		);
 	}
 	.strip-edge-end {
 		inset-inline-end: 0;
-		background: linear-gradient(
-			to left,
+		background: radial-gradient(
+			ellipse 100% 180% at 100% 50%,
 			var(--ink-100) 0%,
-			color-mix(in oklab, var(--ink-100) 92%, transparent) 35%,
-			color-mix(in oklab, var(--ink-100) 55%, transparent) 70%,
+			color-mix(in oklab, var(--ink-100) 88%, transparent) 30%,
+			color-mix(in oklab, var(--ink-100) 50%, transparent) 60%,
 			transparent 100%
 		);
 	}

@@ -7,7 +7,6 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { afterNavigate } from '$app/navigation';
 
 	interface Props {
 		/** Label after the arrow. Defaults to "Back". */
@@ -18,33 +17,21 @@
 
 	let { label = 'Back', fallback = '/' }: Props = $props();
 
-	// `window.history.length` lies on app launch — Tauri's WebView often
-	// reports >=2 even when nothing else is in the back stack, which is
-	// why "as soon as we open the app, the button is visible" was the
-	// reported bug. SvelteKit's afterNavigate is the source of truth:
-	// it fires for every in-app navigation with a `from` route id once
-	// at least one nav has happened. Until then, hide the button.
-	let canGoBack = $state(false);
-
-	afterNavigate(({ from, type }) => {
-		if (from && type !== 'enter') {
-			canGoBack = true;
-		}
-	});
-
+	// Visibility is decided upstream (in +layout.svelte's nav-depth
+	// tracker) — by the time this component is rendered, the user is
+	// somewhere with a non-empty back stack. The click handler always
+	// calls history.back(); the href is a defensive fallback for edge
+	// cases (browser refresh mid-flight, etc.).
 	function onClick(e: MouseEvent) {
-		if (!canGoBack) return; // let the anchor href take over
 		e.preventDefault();
 		window.history.back();
 	}
 </script>
 
-{#if canGoBack}
-	<a class="back" href={resolve(fallback as '/')} onclick={onClick} aria-label={label}>
-		<span class="back-arrow" aria-hidden="true">←</span>
-		<span class="back-label">{label}</span>
-	</a>
-{/if}
+<a class="back" href={resolve(fallback as '/')} onclick={onClick} aria-label={label}>
+	<span class="back-arrow" aria-hidden="true">←</span>
+	<span class="back-label">{label}</span>
+</a>
 
 <style>
 	.back {

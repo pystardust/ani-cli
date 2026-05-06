@@ -18,7 +18,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
@@ -38,6 +38,40 @@
 	const isSearch = $derived(routeId.startsWith('/search'));
 	const isSettings = $derived(routeId.startsWith('/settings'));
 	const isDiagnostics = $derived(routeId.startsWith('/diagnostics'));
+
+	// Tracks "how deep are we in the SPA back-stack?" so the BackButton
+	// only renders when there's actually somewhere to go back to.
+	// Decision lives here (not in BackButton) because the layout
+	// persists across route changes — the depth survives.
+	//
+	// On forward nav (link / goto / form): increment, stamp the new
+	// history entry's state with the depth.
+	// On popstate: read the entry's stamped depth (forward through
+	// history works for free because the state is preserved on each
+	// entry).
+	// On enter (initial app load / hard reload): reset to 0 — leftover
+	// history.state from a previous Tauri session would otherwise tell
+	// us we're three pages deep at the home screen.
+	let canGoBack = $state(false);
+	let navDepth = 0;
+
+	afterNavigate(({ type }) => {
+		if (typeof window === 'undefined') return;
+		if (type === 'enter') {
+			navDepth = 0;
+		} else if (type === 'popstate') {
+			const stamped = (window.history.state as { aniGuiDepth?: number } | null)?.aniGuiDepth;
+			navDepth = typeof stamped === 'number' ? stamped : Math.max(0, navDepth - 1);
+		} else {
+			navDepth += 1;
+			try {
+				window.history.replaceState({ ...window.history.state, aniGuiDepth: navDepth }, '');
+			} catch {
+				// replaceState can throw in privacy modes; non-fatal.
+			}
+		}
+		canGoBack = navDepth > 0;
+	});
 
 	let topbarQuery = $state('');
 	let topbarInputEl: HTMLInputElement | undefined = $state();
@@ -331,7 +365,9 @@
 
 		<div class="main-area">
 			<header class="topbar">
-				<BackButton fallback="/" />
+				{#if canGoBack}
+					<BackButton fallback="/" />
+				{/if}
 				<form
 					class="topbar-search"
 					class:topbar-search-filled={topbarQuery.trim().length > 0}
