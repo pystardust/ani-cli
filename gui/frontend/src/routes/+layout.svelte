@@ -723,13 +723,10 @@
 		align-items: center;
 		gap: var(--space-5);
 		padding: var(--space-3) var(--space-8);
-		/* Opaque background — no backdrop-filter. The blur+saturate
-		   used to hammer scroll perf on maximized widescreen windows
-		   (the GPU re-blurred the entire window-width strip on every
-		   frame). The opaque bar reads as a solid header instead of
-		   glass; trade-off taken for 60 fps scroll. */
-		background: var(--ink-000);
-		border-block-end: 1px solid var(--ink-200);
+		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
+		backdrop-filter: blur(16px) saturate(1.3);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		border-block-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
 	}
 	@media (max-inline-size: 720px) {
 		.topbar {
