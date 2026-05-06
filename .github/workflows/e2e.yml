@@ -1,20 +1,14 @@
 name: 'e2e (tauri-driver + Playwright)'
+# Gated to manual dispatch until Playwright lands in M3. The full
+# pipeline depends on:
+#   - tauri-cli + tauri-driver installed on the runner
+#   - patchelf for AppImage bundling
+#   - gui/frontend/ having a Playwright config + test:e2e script
+#   - hermetic backend fixtures so the tests don't hit real Kitsu
+# None of those exist yet on master; auto-running this workflow on
+# every gui/frontend/** push would just generate red checks.
 on:
-  # E2E exercises a real Tauri build inside Xvfb. The frontend is the
-  # critical input: it must exist on disk for actions/setup-node@v4's pnpm
-  # cache step. Trigger this workflow only when gui/frontend/ files change
-  # (push) or via PR paths that already include it.
-  push:
-    branches:
-      - master
-    paths:
-      - 'gui/frontend/**'
-  pull_request:
-    paths:
-      - 'gui/frontend/**'
-      - 'gui/src-tauri/src/proxy/**'
-      - 'gui/src-tauri/src/commands/**'
-      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,6 +27,7 @@ jobs:
             librsvg2-dev \
             libayatana-appindicator3-dev \
             pkg-config \
+            patchelf \
             xvfb \
             webkit2gtk-driver
       - uses: dtolnay/rust-toolchain@stable
@@ -41,14 +36,16 @@ jobs:
           workspaces: gui/src-tauri
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
           cache-dependency-path: gui/frontend/pnpm-lock.yaml
-      - name: Install tauri-driver
-        run: cargo install tauri-driver --locked
+      - name: Install tauri-cli + tauri-driver
+        run: |
+          cargo install tauri-cli --locked
+          cargo install tauri-driver --locked
       - name: pnpm install
         working-directory: gui/frontend
         run: pnpm install --frozen-lockfile
