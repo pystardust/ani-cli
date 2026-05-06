@@ -1056,20 +1056,27 @@
 
 	/* — Body: vertical stack of synopsis → episodes. The earlier 2-col
 	     layout produced an imbalance whenever one block was much taller
-	     than the other (long synopsis + 12-ep show, or short synopsis +
-	     1100-ep show). Stacked, both panels span the full editorial
-	     column width and never compete for vertical alignment. */
+	     than the other. Stacked, both panels span the full editorial
+	     column width and never compete for vertical alignment.
+	     Container is the wide cap (matches the hero above), so widescreens
+	     don't leave huge empty side margins. Inside, the synopsis is
+	     individually capped at 70ch for line-length readability. */
 	.body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-8);
-		max-inline-size: var(--content-max);
+		max-inline-size: var(--content-max-wide);
 		margin: var(--space-7) auto 0;
 		padding-inline: var(--space-8);
 	}
 
 	.body-col-prose {
 		max-inline-size: 70ch;
+		/* Keep prose pinned to the inline-start edge on widescreen
+		   instead of letting the flex column stretch it edge-to-edge or
+		   recentre it; reads as an editorial column with the rest of
+		   the page rather than floating mid-canvas. */
+		align-self: start;
 	}
 	.section-eyebrow {
 		margin: 0 0 var(--space-4);
