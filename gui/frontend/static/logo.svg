@@ -1,50 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ani-gui logo — the framed ampersand mark + wordmark. Wordmark is set in
-  italic display serif using the same system stack the app uses (ui-serif
-  → New York / DejaVu Serif / Cambria / Georgia). A small mono middle-dot
-  separates "ani" and "gui", echoing the metadata-pill hairline rule. One
-  color (bone-100). Treat as crisp at 200×40 (5:1) and downstreams.
--->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none">
-  <!-- mark: 32×32 register frame + italic ampersand -->
   <g transform="translate(8 8)">
     <rect x="3" y="3" width="26" height="26" stroke="#f4ece1" stroke-width="1.5" fill="none"/>
-    <path d="M 7 3 L 7 7 L 3 7" stroke="#f4ece1" stroke-width="1" fill="none"/>
-    <path d="
-      M 19.0 22.4
-      C 16.6 24.4, 13.0 24.4, 11.6 22.4
-      C 10.2 20.4, 11.4 18.6, 13.6 17.0
-      C 15.8 15.4, 17.6 14.0, 17.6 12.0
-      C 17.6 10.0, 16.0 8.6, 14.4 8.6
-      C 12.8 8.6, 11.6 9.8, 11.8 11.4
-      C 12.0 13.4, 14.2 15.0, 17.0 17.6
-      C 19.4 19.8, 21.6 21.6, 23.0 22.4
-    " stroke="#f4ece1" stroke-width="1.6" fill="none"/>
+    <rect x="6" y="6" width="2" height="2" fill="#f4ece1"/>
+    <rect x="6" y="11" width="2" height="2" fill="#f4ece1"/>
+    <rect x="6" y="16" width="2" height="2" fill="#f4ece1"/>
+    <rect x="6" y="21" width="2" height="2" fill="#f4ece1"/>
+    <rect x="24" y="6" width="2" height="2" fill="#f4ece1"/>
+    <rect x="24" y="11" width="2" height="2" fill="#f4ece1"/>
+    <rect x="24" y="16" width="2" height="2" fill="#f4ece1"/>
+    <rect x="24" y="21" width="2" height="2" fill="#f4ece1"/>
   </g>
-
-  <!-- wordmark: italic display serif, lowercase. system serif stack so we
-       don't ship a webfont (Tauri CSP blocks remote fonts). -->
   <text x="58" y="32"
         font-family="ui-serif, 'New York', 'DejaVu Serif', 'Liberation Serif', Cambria, Georgia, serif"
         font-style="italic"
         font-size="24"
         letter-spacing="-0.4"
         fill="#f4ece1">ani</text>
-
-  <!-- mono middle dot, raised to baseline-of-x-height -->
   <text x="106" y="29"
         font-family="ui-monospace, 'SF Mono', 'Cascadia Mono', 'DejaVu Sans Mono', monospace"
         font-size="14"
         fill="#9b9388">·</text>
-
   <text x="118" y="32"
         font-family="ui-serif, 'New York', 'DejaVu Serif', 'Liberation Serif', Cambria, Georgia, serif"
         font-style="italic"
         font-size="24"
         letter-spacing="-0.4"
         fill="#f4ece1">gui</text>
-
-  <!-- hairline rule under the wordmark — manga-page motif, accent-faint -->
   <line x1="58" y1="38" x2="170" y2="38" stroke="#3d3631" stroke-width="1"/>
 </svg>

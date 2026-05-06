@@ -14,6 +14,7 @@
 	import {
 		historyList,
 		imageProxyUrl,
+		kitsuSearch,
 		kitsuTopRated,
 		kitsuTrending,
 		type HistoryEntry,
@@ -26,6 +27,9 @@
 	let trending = $state<KitsuAnimeRef[] | null>(null);
 	let topRated = $state<KitsuAnimeRef[] | null>(null);
 	let history = $state<HistoryEntry[] | null>(null);
+	// Per-history-entry Kitsu match, keyed by allanime id. Populated lazily
+	// after history loads so Continue Watching cards can show posters.
+	let historyMatches = $state<Record<string, KitsuAnimeRef | null>>({});
 	let trendingError = $state<string | null>(null);
 	let topRatedError = $state<string | null>(null);
 	let scrollY = $state(0);
@@ -43,7 +47,21 @@
 			.then((t) => (topRated = t))
 			.catch((e) => (topRatedError = describeError(e)));
 		historyList()
-			.then((h) => (history = h))
+			.then((h) => {
+				history = h;
+				// Kick a Kitsu lookup per entry so each card can render its
+				// real poster. Fire in parallel; on failure leave the slot
+				// null and fall back to the typeset card.
+				h.forEach((entry: HistoryEntry) => {
+					kitsuSearch(titleOf(entry))
+						.then((hits: KitsuAnimeRef[]) => {
+							historyMatches = { ...historyMatches, [entry.id]: hits[0] ?? null };
+						})
+						.catch(() => {
+							historyMatches = { ...historyMatches, [entry.id]: null };
+						});
+				});
+			})
 			.catch(() => {
 				history = [];
 			});
@@ -187,16 +205,33 @@
 {#if history && history.length > 0}
 	<Strip eyebrow="Continue watching" caption="resume from history">
 		{#each history as entry (entry.id)}
-			{@const accent = accentFor(entry.id)}
+			{@const match = historyMatches[entry.id]}
+			{@const accent = accentFor(match?.id ?? entry.id)}
+			{@const poster = imageProxyUrl(
+				match?.poster_image?.medium ??
+					match?.poster_image?.large ??
+					match?.poster_image?.small ??
+					null
+			)}
+			{@const targetId = match?.id ?? null}
 			<a
 				class="resume-card"
+				class:resume-card-loading={match === undefined}
 				style="--accent: {accent};"
-				href={resolve('/anime/[id]', { id: entry.id })}
+				href={targetId ? resolve('/anime/[id]', { id: targetId }) : resolve('/search')}
 			>
-				<span class="resume-frame">
-					<span class="resume-eyebrow">Episode</span>
-					<span class="resume-num">{epOf(entry)}</span>
-					<span class="resume-rule" aria-hidden="true"></span>
+				<span class="resume-poster">
+					{#if poster}
+						<img src={poster} alt="" loading="lazy" decoding="async" />
+					{:else}
+						<span class="resume-poster-placeholder" aria-hidden="true">
+							{titleOf(entry).slice(0, 2).toUpperCase()}
+						</span>
+					{/if}
+					<span class="resume-ep-tag" aria-hidden="true">
+						<span class="resume-ep-key">EP</span>
+						<span class="resume-ep-num">{epOf(entry)}</span>
+					</span>
 				</span>
 				<span class="resume-body">
 					<span class="resume-title">{titleOf(entry)}</span>
@@ -315,7 +350,9 @@
 		position: relative;
 		z-index: 2;
 		max-inline-size: 44rem;
-		padding: var(--space-9) var(--space-6) var(--space-7);
+		/* Inline padding matches the strip gutter (--space-8) so the hero
+		   text and the trending row sit on the same vertical column. */
+		padding: var(--space-9) var(--space-8) var(--space-7);
 		animation: hero-text-in var(--dur-med) var(--ease-out-soft) both;
 		animation-delay: 100ms;
 	}
@@ -463,17 +500,18 @@
 		}
 	}
 
-	/* — Continue Watching cards. The mono numeral is the focal point. */
+	/* — Continue Watching cards. The poster gives identity, the EP tag
+	     is the editorial overlay, the title + Resume CTA close the card. */
 	.resume-card {
 		scroll-snap-align: start;
 		display: grid;
 		grid-template-rows: auto auto;
 		gap: var(--space-3);
-		padding: var(--space-4);
 		color: inherit;
 		background: var(--ink-050);
 		border: 1px solid var(--ink-200);
 		border-radius: var(--radius-card);
+		overflow: hidden;
 		transition:
 			transform var(--dur-med) var(--ease-out-elastic),
 			border-color var(--dur-fast) var(--ease-out-soft),
@@ -484,37 +522,67 @@
 		border-color: color-mix(in oklab, var(--accent) 60%, var(--ink-300));
 		background: color-mix(in oklab, var(--accent) 6%, var(--ink-050));
 	}
-	.resume-frame {
+	.resume-poster {
 		position: relative;
-		display: grid;
-		justify-items: start;
-		padding-block-end: var(--space-2);
+		aspect-ratio: 16 / 9;
+		overflow: hidden;
+		background: var(--ink-100);
 	}
-	.resume-eyebrow {
+	.resume-poster img {
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+		object-position: center 30%;
+		filter: brightness(0.85);
+		transition: filter var(--dur-med) var(--ease-out-soft);
+	}
+	.resume-card:hover .resume-poster img {
+		filter: brightness(1);
+	}
+	.resume-poster-placeholder {
+		display: grid;
+		place-items: center;
+		inline-size: 100%;
+		block-size: 100%;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-s);
+		color: var(--bone-300);
+		background: linear-gradient(
+			135deg,
+			var(--ink-100),
+			color-mix(in oklab, var(--accent) 15%, var(--ink-100))
+		);
+	}
+	.resume-ep-tag {
+		position: absolute;
+		inset-block-start: var(--space-2);
+		inset-inline-start: var(--space-2);
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-1);
+		padding: var(--space-1) var(--space-2);
+		background: color-mix(in oklab, var(--ink-000) 78%, transparent);
+		backdrop-filter: blur(4px);
+		border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--bone-400));
+	}
+	.resume-ep-key {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
 	}
-	.resume-num {
+	.resume-ep-num {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-numeral-xl);
-		line-height: 1;
+		font-size: var(--type-body);
 		color: var(--bone-100);
-		margin-block-start: var(--space-2);
-	}
-	.resume-rule {
-		display: block;
-		inline-size: 1.25rem;
-		block-size: 2px;
-		background: var(--accent);
-		margin-block-start: var(--space-3);
 	}
 	.resume-body {
 		display: grid;
-		gap: var(--space-3);
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-4) var(--space-4);
 	}
 	.resume-title {
 		display: -webkit-box;
@@ -541,5 +609,13 @@
 	}
 	.resume-card:hover .resume-cta {
 		color: var(--bone-100);
+	}
+	.resume-card-loading .resume-poster-placeholder {
+		animation: pulse 1.6s var(--ease-in-out) infinite;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.resume-card-loading .resume-poster-placeholder {
+			animation: none;
+		}
 	}
 </style>

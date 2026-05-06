@@ -703,13 +703,24 @@
 		list-style: none;
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-5) var(--space-6);
+		/* Larger horizontal gap so the per-pill hairline divider has air. */
+		gap: var(--space-5) var(--space-7);
 		border-block-start: 1px solid var(--accent);
 	}
 	.meta-pill {
 		display: inline-flex;
 		flex-direction: column;
 		gap: 2px;
+		/* Vertical hairline between pills — subtle but enough that year /
+		   rating / episodes don't feel cramped together. The last pill in
+		   each visual row drops the rule via the :last-child selector
+		   (acceptable trade-off when items wrap). */
+		padding-inline-end: var(--space-7);
+		border-inline-end: 1px solid var(--ink-200);
+	}
+	.meta-pill:last-child {
+		padding-inline-end: 0;
+		border-inline-end: 0;
 	}
 	.meta-key {
 		font-family: var(--font-mono);

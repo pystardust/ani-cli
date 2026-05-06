@@ -19,11 +19,16 @@
 	// Routes where the chrome should yield to content.
 	const isPlayer = $derived(page.url.pathname.startsWith('/play'));
 
-	const path = $derived(page.url.pathname);
-	const isHome = $derived(path === '/');
-	const isSearch = $derived(path.startsWith('/search'));
-	const isSettings = $derived(path.startsWith('/settings'));
-	const isDiagnostics = $derived(path.startsWith('/diagnostics'));
+	// Use the route id (e.g. "/", "/search", "/anime/[id]") instead of the
+	// raw pathname — the static adapter sometimes serves "/index.html" on
+	// the very first paint, which made the Home rail item not light up
+	// until the user clicked it. route.id always resolves to the matched
+	// route pattern, including for the home page.
+	const routeId = $derived<string>(page.route?.id ?? page.url.pathname);
+	const isHome = $derived(routeId === '/');
+	const isSearch = $derived(routeId.startsWith('/search'));
+	const isSettings = $derived(routeId.startsWith('/settings'));
+	const isDiagnostics = $derived(routeId.startsWith('/diagnostics'));
 </script>
 
 <svelte:head>
@@ -38,9 +43,24 @@
 	<div class="shell">
 		<aside class="rail" aria-label="Primary navigation">
 			<a class="brand" href={resolve('/')} aria-label="ani-gui — home">
-				<span class="brand-frame" aria-hidden="true">
-					<span class="brand-amp">&amp;</span>
-				</span>
+				<svg
+					class="brand-mark"
+					viewBox="0 0 32 32"
+					width="32"
+					height="32"
+					fill="none"
+					aria-hidden="true"
+				>
+					<rect x="3" y="3" width="26" height="26" stroke="currentColor" stroke-width="1.5" />
+					<rect x="6" y="6" width="2" height="2" fill="currentColor" />
+					<rect x="6" y="11" width="2" height="2" fill="currentColor" />
+					<rect x="6" y="16" width="2" height="2" fill="currentColor" />
+					<rect x="6" y="21" width="2" height="2" fill="currentColor" />
+					<rect x="24" y="6" width="2" height="2" fill="currentColor" />
+					<rect x="24" y="11" width="2" height="2" fill="currentColor" />
+					<rect x="24" y="16" width="2" height="2" fill="currentColor" />
+					<rect x="24" y="21" width="2" height="2" fill="currentColor" />
+				</svg>
 				<span class="brand-word" aria-hidden="true">
 					<span class="brand-word-italic">ani</span><span class="brand-word-dot">·</span><span
 						class="brand-word-italic">gui</span
@@ -170,32 +190,11 @@
 			gap: var(--space-3);
 		}
 	}
-	.brand-frame {
-		position: relative;
-		display: grid;
-		place-items: center;
+	.brand-mark {
+		color: var(--bone-100);
+		display: block;
 		inline-size: 2.25rem;
 		block-size: 2.25rem;
-		border: 1.5px solid var(--bone-100);
-	}
-	.brand-frame::before {
-		/* registration tick, top-left corner — same as the favicon mark */
-		content: '';
-		position: absolute;
-		inset-block-start: 4px;
-		inset-inline-start: 4px;
-		inline-size: 4px;
-		block-size: 4px;
-		border-block-start: 1px solid var(--bone-100);
-		border-inline-start: 1px solid var(--bone-100);
-	}
-	.brand-amp {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: 1.1rem;
-		line-height: 1;
-		color: var(--bone-100);
-		transform: translate(1px, -1px);
 	}
 	.brand-word {
 		display: inline-flex;

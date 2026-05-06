@@ -55,6 +55,56 @@
 			nudge(-1);
 		}
 	}
+
+	// Click + drag to scroll horizontally — desktop UX pattern users
+	// expect from Netflix-style row layouts. We track the pointerdown
+	// position, switch to a "dragging" cursor while held, and translate
+	// pointer movement into scrollLeft. Anchor clicks during a drag are
+	// suppressed so the user doesn't accidentally navigate.
+	let isDragging = $state(false);
+	let dragOriginX = 0;
+	let dragOriginScroll = 0;
+	let didMove = false;
+	const DRAG_DEADZONE_PX = 6;
+
+	function onPointerDown(e: PointerEvent) {
+		// Left button only; ignore touch (the browser already handles
+		// touch-scroll natively and this would interfere with it).
+		if (e.button !== 0 || e.pointerType !== 'mouse' || !scrollerEl) return;
+		isDragging = true;
+		didMove = false;
+		dragOriginX = e.clientX;
+		dragOriginScroll = scrollerEl.scrollLeft;
+		scrollerEl.setPointerCapture(e.pointerId);
+	}
+
+	function onPointerMove(e: PointerEvent) {
+		if (!isDragging || !scrollerEl) return;
+		const dx = e.clientX - dragOriginX;
+		if (!didMove && Math.abs(dx) < DRAG_DEADZONE_PX) return;
+		didMove = true;
+		scrollerEl.scrollLeft = dragOriginScroll - dx;
+	}
+
+	function onPointerUp(e: PointerEvent) {
+		if (!isDragging || !scrollerEl) return;
+		isDragging = false;
+		try {
+			scrollerEl.releasePointerCapture(e.pointerId);
+		} catch {
+			// Pointer might already be released; ignore.
+		}
+	}
+
+	// Suppress anchor clicks if the user dragged. Stop propagation in
+	// capture phase so the click never reaches the <a> inside the card.
+	function onClickCapture(e: MouseEvent) {
+		if (didMove) {
+			e.preventDefault();
+			e.stopPropagation();
+			didMove = false;
+		}
+	}
 </script>
 
 <section class="strip">
@@ -97,8 +147,14 @@
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="strip-scroll"
+		class:dragging={isDragging}
 		bind:this={scrollerEl}
 		onkeydown={onKey}
+		onpointerdown={onPointerDown}
+		onpointermove={onPointerMove}
+		onpointerup={onPointerUp}
+		onpointercancel={onPointerUp}
+		onclickcapture={onClickCapture}
 		role="region"
 		aria-label={eyebrow}
 		tabindex="0"
@@ -109,11 +165,11 @@
 
 <style>
 	.strip {
-		/* Wider gutter than space-6 so the first card on the inline-start
-		   edge has room to breathe — at 88px rail + 48px strip-pad the
-		   content begins ~136px from the viewport edge, which reads as
-		   "considered" rather than "glued to the rail". */
-		--strip-pad: var(--space-7);
+		/* Generous gutter so the first card has real breathing room from
+		   the rail's vertical hairline — at 88px rail + 72px strip-pad,
+		   the content begins ~160px from the viewport edge, which reads
+		   as "designed" rather than "glued to the rail". */
+		--strip-pad: var(--space-8);
 		margin-block-end: var(--space-7);
 	}
 
@@ -195,6 +251,14 @@
 		scroll-snap-type: inline mandatory;
 		scrollbar-width: thin;
 		scrollbar-color: var(--ink-300) transparent;
+		cursor: grab;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+	.strip-scroll.dragging {
+		cursor: grabbing;
+		/* Skip snap during a drag — fights the user's pointer otherwise. */
+		scroll-snap-type: none;
 	}
 	.strip-scroll:focus-visible {
 		outline: none;

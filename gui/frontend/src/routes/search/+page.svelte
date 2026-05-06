@@ -4,10 +4,19 @@
   The motifs are restraint: serif voice, mono numerals, hairline rules.
 -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
+	import {
+		imageProxyUrl,
+		kitsuSearch,
+		kitsuTopRated,
+		kitsuTrending,
+		type KitsuAnimeRef
+	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import PosterCard from '$lib/components/PosterCard.svelte';
+	import Strip from '$lib/components/Strip.svelte';
 
 	let query = $state('');
 	let submitted = $state(''); // the query whose results are on screen.
@@ -15,9 +24,23 @@
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
 	let busy = $state(false);
 
+	// Discovery rows for the empty state — same data as the home page so
+	// users have something to browse when they arrive without a query.
+	let trending = $state<KitsuAnimeRef[] | null>(null);
+	let topRated = $state<KitsuAnimeRef[] | null>(null);
+
 	const count = $derived(results?.length ?? 0);
 
 	let inputEl: HTMLInputElement | undefined = $state();
+
+	onMount(() => {
+		kitsuTrending()
+			.then((t) => (trending = t))
+			.catch(() => (trending = []));
+		kitsuTopRated()
+			.then((t) => (topRated = t))
+			.catch(() => (topRated = []));
+	});
 
 	// `/` focuses the search input — Netflix-style keyboard nav lives here in spirit.
 	$effect(() => {
@@ -168,6 +191,22 @@
 				shorter prefix.
 			</p>
 		</div>
+	{:else if !submitted}
+		<!-- No query yet: surface the same discovery rows the home page uses. -->
+		{#if trending && trending.length > 0}
+			<Strip eyebrow="Trending now" caption="currently airing · top 20">
+				{#each trending as hit (hit.id)}
+					<PosterCard anime={hit} />
+				{/each}
+			</Strip>
+		{/if}
+		{#if topRated && topRated.length > 0}
+			<Strip eyebrow="Top rated" caption="all-time · via Kitsu">
+				{#each topRated as hit (hit.id)}
+					<PosterCard anime={hit} />
+				{/each}
+			</Strip>
+		{/if}
 	{:else if results !== null}
 		<ul class="grid">
 			{#each results as hit, i (hit.id)}

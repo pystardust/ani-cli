@@ -40,7 +40,6 @@
 	data-can-go-back={canGoBack}
 >
 	<span class="back-arrow" aria-hidden="true">←</span>
-	<span class="back-rule" aria-hidden="true"></span>
 	<span class="back-label">{label}</span>
 </a>
 
@@ -63,7 +62,7 @@
 	}
 	.back-arrow {
 		font-family: var(--font-display);
-		font-size: var(--type-display-m);
+		font-size: var(--type-display-s);
 		line-height: 1;
 		color: var(--bone-100);
 		font-style: normal;
@@ -71,15 +70,6 @@
 	}
 	.back:hover .back-arrow {
 		transform: translateX(-2px);
-	}
-	.back-rule {
-		inline-size: 1.25rem;
-		block-size: 1px;
-		background: var(--bone-300);
-		transition: inline-size var(--dur-fast) var(--ease-out-soft);
-	}
-	.back:hover .back-rule {
-		inline-size: 2rem;
 	}
 	.back-label {
 		font-style: normal;
