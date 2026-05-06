@@ -128,20 +128,51 @@ export function resolveHistoryEntry(
  *  the wrong choice for Stone Ocean Part 2 / Part 3 etc. — it lands
  *  back on Part 1.
  *
- *  Strategy: when the resolver detected `cour > 1`, prefer a hit
- *  whose canonical_title contains a matching cour token (`Part N` /
- *  `Cour N` / `Season N`, anchored on word boundaries so the parent
- *  series number — e.g. JoJo "Part 6" — doesn't false-match). Fall
- *  back to the first hit otherwise. */
+ *  Picker walks four checks in priority order, falling through to
+ *  the next when the previous yields no candidate:
+ *    1. Exact slug match against a slug derived from searchTitle.
+ *       Kitsu URLs are mechanical (e.g.
+ *       `jojo-no-kimyou-na-bouken-part-6-stone-ocean-part-2`); when
+ *       the slug we'd derive is one of the returned hits, we're
+ *       sure that's the right entry.
+ *    2. Cour token in slug — `…-part-N(-|$)` / `…-cour-N…` /
+ *       `…-season-N…` — same anchor logic in slug form. Slug is
+ *       always Latinscript, which dodges Japanese-titled hits.
+ *    3. Cour token in canonical_title — `\b(part|cour|season)\s+N\b`
+ *       with word-boundary anchoring so JoJo "Part 6" doesn't false-
+ *       match cour 6 of an unrelated entry.
+ *    4. First hit (the existing default).
+ *  Single-cour entries skip 2-3 and use the slug-then-first-hit path. */
+function deriveSlug(s: string): string {
+	return s
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
 export function pickKitsuMatch(
 	hits: KitsuAnimeRef[],
 	preliminary: ResumeTarget
 ): KitsuAnimeRef | null {
 	if (hits.length === 0) return null;
+
+	const wantSlug = deriveSlug(preliminary.searchTitle);
+	if (wantSlug.length >= 4) {
+		const slugExact = hits.find((h) => h.slug === wantSlug);
+		if (slugExact) return slugExact;
+	}
+
 	if (preliminary.cour <= 1) return hits[0];
-	const re = new RegExp(`\\b(?:part|cour|season)\\s+${preliminary.cour}\\b`, 'i');
-	const courMatch = hits.find((h) => re.test(h.canonical_title ?? ''));
-	return courMatch ?? hits[0];
+
+	const slugRe = new RegExp(`(?:^|-)(?:part|cour|season)-${preliminary.cour}(?:-|$)`, 'i');
+	const courInSlug = hits.find((h) => slugRe.test(h.slug ?? ''));
+	if (courInSlug) return courInSlug;
+
+	const titleRe = new RegExp(`\\b(?:part|cour|season)\\s+${preliminary.cour}\\b`, 'i');
+	const courInTitle = hits.find((h) => titleRe.test(h.canonical_title ?? ''));
+	if (courInTitle) return courInTitle;
+
+	return hits[0];
 }
 
 /** Compose the query-string portion of a Resume URL — caller appends

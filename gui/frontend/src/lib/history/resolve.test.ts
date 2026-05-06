@@ -145,6 +145,41 @@ describe('pickKitsuMatch', () => {
 		expect(pickKitsuMatch(hits, r)?.id).toBe('part2');
 	});
 
+	const slugHit = (id: string, slug: string, canonical_title = 'Localized'): KitsuAnimeRef => ({
+		...stubKitsu(id),
+		slug,
+		canonical_title
+	});
+
+	it('matches by slug when the canonical_title is in a non-Latin script', () => {
+		// Kitsu sometimes returns the Japanese title as canonical and
+		// only the slug carries the romanized "part-2". Slug-based
+		// matching is the reliable signal in that case.
+		const r = resolveHistoryEntry(
+			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
+			null
+		);
+		const hits = [
+			slugHit('p1', 'jojo-no-kimyou-na-bouken-part-6-stone-ocean', 'ストーンオーシャン'),
+			slugHit(
+				'p2',
+				'jojo-no-kimyou-na-bouken-part-6-stone-ocean-part-2',
+				'ストーンオーシャン パート2'
+			)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('p2');
+	});
+
+	it('exact-slug match wins over cour heuristics', () => {
+		const r = resolveHistoryEntry(entry('JoJo Stone Ocean Part 2 (12 episodes)', '4'), null);
+		const hits = [
+			slugHit('mid', 'jojo-stone-ocean-part-2', 'something else'),
+			slugHit('cour', 'unrelated', 'JoJo Stone Ocean Part 2 — alt')
+		];
+		// Slug-derived "jojo-stone-ocean-part-2" matches `mid` exactly.
+		expect(pickKitsuMatch(hits, r)?.id).toBe('mid');
+	});
+
 	it('does not false-match the parent series number ("Part 6" in JoJo)', () => {
 		// Searching for cour 2, the only "Part 6" in any title is
 		// the JoJo series number — should not be picked.
