@@ -116,6 +116,7 @@ describe('resolveKitsuMatch', () => {
 		);
 		mockedInvoke.mockImplementation(async (cmd) => {
 			if (cmd === 'cmd_title_match_get') return null;
+			if (cmd === 'cmd_kitsu_anime_by_slug') return null;
 			if (cmd === 'cmd_kitsu_search') return [];
 			throw new Error('unexpected ' + cmd);
 		});
@@ -125,5 +126,64 @@ describe('resolveKitsuMatch', () => {
 			title: preliminary.searchTitle,
 			cour: 2
 		});
+	});
+
+	it('multi-cour entry: tries slug-fetch first and skips search when slug hits', async () => {
+		// Stone Ocean Part 2: Kitsu's text-search drops it; the slug
+		// lookup pinpoints it. resolveKitsuMatch should NOT fall through
+		// to a search call once the slug returns a hit.
+		const preliminary = resolveHistoryEntry(
+			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
+			null
+		);
+		mockedInvoke.mockImplementation(async (cmd, args) => {
+			if (cmd === 'cmd_title_match_get') return null;
+			if (cmd === 'cmd_kitsu_anime_by_slug') {
+				// Verify the derived slug matches Kitsu's URL pattern.
+				expect((args as { slug?: string } | undefined)?.slug).toBe(
+					'jojo-no-kimyou-na-bouken-part-6-stone-ocean-part-2'
+				);
+				return stubKitsu('part2-id', 'JoJo Stone Ocean Part 2');
+			}
+			if (cmd === 'cmd_title_match_put') return undefined;
+			throw new Error('unexpected ' + cmd);
+		});
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got?.id).toBe('part2-id');
+		const calls = mockedInvoke.mock.calls.map((c) => c[0]);
+		expect(calls).toContain('cmd_kitsu_anime_by_slug');
+		expect(calls).not.toContain('cmd_kitsu_search');
+	});
+
+	it('multi-cour entry: falls through to search + pick when slug miss', async () => {
+		const preliminary = resolveHistoryEntry(entry('Some Anime Part 2 (12 episodes)', '3'), null);
+		mockedInvoke.mockImplementation(async (cmd) => {
+			if (cmd === 'cmd_title_match_get') return null;
+			if (cmd === 'cmd_kitsu_anime_by_slug') return null; // slug miss
+			if (cmd === 'cmd_kitsu_search') return [stubKitsu('searched-id', 'Some Anime Part 2')];
+			if (cmd === 'cmd_title_match_put') return undefined;
+			throw new Error('unexpected ' + cmd);
+		});
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got?.id).toBe('searched-id');
+		const calls = mockedInvoke.mock.calls.map((c) => c[0]);
+		expect(calls).toContain('cmd_kitsu_anime_by_slug');
+		expect(calls).toContain('cmd_kitsu_search');
+	});
+
+	it('single-cour entry: skips slug-fetch and goes straight to search', async () => {
+		// We don't want to double the IPC volume on cold load; slug
+		// fetch is opt-in for cour > 1.
+		const preliminary = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
+		mockedInvoke.mockImplementation(async (cmd) => {
+			if (cmd === 'cmd_title_match_get') return null;
+			if (cmd === 'cmd_kitsu_search') return [stubKitsu('id-1', 'Demon Slayer')];
+			if (cmd === 'cmd_title_match_put') return undefined;
+			throw new Error('unexpected ' + cmd);
+		});
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got?.id).toBe('id-1');
+		const calls = mockedInvoke.mock.calls.map((c) => c[0]);
+		expect(calls).not.toContain('cmd_kitsu_anime_by_slug');
 	});
 });

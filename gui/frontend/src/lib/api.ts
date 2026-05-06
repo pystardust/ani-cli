@@ -154,6 +154,16 @@ export function kitsuAnimeDetail(id: string): Promise<KitsuAnimeRef> {
 	return invoke<KitsuAnimeRef>('cmd_kitsu_anime_detail', { id });
 }
 
+/**
+ * Look up an anime by its Kitsu slug. Returns `null` when no entry
+ * matches. The picker uses this as a last-resort fallback when text
+ * search misses a sequel — Kitsu's `filter[text]` drops Stone Ocean
+ * Part 2 from its results entirely, but `filter[slug]` finds it.
+ */
+export function kitsuAnimeBySlug(slug: string): Promise<KitsuAnimeRef | null> {
+	return invoke<KitsuAnimeRef | null>('cmd_kitsu_anime_by_slug', { slug });
+}
+
 export function kitsuTrending(): Promise<KitsuAnimeRef[]> {
 	return invoke<KitsuAnimeRef[]>('cmd_kitsu_trending');
 }

@@ -143,7 +143,11 @@ export function resolveHistoryEntry(
  *       match cour 6 of an unrelated entry.
  *    4. First hit (the existing default).
  *  Single-cour entries skip 2-3 and use the slug-then-first-hit path. */
-function deriveSlug(s: string): string {
+/** Mechanical slug derivation matching Kitsu's URL pattern: lowercase,
+ *  non-alphanum runs collapsed to a single `-`, leading/trailing
+ *  hyphens stripped. Exported because the title-match resolver also
+ *  needs it for the slug-fallback IPC call. */
+export function deriveSlug(s: string): string {
 	return s
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')

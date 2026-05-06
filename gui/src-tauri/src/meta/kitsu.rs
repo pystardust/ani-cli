@@ -431,6 +431,40 @@ impl KitsuClient {
         let body = resp.bytes().await.map_err(|_| AniError::Network)?;
         parse_anime_response(&body)
     }
+
+    /// Look up an anime by its slug — Kitsu's URL-stable identifier.
+    /// Used as a fallback when the text search doesn't include a known
+    /// sequel in its results (Kitsu's `filter[text]` ranks the most-
+    /// popular sibling above all alternates and sometimes drops them
+    /// from the page entirely; see Stone Ocean Part 2).
+    ///
+    /// Returns `Ok(None)` when no entry matches the slug; `Err` only
+    /// for upstream / network / parse failures.
+    ///
+    /// # Errors
+    /// Same as [`Self::search`].
+    pub async fn anime_by_slug(&self, slug: &str) -> Result<Option<KitsuAnimeRef>> {
+        let resp = self
+            .http
+            .get(format!("{}/anime", self.base))
+            .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+            .query(&[
+                ("filter[slug]", slug.to_string()),
+                ("page[limit]", "1".to_string()),
+                ("fields[anime]", ANIME_FIELDS.to_string()),
+            ])
+            .send()
+            .await
+            .map_err(|_| AniError::Network)?;
+        if !resp.status().is_success() {
+            return Err(AniError::Upstream {
+                status: resp.status().as_u16(),
+            });
+        }
+        let body = resp.bytes().await.map_err(|_| AniError::Network)?;
+        let hits = parse_search_response(&body)?;
+        Ok(hits.into_iter().next())
+    }
 }
 
 #[cfg(test)]

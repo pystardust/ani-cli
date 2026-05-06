@@ -150,6 +150,29 @@ pub async fn kitsu_episodes(
     Ok(eps)
 }
 
+/// Look up an anime by its slug — Kitsu's URL-stable identifier.
+/// Used as a fallback when the text search doesn't include a sequel
+/// (Kitsu's `filter[text]` ranks the most-popular sibling and drops
+/// alternates entirely for some titles, e.g. JoJo Stone Ocean Part 2).
+///
+/// Cached under `kitsu:anime-slug:<slug>` with [`ANIME_DETAIL_TTL`].
+///
+/// # Errors
+/// Inherits from [`crate::meta::kitsu::KitsuClient::anime_by_slug`].
+pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<KitsuAnimeRef>> {
+    let key = format!("kitsu:anime-slug:{slug}");
+    if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
+        if let Ok(detail) = serde_json::from_str::<Option<KitsuAnimeRef>>(&body) {
+            return Ok(detail);
+        }
+    }
+    let detail = state.kitsu.anime_by_slug(slug).await?;
+    if let Ok(body) = serde_json::to_string(&detail) {
+        let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
+    }
+    Ok(detail)
+}
+
 /// Title-match cache: maps `(allmanga_title, cour) → kitsu_id`. Stored
 /// in the shared `meta_cache` table under a `title-match:` key prefix
 /// so the home page's Continue Watching strip skips a kitsuSearch +
@@ -420,6 +443,57 @@ mod tests {
         let state = state_with_kitsu_at(&mock.uri());
         assert!(kitsu_search(&state, "anything").await.is_err());
         assert!(kitsu_search(&state, "anything").await.is_err());
+    }
+
+    // — Slug lookup ——————————————————————————————————————————————————
+
+    #[tokio::test]
+    async fn kitsu_anime_by_slug_returns_some_on_match() {
+        // The slug-lookup path exists because Kitsu's filter[text] drops
+        // sequels for some titles (Stone Ocean Part 2 isn't in the text-
+        // search response, but is reachable via filter[slug]). This test
+        // pins the contract: hit /anime?filter[slug]=... → first hit.
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/anime"))
+            .and(query_param("filter[slug]", "stone-ocean-part-2"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(SEARCH_FIXTURE.to_vec()),
+            )
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let got = kitsu_anime_by_slug(&state, "stone-ocean-part-2")
+            .await
+            .expect("ok");
+        assert!(got.is_some(), "fixture has at least one hit");
+    }
+
+    #[tokio::test]
+    async fn kitsu_anime_by_slug_caches_after_first_call() {
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/anime"))
+            .and(query_param("filter[slug]", "demon-slayer"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(SEARCH_FIXTURE.to_vec()),
+            )
+            .expect(1) // <-- second call must hit the cache, not Kitsu
+            .mount(&mock)
+            .await;
+
+        let state = state_with_kitsu_at(&mock.uri());
+        let first = kitsu_anime_by_slug(&state, "demon-slayer").await.expect("ok");
+        let second = kitsu_anime_by_slug(&state, "demon-slayer")
+            .await
+            .expect("ok");
+        assert_eq!(first.is_some(), second.is_some());
     }
 
     // — Title-match cache —————————————————————————————————————————————

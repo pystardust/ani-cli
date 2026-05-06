@@ -75,6 +75,17 @@ pub async fn cmd_kitsu_anime_detail(
     kitsu_inner::kitsu_anime_detail(&state, &id).await
 }
 
+/// Frontend → backend: fetch a single anime by slug. Returns `None`
+/// when no entry matches. Used as the title-match resolver's last-
+/// resort fallback when Kitsu's text search drops a sequel.
+#[tauri::command]
+pub async fn cmd_kitsu_anime_by_slug(
+    state: State<'_, AppState>,
+    slug: String,
+) -> Result<Option<KitsuAnimeRef>> {
+    kitsu_inner::kitsu_anime_by_slug(&state, &slug).await
+}
+
 /// Frontend → backend: trending row (currently-airing, ranked by users).
 #[tauri::command]
 pub async fn cmd_kitsu_trending(state: State<'_, AppState>) -> Result<Vec<KitsuAnimeRef>> {

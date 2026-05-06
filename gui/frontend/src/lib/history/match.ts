@@ -11,13 +11,14 @@
  */
 
 import {
+	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
 	kitsuSearch,
 	kitsuTitleMatchGet,
 	kitsuTitleMatchPut,
 	type KitsuAnimeRef
 } from '$lib/api';
-import { pickKitsuMatch, type ResumeTarget } from './resolve';
+import { deriveSlug, pickKitsuMatch, type ResumeTarget } from './resolve';
 
 export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<KitsuAnimeRef | null> {
 	// 1) Cache lookup. If we've resolved this title→id before, fetch
@@ -36,17 +37,42 @@ export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<Kits
 		// Cache backend unavailable — degrade to live search.
 	}
 
-	// 2) Live search + pick. Mirrors the home page's previous logic
-	//    inline; the picker handles cour disambiguation.
-	let match: KitsuAnimeRef | null;
-	try {
-		const hits = await kitsuSearch(preliminary.searchTitle);
-		match = pickKitsuMatch(hits, preliminary);
-	} catch {
-		return null;
+	let match: KitsuAnimeRef | null = null;
+
+	// 2) Slug-first for multi-cour entries. Kitsu's `filter[text]`
+	//    ranks the most-popular sibling and drops sequels with
+	//    Japanese-romanized canonical titles entirely (Stone Ocean
+	//    Part 2 is the canonical example: same franchise, different
+	//    Kitsu entry, NOT in the text-search response). Our hsts
+	//    title slugifies cleanly to Kitsu's URL pattern, so a direct
+	//    slug lookup pinpoints the right entry. Single-cour entries
+	//    skip this and go straight to the search path — slug-fetching
+	//    every Continue Watching row would double the IPC volume on
+	//    cold load.
+	if (preliminary.cour > 1) {
+		const slug = deriveSlug(preliminary.searchTitle);
+		if (slug.length >= 4) {
+			try {
+				match = await kitsuAnimeBySlug(slug);
+			} catch {
+				// Slug-fetch failure is non-fatal; fall through to search.
+			}
+		}
 	}
 
-	// 3) Persist on success so the next session bypasses the search.
+	// 3) Live search + pick. Either the slug fallback didn't apply
+	//    (cour 1) or it didn't find an entry; let the picker work the
+	//    text-search hits.
+	if (!match) {
+		try {
+			const hits = await kitsuSearch(preliminary.searchTitle);
+			match = pickKitsuMatch(hits, preliminary);
+		} catch {
+			return null;
+		}
+	}
+
+	// 4) Persist on success so the next session bypasses the lookup.
 	if (match) {
 		try {
 			await kitsuTitleMatchPut(preliminary.searchTitle, preliminary.cour, match.id);
