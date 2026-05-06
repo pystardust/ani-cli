@@ -413,9 +413,24 @@
 	}
 
 	.page {
-		max-inline-size: var(--content-max);
+		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
 		padding-block-end: var(--space-9);
+		/* Page-enter animation — a soft fade + lift so navigating into a
+		   detail page doesn't feel like a hard cut. The reduced-motion
+		   token already zeroes --dur-slow so this is inert when the user
+		   opts out. */
+		animation: detail-page-enter var(--dur-slow) var(--ease-out-soft) both;
+	}
+	@keyframes detail-page-enter {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	/* — Hero band. */
@@ -425,6 +440,19 @@
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
+		/* Hero scales up subtly on entry — feels like the cover comes
+		   forward to the screen, per user's M3.7-era request. */
+		animation: detail-hero-enter var(--dur-slow) var(--ease-out-soft) both;
+	}
+	@keyframes detail-hero-enter {
+		from {
+			transform: scale(1.04);
+			filter: brightness(0.7);
+		}
+		to {
+			transform: scale(1);
+			filter: brightness(1);
+		}
 	}
 	.hero-img {
 		position: absolute;

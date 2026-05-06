@@ -15,6 +15,7 @@
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 
@@ -118,23 +119,41 @@
 </svelte:head>
 
 <header class="topbar">
-	<BackButton label="Back" fallback="/" />
-	<form class="searchform" onsubmit={submit} role="search">
-		<span class="kbd" aria-hidden="true">/</span>
-		<input
-			bind:this={inputEl}
-			bind:value={query}
-			type="search"
-			autocomplete="off"
-			spellcheck="false"
-			placeholder="Search the catalogue"
-			aria-label="Search anime"
-			required
-		/>
-		<button type="submit" disabled={busy || query.trim().length === 0}>
-			{busy ? 'Searching' : 'Search'}
-		</button>
-	</form>
+	<div class="topbar-inner">
+		<BackButton label="Back" fallback="/" />
+		<form
+			class="searchform"
+			class:searchform-busy={busy}
+			class:searchform-filled={query.trim().length > 0}
+			onsubmit={submit}
+			role="search"
+		>
+			<span class="searchform-icon" aria-hidden="true">
+				<Icon name="search" size={20} />
+			</span>
+			<input
+				bind:this={inputEl}
+				bind:value={query}
+				type="search"
+				autocomplete="off"
+				spellcheck="false"
+				placeholder="Search the catalogue"
+				aria-label="Search anime"
+				required
+			/>
+			<span class="searchform-hint" aria-hidden="true">
+				{#if busy}
+					<span class="searchform-busy-mark">…</span>
+				{:else}
+					<kbd>/</kbd>
+				{/if}
+			</span>
+			<!-- Submit happens on Enter; the button is sr-only for a11y. -->
+			<button type="submit" class="sr-only" disabled={busy || query.trim().length === 0}>
+				Search
+			</button>
+		</form>
+	</div>
 </header>
 
 <div class="page">
@@ -262,13 +281,19 @@
 		position: sticky;
 		inset-block-start: 0;
 		z-index: 10;
-		display: flex;
-		align-items: center;
-		gap: var(--space-6);
-		padding: var(--space-4) var(--space-6);
 		background: color-mix(in oklab, var(--ink-000) 92%, transparent);
 		border-block-end: 1px solid var(--ink-200);
 		backdrop-filter: blur(8px); /* purposeful: sticky bar over scrolling content. */
+	}
+	.topbar-inner {
+		/* Match the page wrapper below so the topbar's content aligns with
+		   the result grid even on widescreens. */
+		max-inline-size: var(--content-max-wide);
+		margin-inline: auto;
+		display: flex;
+		align-items: center;
+		gap: var(--space-6);
+		padding: var(--space-4) var(--space-8);
 	}
 
 	.searchform {
@@ -276,15 +301,40 @@
 		align-items: center;
 		gap: var(--space-3);
 		flex: 1;
-		max-inline-size: 48rem;
-		margin-inline-start: auto;
-		border-block-end: 1px solid var(--bone-300);
-		transition: border-color var(--dur-fast) var(--ease-out-soft);
+		/* Single visual unit: hairline-framed input with leading icon, body
+		   input, trailing keyboard hint. No separate "Search" button —
+		   Enter submits, screen readers see the sr-only button. */
+		padding: var(--space-3) var(--space-4);
+		border: 1px solid var(--ink-300);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
 	}
 	.searchform:focus-within {
-		border-color: var(--bone-100);
+		border-color: var(--bone-200);
+		background: var(--ink-050);
 	}
-	.kbd {
+	.searchform-filled {
+		border-color: color-mix(in oklab, var(--bone-200) 70%, var(--ink-300));
+	}
+	.searchform-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--bone-300);
+		transition: color var(--dur-fast) var(--ease-out-soft);
+	}
+	.searchform:focus-within .searchform-icon {
+		color: var(--bone-100);
+	}
+	.searchform-hint {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-inline-size: 1.5rem;
+	}
+	.searchform-hint kbd {
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
 		color: var(--bone-300);
@@ -292,9 +342,17 @@
 		border: 1px solid var(--ink-300);
 		border-radius: 2px;
 	}
+	.searchform:focus-within .searchform-hint kbd {
+		opacity: 0;
+	}
+	.searchform-busy-mark {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+	}
 	.searchform input {
 		flex: 1;
-		padding: var(--space-3) 0;
+		padding: 0;
 		background: transparent;
 		border: 0;
 		outline: 0;
@@ -307,31 +365,25 @@
 		color: var(--bone-400);
 		font-style: italic;
 	}
-	.searchform button {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-200);
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--ink-300);
-		transition:
-			color var(--dur-fast) var(--ease-out-soft),
-			border-color var(--dur-fast) var(--ease-out-soft);
+	.searchform input::-webkit-search-cancel-button {
+		appearance: none;
 	}
-	.searchform button:hover:not(:disabled) {
-		color: var(--bone-100);
-		border-color: var(--bone-300);
-	}
-	.searchform button:disabled {
-		color: var(--bone-400);
-		cursor: not-allowed;
+	.sr-only {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.page {
-		max-inline-size: var(--content-max);
+		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
-		padding: var(--space-7) var(--space-6) var(--space-9);
+		padding: var(--space-7) var(--space-8) var(--space-9);
 	}
 
 	.results-meta {
