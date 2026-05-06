@@ -808,14 +808,18 @@
 		background: var(--bone-400);
 	}
 
-	/* — 2-column body (synopsis + episodes). */
+	/* — 2-column body (synopsis + episodes). Capped tighter than the
+	     hero so the page doesn't feel "all horizontal" on widescreen.
+	     Hero stays full-bleed; only the prose + episode block narrows.
+	     The episode column is fixed-width so it doesn't keep spreading. */
 	.body {
 		display: grid;
-		grid-template-columns: minmax(0, 1.1fr) 1px minmax(0, 1fr);
-		gap: var(--space-7);
+		grid-template-columns: minmax(0, 1fr) 1px auto;
+		gap: var(--space-8);
 		align-items: start;
+		max-inline-size: var(--content-max);
 		margin: var(--space-7) auto 0;
-		padding-inline: var(--space-6);
+		padding-inline: var(--space-8);
 	}
 	@media (max-inline-size: 900px) {
 		.body {
@@ -882,13 +886,23 @@
 		color: var(--bone-300);
 	}
 
-	/* — Episodes panel. */
+	/* — Episodes panel. Fixed 3-column grid so 12 tiles render as 4
+	     vertical rows — keeps the column tall and proportional with the
+	     synopsis next to it instead of spreading flat across the page. */
+	.body-col-episodes {
+		inline-size: clamp(18rem, 24rem, 28rem);
+	}
+	@media (max-inline-size: 900px) {
+		.body-col-episodes {
+			inline-size: 100%;
+		}
+	}
 	.ep-grid {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--space-3);
 	}
 	.ep-tile {
