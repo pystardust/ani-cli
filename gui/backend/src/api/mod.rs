@@ -693,4 +693,70 @@ mod tests {
         // axum's Query extractor rejects with 400 for missing required fields.
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
+
+    /// Detail-page episode clicks call `POST /api/play`. The handler
+    /// resolves the title via the ani-cli driver, wraps the resolved
+    /// upstream URL in a session, and returns a `CreateSessionResponse`
+    /// the renderer uses to navigate to `/play?session=<id>`. This
+    /// test pins only the route's existence + body validation contract
+    /// — the full subprocess behavior is exercised by the curl-shim
+    /// integration test in `tests/api_play.rs`.
+    #[tokio::test]
+    async fn play_route_returns_400_when_body_is_missing() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn play_route_returns_400_when_title_is_missing() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"episode":"1","mode":"sub"}"#))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    /// External-player launch shares the same resolution path as the
+    /// embedded player; only the terminal action differs (hand the URL
+    /// to the OS player vs. wrap it in a session). Same body-validation
+    /// contract; full behavior is exercised in `tests/api_play.rs`.
+    #[tokio::test]
+    async fn play_external_route_returns_400_when_body_is_missing() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/external")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
 }
