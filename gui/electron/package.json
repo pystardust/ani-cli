@@ -15,7 +15,9 @@
 		"build:backend": "cd ../src-tauri && cargo build --bin ani-gui-backend --release",
 		"build:frontend": "cd ../frontend && pnpm build",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
-		"dist": "electron-builder && pnpm run repack-appimage",
+		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
+		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
+		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
 		"repack-appimage": "node scripts/repack-appimage.mjs"
 	},
 	"devDependencies": {

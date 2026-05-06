@@ -140,6 +140,11 @@ async function createWindow(apiBase) {
 		height: 800,
 		minWidth: 960,
 		minHeight: 600,
+		// Window icon for the dev session — packaged builds get it
+		// from the .desktop file electron-builder generates from
+		// build-resources/icon.png. Without this, GNOME's window list
+		// shows the generic Electron logo while running unpackaged.
+		icon: path.join(__dirname, 'build-resources', 'icon.png'),
 		// Frame/decorations match the Tauri config (system decorations).
 		webPreferences: {
 			preload: path.join(__dirname, 'preload.js'),
