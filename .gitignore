@@ -11,6 +11,10 @@ gui/src-tauri/target/
 gui/src-tauri/gen/
 gui/src-tauri/WixTools/
 
+# Electron packaging output (electron-builder + manual --appimage-extract)
+gui/electron/dist/
+gui/electron/squashfs-root/
+
 # Node / pnpm / npm
 node_modules/
 .pnpm-store/

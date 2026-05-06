@@ -16,19 +16,48 @@
 
 'use strict';
 
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, net, protocol, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
+const { pathToFileURL } = require('node:url');
 
 const IS_DEV = process.env.ELECTRON_DEV === '1';
 const VITE_DEV_URL = process.env.VITE_DEV_URL || 'http://localhost:5173';
 
+// Custom scheme used in packaged builds to serve the SvelteKit
+// static bundle. Loading the index.html via plain `file://` works
+// for the root document but breaks SvelteKit's chunk graph — the
+// runtime does dynamic `import('/_app/foo.js')` against the page's
+// origin, which under `file://` resolves to filesystem-root nonsense.
+// A custom scheme gives us a real origin we control, so we can
+// resolve `/_app/...` against the bundle dir and SPA-fallback any
+// other path to index.html.
+const APP_SCHEME = 'app';
+const APP_ORIGIN = `${APP_SCHEME}://localhost`;
+
+// Register the scheme as standard + secure BEFORE app.whenReady, so
+// fetch + service-worker-style guarantees apply to assets loaded
+// through it.
+protocol.registerSchemesAsPrivileged([
+	{
+		scheme: APP_SCHEME,
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+			corsEnabled: true
+		}
+	}
+]);
+
 /**
- * Locate the compiled Rust backend binary. In dev we point at the
- * cargo target/debug build; packaged builds will resolve via
- * `process.resourcesPath` (M-E4 wires that). Throws with a clear
- * message if the binary isn't where we expect.
+ * Locate the compiled Rust backend binary.
+ *
+ * In dev we look in the cargo target dir (release first, then debug).
+ * In packaged builds electron-builder copies the binary into
+ * `process.resourcesPath/ani-gui-backend` via `extraResources` in
+ * `package.json:build`. Throws with a clear message if missing.
  */
 function resolveBackendBinary() {
 	if (IS_DEV) {
@@ -45,8 +74,14 @@ function resolveBackendBinary() {
 				`cd gui/src-tauri && cargo build --bin ani-gui-backend`
 		);
 	}
-	// Packaged path comes in M-E4. Resources dir.
-	return path.join(process.resourcesPath, 'ani-gui-backend');
+	const packaged = path.join(process.resourcesPath, 'ani-gui-backend');
+	if (!fs.existsSync(packaged)) {
+		throw new Error(
+			`ani-gui-backend not found in packaged resources at ${packaged}. ` +
+				`The electron-builder \`extraResources\` rule may be misconfigured.`
+		);
+	}
+	return packaged;
 }
 
 /**
@@ -142,15 +177,58 @@ async function createWindow(apiBase) {
 		win.webContents.openDevTools({ mode: 'detach' });
 		await win.loadURL(VITE_DEV_URL);
 	} else {
-		// Packaged static SvelteKit bundle. M-E4 wires the path.
-		const indexHtml = path.join(__dirname, '..', 'frontend', 'build', 'index.html');
-		await win.loadFile(indexHtml);
+		// Packaged static SvelteKit bundle, served via the custom
+		// `app://` scheme registered above. The bundle's chunks do
+		// dynamic imports off the page's origin, so we need a real
+		// origin (not `file://`) for them to resolve.
+		//
+		// Load the root path, not `/index.html` — SvelteKit's client
+		// router reads `location.pathname` and treats `/index.html`
+		// as a non-route (the app has no `routes/index.html` page).
+		// The protocol handler maps `/` to the index.html file.
+		await win.loadURL(`${APP_ORIGIN}/`);
 	}
 	return win;
 }
 
+/**
+ * Wire `app://localhost/...` to the packaged SvelteKit bundle.
+ *
+ * Resolution rules:
+ *   - `/_app/...` and other extensioned paths → file in the bundle.
+ *   - any extensionless path → `index.html` (SvelteKit SPA fallback).
+ *   - 404 if the resolved path escapes the bundle dir (defence in
+ *     depth — the URL parser shouldn't permit `..` traversal, but
+ *     it's cheap to check).
+ */
+function registerAppProtocol() {
+	const bundleDir = path.join(process.resourcesPath, 'frontend', 'build');
+	protocol.handle(APP_SCHEME, async (request) => {
+		const url = new URL(request.url);
+		let pathname = decodeURIComponent(url.pathname);
+		if (!pathname || pathname === '/') pathname = '/index.html';
+		const target = path.normalize(path.join(bundleDir, pathname));
+		if (!target.startsWith(bundleDir)) {
+			return new Response('forbidden', { status: 403 });
+		}
+		try {
+			await fs.promises.access(target);
+			return net.fetch(pathToFileURL(target).toString());
+		} catch {
+			// SPA fallback — anything routerly (no file extension)
+			// hands back the index so SvelteKit's client router takes
+			// over. A real missing asset (image, css) returns 404.
+			if (!path.extname(pathname)) {
+				return net.fetch(pathToFileURL(path.join(bundleDir, 'index.html')).toString());
+			}
+			return new Response('not found', { status: 404 });
+		}
+	});
+}
+
 app.whenReady().then(async () => {
 	try {
+		if (!IS_DEV) registerAppProtocol();
 		const { child, apiBase } = await spawnBackend();
 		backendChild = child;
 		await createWindow(apiBase);

@@ -6,12 +6,49 @@
 	"main": "main.js",
 	"scripts": {
 		"dev": "ELECTRON_DEV=1 electron --no-sandbox .",
-		"start": "electron ."
+		"start": "electron .",
+		"build:backend": "cd ../src-tauri && cargo build --bin ani-gui-backend --release",
+		"build:frontend": "cd ../frontend && pnpm build",
+		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
+		"dist": "electron-builder"
 	},
 	"devDependencies": {
-		"electron": "^33.2.0"
+		"electron": "^33.2.0",
+		"electron-builder": "^25.1.8"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": ["electron"]
+	},
+	"build": {
+		"appId": "net.thirdmovement.ani-gui",
+		"productName": "ani-gui",
+		"directories": {
+			"output": "dist",
+			"buildResources": "build-resources"
+		},
+		"files": [
+			"main.js",
+			"preload.js",
+			"package.json",
+			"node_modules/**/*"
+		],
+		"extraResources": [
+			{
+				"from": "../frontend/build",
+				"to": "frontend/build"
+			},
+			{
+				"from": "../src-tauri/target/release/ani-gui-backend",
+				"to": "ani-gui-backend"
+			}
+		],
+		"linux": {
+			"target": [
+				"AppImage"
+			],
+			"category": "AudioVideo",
+			"executableName": "ani-gui",
+			"artifactName": "${productName}-${version}-${arch}.${ext}"
+		}
 	}
 }
