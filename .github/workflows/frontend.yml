@@ -18,36 +18,36 @@ defaults:
     working-directory: gui/frontend
 
 jobs:
-  lint-and-test:
+  lint-typecheck-test:
     name: lint + typecheck + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
           cache-dependency-path: gui/frontend/pnpm-lock.yaml
+
       - name: pnpm install --frozen-lockfile
         run: pnpm install --frozen-lockfile
 
-      - name: prettier --check
-        run: pnpm exec prettier --check .
+      # `pnpm run lint` = prettier --check + eslint.
+      - name: lint (prettier + eslint)
+        run: pnpm run lint
 
-      - name: eslint
-        run: pnpm exec eslint .
+      # `pnpm run check` = svelte-kit sync + svelte-check (which also
+      # runs the TypeScript checker against generated SvelteKit types).
+      - name: typecheck (svelte-check + svelte-kit sync)
+        run: pnpm run check
 
-      - name: svelte-check
-        run: pnpm exec svelte-check --tsconfig ./tsconfig.json
+      - name: vitest run
+        run: pnpm run test
 
-      - name: tsc --noEmit
-        run: pnpm exec tsc --noEmit
-
-      - name: vitest (unit + acceptance)
-        run: pnpm exec vitest run
-
-      - name: i18n key parity (every key in en/ exists in pt-BR/, es-419/, ru/)
-        run: pnpm i18n:check
+      - name: production build (vite + adapter-static)
+        run: pnpm run build
