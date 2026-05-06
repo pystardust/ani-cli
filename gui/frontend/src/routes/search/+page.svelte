@@ -317,9 +317,7 @@
 		display: block;
 		color: inherit;
 		transition: transform var(--dur-med) var(--ease-out-elastic);
-		/* `will-change: transform` removed for the same reason as
-		   PosterCard — too many composited layers on a busy result
-		   grid. Hover transform still works without the hint. */
+		will-change: transform;
 	}
 	.card-link:hover {
 		transform: translateY(-4px);
