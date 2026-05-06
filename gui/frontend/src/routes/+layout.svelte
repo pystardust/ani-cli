@@ -245,6 +245,7 @@
 
 	.nav-link {
 		position: relative;
+		isolation: isolate;
 		display: grid;
 		justify-items: center;
 		gap: var(--space-1);
@@ -274,6 +275,7 @@
 		inset-inline-start: 0;
 		inline-size: 2px;
 		background: var(--accent);
+		z-index: 1;
 	}
 	@media (max-inline-size: 720px) {
 		.nav-link.active::before {
@@ -285,7 +287,53 @@
 		}
 	}
 
+	/* Brand-tinted LED bloom centered behind the icon. Same idea as the
+	   home hero glass button: a soft radial glow that pulses up on
+	   hover (and stays lit on the active item). The rail itself is
+	   opaque, so there's no glass blur — just the bloom. */
+	.nav-link::after {
+		content: '';
+		position: absolute;
+		inset: 10% 15%;
+		background: radial-gradient(
+			ellipse 70% 70% at 50% 50%,
+			var(--brand) 0%,
+			color-mix(in oklab, var(--brand) 50%, transparent) 35%,
+			transparent 72%
+		);
+		opacity: 0;
+		filter: blur(10px);
+		transform: scale(0.7);
+		transition:
+			opacity var(--dur-med) var(--ease-out-soft),
+			transform var(--dur-med) var(--ease-out-elastic);
+		z-index: -1;
+		pointer-events: none;
+	}
+	.nav-link:hover::after {
+		opacity: 0.9;
+		transform: scale(1.05);
+	}
+	.nav-link.active::after {
+		/* Active item stays lit, slightly dimmer than hover so the
+		   accent rule still wins as the primary "you-are-here" cue. */
+		opacity: 0.7;
+		transform: scale(1);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.nav-link::after {
+			transform: none;
+			transition: opacity var(--dur-fast) linear;
+		}
+		.nav-link:hover::after,
+		.nav-link.active::after {
+			transform: none;
+		}
+	}
+
 	.nav-mark {
+		position: relative;
+		z-index: 1;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -293,6 +341,8 @@
 		line-height: 0;
 	}
 	.nav-label {
+		position: relative;
+		z-index: 1;
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);

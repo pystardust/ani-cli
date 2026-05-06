@@ -604,16 +604,16 @@
 	.btn-glass::before {
 		content: '';
 		position: absolute;
-		inset: -40% -10% -25% -10%;
+		inset: -30% -15%;
 		background: radial-gradient(
-			ellipse 60% 80% at 50% 100%,
+			ellipse 65% 65% at 50% 50%,
 			var(--brand) 0%,
-			color-mix(in oklab, var(--brand) 50%, transparent) 35%,
-			transparent 70%
+			color-mix(in oklab, var(--brand) 50%, transparent) 38%,
+			transparent 72%
 		);
 		opacity: 0.32;
 		filter: blur(12px);
-		transform: translateY(8px) scale(0.85);
+		transform: scale(0.78);
 		transition:
 			opacity var(--dur-med) var(--ease-out-soft),
 			transform var(--dur-med) var(--ease-out-elastic);
@@ -635,7 +635,7 @@
 	}
 	.btn-glass:hover::before {
 		opacity: 1;
-		transform: translateY(-2px) scale(1.18);
+		transform: scale(1.2);
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.btn-glass::before {
