@@ -1191,8 +1191,12 @@
 	     than the other. Stacked, both panels span the full editorial
 	     column width and never compete for vertical alignment.
 	     Container is the wide cap (matches the hero above), so widescreens
-	     don't leave huge empty side margins. Inside, the synopsis is
-	     individually capped at 70ch for line-length readability. */
+	     don't leave huge empty side margins. The synopsis used to cap
+	     at 70ch for prose readability, but that left a ragged disjoint
+	     against the much-wider episode grid below. Now both blocks share
+	     the full body width — synopsis is short enough that the wider
+	     line length doesn't hurt comprehension, and the collapsed
+	     preview shows more text in the same vertical space. */
 	.body {
 		display: flex;
 		flex-direction: column;
@@ -1203,12 +1207,7 @@
 	}
 
 	.body-col-prose {
-		max-inline-size: 70ch;
-		/* Keep prose pinned to the inline-start edge on widescreen
-		   instead of letting the flex column stretch it edge-to-edge or
-		   recentre it; reads as an editorial column with the rest of
-		   the page rather than floating mid-canvas. */
-		align-self: start;
+		inline-size: 100%;
 	}
 	.section-eyebrow {
 		margin: 0 0 var(--space-4);
