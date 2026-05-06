@@ -63,10 +63,14 @@
 		if (!videoEl || !session) return;
 		teardown();
 		if (Hls.isSupported()) {
-			hls = new Hls({ lowLatencyMode: false });
+			// debug: true logs every fragment load + buffer event to the
+			// devtools console — useful while we shake out webkit2gtk +
+			// MPEG-TS seek quirks. Drop this before M3.
+			hls = new Hls({ lowLatencyMode: false, debug: true });
 			hls.loadSource(session.master_url);
 			hls.attachMedia(videoEl);
 			hls.on(Hls.Events.ERROR, (_, data) => {
+				console.error('[hls error]', data);
 				if (data.fatal) {
 					error = `hls.js fatal: ${data.type} / ${data.details}`;
 				}
