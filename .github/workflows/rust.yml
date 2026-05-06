@@ -79,6 +79,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
+      - name: Install ani-cli runtime deps (Linux only)
+        # The `anicli_run_debug` integration test spawns ./ani-cli, which
+        # `dep_ch`s fzf, curl, openssl, etc. before doing any work. Without
+        # them the test exits in 30ms with `error.scraper.parse_failed` and
+        # gives no useful diagnostic. The bash workflow already installs
+        # these — mirror the list. The integration test is gated to
+        # `#![cfg(target_os = "linux")]`, so other matrix legs skip it
+        # without needing the deps.
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
       - name: cargo test --workspace
         working-directory: gui/backend
         run: cargo test --workspace --all-features
@@ -99,6 +111,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install ani-cli runtime deps
+        # Coverage runs `cargo llvm-cov --workspace`, which executes the
+        # same integration test that needs ani-cli's deps. See the matching
+        # comment in the `test` job.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
       - name: Generate lcov
         working-directory: gui/backend
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info

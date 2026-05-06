@@ -90,8 +90,34 @@ jobs:
             mpv \
             ffmpeg \
             aria2
-      - name: Install kcov (for bash coverage)
-        run: sudo apt-get install -y kcov
+      - name: Install kcov runtime deps
+        # kcov needs libdw + libcurl shared libs at runtime. apt-get
+        # picks these up cleanly even though the kcov package itself
+        # was dropped from Ubuntu 24.04.
+        run: |
+          sudo apt-get install -y \
+            libdw1 libcurl4 libstdc++6 zlib1g binutils
+      - name: Cache kcov binary
+        id: cache-kcov
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/kcov
+          key: kcov-v44-${{ runner.os }}
+      - name: Build kcov from source (cache miss)
+        # Ubuntu 24.04 dropped the `kcov` apt package. Build from
+        # source against pinned tag v44; the resulting binary is
+        # cached so subsequent runs skip this step entirely.
+        if: steps.cache-kcov.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y \
+            cmake binutils-dev libcurl4-openssl-dev zlib1g-dev \
+            libdw-dev libiberty-dev libssl-dev g++
+          git clone --depth 1 --branch v44 https://github.com/SimonKagstrom/kcov.git /tmp/kcov-src
+          cd /tmp/kcov-src
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+          make -j"$(nproc)"
+          sudo make install
       - name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
       - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating

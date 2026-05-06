@@ -58,6 +58,14 @@ jobs:
         working-directory: gui/frontend
         run: pnpm install --frozen-lockfile
 
+      - name: Install ani-cli runtime deps
+        # `cargo llvm-cov --workspace` exercises `anicli_run_debug`, which
+        # spawns ./ani-cli — the script `dep_ch`s fzf, curl, openssl, etc.
+        # at startup. Same deps the bash workflow installs.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
+
       - name: Generate Rust lcov
         working-directory: gui/backend
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
