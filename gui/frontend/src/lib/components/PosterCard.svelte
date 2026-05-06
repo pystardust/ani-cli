@@ -73,10 +73,13 @@
 		border-radius: var(--radius-card);
 		overflow: hidden;
 		box-shadow: var(--shadow-card-rest);
-		transition: box-shadow var(--dur-med) var(--ease-out-soft);
-	}
-	.poster-card:hover .poster {
-		box-shadow: var(--shadow-card-hover);
+		/* box-shadow transition removed: every hover→hover-out cycle
+		   triggered a paint cascade across the visible card area.
+		   With ~20 cards per strip × multiple strips, mouse movement
+		   over the page was producing 60–70 ms paint events per
+		   frame on a maximized window. The hover lift via
+		   `transform` already gives the "card is interactive" cue;
+		   the shadow stays at its rest value. */
 	}
 	.poster img {
 		position: absolute;
