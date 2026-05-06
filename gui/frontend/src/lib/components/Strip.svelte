@@ -252,7 +252,12 @@
 
 	.strip-scroll {
 		overflow-x: auto;
-		scroll-snap-type: inline mandatory;
+		/* No snap. Mandatory snap was hijacking initial layout — pulling
+		   the first card flush to the container edge (snapport defaults
+		   to scroll-padding 0, ignoring the rail's leading padding).
+		   It also caused the "snaps to next item on release" feel the
+		   user flagged. Free scroll, native momentum, user parks where
+		   they want. */
 		scrollbar-width: thin;
 		scrollbar-color: var(--ink-300) transparent;
 		cursor: grab;
@@ -279,8 +284,6 @@
 	}
 	.strip-scroll.dragging {
 		cursor: grabbing;
-		/* Skip snap during a drag — fights the user's pointer otherwise. */
-		scroll-snap-type: none;
 	}
 	.strip-scroll:focus-visible {
 		outline: none;
