@@ -232,19 +232,13 @@ describe('shouldRenderDropdown', () => {
 
 	it('returns true when the query has hit MIN_CHARS but found zero matches', () => {
 		expect(
-			shouldRenderDropdown(
-				{ ...base, liveResults: [], queryTrimmed: 'jo' },
-				{ liveMinChars: 2 }
-			)
+			shouldRenderDropdown({ ...base, liveResults: [], queryTrimmed: 'jo' }, { liveMinChars: 2 })
 		).toBe(true);
 	});
 
 	it('returns false when the query is below MIN_CHARS and there are no recents', () => {
 		expect(
-			shouldRenderDropdown(
-				{ ...base, liveResults: [], queryTrimmed: 'j' },
-				{ liveMinChars: 2 }
-			)
+			shouldRenderDropdown({ ...base, liveResults: [], queryTrimmed: 'j' }, { liveMinChars: 2 })
 		).toBe(false);
 	});
 
@@ -255,9 +249,7 @@ describe('shouldRenderDropdown', () => {
 	it('returns false with non-empty (below-MIN_CHARS) query even if there are recents — recents only show on empty-query', () => {
 		// Mirrors the existing branch order in the component: recents
 		// only render when the query is fully empty.
-		expect(
-			shouldRenderDropdown({ ...base, queryTrimmed: 'a', recentsCount: 5 }, opts)
-		).toBe(false);
+		expect(shouldRenderDropdown({ ...base, queryTrimmed: 'a', recentsCount: 5 }, opts)).toBe(false);
 	});
 });
 

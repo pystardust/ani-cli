@@ -89,3 +89,37 @@ export function decideEnterAction(
 	}
 	return { type: 'noop' };
 }
+
+/** State the visibility decision needs from the calling component. */
+export interface DropdownVisibilityState {
+	/** Whether the user has the input focused / dropdown should be open. */
+	dropdownOpen: boolean;
+	/** Live results from the in-flight Kitsu search; `null` until first
+	 *  reply, `[]` when the query produced no matches. */
+	liveResults: readonly unknown[] | null;
+	/** Truthy when the most recent live-search request errored. */
+	liveError: unknown;
+	/** The trimmed query — caller is responsible for `.trim()`. */
+	queryTrimmed: string;
+	/** Number of remembered recent searches in localStorage. */
+	recentsCount: number;
+}
+
+/** Whether the dropdown card has any content to show. The component
+ *  uses this to gate rendering of the wrapper div, so an empty card
+ *  never appears for an empty query with no recent searches. The
+ *  branches mirror the order the markup uses for its inner content
+ *  — keep them in sync if either changes. */
+export function shouldRenderDropdown(
+	state: DropdownVisibilityState,
+	opts: { liveMinChars: number }
+): boolean {
+	if (!state.dropdownOpen) return false;
+	if (state.liveResults && state.liveResults.length > 0) return true;
+	if (state.liveError) return true;
+	if (state.queryTrimmed.length >= opts.liveMinChars && state.liveResults?.length === 0) {
+		return true;
+	}
+	if (state.queryTrimmed.length === 0 && state.recentsCount > 0) return true;
+	return false;
+}

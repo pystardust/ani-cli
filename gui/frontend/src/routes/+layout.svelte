@@ -29,7 +29,8 @@
 		cycleSelectedIdx,
 		decideEnterAction,
 		mergeRecents,
-		parseStoredRecents
+		parseStoredRecents,
+		shouldRenderDropdown
 	} from '$lib/topbar/dropdown';
 
 	let { children } = $props();
@@ -398,7 +399,7 @@
 						Search
 					</button>
 
-					{#if dropdownOpen}
+					{#if shouldRenderDropdown({ dropdownOpen, liveResults, liveError, queryTrimmed: topbarQuery.trim(), recentsCount: recentSearches.length }, { liveMinChars: LIVE_MIN_CHARS })}
 						<div class="topbar-dropdown" role="listbox" aria-label="Search suggestions">
 							{#if liveResults && liveResults.length > 0}
 								{#each liveResults as hit, i (hit.id)}
