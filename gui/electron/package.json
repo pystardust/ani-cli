@@ -59,6 +59,9 @@
 			"executableName": "ani-gui",
 			"artifactName": "${productName}-${version}-${arch}.${ext}",
 			"maintainer": "ani-gui contributors <dev@thirdmovement.net>"
+		},
+		"deb": {
+			"afterInstall": "build-resources/deb-after-install.sh"
 		}
 	}
 }
