@@ -1,0 +1,14 @@
+{
+	"name": "ani-gui-electron",
+	"version": "0.1.0",
+	"description": "Electron shell for ani-gui — spawns the Rust backend as a sidecar and renders the SvelteKit frontend",
+	"private": true,
+	"main": "main.js",
+	"scripts": {
+		"dev": "ELECTRON_DEV=1 electron .",
+		"start": "electron ."
+	},
+	"devDependencies": {
+		"electron": "^33.2.0"
+	}
+}
