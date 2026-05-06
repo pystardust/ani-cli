@@ -7,6 +7,13 @@
 //! 1. Spawns the script with the right argv + env scrubbing.
 //! 2. Reads stdout, strips ANSI, parses the `Selected link:` block.
 //! 3. Returns the resolved URL via `DebugOutput`.
+//!
+//! Linux-only: `ani-cli` is a POSIX-shell script that depends on bash + a
+//! POSIX environment. macOS bash is too old in places to be reliable, and
+//! Windows has no native bash at all. The Rust driver is portable; this
+//! particular integration test isn't.
+
+#![cfg(target_os = "linux")]
 
 use std::path::PathBuf;
 use std::process::Command;

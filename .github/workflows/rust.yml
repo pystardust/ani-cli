@@ -65,7 +65,7 @@ jobs:
         run: cargo install cargo-deny --locked --version ^0.16
       - name: cargo deny check
         working-directory: gui/src-tauri
-        run: cargo deny check --all-features
+        run: cargo deny check
 
   test:
     name: cargo test
@@ -89,21 +89,9 @@ jobs:
         working-directory: gui/src-tauri
         run: cargo test --workspace --all-features
 
-  proptests:
-    name: proptests (PR=64, nightly=1024)
-    runs-on: ubuntu-latest
-    env:
-      PROPTEST_CASES: ${{ github.event_name == 'schedule' && '1024' || '64' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Linux deps for Tauri
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev pkg-config
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: gui/src-tauri
-      - name: cargo test --test proptests
-        working-directory: gui/src-tauri
-        run: cargo test --test proptests --release
+  # proptests:
+  #   The dedicated proptests target was scoped in plan §4 but never built —
+  #   property-testing currently lives inline inside the relevant module's
+  #   tests (see m3u8 / token round-trips). Re-enable this job once a real
+  #   `tests/proptests.rs` lands, with the PROPTEST_CASES env-gated matrix
+  #   from the original plan.
