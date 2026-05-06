@@ -47,6 +47,7 @@
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
+	import { getOrFire, makeKey } from '$lib/play/play-cache';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
@@ -215,20 +216,41 @@
 			});
 	});
 
+	// Background prefetch: warm episode N+1 as soon as the player
+	// mounts so the next-episode click feels instant. Reruns on every
+	// episode swap (since episodeNum is in the dep set), so each new
+	// landing page warms the next one. Skips when there's no next ep
+	// (current == episode_count). The play-cache dedupes across
+	// triggers — a click before the prefetch finishes shares the same
+	// promise.
+	$effect(() => {
+		if (!detail || !config || !hasNext) return;
+		const title = detail.canonical_title;
+		if (!title) return;
+		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config.quality ?? 'best';
+		const targetEp = episodeNum + 1;
+		void getOrFire(makeKey(id, targetEp, mode, quality), () =>
+			play({ title, episode: String(targetEp), mode, quality })
+		).catch(() => {
+			/* the prev/next click handler surfaces errors when it fires */
+		});
+	});
+
 	async function switchToEpisode(targetEp: number) {
 		if (!detail || switchBusy) return;
 		const title = detail.canonical_title;
 		if (!title) return;
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config?.quality ?? 'best';
 		switchBusy = true;
 		playerError = null;
 		try {
-			const session = await play({
-				title,
-				episode: String(targetEp),
-				mode,
-				quality: config?.quality
-			});
+			// Hits the play-cache: ep+1 was prefetched on mount, so the
+			// next-episode click is usually instant.
+			const session = await getOrFire(makeKey(id, targetEp, mode, quality), () =>
+				play({ title, episode: String(targetEp), mode, quality })
+			);
 			// goto navigates within the same route, so the page doesn't
 			// fully unmount — `$effect` above re-fires with the new
 			// session, and hls.js swaps source. The target is built
