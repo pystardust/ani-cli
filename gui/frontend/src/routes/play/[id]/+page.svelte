@@ -39,6 +39,7 @@
 		kitsuEpisodes,
 		kitsuSearch,
 		play,
+		playExternal,
 		settingsGet,
 		type Config,
 		type KitsuAnimeRef,
@@ -298,6 +299,39 @@
 		void switchToEpisode(n);
 	}
 
+	// Hand the currently-playing episode off to the user's mpv (or
+	// whichever player they configured). The backend resolves the same
+	// upstream URL it would for the embedded path; only the terminal
+	// action differs. Errors surface as a short-lived inline notice
+	// rather than the LoadingOverlay so the playing video keeps going.
+	let externalNotice = $state<string | null>(null);
+	let externalBusy = $state(false);
+	async function onOpenExternal() {
+		const title = detail?.canonical_title;
+		if (!title || !config) return;
+		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config.quality ?? 'best';
+		externalBusy = true;
+		externalNotice = `Launching external player for episode ${episodeNum}…`;
+		try {
+			await playExternal({
+				title,
+				episode: String(episodeNum),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null
+			});
+			externalNotice = `Episode ${episodeNum} sent to external player.`;
+		} catch (e) {
+			externalNotice = `External player failed: ${describeError(e)}`;
+		} finally {
+			externalBusy = false;
+			setTimeout(() => {
+				externalNotice = null;
+			}, 4000);
+		}
+	}
+
 	// Keyboard shortcuts: `n` / `p` step episodes. Arrow keys are left
 	// to the <video> element for seek control.
 	$effect(() => {
@@ -373,7 +407,23 @@
 				<span aria-hidden="true">›</span>
 			</button>
 		</div>
+
+		<button
+			type="button"
+			class="ep-btn external"
+			onclick={onOpenExternal}
+			disabled={switchBusy || externalBusy}
+			aria-label="Open this episode in your external player"
+			title="Open in external player"
+		>
+			<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+			<span aria-hidden="true">↗</span>
+		</button>
 	</header>
+
+	{#if externalNotice}
+		<p class="external-notice" role="status">{externalNotice}</p>
+	{/if}
 
 	<!-- The player. video controls are intentionally native — full
 	     keyboard accessibility, no custom shell to maintain. Quality
@@ -532,6 +582,17 @@
 	.ep-btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+	.ep-btn.external {
+		margin-inline-start: auto;
+	}
+	.external-notice {
+		margin: var(--space-3) 0 0;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--text-sm);
+		color: var(--bone-100);
+		background: rgba(0, 0, 0, 0.4);
+		border-radius: var(--radius-2);
 	}
 	.ep-current {
 		display: inline-flex;

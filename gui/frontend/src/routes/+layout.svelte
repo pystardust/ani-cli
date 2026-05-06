@@ -11,7 +11,9 @@
     so the field works from any page. Removes per-route topbars whose
     BackButtons jumped around between pages.
   - Wires the favicon via <svelte:head>.
-  - Hides the rail + topbar on /play so the player gets the full viewport.
+  - Same chrome (rail + topbar) applies everywhere, including /play, so
+    navigation is consistent (the player page used to be full-bleed,
+    which left users without a way to search or jump back to home).
 -->
 <script lang="ts">
 	import '$lib/design/tokens.css';
@@ -36,8 +38,6 @@
 	let { children } = $props();
 
 	// Routes where the chrome should yield to content.
-	const isPlayer = $derived(page.url.pathname.startsWith('/play'));
-
 	// Use the route id (e.g. "/", "/search", "/anime/[id]") instead of the
 	// raw pathname — the static adapter sometimes serves "/index.html" on
 	// the very first paint, which made the Home rail item not light up
@@ -269,201 +269,191 @@
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </svelte:head>
 
-{#if isPlayer}
-	<main class="player-shell">
-		{@render children()}
-	</main>
-{:else}
-	<div class="shell">
-		<aside class="rail" aria-label="Primary navigation">
-			<a class="brand" href={resolve('/')} aria-label="ani-gui — home">
-				<svg
-					class="brand-mark"
-					viewBox="0 0 32 32"
-					width="40"
-					height="40"
-					fill="none"
-					aria-hidden="true"
-				>
-					<!-- Filled brand-color tile reads as a logo, not another
+<div class="shell">
+	<aside class="rail" aria-label="Primary navigation">
+		<a class="brand" href={resolve('/')} aria-label="ani-gui — home">
+			<svg
+				class="brand-mark"
+				viewBox="0 0 32 32"
+				width="40"
+				height="40"
+				fill="none"
+				aria-hidden="true"
+			>
+				<!-- Filled brand-color tile reads as a logo, not another
 					     hairline nav item. Inner perforation pattern in the
 					     ink keeps the filmstrip motif visible. -->
-					<rect x="2" y="2" width="28" height="28" rx="6" fill="var(--brand)" />
-					<rect x="6" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="6" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="6" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="6" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="23.5" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="23.5" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="23.5" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-					<rect x="23.5" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
-				</svg>
-				<span class="brand-word" aria-hidden="true">
-					<span class="brand-word-italic">ani</span><span class="brand-word-dot">·</span><span
-						class="brand-word-italic">gui</span
-					>
-				</span>
-			</a>
-
-			<nav class="nav">
-				<ul>
-					<li>
-						<a
-							href={resolve('/')}
-							class="nav-link"
-							class:active={isHome}
-							aria-current={isHome ? 'page' : undefined}
-						>
-							<span class="nav-mark"><Icon name="home" size={20} /></span>
-							<span class="nav-label">Home</span>
-						</a>
-					</li>
-					<li>
-						<a
-							href={resolve('/search')}
-							class="nav-link"
-							class:active={isSearch}
-							aria-current={isSearch ? 'page' : undefined}
-						>
-							<span class="nav-mark"><Icon name="search" size={20} /></span>
-							<span class="nav-label">Search</span>
-						</a>
-					</li>
-					<li>
-						<a
-							href={resolve('/settings')}
-							class="nav-link"
-							class:active={isSettings}
-							aria-current={isSettings ? 'page' : undefined}
-						>
-							<span class="nav-mark"><Icon name="settings" size={20} /></span>
-							<span class="nav-label">Settings</span>
-						</a>
-					</li>
-					<li class="small">
-						<a
-							href={resolve('/diagnostics')}
-							class="nav-link"
-							class:active={isDiagnostics}
-							aria-current={isDiagnostics ? 'page' : undefined}
-						>
-							<span class="nav-mark"><Icon name="debug" size={18} /></span>
-							<span class="nav-label">Debug</span>
-						</a>
-					</li>
-				</ul>
-			</nav>
-
-			<footer class="rail-foot" aria-hidden="true">
-				<span class="rail-foot-key">v</span>
-				<span class="rail-foot-val">0.1</span>
-			</footer>
-		</aside>
-
-		<div class="main-area">
-			<header class="topbar">
-				{#if canGoBack}
-					<BackButton fallback="/" />
-				{/if}
-				<form
-					class="topbar-search"
-					class:topbar-search-filled={topbarQuery.trim().length > 0}
-					onsubmit={onTopbarSubmit}
-					role="search"
+				<rect x="2" y="2" width="28" height="28" rx="6" fill="var(--brand)" />
+				<rect x="6" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="6" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="6" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="6" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="23.5" y="6" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="23.5" y="11" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="23.5" y="16" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+				<rect x="23.5" y="21" width="2.5" height="2.5" rx="0.5" fill="var(--brand-ink)" />
+			</svg>
+			<span class="brand-word" aria-hidden="true">
+				<span class="brand-word-italic">ani</span><span class="brand-word-dot">·</span><span
+					class="brand-word-italic">gui</span
 				>
-					<span class="topbar-search-icon" aria-hidden="true">
-						<Icon name="search" size={18} />
-					</span>
-					<input
-						bind:this={topbarInputEl}
-						bind:value={topbarQuery}
-						type="search"
-						autocomplete="off"
-						spellcheck="false"
-						placeholder={isSearch ? 'Refine your search…' : 'Search anime…'}
-						aria-label="Search anime"
-						oninput={onInput}
-						onfocus={onInputFocus}
-						onblur={onInputBlur}
-						onkeydown={onInputKey}
-					/>
-					<span class="topbar-search-hint" aria-hidden="true">
-						{#if liveBusy}
-							<span class="topbar-search-busy">…</span>
-						{:else}
-							<kbd>/</kbd>
-						{/if}
-					</span>
-					<!-- Submit on Enter; the explicit button is sr-only for a11y. -->
-					<button type="submit" class="sr-only" disabled={topbarQuery.trim().length === 0}>
-						Search
-					</button>
+			</span>
+		</a>
 
-					{#if shouldRenderDropdown({ dropdownOpen, liveResults, liveError, queryTrimmed: topbarQuery.trim(), recentsCount: recentSearches.length }, { liveMinChars: LIVE_MIN_CHARS })}
-						<div class="topbar-dropdown" role="listbox" aria-label="Search suggestions">
-							{#if liveResults && liveResults.length > 0}
-								{#each liveResults as hit, i (hit.id)}
-									{@const poster = hitPoster(hit)}
-									<a
-										class="topbar-hit"
-										class:selected={i === selectedIdx}
-										href={resolve('/anime/[id]', { id: hit.id })}
-										role="option"
-										aria-selected={i === selectedIdx}
-										onmousedown={(e) => {
-											// mousedown fires before blur, so this handler
-											// runs while the dropdown is still open.
-											e.preventDefault();
-											navigateToHit(hit);
-										}}
-									>
-										<span class="topbar-hit-poster">
-											{#if poster}
-												<img src={poster} alt="" loading="lazy" decoding="async" />
-											{/if}
-										</span>
-										<span class="topbar-hit-text">
-											<span class="topbar-hit-title">{hit.canonical_title}</span>
-											<span class="topbar-hit-meta">{hitMeta(hit)}</span>
-										</span>
-									</a>
-								{/each}
-							{:else if liveError}
-								<p class="topbar-dropdown-empty">Couldn't reach Kitsu.</p>
-							{:else if liveResults?.length === 0 && topbarQuery.trim().length >= LIVE_MIN_CHARS}
-								<p class="topbar-dropdown-empty">No matches.</p>
-							{:else if !topbarQuery.trim() && recentSearches.length > 0}
-								<p class="topbar-dropdown-section">Recent</p>
-								{#each recentSearches as q (q)}
-									<button
-										type="button"
-										class="topbar-recent"
-										onmousedown={(e) => {
-											e.preventDefault();
-											onRecentClick(q);
-										}}
-									>
-										<span aria-hidden="true">↩</span>
-										<span>{q}</span>
-									</button>
-								{/each}
-							{/if}
-						</div>
+		<nav class="nav">
+			<ul>
+				<li>
+					<a
+						href={resolve('/')}
+						class="nav-link"
+						class:active={isHome}
+						aria-current={isHome ? 'page' : undefined}
+					>
+						<span class="nav-mark"><Icon name="home" size={20} /></span>
+						<span class="nav-label">Home</span>
+					</a>
+				</li>
+				<li>
+					<a
+						href={resolve('/search')}
+						class="nav-link"
+						class:active={isSearch}
+						aria-current={isSearch ? 'page' : undefined}
+					>
+						<span class="nav-mark"><Icon name="search" size={20} /></span>
+						<span class="nav-label">Search</span>
+					</a>
+				</li>
+				<li>
+					<a
+						href={resolve('/settings')}
+						class="nav-link"
+						class:active={isSettings}
+						aria-current={isSettings ? 'page' : undefined}
+					>
+						<span class="nav-mark"><Icon name="settings" size={20} /></span>
+						<span class="nav-label">Settings</span>
+					</a>
+				</li>
+				<li class="small">
+					<a
+						href={resolve('/diagnostics')}
+						class="nav-link"
+						class:active={isDiagnostics}
+						aria-current={isDiagnostics ? 'page' : undefined}
+					>
+						<span class="nav-mark"><Icon name="debug" size={18} /></span>
+						<span class="nav-label">Debug</span>
+					</a>
+				</li>
+			</ul>
+		</nav>
+
+		<footer class="rail-foot" aria-hidden="true">
+			<span class="rail-foot-key">v</span>
+			<span class="rail-foot-val">0.1</span>
+		</footer>
+	</aside>
+
+	<div class="main-area">
+		<header class="topbar">
+			{#if canGoBack}
+				<BackButton fallback="/" />
+			{/if}
+			<form
+				class="topbar-search"
+				class:topbar-search-filled={topbarQuery.trim().length > 0}
+				onsubmit={onTopbarSubmit}
+				role="search"
+			>
+				<span class="topbar-search-icon" aria-hidden="true">
+					<Icon name="search" size={18} />
+				</span>
+				<input
+					bind:this={topbarInputEl}
+					bind:value={topbarQuery}
+					type="search"
+					autocomplete="off"
+					spellcheck="false"
+					placeholder={isSearch ? 'Refine your search…' : 'Search anime…'}
+					aria-label="Search anime"
+					oninput={onInput}
+					onfocus={onInputFocus}
+					onblur={onInputBlur}
+					onkeydown={onInputKey}
+				/>
+				<span class="topbar-search-hint" aria-hidden="true">
+					{#if liveBusy}
+						<span class="topbar-search-busy">…</span>
+					{:else}
+						<kbd>/</kbd>
 					{/if}
-				</form>
-			</header>
-			<main class="content">
-				{@render children()}
-			</main>
-		</div>
+				</span>
+				<!-- Submit on Enter; the explicit button is sr-only for a11y. -->
+				<button type="submit" class="sr-only" disabled={topbarQuery.trim().length === 0}>
+					Search
+				</button>
+
+				{#if shouldRenderDropdown({ dropdownOpen, liveResults, liveError, queryTrimmed: topbarQuery.trim(), recentsCount: recentSearches.length }, { liveMinChars: LIVE_MIN_CHARS })}
+					<div class="topbar-dropdown" role="listbox" aria-label="Search suggestions">
+						{#if liveResults && liveResults.length > 0}
+							{#each liveResults as hit, i (hit.id)}
+								{@const poster = hitPoster(hit)}
+								<a
+									class="topbar-hit"
+									class:selected={i === selectedIdx}
+									href={resolve('/anime/[id]', { id: hit.id })}
+									role="option"
+									aria-selected={i === selectedIdx}
+									onmousedown={(e) => {
+										// mousedown fires before blur, so this handler
+										// runs while the dropdown is still open.
+										e.preventDefault();
+										navigateToHit(hit);
+									}}
+								>
+									<span class="topbar-hit-poster">
+										{#if poster}
+											<img src={poster} alt="" loading="lazy" decoding="async" />
+										{/if}
+									</span>
+									<span class="topbar-hit-text">
+										<span class="topbar-hit-title">{hit.canonical_title}</span>
+										<span class="topbar-hit-meta">{hitMeta(hit)}</span>
+									</span>
+								</a>
+							{/each}
+						{:else if liveError}
+							<p class="topbar-dropdown-empty">Couldn't reach Kitsu.</p>
+						{:else if liveResults?.length === 0 && topbarQuery.trim().length >= LIVE_MIN_CHARS}
+							<p class="topbar-dropdown-empty">No matches.</p>
+						{:else if !topbarQuery.trim() && recentSearches.length > 0}
+							<p class="topbar-dropdown-section">Recent</p>
+							{#each recentSearches as q (q)}
+								<button
+									type="button"
+									class="topbar-recent"
+									onmousedown={(e) => {
+										e.preventDefault();
+										onRecentClick(q);
+									}}
+								>
+									<span aria-hidden="true">↩</span>
+									<span>{q}</span>
+								</button>
+							{/each}
+						{/if}
+					</div>
+				{/if}
+			</form>
+		</header>
+		<main class="content">
+			{@render children()}
+		</main>
 	</div>
-{/if}
+</div>
 
 <style>
-	.player-shell {
-		min-block-size: 100dvh;
-	}
-
 	.shell {
 		display: grid;
 		grid-template-columns: var(--rail-width) 1fr;

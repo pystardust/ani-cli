@@ -22,7 +22,6 @@
 		kitsuEpisodes,
 		kitsuSearch,
 		play,
-		playExternal,
 		settingsGet,
 		settingsPut,
 		type Config,
@@ -539,32 +538,6 @@
 		}
 	}
 
-	async function startExternal(ep: number) {
-		const title = playTitle();
-		if (!title) {
-			notify('No title available for playback yet.');
-			return;
-		}
-		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
-		// Same overlay pattern as the embedded path — the resolution
-		// wait is the same chain, only the terminal action differs.
-		actionBusy = true;
-		actionNotice = null;
-		try {
-			await playExternal({
-				title,
-				episode: String(ep),
-				mode,
-				quality: config?.quality
-			});
-			actionBusy = false;
-			notify(`Episode ${ep} sent to external player.`);
-		} catch (e) {
-			actionBusy = false;
-			notify(describeErrorString(e));
-		}
-	}
-
 	function onPlay() {
 		void startPlay(defaultEpisode());
 	}
@@ -574,9 +547,6 @@
 		// the terminal action would invoke aria2c via ani-cli. Tracked
 		// as a follow-up; the toast keeps the button discoverable.
 		notify('Downloads land in a follow-up — the backend chain is the same.');
-	}
-	function onExternal() {
-		void startExternal(defaultEpisode());
 	}
 	function onPickEpisode(n: number) {
 		void startPlay(n);
@@ -664,10 +634,6 @@
 					<button type="button" class="btn btn-outline" onclick={onDownload}>
 						<span aria-hidden="true">↓</span>
 						<span>Download</span>
-					</button>
-					<button type="button" class="btn btn-ghost" onclick={onExternal} disabled={actionBusy}>
-						<span>External player</span>
-						<span aria-hidden="true">↗</span>
 					</button>
 				</div>
 
