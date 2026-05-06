@@ -90,6 +90,7 @@ pub fn run() -> Result<()> {
             commands::ipc::cmd_history_list,
             commands::ipc::cmd_history_clear,
             commands::ipc::cmd_open_external_player,
+            commands::ipc::cmd_create_session,
         ])
         .setup(move |app| {
             // Tauri 2 owns its own runtime; we keep ours alive for the

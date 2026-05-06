@@ -13,11 +13,14 @@ pub mod external_player;
 pub mod history;
 pub mod ipc;
 pub mod proxy_url;
+pub mod session;
 
 pub use app_info::app_info;
 pub use external_player::{open_external_player, LaunchArgs};
 pub use history::{history_clear, history_list};
 pub use ipc::{
-    cmd_app_info, cmd_history_clear, cmd_history_list, cmd_open_external_player, cmd_proxy_base_url,
+    cmd_app_info, cmd_create_session, cmd_history_clear, cmd_history_list,
+    cmd_open_external_player, cmd_proxy_base_url,
 };
 pub use proxy_url::proxy_base_url;
+pub use session::{create_session, CreateSessionArgs, CreateSessionResponse};

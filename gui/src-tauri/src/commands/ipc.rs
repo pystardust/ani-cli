@@ -10,6 +10,7 @@ use tauri::State;
 use crate::app::AppState;
 use crate::commands::{
     app_info, external_player, history as h_inner, proxy_url::proxy_base_url as inner_proxy,
+    session as session_inner,
 };
 use crate::error::Result;
 use crate::history::HistoryEntry;
@@ -42,4 +43,14 @@ pub fn cmd_history_clear(state: State<'_, AppState>) -> Result<()> {
 #[tauri::command]
 pub fn cmd_open_external_player(args: external_player::LaunchArgs) -> Result<()> {
     external_player::open_external_player(&args)
+}
+
+/// Frontend → backend: register a stream session and get back the proxy
+/// URL the embedded `<video>` / hls.js should load.
+#[tauri::command]
+pub fn cmd_create_session(
+    state: State<'_, AppState>,
+    args: session_inner::CreateSessionArgs,
+) -> Result<session_inner::CreateSessionResponse> {
+    session_inner::create_session(&state, &args)
 }
