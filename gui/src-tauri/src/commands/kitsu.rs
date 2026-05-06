@@ -14,7 +14,7 @@
 //!   change rarely.
 
 use crate::app::AppState;
-use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL, TRENDING_TTL};
+use crate::cache::ttl::{ANIME_DETAIL_TTL, DISCOVERY_TTL, EPISODES_TTL, TITLE_MATCH_TTL, TRENDING_TTL};
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
 use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
@@ -145,9 +145,42 @@ pub async fn kitsu_episodes(
         .episodes(anime_id, p, EPISODES_PAGE_LIMIT)
         .await?;
     if let Ok(body) = serde_json::to_string(&eps) {
-        let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
+        let _ = meta_cache_put(&state.cache_pool, &key, &body, EPISODES_TTL.as_secs());
     }
     Ok(eps)
+}
+
+/// Title-match cache: maps `(allmanga_title, cour) → kitsu_id`. Stored
+/// in the shared `meta_cache` table under a `title-match:` key prefix
+/// so the home page's Continue Watching strip skips a kitsuSearch +
+/// pickKitsuMatch round-trip on subsequent loads.
+///
+/// Title is normalized (trim + lowercase) so cosmetic whitespace /
+/// case differences hash to the same row. TTL is [`TITLE_MATCH_TTL`]
+/// (30 days) — the title→id mapping rarely changes and re-resolving
+/// is cheap when it does (just a stale-id detection on the detail
+/// fetch, then re-search).
+fn title_match_key(title: &str, cour: u32) -> String {
+    let normalized = title.trim().to_lowercase();
+    format!("title-match:{normalized}:c{cour}")
+}
+
+/// Read the cached `(title, cour) → kitsu_id` mapping. Returns `None`
+/// on miss; errors propagate the SQLite read failure.
+pub fn title_match_get(state: &AppState, title: &str, cour: u32) -> Result<Option<String>> {
+    meta_cache_get(&state.cache_pool, &title_match_key(title, cour))
+}
+
+/// Persist a `(title, cour) → kitsu_id` mapping under TITLE_MATCH_TTL.
+/// Idempotent — re-puts overwrite the prior value, which is the
+/// behaviour the picker wants when Kitsu re-catalogues an entry.
+pub fn title_match_put(state: &AppState, title: &str, cour: u32, kitsu_id: &str) -> Result<()> {
+    meta_cache_put(
+        &state.cache_pool,
+        &title_match_key(title, cour),
+        kitsu_id,
+        TITLE_MATCH_TTL.as_secs(),
+    )
 }
 
 /// Fetch a single anime by Kitsu id. Cache key: `kitsu:anime:<id>`.
@@ -387,5 +420,68 @@ mod tests {
         let state = state_with_kitsu_at(&mock.uri());
         assert!(kitsu_search(&state, "anything").await.is_err());
         assert!(kitsu_search(&state, "anything").await.is_err());
+    }
+
+    // — Title-match cache —————————————————————————————————————————————
+
+    #[test]
+    fn title_match_cache_round_trips_for_a_given_title_and_cour() {
+        let state = state_with_kitsu_at("http://unused");
+        title_match_put(&state, "Stone Ocean Part 2", 2, "kitsu-id-42").expect("put ok");
+        let got = title_match_get(&state, "Stone Ocean Part 2", 2).expect("get ok");
+        assert_eq!(got, Some("kitsu-id-42".to_string()));
+    }
+
+    #[test]
+    fn title_match_cache_normalizes_whitespace_and_case() {
+        // Normalization makes "  STONE OCEAN  PART 2  " hash to the
+        // same row as "stone ocean  part 2". (Inner whitespace is left
+        // alone — only trim + lowercase — but that's enough to soak
+        // up the common variations from ani-cli's hsts.)
+        let state = state_with_kitsu_at("http://unused");
+        title_match_put(&state, "Stone Ocean", 1, "id-1").expect("put");
+        let got_lc = title_match_get(&state, "stone ocean", 1).expect("get lowercased");
+        let got_padded = title_match_get(&state, "  STONE OCEAN  ", 1).expect("get padded");
+        assert_eq!(got_lc, Some("id-1".to_string()));
+        assert_eq!(got_padded, Some("id-1".to_string()));
+    }
+
+    #[test]
+    fn title_match_cache_separates_entries_by_cour() {
+        // Cour is part of the key — Stone Ocean Part 1 and Part 2
+        // must not collide on the cache row.
+        let state = state_with_kitsu_at("http://unused");
+        title_match_put(&state, "Stone Ocean", 1, "id-part1").expect("put p1");
+        title_match_put(&state, "Stone Ocean", 2, "id-part2").expect("put p2");
+        assert_eq!(
+            title_match_get(&state, "Stone Ocean", 1).expect("get p1"),
+            Some("id-part1".to_string())
+        );
+        assert_eq!(
+            title_match_get(&state, "Stone Ocean", 2).expect("get p2"),
+            Some("id-part2".to_string())
+        );
+    }
+
+    #[test]
+    fn title_match_cache_returns_none_for_unknown_titles() {
+        let state = state_with_kitsu_at("http://unused");
+        assert_eq!(
+            title_match_get(&state, "Nothing here", 1).expect("get ok"),
+            None
+        );
+    }
+
+    #[test]
+    fn title_match_cache_overwrites_on_re_put() {
+        // When the picker resolves a different kitsu_id later (a
+        // re-cataloguing on Kitsu, say), the latest put wins.
+        let state = state_with_kitsu_at("http://unused");
+        title_match_put(&state, "Demon Slayer", 1, "old").expect("put old");
+        title_match_put(&state, "Demon Slayer", 1, "new").expect("put new");
+        assert_eq!(
+            title_match_get(&state, "Demon Slayer", 1).expect("get"),
+            Some("new".to_string())
+        );
     }
 }

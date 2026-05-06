@@ -9,6 +9,8 @@ import {
 	kitsuAnimeDetail,
 	kitsuEpisodes,
 	kitsuSearch,
+	kitsuTitleMatchGet,
+	kitsuTitleMatchPut,
 	kitsuTopRated,
 	kitsuTrending,
 	openExternalPlayer,
@@ -226,6 +228,36 @@ describe('kitsuTopRated', () => {
 		mockedInvoke.mockResolvedValue([]);
 		await kitsuTopRated();
 		expect(mockedInvoke).toHaveBeenCalledWith('cmd_kitsu_top_rated');
+	});
+});
+
+describe('kitsuTitleMatchGet', () => {
+	it('passes title + cour and returns the cached kitsu id', async () => {
+		mockedInvoke.mockResolvedValue('kitsu-id-42');
+		const got = await kitsuTitleMatchGet('Stone Ocean Part 2', 2);
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_title_match_get', {
+			title: 'Stone Ocean Part 2',
+			cour: 2
+		});
+		expect(got).toBe('kitsu-id-42');
+	});
+
+	it('returns null on cache miss', async () => {
+		mockedInvoke.mockResolvedValue(null);
+		const got = await kitsuTitleMatchGet('Whatever', 1);
+		expect(got).toBeNull();
+	});
+});
+
+describe('kitsuTitleMatchPut', () => {
+	it('passes title + cour + kitsuId under the camelCase keys the IPC handler expects', async () => {
+		mockedInvoke.mockResolvedValue(undefined);
+		await kitsuTitleMatchPut('Demon Slayer', 1, 'kitsu-x');
+		expect(mockedInvoke).toHaveBeenCalledWith('cmd_title_match_put', {
+			title: 'Demon Slayer',
+			cour: 1,
+			kitsuId: 'kitsu-x'
+		});
 	});
 });
 

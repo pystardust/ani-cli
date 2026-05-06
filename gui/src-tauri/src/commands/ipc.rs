@@ -98,6 +98,31 @@ pub async fn cmd_kitsu_episodes(
     kitsu_inner::kitsu_episodes(&state, &anime_id, page.unwrap_or(1)).await
 }
 
+/// Frontend → backend: read the cached `(title, cour) → kitsu_id`
+/// mapping for a Continue Watching row. Returns `None` on miss; caller
+/// is expected to fall through to a fresh kitsuSearch + pickKitsuMatch
+/// and re-`put` on success.
+#[tauri::command]
+pub fn cmd_title_match_get(
+    state: State<'_, AppState>,
+    title: String,
+    cour: u32,
+) -> Result<Option<String>> {
+    kitsu_inner::title_match_get(&state, &title, cour)
+}
+
+/// Frontend → backend: persist a `(title, cour) → kitsu_id` mapping
+/// under TITLE_MATCH_TTL (30d).
+#[tauri::command]
+pub fn cmd_title_match_put(
+    state: State<'_, AppState>,
+    title: String,
+    cour: u32,
+    kitsu_id: String,
+) -> Result<()> {
+    kitsu_inner::title_match_put(&state, &title, cour, &kitsu_id)
+}
+
 /// Frontend → backend: read user settings (defaults when file is absent).
 #[tauri::command]
 pub fn cmd_settings_get(state: State<'_, AppState>) -> Result<Config> {

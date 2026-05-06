@@ -132,6 +132,8 @@ pub fn run() -> Result<()> {
             commands::ipc::cmd_kitsu_trending,
             commands::ipc::cmd_kitsu_top_rated,
             commands::ipc::cmd_kitsu_episodes,
+            commands::ipc::cmd_title_match_get,
+            commands::ipc::cmd_title_match_put,
             commands::ipc::cmd_settings_get,
             commands::ipc::cmd_settings_put,
         ])

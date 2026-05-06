@@ -166,6 +166,25 @@ export function kitsuEpisodes(animeId: string, page: number = 1): Promise<KitsuE
 	return invoke<KitsuEpisode[]>('cmd_kitsu_episodes', { animeId, page });
 }
 
+/**
+ * Read the cached `(title, cour) → kitsu_id` mapping for a Continue
+ * Watching row. Returns `null` on miss; caller should fall through to
+ * a fresh `kitsuSearch` + `pickKitsuMatch` and `kitsuTitleMatchPut`
+ * the resolved id back. The backend stores this under TITLE_MATCH_TTL
+ * (30 days) — the title→id mapping rarely changes.
+ */
+export function kitsuTitleMatchGet(title: string, cour: number): Promise<string | null> {
+	return invoke<string | null>('cmd_title_match_get', { title, cour });
+}
+
+/**
+ * Persist a `(title, cour) → kitsu_id` mapping resolved by the
+ * frontend picker. Idempotent — re-puts overwrite any prior value.
+ */
+export function kitsuTitleMatchPut(title: string, cour: number, kitsuId: string): Promise<void> {
+	return invoke<void>('cmd_title_match_put', { title, cour, kitsuId });
+}
+
 export function settingsGet(): Promise<Config> {
 	return invoke<Config>('cmd_settings_get');
 }

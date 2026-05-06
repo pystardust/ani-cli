@@ -23,7 +23,6 @@
 		historyList,
 		imageProxyUrl,
 		kitsuEpisodes,
-		kitsuSearch,
 		kitsuTopRated,
 		kitsuTrending,
 		type HistoryEntry,
@@ -33,10 +32,10 @@
 	import { accentFor } from '$lib/design/accent';
 	import {
 		EPISODES_KITSU_PAGE_SIZE,
-		pickKitsuMatch,
 		resolveHistoryEntry,
 		resumeQueryString
 	} from '$lib/history/resolve';
+	import { resolveKitsuMatch } from '$lib/history/match';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 
@@ -106,15 +105,13 @@
 				// degrades gracefully (anime poster + entry's own title).
 				h.forEach((entry: HistoryEntry) => {
 					const preliminary = resolveHistoryEntry(entry, null);
-					kitsuSearch(preliminary.searchTitle)
-						.then((hits: KitsuAnimeRef[]) => {
-							// Kitsu's text search outranks Part 1 over its
-							// sequels even when the query has the cour suffix.
-							// pickKitsuMatch post-filters: prefer a hit whose
-							// canonical title carries the same "Part N"
-							// (anchored on word boundaries). For non-cour
-							// entries this is equivalent to hits[0].
-							const match = pickKitsuMatch(hits, preliminary);
+					// resolveKitsuMatch checks the title-match cache first
+					// (TITLE_MATCH_TTL = 30d), short-circuiting the
+					// kitsuSearch + pickKitsuMatch round-trip on subsequent
+					// loads. On miss it runs the live search + picker and
+					// persists the resolved kitsu_id back into the cache.
+					void resolveKitsuMatch(preliminary)
+						.then((match) => {
 							historyMatches = { ...historyMatches, [entry.id]: match };
 							if (!match) return;
 							const target = resolveHistoryEntry(entry, match);

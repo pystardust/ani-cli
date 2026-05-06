@@ -13,6 +13,13 @@ pub const DISCOVERY_TTL: Duration = Duration::from_secs(6 * 60 * 60); // 6h
 /// TTL for per-anime metadata (`/anime/:id`).
 pub const ANIME_DETAIL_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7d
 
+/// TTL for episode lists. Shorter than ANIME_DETAIL_TTL because new
+/// episodes appear weekly for currently-airing shows; a 1-day window
+/// caps staleness at a manageable level without burning Kitsu calls.
+/// For finished shows, the data is stable, but re-fetching once a day
+/// is cheap.
+pub const EPISODES_TTL: Duration = Duration::from_secs(24 * 60 * 60); // 1d
+
 /// TTL for title-match cache (Kitsu/AniList → allanime id).
 pub const TITLE_MATCH_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60); // 30d
 
@@ -26,7 +33,8 @@ mod tests {
         // the freshest signal, title-match is the most stable. Asserting
         // the order makes accidental swaps loud.
         assert!(TRENDING_TTL < DISCOVERY_TTL);
-        assert!(DISCOVERY_TTL < ANIME_DETAIL_TTL);
+        assert!(DISCOVERY_TTL < EPISODES_TTL);
+        assert!(EPISODES_TTL < ANIME_DETAIL_TTL);
         assert!(ANIME_DETAIL_TTL < TITLE_MATCH_TTL);
     }
 }
