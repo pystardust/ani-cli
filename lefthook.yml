@@ -17,27 +17,34 @@
 pre-commit:
   parallel: true
   commands:
+    # `root:` makes the command run from that directory and rewrites
+    # {staged_files} to be relative to it; globs are therefore matched
+    # against the rewritten (root-relative) paths.
+
     frontend-lint:
-      glob: "gui/frontend/**/*.{ts,svelte,js,mjs,cjs,json,css,html}"
+      glob: "**/*.{ts,svelte,js,mjs,cjs,json,css,html}"
       root: "gui/frontend/"
       run: pnpm run lint
 
     frontend-check:
-      glob: "gui/frontend/**/*.{ts,svelte}"
+      glob: "**/*.{ts,svelte}"
       root: "gui/frontend/"
       run: pnpm run check
 
     frontend-test:
-      glob: "gui/frontend/**/*.{ts,svelte}"
+      glob: "**/*.{ts,svelte}"
       root: "gui/frontend/"
       run: pnpm test
 
     rust-fmt:
-      glob: "gui/backend/**/*.rs"
+      glob: "**/*.rs"
       root: "gui/backend/"
       run: cargo fmt --all -- --check
 
     shellcheck:
+      # No root: shellcheck is invoked from the repo root with the file
+      # list, so the glob and the {staged_files} substitution both stay
+      # at repo-root scope.
       glob: "{ani-cli,tests/bash/**/*.{sh,bats},tests/arch/*.sh,tools/*.sh}"
       run: shellcheck {staged_files}
 
@@ -45,11 +52,11 @@ pre-push:
   parallel: true
   commands:
     rust-clippy:
-      glob: "gui/backend/**/*.{rs,toml}"
+      glob: "**/*.{rs,toml}"
       root: "gui/backend/"
       run: cargo clippy --all-targets --all-features -- -D warnings
 
     rust-test:
-      glob: "gui/backend/**/*.{rs,toml}"
+      glob: "**/*.{rs,toml}"
       root: "gui/backend/"
       run: cargo test --all-features
