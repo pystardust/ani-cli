@@ -4,9 +4,15 @@
   "version": "0.1.0",
   "identifier": "net.thirdmovement.ani-gui",
   "build": {
-    "beforeDevCommand": "pnpm --dir ../frontend dev",
+    "beforeDevCommand": {
+      "script": "pnpm dev",
+      "cwd": "../frontend"
+    },
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "pnpm --dir ../frontend build",
+    "beforeBuildCommand": {
+      "script": "pnpm build",
+      "cwd": "../frontend"
+    },
     "frontendDist": "../frontend/build"
   },
   "app": {
