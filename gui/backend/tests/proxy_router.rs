@@ -19,8 +19,8 @@
 //! session.
 
 use ani_gui::proxy::{
-    bind_loopback, build_router, sign_segment, AppSecret, ProxyOrigin, ProxyState, SessionId,
-    SessionTable, StreamSession,
+    bind_loopback, build_router, sign_segment, AppSecret, MediaKind, ProxyOrigin, ProxyState,
+    SessionId, SessionTable, StreamSession,
 };
 use base64::Engine;
 use url::Url;
@@ -69,6 +69,15 @@ async fn start_harness() -> Harness {
 fn make_session(h: &Harness, master_path: &str) -> SessionId {
     let upstream_url = Url::parse(&format!("{}{}", h.mock.uri(), master_path)).unwrap();
     let sess = StreamSession::new(upstream_url, "https://allmanga.to", None);
+    let id = sess.id;
+    h.sessions.insert(sess);
+    id
+}
+
+fn make_mp4_session(h: &Harness, mp4_path: &str) -> SessionId {
+    let upstream_url = Url::parse(&format!("{}{}", h.mock.uri(), mp4_path)).unwrap();
+    let sess =
+        StreamSession::new_with_kind(upstream_url, MediaKind::Mp4, "https://allmanga.to", None);
     let id = sess.id;
     h.sessions.insert(sess);
     id
@@ -236,6 +245,121 @@ async fn subtitle_route_returns_404_when_session_has_no_subtitle() {
     let url = format!("{}/s/{}/sub.vtt", h.proxy_base, session.as_string());
     let resp = reqwest::get(&url).await.expect("proxy responds");
     assert_eq!(resp.status(), 404);
+}
+
+/// Direct-MP4 upstreams (wixmp, sharepoint, fast4speed) need a different
+/// proxy path than HLS — no manifest to rewrite, just byte-stream the
+/// response through. The renderer feeds `/s/<id>/file.mp4` to a plain
+/// `<video src=...>` instead of hls.js, so the proxy must:
+///   - return 200 with `content-type: video/mp4` for full requests,
+///   - forward `Range` headers and pass back 206 + `Content-Range`,
+///   - propagate the upstream `Accept-Ranges: bytes` header so the
+///     renderer surfaces a working scrub bar.
+#[tokio::test]
+async fn mp4_route_streams_full_body_with_video_mp4_content_type() {
+    let h = start_harness().await;
+    let body = b"\x00\x00\x00\x18ftyp...mp4-bytes-here".to_vec();
+    Mock::given(method("GET"))
+        .and(path("/file.mp4"))
+        .and(header("referer", "https://allmanga.to"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "video/mp4")
+                .insert_header("accept-ranges", "bytes")
+                .insert_header("content-length", &body.len().to_string())
+                .set_body_bytes(body.clone()),
+        )
+        .mount(&h.mock)
+        .await;
+
+    let session = make_mp4_session(&h, "/file.mp4");
+    let url = format!("{}/s/{}/file.mp4", h.proxy_base, session.as_string());
+    let resp = reqwest::get(&url).await.expect("proxy responds");
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .map(|v| v.to_str().unwrap()),
+        Some("video/mp4"),
+        "proxy preserves upstream content-type"
+    );
+    assert_eq!(
+        resp.headers()
+            .get("accept-ranges")
+            .map(|v| v.to_str().unwrap()),
+        Some("bytes"),
+        "Accept-Ranges propagates so the player shows a scrub bar",
+    );
+    let got = resp.bytes().await.unwrap().to_vec();
+    assert_eq!(got, body);
+}
+
+#[tokio::test]
+async fn mp4_route_forwards_range_header_and_returns_206() {
+    let h = start_harness().await;
+    // Mock specifically for the Range request — wiremock matches the
+    // header and responds with the partial-content shape.
+    let partial = b"FTYP-BYTES".to_vec();
+    Mock::given(method("GET"))
+        .and(path("/file.mp4"))
+        .and(header("range", "bytes=0-9"))
+        .and(header("referer", "https://allmanga.to"))
+        .respond_with(
+            ResponseTemplate::new(206)
+                .insert_header("content-type", "video/mp4")
+                .insert_header("content-range", "bytes 0-9/1024")
+                .insert_header("accept-ranges", "bytes")
+                .insert_header("content-length", "10")
+                .set_body_bytes(partial.clone()),
+        )
+        .mount(&h.mock)
+        .await;
+
+    let session = make_mp4_session(&h, "/file.mp4");
+    let url = format!("{}/s/{}/file.mp4", h.proxy_base, session.as_string());
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(&url)
+        .header("range", "bytes=0-9")
+        .send()
+        .await
+        .expect("proxy responds");
+    assert_eq!(resp.status(), 206);
+    assert_eq!(
+        resp.headers()
+            .get("content-range")
+            .map(|v| v.to_str().unwrap()),
+        Some("bytes 0-9/1024"),
+        "Content-Range propagates back from upstream",
+    );
+    let got = resp.bytes().await.unwrap().to_vec();
+    assert_eq!(got, partial);
+}
+
+/// Wrong-endpoint contract: hitting `/master.m3u8` on an MP4-kind session
+/// or `/file.mp4` on an HLS-kind session should be a clean 415 — not a
+/// hung manifest fetch (the existing bug).
+#[tokio::test]
+async fn master_m3u8_route_rejects_mp4_session_with_415() {
+    let h = start_harness().await;
+    let session = make_mp4_session(&h, "/file.mp4");
+    let url = format!("{}/s/{}/master.m3u8", h.proxy_base, session.as_string());
+    let resp = reqwest::get(&url).await.unwrap();
+    assert_eq!(
+        resp.status(),
+        415,
+        "HLS endpoint refuses MP4 sessions instead of trying to rewrite",
+    );
+}
+
+#[tokio::test]
+async fn mp4_route_rejects_hls_session_with_415() {
+    let h = start_harness().await;
+    let session = make_session(&h, "/master.m3u8");
+    let url = format!("{}/s/{}/file.mp4", h.proxy_base, session.as_string());
+    let resp = reqwest::get(&url).await.unwrap();
+    assert_eq!(resp.status(), 415, "MP4 endpoint refuses HLS sessions",);
 }
 
 #[tokio::test]
