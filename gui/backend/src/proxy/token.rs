@@ -277,6 +277,54 @@ mod tests {
         AppSecret::from_bytes([7u8; 32])
     }
 
+    /// ani-cli's "Selected link:" can be either an HLS master playlist
+    /// (`*.m3u8`) or a direct MP4 (`*.mp4` from wixmp/sharepoint/etc).
+    /// The proxy needs to know which so it can either rewrite the
+    /// manifest or stream the bytes through with `Range` support; the
+    /// frontend needs to know which so it can pick hls.js vs a plain
+    /// `<video src=...>`. URL-extension detection is the fast path.
+    #[test]
+    fn media_kind_from_url_detects_hls() {
+        let url = url::Url::parse("https://example.com/abc/master.m3u8").unwrap();
+        assert_eq!(MediaKind::from_url(&url), Some(MediaKind::Hls));
+    }
+
+    #[test]
+    fn media_kind_from_url_detects_mp4() {
+        let url =
+            url::Url::parse("https://video.wixstatic.com/video/bd1bd7_xxxx/1080p/mp4/file.mp4")
+                .unwrap();
+        assert_eq!(MediaKind::from_url(&url), Some(MediaKind::Mp4));
+    }
+
+    #[test]
+    fn media_kind_from_url_ignores_query_and_fragment() {
+        let with_query =
+            url::Url::parse("https://example.com/abc/master.m3u8?token=xyz&exp=42").unwrap();
+        assert_eq!(MediaKind::from_url(&with_query), Some(MediaKind::Hls));
+        let with_frag = url::Url::parse("https://example.com/file.mp4#t=0").unwrap();
+        assert_eq!(MediaKind::from_url(&with_frag), Some(MediaKind::Mp4));
+    }
+
+    #[test]
+    fn media_kind_from_url_returns_none_for_unknown_extension() {
+        let url = url::Url::parse("https://example.com/embed/abc123").unwrap();
+        assert_eq!(MediaKind::from_url(&url), None);
+    }
+
+    #[test]
+    fn media_kind_from_url_is_case_insensitive() {
+        let url = url::Url::parse("https://example.com/PLAYLIST.M3U8").unwrap();
+        assert_eq!(MediaKind::from_url(&url), Some(MediaKind::Hls));
+    }
+
+    #[test]
+    fn stream_session_carries_media_kind() {
+        let url = url::Url::parse("https://video.example/file.mp4").unwrap();
+        let sess = StreamSession::new(url, "ref", None);
+        assert_eq!(sess.media_kind, MediaKind::Mp4);
+    }
+
     #[test]
     fn signed_token_roundtrips() {
         let secret = fixed_secret();
