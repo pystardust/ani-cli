@@ -44,12 +44,21 @@ fn main() -> std::process::ExitCode {
         }
     };
 
+    // Resource dir = the directory the binary lives in. Lets us find a
+    // sibling ani-cli script when the .deb / AppImage bundles it
+    // alongside the backend. Falls back to None when current_exe()
+    // can't resolve (extremely rare); AppState::build then only checks
+    // PATH, which is fine for `cargo run` development.
+    let resource_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(std::path::Path::to_path_buf));
+
     // Bind, build state, spawn server, hold the runtime.
     let result = runtime.block_on(async {
         let proxy_http = proxy::upstream::build_client()?;
         let (addr, listener) = proxy::bind_loopback(0).await?;
         let origin = proxy::ProxyOrigin::new(&addr.ip().to_string(), addr.port());
-        let state = app::AppState::build(proxy_http, origin.clone(), None)?;
+        let state = app::AppState::build(proxy_http, origin.clone(), resource_dir)?;
 
         let proxy_router = proxy::build_router(state.proxy_state());
         let api_router = api::build_api_router(Arc::new(state));

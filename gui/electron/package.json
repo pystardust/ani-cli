@@ -53,6 +53,10 @@
 			{
 				"from": "../backend/target/release/ani-gui-backend",
 				"to": "ani-gui-backend"
+			},
+			{
+				"from": "../../ani-cli",
+				"to": "ani-cli"
 			}
 		],
 		"linux": {
@@ -66,7 +70,14 @@
 			"maintainer": "ani-gui contributors <dev@thirdmovement.net>"
 		},
 		"deb": {
-			"afterInstall": "build-resources/deb-after-install.sh"
+			"afterInstall": "build-resources/deb-after-install.sh",
+			"afterRemove": "build-resources/deb-after-remove.sh",
+			"depends": [
+				"curl",
+				"sed",
+				"grep",
+				"coreutils"
+			]
 		}
 	}
 }
