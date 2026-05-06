@@ -10,7 +10,7 @@ use url::Url;
 
 use crate::app::AppState;
 use crate::error::{AniError, Result};
-use crate::proxy::StreamSession;
+use crate::proxy::{MediaKind, StreamSession};
 
 /// Frontend → backend payload. All URLs are strings on the wire.
 #[derive(Debug, Clone, Deserialize)]
@@ -23,16 +23,22 @@ pub struct CreateSessionArgs {
     pub subtitle_url: Option<String>,
 }
 
-/// What the frontend gets back: a session id plus pre-built proxy URLs the
-/// `<video>` element / hls.js can consume directly.
+/// What the frontend gets back: a session id, the proxy URL the
+/// `<video>` element / hls.js feeds directly, and the kind so the
+/// renderer knows which player to mount.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct CreateSessionResponse {
     /// Stringified UUID — used by the frontend if it needs to reference the
     /// session later (cancel, refresh).
     pub session_id: String,
-    /// Full proxy URL for the master playlist (e.g.
-    /// `http://127.0.0.1:42337/s/<uuid>/master.m3u8`).
-    pub master_url: String,
+    /// Full proxy URL the player should fetch. For HLS sessions this
+    /// points at `…/s/<uuid>/master.m3u8`; for MP4 sessions at
+    /// `…/s/<uuid>/file.mp4`. The frontend never has to compose the
+    /// path itself.
+    pub media_url: String,
+    /// What kind of media the URL serves — drives hls.js vs `<video src>`
+    /// on the renderer. Wire form is "hls" / "mp4" (lowercase).
+    pub media_kind: MediaKind,
     /// Full proxy URL for the subtitle, when present.
     pub subtitle_url: Option<String>,
 }
@@ -52,16 +58,24 @@ pub fn create_session(state: &AppState, args: &CreateSessionArgs) -> Result<Crea
 
     let session = StreamSession::new(upstream, args.referer.clone(), subtitle.clone());
     let id = session.id;
+    let media_kind = session.media_kind;
     state.sessions.insert(session);
 
     let session_str = id.as_string();
-    let master_url = format!("{}/s/{}/master.m3u8", state.proxy_origin.base, session_str);
+    // The path segment matches the media kind — the proxy router has
+    // a separate handler for each, so picking the wrong one would 415.
+    let path = match media_kind {
+        MediaKind::Hls => "master.m3u8",
+        MediaKind::Mp4 => "file.mp4",
+    };
+    let media_url = format!("{}/s/{}/{}", state.proxy_origin.base, session_str, path);
     let subtitle_url =
         subtitle.map(|_| format!("{}/s/{}/sub.vtt", state.proxy_origin.base, session_str));
 
     Ok(CreateSessionResponse {
         session_id: session_str,
-        master_url,
+        media_url,
+        media_kind,
         subtitle_url,
     })
 }

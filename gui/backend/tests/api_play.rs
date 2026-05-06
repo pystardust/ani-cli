@@ -170,16 +170,25 @@ async fn run_play_assertion(tmp: &std::path::Path) -> Result<(), String> {
     // Asserting via serde_json::Value keeps that contract intact.
     let resp: serde_json::Value =
         serde_json::from_slice(&body_bytes).map_err(|e| format!("parse body: {e}"))?;
-    let master_url = resp
-        .get("master_url")
+    let media_url = resp
+        .get("media_url")
         .and_then(|v| v.as_str())
-        .ok_or("response missing master_url")?;
+        .ok_or("response missing media_url")?;
     let session_id = resp
         .get("session_id")
         .and_then(|v| v.as_str())
         .ok_or("response missing session_id")?;
-    if !master_url.contains("/s/") || !master_url.ends_with("/master.m3u8") {
-        return Err(format!("unexpected master_url shape: {master_url}"));
+    let media_kind = resp
+        .get("media_kind")
+        .and_then(|v| v.as_str())
+        .ok_or("response missing media_kind")?;
+    // The shim resolves a real master.m3u8 URL, so the kind is HLS
+    // and the proxy URL points at /master.m3u8.
+    if media_kind != "hls" {
+        return Err(format!("expected media_kind=hls, got {media_kind}"));
+    }
+    if !media_url.contains("/s/") || !media_url.ends_with("/master.m3u8") {
+        return Err(format!("unexpected media_url shape: {media_url}"));
     }
     if session_id.is_empty() {
         return Err("session_id was empty".into());

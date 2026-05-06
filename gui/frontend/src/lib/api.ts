@@ -137,10 +137,20 @@ export interface CreateSessionArgs {
 	subtitle_url?: string | null;
 }
 
+/** What kind of media the resolved upstream serves. The renderer uses
+ *  this to pick hls.js vs. a plain `<video src>` for direct MP4 streams
+ *  (wixmp / sharepoint / fast4speed) that don't have an HLS manifest. */
+export type MediaKind = 'hls' | 'mp4';
+
 /** Output of `cmd_create_session` — proxy URLs the player should fetch. */
 export interface CreateSessionResponse {
 	session_id: string;
-	master_url: string;
+	/** Full proxy URL the player should fetch. For HLS sessions this
+	 *  points at `…/s/<id>/master.m3u8`; for MP4 sessions at
+	 *  `…/s/<id>/file.mp4`. The frontend never composes the path itself. */
+	media_url: string;
+	/** Tells the renderer which player to mount around `media_url`. */
+	media_kind: MediaKind;
 	subtitle_url: string | null;
 }
 

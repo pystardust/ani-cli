@@ -123,7 +123,8 @@ describe('createSession', () => {
 	it('POSTs JSON to /api/sessions', async () => {
 		const fetchMock = mockFetchOnce({
 			session_id: '11111111-1111-1111-1111-111111111111',
-			master_url: 'http://127.0.0.1:42337/s/11111111-.../master.m3u8',
+			media_url: 'http://127.0.0.1:42337/s/11111111-.../master.m3u8',
+			media_kind: 'hls',
 			subtitle_url: null
 		});
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -146,7 +147,8 @@ describe('createSession', () => {
 	it('forwards optional subtitle_url through the JSON body', async () => {
 		const fetchMock = mockFetchOnce({
 			session_id: 'sid',
-			master_url: 'http://127.0.0.1:1/s/sid/master.m3u8',
+			media_url: 'http://127.0.0.1:1/s/sid/master.m3u8',
+			media_kind: 'hls',
 			subtitle_url: 'http://127.0.0.1:1/s/sid/sub.vtt'
 		});
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -201,7 +203,8 @@ describe('play', () => {
 	it('POSTs the PlayArgs payload to /api/play and returns the session response', async () => {
 		const sessionResponse = {
 			session_id: 'abc-123',
-			master_url: 'http://127.0.0.1:42337/s/abc-123/master.m3u8',
+			media_url: 'http://127.0.0.1:42337/s/abc-123/master.m3u8',
+			media_kind: 'hls' as const,
 			subtitle_url: null
 		};
 		const fetchMock = mockFetchOnce(sessionResponse);
