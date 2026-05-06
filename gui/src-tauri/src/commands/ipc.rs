@@ -9,11 +9,12 @@ use tauri::State;
 
 use crate::app::AppState;
 use crate::commands::{
-    app_info, external_player, history as h_inner, proxy_url::proxy_base_url as inner_proxy,
-    session as session_inner,
+    app_info, external_player, history as h_inner, kitsu as kitsu_inner,
+    proxy_url::proxy_base_url as inner_proxy, session as session_inner,
 };
 use crate::error::Result;
 use crate::history::HistoryEntry;
+use crate::meta::kitsu::KitsuAnimeRef;
 
 /// Frontend → backend: meta about the running backend.
 #[tauri::command]
@@ -53,4 +54,22 @@ pub fn cmd_create_session(
     args: session_inner::CreateSessionArgs,
 ) -> Result<session_inner::CreateSessionResponse> {
     session_inner::create_session(&state, &args)
+}
+
+/// Frontend → backend: search Kitsu for anime by free-text. Cached.
+#[tauri::command]
+pub async fn cmd_kitsu_search(
+    state: State<'_, AppState>,
+    query: String,
+) -> Result<Vec<KitsuAnimeRef>> {
+    kitsu_inner::kitsu_search(&state, &query).await
+}
+
+/// Frontend → backend: fetch a single anime detail by Kitsu id. Cached.
+#[tauri::command]
+pub async fn cmd_kitsu_anime_detail(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<KitsuAnimeRef> {
+    kitsu_inner::kitsu_anime_detail(&state, &id).await
 }

@@ -21,6 +21,7 @@ use crate::anicli::process::{locate_ani_cli, DebugOptions};
 use crate::cache::SqlitePool;
 use crate::config::paths;
 use crate::error::{AniError, Result};
+use crate::meta::kitsu::KitsuClient;
 use crate::proxy::{AppSecret, ProxyOrigin, ProxyState, SessionTable};
 
 /// Maximum concurrent `ani-cli` subprocess invocations.
@@ -48,6 +49,8 @@ pub struct AppState {
     pub image_cache_dir: PathBuf,
     /// Connection pool for the SQLite metadata cache.
     pub cache_pool: SqlitePool,
+    /// Kitsu metadata client (shares the same reqwest pool as the proxy).
+    pub kitsu: KitsuClient,
 }
 
 impl AppState {
@@ -75,6 +78,7 @@ impl AppState {
             std::fs::create_dir_all(parent).map_err(|_| AniError::Io)?;
         }
         let cache_pool = crate::cache::open_pool(&metadata_db)?;
+        let kitsu = KitsuClient::new(proxy_http.clone());
         Ok(Self {
             secret: AppSecret::random(),
             sessions: SessionTable::new(),
@@ -85,6 +89,7 @@ impl AppState {
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir,
             cache_pool,
+            kitsu,
         })
     }
 
@@ -126,6 +131,7 @@ mod tests {
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
+            kitsu: KitsuClient::new(reqwest::Client::new()),
         }
     }
 

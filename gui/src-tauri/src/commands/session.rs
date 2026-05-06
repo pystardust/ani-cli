@@ -97,6 +97,7 @@ mod tests {
             scraper_slots: Arc::new(Semaphore::new(1)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
+            kitsu: crate::meta::kitsu::KitsuClient::new(reqwest::Client::new()),
         }
     }
 

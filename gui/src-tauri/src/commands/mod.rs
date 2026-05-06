@@ -12,6 +12,7 @@ pub mod app_info;
 pub mod external_player;
 pub mod history;
 pub mod ipc;
+pub mod kitsu;
 pub mod proxy_url;
 pub mod session;
 
