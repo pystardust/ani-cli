@@ -8,3 +8,7 @@ node_modules
 # Lockfiles — the package manager owns these
 pnpm-lock.yaml
 package-lock.json
+
+# Lottie animations — third-party JSON we don't author; formatting
+# would churn the diff and complicate future drop-ins from lottiefiles.
+static/anim/*.json

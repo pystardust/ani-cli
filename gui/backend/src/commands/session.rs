@@ -116,17 +116,17 @@ mod tests {
         .expect("ok");
 
         assert!(
-            resp.master_url.starts_with("http://127.0.0.1:40000/s/"),
+            resp.media_url.starts_with("http://127.0.0.1:40000/s/"),
             "master url uses configured proxy origin: {}",
-            resp.master_url
+            resp.media_url
         );
         assert!(
-            resp.master_url.ends_with("/master.m3u8"),
+            resp.media_url.ends_with("/master.m3u8"),
             "master url ends with master.m3u8: {}",
-            resp.master_url
+            resp.media_url
         );
         assert!(
-            resp.master_url.contains(&resp.session_id),
+            resp.media_url.contains(&resp.session_id),
             "master url embeds the returned session id"
         );
         assert_eq!(resp.subtitle_url, None);
@@ -246,7 +246,7 @@ mod tests {
         )
         .expect("plain http allowed");
         assert_eq!(state.sessions.len(), 1);
-        assert!(resp.master_url.contains(&resp.session_id));
+        assert!(resp.media_url.contains(&resp.session_id));
     }
 
     #[test]
@@ -254,12 +254,60 @@ mod tests {
         // Sanity: the JSON shape is what the frontend wrapper expects.
         let r = CreateSessionResponse {
             session_id: "abc".into(),
-            master_url: "http://x/m".into(),
+            media_url: "http://x/m".into(),
+            media_kind: crate::proxy::MediaKind::Hls,
             subtitle_url: None,
         };
         let s = serde_json::to_string(&r).unwrap();
         assert!(s.contains("\"session_id\":\"abc\""));
-        assert!(s.contains("\"master_url\":\"http://x/m\""));
+        assert!(s.contains("\"media_url\":\"http://x/m\""));
+        assert!(s.contains("\"media_kind\":\"hls\""));
         assert!(s.contains("\"subtitle_url\":null"));
+    }
+
+    /// HLS upstreams (.m3u8) get a media_url that points at the
+    /// /master.m3u8 proxy endpoint and a media_kind of "hls"; MP4
+    /// upstreams (.mp4) get /file.mp4 and "mp4". The renderer uses
+    /// media_kind to pick hls.js vs `<video src>`, so the response
+    /// must carry both signals atomically.
+    #[test]
+    fn create_session_with_mp4_upstream_returns_mp4_kind_and_file_mp4_url() {
+        let state = make_state(40_010);
+        let resp = create_session(
+            &state,
+            &CreateSessionArgs {
+                upstream_url: "https://video.example/1080/file.mp4".into(),
+                referer: "https://allmanga.to".into(),
+                subtitle_url: None,
+            },
+        )
+        .expect("ok");
+        assert_eq!(resp.media_kind, crate::proxy::MediaKind::Mp4);
+        assert!(
+            resp.media_url.ends_with("/file.mp4"),
+            "media url ends with file.mp4 for MP4 sessions: {}",
+            resp.media_url
+        );
+        assert!(resp.media_url.contains(&resp.session_id));
+    }
+
+    #[test]
+    fn create_session_with_hls_upstream_returns_hls_kind_and_master_m3u8_url() {
+        let state = make_state(40_011);
+        let resp = create_session(
+            &state,
+            &CreateSessionArgs {
+                upstream_url: "https://cdn.example/master.m3u8".into(),
+                referer: "https://allmanga.to".into(),
+                subtitle_url: None,
+            },
+        )
+        .expect("ok");
+        assert_eq!(resp.media_kind, crate::proxy::MediaKind::Hls);
+        assert!(
+            resp.media_url.ends_with("/master.m3u8"),
+            "media url ends with master.m3u8 for HLS sessions: {}",
+            resp.media_url
+        );
     }
 }
