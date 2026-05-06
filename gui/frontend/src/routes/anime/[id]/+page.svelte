@@ -14,6 +14,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import {
 		imageProxyUrl,
 		kitsuAnimeDetail,
@@ -142,7 +143,16 @@
 		const cap = totalEpisodePages ?? p;
 		const next = Math.min(Math.max(1, p), cap);
 		if (next === episodesPage) return;
-		void fetchEpisodesPage(next);
+		// Drive the URL — the `?page=` change wakes the $effect above,
+		// which calls fetchEpisodesPage. Calling fetchEpisodesPage
+		// directly here would race the effect: the effect re-runs on
+		// the resulting `episodesPage` write, sees the URL still on
+		// page 1, and immediately fetches page 1 again — which lands
+		// just after the page-2 tiles finish their entrance animation,
+		// so the UI snaps back to page 1.
+		const params = new URLSearchParams(page.url.searchParams);
+		params.set('page', String(next));
+		void goto(`?${params}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
 	function jumpToEpisode(event: SubmitEvent) {
@@ -423,7 +433,7 @@
 		notify('Playback wires up in M2 once the allanime bridge lands.');
 	}
 	function onDownload() {
-		// TODO: M2 — invoke ani-cli -d for episode 1 via Tauri sidecar.
+		// TODO: M2 — POST /api/sessions for episode 1 to drive ani-cli.
 		notify('Downloads wire up alongside playback in M2.');
 	}
 	function onExternal() {

@@ -1,0 +1,95 @@
+[package]
+name = "ani-gui"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "Headless backend for the ani-gui Electron desktop app"
+license = "GPL-3.0"
+publish = false
+
+[lib]
+name = "ani_gui"
+path = "src/lib.rs"
+
+# The only binary is the standalone backend the Electron main process
+# spawns as a sidecar. The pre-Electron Tauri entrypoint lived in
+# `src/main.rs` and was removed in M-E5.
+[[bin]]
+name = "ani-gui-backend"
+path = "src/bin/backend.rs"
+
+[dependencies]
+# Async runtime + HTTP server (streaming proxy + API)
+tokio = { version = "1.41", features = ["full"] }
+axum = { version = "0.7", features = ["http2"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "timeout"] }
+
+# HTTP client (rustls, no openssl-sys)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json", "gzip"] }
+
+# m3u8 manifest parser/rewriter
+m3u8-rs = "6.0"
+
+# SQLite cache
+rusqlite = { version = "0.32", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+# Serde + JSON + TOML
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Errors + tracing
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+# XDG paths
+directories-next = "2.0"
+
+# Crypto for stream tokens
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+
+# ANSI escape stripping for ani-cli stdout
+strip-ansi-escapes = "0.2"
+
+# URLs + bytes streaming
+url = "2.5"
+bytes = "1.7"
+futures-util = "0.3"
+
+# UUID for stream session ids
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# DashMap for concurrent stream-session table
+dashmap = "6.1"
+
+# AniList GraphQL — added in M3, listed here so cargo-deny audits the dep tree
+# cynic = { version = "3.10", features = ["http-reqwest"] }
+
+[dev-dependencies]
+proptest = "1.5"
+wiremock = "0.6"
+tempfile = "3.13"
+tokio-test = "0.4"
+# `tower::ServiceExt::oneshot` lets us drive the axum router under test
+# without binding a real socket. Used by `api::tests`.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+[profile.dev]
+opt-level = 0
+debug = true

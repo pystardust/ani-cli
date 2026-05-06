@@ -14,51 +14,48 @@ The app talks to three things a browser tab cannot reach on its own:
 2. The shared history file at `$XDG_STATE_HOME/ani-cli/ani-hsts` — needs filesystem access.
 3. Anime stream CDNs — require a `Referer:` header that browser fetch APIs cannot set, and serve segments without permissive CORS.
 
-So the app embeds a Rust backend, bound to `127.0.0.1` on a kernel-assigned port, that orchestrates these pieces. It is a localhost daemon shipped inside the Tauri bundle, not a server that anyone else can reach.
+So the app embeds a Rust backend, bound to `127.0.0.1` on a kernel-assigned port, that orchestrates these pieces. It runs as a sidecar process the desktop shell launches at startup — a localhost daemon, not a server anyone else can reach.
 
 ## Components
 
 ```
- ┌────────────────────────────────────────────────────────────┐
- │             ani-gui — Tauri bundle (one process)           │
- │                                                            │
- │  ┌──────────────────┐      IPC      ┌──────────────────┐   │
- │  │  Frontend (UI)   │ ────────────► │   Backend (Rust) │   │
- │  │  SvelteKit SPA   │ ◄──────────── │                  │   │
- │  │  + hls.js        │               │                  │   │
- │  └────────┬─────────┘               └─────┬────────────┘   │
- │           │                               │                │
- │           │ <video src="http://127.0.0.1: ├──► ani-cli     │
- │           │  PORT/s/<token>/...">         │   subprocess   │
- │           │                               │                │
- │           │  bytes piped through proxy    ├──► Kitsu (REST)│
- │           └──────────────────────────────►│   AniList      │
- │                  Referer + CORS           │   (GraphQL)    │
- │                                           │                │
- │                                           ├──► history     │
- │                                           │   (TSV file)   │
- │                                           │                │
- │                                           └──► SQLite +    │
- │                                              image cache   │
- └────────────────────────────────────────────────────────────┘
+ ┌──────────────────────────────────────────────────────────────┐
+ │  ani-gui desktop app                                         │
+ │                                                              │
+ │  ┌────────────────────┐   fetch()   ┌────────────────────┐   │
+ │  │ Renderer (SPA)     │ ──────────► │ Backend (sidecar)  │   │
+ │  │ SvelteKit + hls.js │ ◄────────── │ Rust HTTP server   │   │
+ │  └─────────┬──────────┘             └─────┬──────────────┘   │
+ │            │                              │                  │
+ │            │ <video src="http://127.0.0.1:├──► ani-cli       │
+ │            │  PORT/s/<token>/...">        │   subprocess     │
+ │            │                              │                  │
+ │            │  bytes streamed via proxy    ├──► Kitsu (REST)  │
+ │            └─────────────────────────────►│   AniList (GQL)  │
+ │                  Referer + CORS           │                  │
+ │                                           ├──► history TSV   │
+ │                                           │                  │
+ │                                           └──► SQLite +      │
+ │                                              image cache     │
+ └──────────────────────────────────────────────────────────────┘
 
  sibling: pystardust/ani-cli (vendored, untouched)
 ```
 
 Three layers, in lockstep:
 
-- **Frontend** — SvelteKit static SPA running inside Tauri's webview. Renders the discovery surface, search results, detail pages, and the embedded player (`<video>` + hls.js). Stateless beyond UI state; talks only to the backend.
-- **Backend** — Rust crate inside `gui/src-tauri/`. Spawns `ani-cli` as a subprocess, fetches metadata from Kitsu/AniList, reads/writes the shared history file, runs a streaming proxy on a localhost port, and exposes a typed IPC surface to the frontend.
+- **Renderer** — SvelteKit static SPA running inside the desktop shell's web view. Renders the discovery surface, search results, detail pages, and the embedded player (`<video>` + hls.js). Stateless beyond UI state; talks only to the backend.
+- **Backend** — Rust crate inside `gui/backend/`. Spawned as a sidecar by the desktop shell at startup. Spawns `ani-cli` as a subprocess, fetches metadata from Kitsu/AniList, reads/writes the shared history file, runs a streaming proxy on a localhost port, and exposes an HTTP API the renderer talks to via `fetch()`.
 - **External processes** — `ani-cli` (the script) and optionally `mpv` for the "Open in external player" escape hatch.
 
 ## Data flow: searching and playing an episode
 
 1. The user types a query into the search bar.
-2. The frontend invokes the `search` command. The backend spawns `ani-cli -S <n>` with `ANI_CLI_PLAYER=debug` and parses the result lines into typed `SearchResult` records.
-3. The user picks a result; the frontend invokes `episodes_list`. The backend spawns `ani-cli` again with the chosen ID and returns the episode list.
-4. The user clicks an episode. The frontend invokes `resolve_stream`. The backend spawns `ani-cli` once more, this time with `-e <ep>` and `ANI_CLI_PLAYER=debug`, parses the resolved stream URL plus its `Referer` requirement and any subtitle `.vtt` URL.
-5. The backend creates a `StreamSession` (UUID, upstream URL, referer, expiry), stores it in memory, and returns a token to the frontend.
-6. The frontend mounts `<video>` and points hls.js at `http://127.0.0.1:<port>/s/<token>/master.m3u8`.
+2. The renderer calls `POST /api/kitsu/search`. The backend hits Kitsu and returns matches.
+3. The user picks a result; the renderer fetches detail and episode list via `GET /api/kitsu/anime/:id` and `GET /api/kitsu/episodes/:id`.
+4. The user clicks an episode. The renderer calls `POST /api/sessions` with the chosen anime + episode. The backend spawns `ani-cli` with `ANI_CLI_PLAYER=debug` and `-e <ep>`, parses the resolved stream URL plus its `Referer` requirement and any subtitle `.vtt` URL.
+5. The backend creates a `StreamSession` (UUID, upstream URL, referer, expiry), stores it in memory, and returns a token to the renderer.
+6. The renderer mounts `<video>` and points hls.js at `http://127.0.0.1:<port>/s/<token>/master.m3u8`.
 7. The streaming proxy fetches the upstream master playlist with the correct `Referer:` header, parses it with `m3u8-rs`, and rewrites every variant + segment URI to flow back through itself with HMAC-signed sub-tokens. CORS headers are added so hls.js inside the webview can consume the rewritten manifest without preflight blocks.
 8. Subsequent segment requests follow the same path: hls.js asks the proxy, the proxy asks the upstream with the `Referer:`, bytes stream back.
 
@@ -86,7 +83,7 @@ Image bytes never live in SQLite; they're filesystem-keyed by `sha256(url)[..16]
 
 ## Embedded playback
 
-Playback happens inside the GUI window — not in a detached `mpv` process. Implementation:
+Playback happens inside the desktop window — not in a detached `mpv` process. Implementation:
 
 - `<video>` element receives the master.m3u8 URL from the local proxy.
 - `hls.js` handles HLS streams. mp4 streams (some providers) play natively via `<video src=...>`.

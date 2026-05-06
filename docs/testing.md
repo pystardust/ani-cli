@@ -15,7 +15,7 @@ This project is **strictly TDD**. Every code change starts with a failing test, 
      │           Property              │  proptest (Rust), fast-check (TS),
      └─────────────────────────────────┘  bash generator harness
    ┌──────────────────────────────────────┐
-   │              End-to-end              │  Playwright + tauri-driver,
+   │              End-to-end              │  Playwright (planned),
    └──────────────────────────────────────┘  ≤5 hermetic scenarios
  ┌──────────────────────────────────────────┐
  │              Acceptance                  │  bats `run`, cargo integration,
@@ -49,7 +49,7 @@ tests/
     ├── capabilities.sh
     └── deps.toml          # cargo-deny config
 
-gui/src-tauri/
+gui/backend/
 ├── src/                   # #[cfg(test)] mod tests inline
 ├── tests/                 # cargo integration tests (acceptance)
 └── proptests/             # proptest-only suites
@@ -57,7 +57,7 @@ gui/src-tauri/
 gui/frontend/
 ├── src/                   # *.test.ts colocated with units
 ├── tests/acceptance/      # vitest + MSW
-└── e2e/                   # Playwright + tauri-driver
+└── e2e/                   # Playwright (planned)
 ```
 
 ## Running tests locally
@@ -68,15 +68,12 @@ tests/bash/helpers/install-bats.sh    # one-time, pins bats-core + plugins
 bats tests/bash/
 
 # Rust backend
-cd gui/src-tauri && cargo test --workspace
-cd gui/src-tauri && cargo test --test proptests
+cd gui/backend && cargo test --workspace
+cd gui/backend && cargo test --test proptests
 
 # Frontend
 cd gui/frontend && pnpm test
 cd gui/frontend && pnpm test:acceptance
-
-# E2E (requires Tauri dev build)
-cd gui/frontend && pnpm test:e2e
 
 # Architectural invariants (always fast)
 bash tests/arch/run-all.sh
@@ -91,7 +88,7 @@ Layer-specific. CI fails on regression below the baseline in `coverage-baseline.
 | Bash pure functions | bashcov / kcov | 95% | 90% |
 | Bash network/subprocess | bashcov | 70% | — |
 | Rust core (proxy, cache, anicli, history) | `cargo llvm-cov` | 85% | 75% |
-| Rust glue (Tauri commands) | `cargo llvm-cov` | 60% | — |
+| Rust glue (HTTP API handlers) | `cargo llvm-cov` | 60% | — |
 | Frontend lib/stores | vitest + c8 | 80% | — |
 | Frontend components | vitest + c8 | 50% | — |
 | E2E | scenario count | ≥5 | — |
@@ -104,10 +101,9 @@ Every PR runs all gating workflows; merge blocks until they're green:
 |---|---|---|
 | `ani-cli.yml` (upstream-aligned) | PR touches `**ani-cli` | yes |
 | `bash.yml` | PR touches `tests/bash/**` or `ani-cli` | yes |
-| `rust.yml` | PR touches `gui/src-tauri/**` or `Cargo.lock` | yes |
+| `rust.yml` | PR touches `gui/backend/**` or `Cargo.lock` | yes |
 | `frontend.yml` | PR touches `gui/frontend/**` | yes |
 | `arch.yml` | always | yes |
-| `e2e.yml` | PR touches `gui/frontend/**` or `gui/src-tauri/src/proxy/**` | yes (path-conditional) |
 | `mutation.yml` | nightly cron + manual dispatch | no (informational) |
 
 ## Fixture management
@@ -132,14 +128,13 @@ Cheap grep / AST tests under `tests/arch/`. They fail loudly when boundaries ero
 
 | Invariant | Tool |
 |---|---|
-| `gui/**` may not reference `ani-cli` outside `gui/src-tauri/src/anicli/path.rs` | ripgrep + allowlist |
-| `ani-cli` must not contain `gui/`, `tauri`, `axum`, etc. | grep |
+| `gui/**` may not reference `ani-cli` outside `gui/backend/src/anicli/path.rs` | ripgrep + allowlist |
+| `ani-cli` must not contain `gui/`, `axum`, etc. | grep |
 | Frontend imports no Rust types except generated `bindings/*.ts` | custom ESLint rule |
-| Every `#[tauri::command]` returns `Result<T, AniError>` | syn-based audit |
+| Every HTTP API handler returns `Result<T, AniError>` | syn-based audit |
 | No hardcoded English in `.svelte` files (must go through `m.<key>()`) | regex test, allowlist for `aria-*`, `data-testid` |
-| Crate dependency direction (`proxy` doesn't depend on `tauri`; `cache` doesn't depend on `reqwest`) | `cargo-deny` + `cargo-modules` |
+| Crate dependency direction (`cache` doesn't depend on `reqwest`, etc.) | `cargo-deny` + `cargo-modules` |
 | Forbidden APIs in bash: `awk`, GNU-only flags | grep |
-| Tauri capability allowlist diffs require a `SECURITY.md` update | git diff hook |
 
 ## Mutation testing (deferred)
 

@@ -6,15 +6,12 @@ This page covers the dev environment, the build pipeline, and debugging tips. Fo
 
 | Tool | Version | Purpose |
 |---|---|---|
-| Rust | pinned in `rust-toolchain.toml` (currently `1.82`) | backend + Tauri shell |
-| Node | 20+ | frontend toolchain |
-| pnpm | 9+ | frontend package manager |
-| Tauri prerequisites | per platform | webview + bundling |
+| Rust | pinned in `rust-toolchain.toml` | Rust sidecar backend |
+| Node | 20+ | renderer + Electron shell |
+| pnpm | 9+ | package manager |
 | `bats-core`, `bats-mock`, `bats-assert`, `bats-file` | pinned in `tests/bash/helpers/install-bats.sh` | bash tests |
 | `shellcheck`, `shfmt` | latest stable | bash linters |
 | `mpv` | any | optional escape-hatch player |
-
-Tauri's per-platform prerequisites: see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). On Linux you need `webkit2gtk-4.1`, `librsvg2`, `libappindicator3`, and `pkg-config`.
 
 ## First-time setup
 
@@ -32,30 +29,17 @@ sudo curl -sSL -o /usr/local/bin/shfmt \
 ```
 
 ```sh
-# Rust backend + Tauri shell
+# Rust sidecar backend
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-sudo apt install -y libwebkit2gtk-4.1-dev librsvg2-dev \
-  libayatana-appindicator3-dev libsoup-3.0-dev \
-  build-essential libssl-dev pkg-config \
-  patchelf
+sudo apt install -y build-essential libssl-dev pkg-config
 ```
 
-`patchelf` is required by `linuxdeploy-plugin-gstreamer` when
-`cargo tauri build --bundles appimage` packs the GStreamer plugins
-the embedded webview needs for media playback.
-
 ```sh
-# Frontend (Node + pnpm via nvm)
+# Renderer + Electron shell (Node + pnpm via nvm)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 # (open a new shell, or `source ~/.bashrc`)
 nvm install 20 && nvm use 20
 corepack enable && corepack prepare pnpm@latest --activate
-```
-
-```sh
-# End-to-end tests (optional locally — CI runs them anyway)
-sudo apt install -y webkit2gtk-driver xvfb
-cargo install tauri-driver --locked
 ```
 
 ```sh
@@ -72,40 +56,44 @@ cd ani-gui
 # Bash test toolchain (vendored bats + plugins at pinned tags)
 ./tests/bash/helpers/install-bats.sh
 
-# Frontend
+# Frontend + Electron deps
 cd gui/frontend && pnpm install && cd ../..
+cd gui/electron  && pnpm install && cd ../..
 
 # Verify Rust toolchain
-cd gui/src-tauri && cargo --version && cd ../..
+cd gui/backend   && cargo --version && cd ../..
 ```
 
 ### Other distros
 
-Mostly same packages, different package manager. PRs welcome to add Fedora / Arch / openSUSE recipes here. The Tauri prereqs page covers each:
-<https://v2.tauri.app/start/prerequisites/>.
+Mostly same packages, different package manager. PRs welcome to add Fedora / Arch / openSUSE recipes.
 
 ## Dev loop
 
-Two terminals:
+Three terminals:
 
 ```sh
-# Terminal 1 — frontend dev server with HMR
-cd gui/frontend && pnpm dev
+# Terminal 1 — Vite dev server with HMR
+cd gui/frontend && pnpm dev          # http://localhost:5173
 
-# Terminal 2 — Tauri shell pointing at the dev server
-cd gui/src-tauri && cargo tauri dev
+# Terminal 2 — build the Rust sidecar (one-shot per Rust change)
+cd gui/backend && cargo build --bin ani-gui-backend
+
+# Terminal 3 — Electron shell (spawns the sidecar, points at Vite)
+cd gui/electron && pnpm dev
 ```
 
-`tauri.conf.json` has `build.devUrl = "http://localhost:5173"`, so Tauri opens the webview pointed at Vite. Frontend changes hot-reload. Rust changes recompile on save.
+The Electron main process resolves the backend binary (`gui/backend/target/debug/ani-gui-backend`), spawns it, and parses its stdout `ANI_GUI_LISTENING <url>` handshake to discover the loopback port. The renderer reads that URL from `window.aniGui.apiBase` (set by the Electron preload script) and uses it for every `fetch()` call.
 
 ## Build for distribution
 
 ```sh
-cd gui/src-tauri
-cargo tauri build              # builds for the host platform
+cd gui/electron
+pnpm package          # AppImage only — fast iteration
+pnpm package:release  # AppImage + .deb
 ```
 
-Artifacts land in `gui/src-tauri/target/release/bundle/`. CI builds all five targets on every release tag:
+Artifacts land in `gui/electron/dist/`. CI builds all targets on every release tag:
 
 | Target | Runner | Output |
 |---|---|---|
@@ -117,10 +105,10 @@ Artifacts land in `gui/src-tauri/target/release/bundle/`. CI builds all five tar
 
 ## Logging and debugging
 
-The backend uses [`tracing`](https://docs.rs/tracing). Adjust verbosity:
+The backend uses [`tracing`](https://docs.rs/tracing). Adjust verbosity by setting `RUST_LOG` before launching the backend (or the Electron shell that spawns it):
 
 ```sh
-RUST_LOG=ani_gui=debug,axum=info cargo tauri dev
+RUST_LOG=ani_gui=debug,axum=info pnpm --dir gui/electron dev
 ```
 
 Logs also tee to `$XDG_DATA_HOME/ani-gui/logs/ani-gui.log` (daily rotation, 7-day retention).
@@ -145,7 +133,7 @@ curl -sI http://127.0.0.1:42337/healthz
 | `ANI_CLI_PLAYER` | propagated when invoking ani-cli; the GUI defaults to `debug` |
 | `ANI_CLI_HIST_DIR` | shared with the CLI; the GUI reads/writes the same `ani-hsts` |
 | `ANI_GUI_UPSTREAM_BASE` | dev/test only; redirects `meta_http` to a wiremock instance |
-| `WEBKIT_DISABLE_DMABUF_RENDERER=1` | Linux-only workaround for black-screen on some Mesa drivers |
+| `VITE_ANI_GUI_API_BASE` | browser-only dev: point the Vite renderer at a separately-running backend |
 
 ## Code style
 
@@ -164,4 +152,4 @@ The GUI plays inside the window using hls.js + a local stream proxy. `mpv` is on
 History is shared between the CLI and the GUI. Watch in one, continue in the other.
 
 **Why does the dev server work in a browser tab too?**
-By design — during M0/M1 development, opening `http://localhost:5173` in any browser shows the same UI as the Tauri webview. Useful for fast iteration, but production builds always run inside Tauri because the streaming proxy + native window matter for the shipped product.
+By design — opening `http://localhost:5173` in any browser shows the same UI the Electron renderer loads. Useful for fast iteration. Production builds always run inside Electron because the streaming proxy + native window matter for the shipped product; standalone-browser dev only works against a separately-running backend (set `VITE_ANI_GUI_API_BASE` to its loopback URL).

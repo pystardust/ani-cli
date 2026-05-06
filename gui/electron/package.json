@@ -1,0 +1,67 @@
+{
+	"name": "ani-gui",
+	"version": "0.1.0",
+	"description": "Electron shell for ani-gui — spawns the Rust backend as a sidecar and renders the SvelteKit frontend",
+	"homepage": "https://github.com/pucci/ani-gui",
+	"author": {
+		"name": "ani-gui contributors",
+		"email": "dev@thirdmovement.net"
+	},
+	"private": true,
+	"main": "main.js",
+	"scripts": {
+		"dev": "ELECTRON_DEV=1 electron --no-sandbox .",
+		"start": "electron .",
+		"build:backend": "cd ../backend && cargo build --bin ani-gui-backend --release",
+		"build:frontend": "cd ../frontend && pnpm build",
+		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
+		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
+		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
+		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
+		"repack-appimage": "node scripts/repack-appimage.mjs"
+	},
+	"devDependencies": {
+		"electron": "^33.2.0",
+		"electron-builder": "^25.1.8"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": ["electron"]
+	},
+	"build": {
+		"appId": "net.thirdmovement.ani-gui",
+		"productName": "ani-gui",
+		"directories": {
+			"output": "dist",
+			"buildResources": "build-resources"
+		},
+		"files": [
+			"main.js",
+			"preload.js",
+			"package.json",
+			"node_modules/**/*"
+		],
+		"extraResources": [
+			{
+				"from": "../frontend/build",
+				"to": "frontend/build"
+			},
+			{
+				"from": "../backend/target/release/ani-gui-backend",
+				"to": "ani-gui-backend"
+			}
+		],
+		"linux": {
+			"target": [
+				"AppImage",
+				"deb"
+			],
+			"category": "AudioVideo",
+			"executableName": "ani-gui",
+			"artifactName": "${productName}-${version}-${arch}.${ext}",
+			"maintainer": "ani-gui contributors <dev@thirdmovement.net>"
+		},
+		"deb": {
+			"afterInstall": "build-resources/deb-after-install.sh"
+		}
+	}
+}

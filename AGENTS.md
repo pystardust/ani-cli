@@ -63,12 +63,12 @@ Only one carried patch is permitted: the `__ANI_CLI_LIB__` source-guard line nea
 
 Mechanical rules enforced by `tests/arch/boundaries.sh` and `tests/arch/i18n.sh`:
 
-- `gui/**` may invoke `ani-cli` only through `gui/src-tauri/src/anicli/` (subprocess). No sourcing, no path references elsewhere.
+- `gui/**` may invoke `ani-cli` only through `gui/backend/src/anicli/` (subprocess). No sourcing, no path references elsewhere.
 - The frontend never fetches an upstream URL directly. All stream traffic flows through the local proxy at `http://127.0.0.1:<port>/s/<token>/...`.
 - SQLite holds metadata only. Image bytes live on the filesystem under `$XDG_CACHE_HOME/ani-gui/images/`.
 - The backend never returns localized strings. It returns stable error keys (`error.search.no_results`); the frontend resolves them via Paraglide.
 
-## 5. Rust conventions (`gui/src-tauri/`)
+## 5. Rust conventions (`gui/backend/`)
 
 - Errors: `thiserror`-based `AniError` enum at the library boundary. `anyhow` allowed only inside command bodies.
 - Subprocess: `tokio::process::Command` with `kill_on_drop(true)`, `TERM=dumb`, `NO_COLOR=1`.

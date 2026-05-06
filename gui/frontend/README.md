@@ -1,8 +1,8 @@
 # ani-gui frontend
 
-SvelteKit static SPA that runs inside the Tauri 2 webview. Talks to the
-Rust backend through `@tauri-apps/api/core` IPC commands and to the
-local stream proxy through `<video>` + `hls.js`.
+SvelteKit static SPA that runs inside the Electron renderer. Talks to
+the Rust sidecar (`ani-gui-backend`) over plain HTTP via `fetch()`,
+and to the local stream proxy through `<video>` + `hls.js`.
 
 ## Quick start
 
@@ -14,18 +14,18 @@ pnpm run lint         # prettier --check + eslint
 pnpm run test         # vitest run
 ```
 
-The full app boots with `cargo tauri dev` from `../src-tauri/`, which
-invokes `pnpm run dev` for you via `beforeDevCommand`.
+The full app boots from `../electron/` — see `gui/electron/README.md`
+for the three-process dev loop (Vite + backend bin + Electron shell).
 
 ## Layout
 
 - `src/routes/` — SvelteKit pages
-- `src/lib/api.ts` — typed wrappers around Tauri commands
-- `src/lib/player/` — `<video>` + hls.js plumbing (added in M1.5e)
+- `src/lib/api.ts` — typed `fetch()` wrappers around the backend's
+  `/api/*` routes; reads its base URL from `window.aniGui.apiBase`
+  (set by Electron's preload script).
+- `src/lib/player/` — `<video>` + hls.js plumbing.
 
 ## Design
 
-Visual design is intentionally bare in M1.5. The full design pass —
-typography, color, motion, layout, anime-aware theming — lands in M3
-through the `frontend-design` Anthropic skill with sub-agent review.
-See `../../docs/architecture.md` for the design direction.
+See `../../docs/architecture.md` for the design direction —
+typography, motion, anime-aware theming, and the brand mark.
