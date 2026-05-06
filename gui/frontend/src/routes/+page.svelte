@@ -70,9 +70,14 @@
 							const match = hits[0] ?? null;
 							historyMatches = { ...historyMatches, [entry.id]: match };
 							if (!match) return;
-							void kitsuEpisodes(match.id)
+							const wantNum = parseInt(entry.ep_no, 10);
+							// Kitsu caps page[limit] at 20 — for entries past episode 20
+							// (One Piece, Detective Conan, etc.) we need to compute the
+							// right page or the lookup misses every time.
+							const targetPage =
+								Number.isFinite(wantNum) && wantNum > 0 ? Math.ceil(wantNum / 20) : 1;
+							void kitsuEpisodes(match.id, targetPage)
 								.then((eps: KitsuEpisode[]) => {
-									const wantNum = parseInt(entry.ep_no, 10);
 									const ep =
 										eps.find((e) => e.number === wantNum) ??
 										eps.find((e) => e.relative_number === wantNum) ??

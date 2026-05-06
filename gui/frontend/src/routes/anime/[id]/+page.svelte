@@ -32,41 +32,54 @@
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
 	let scrollY = $state(0);
 
-	// Episode list — fetched in parallel with the detail. null while in-
-	// flight, [] once we know the response was empty (e.g. an upcoming
-	// title that hasn't aired yet). Pagination appends pages onto this
-	// array via the "Load more" button below the grid.
+	// Episode list — fetched in parallel with the detail. Holds the
+	// CURRENT page only (not concatenated) so a 500-episode show doesn't
+	// produce a 500-tile vertical wall. Pagination replaces these.
 	let episodes = $state<KitsuEpisode[] | null>(null);
 	let episodesError = $state<string | null>(null);
 	let episodesPage = $state(1);
-	let episodesLoadingMore = $state(false);
+	let episodesLoading = $state(false);
+	let jumpInput = $state('');
 	const EPISODES_PAGE_SIZE = 20;
-	const hasMoreEpisodes = $derived.by(() => {
-		if (!episodes) return false;
+	const totalEpisodePages = $derived.by(() => {
 		const total = detail?.episode_count;
-		if (!total) return episodes.length > 0 && episodes.length % EPISODES_PAGE_SIZE === 0;
-		return episodes.length < total;
+		if (!total) return null;
+		return Math.max(1, Math.ceil(total / EPISODES_PAGE_SIZE));
 	});
+	const epStart = $derived((episodesPage - 1) * EPISODES_PAGE_SIZE + 1);
+	const epEnd = $derived((episodesPage - 1) * EPISODES_PAGE_SIZE + (episodes?.length ?? 0));
 
-	async function loadMoreEpisodes() {
-		if (episodesLoadingMore || !id) return;
-		episodesLoadingMore = true;
-		const next = episodesPage + 1;
+	async function fetchEpisodesPage(p: number, opts: { initial?: boolean } = {}) {
+		if (!id) return;
+		const wantPage = Math.max(1, p);
+		episodesLoading = true;
 		try {
-			const more = await kitsuEpisodes(id, next);
-			if (more.length > 0) {
-				episodes = [...(episodes ?? []), ...more];
-				episodesPage = next;
-			} else if (episodes && episodes.length > 0) {
-				// Reached the end — flip a flag by setting episode_count if
-				// it wasn't known. Cheap state nudge.
-				episodesPage = next;
-			}
+			const eps = await kitsuEpisodes(id, wantPage);
+			episodes = eps;
+			episodesPage = wantPage;
+			episodesError = null;
 		} catch (e) {
+			if (opts.initial) episodes = [];
 			episodesError = describeErrorString(e);
 		} finally {
-			episodesLoadingMore = false;
+			episodesLoading = false;
 		}
+	}
+
+	function gotoPage(p: number) {
+		const cap = totalEpisodePages ?? p;
+		const next = Math.min(Math.max(1, p), cap);
+		if (next === episodesPage) return;
+		void fetchEpisodesPage(next);
+	}
+
+	function jumpToEpisode(event: SubmitEvent) {
+		event.preventDefault();
+		const n = parseInt(jumpInput, 10);
+		if (Number.isNaN(n) || n < 1) return;
+		const target = Math.ceil(n / EPISODES_PAGE_SIZE);
+		gotoPage(target);
+		jumpInput = '';
 	}
 
 	let config = $state<Config | null>(null);
@@ -99,19 +112,14 @@
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
 			return;
 		}
-		// Fire detail + settings + episodes in parallel.
+		// Fire detail + settings + episodes (page 1) in parallel.
 		void kitsuAnimeDetail(id)
 			.then((d) => (detail = d))
 			.catch((e) => (error = describeError(e)));
 		void settingsGet()
 			.then((c) => (config = c))
 			.catch((e) => (configError = describeErrorString(e)));
-		void kitsuEpisodes(id)
-			.then((e) => (episodes = e))
-			.catch((e) => {
-				episodes = [];
-				episodesError = describeErrorString(e);
-			});
+		void fetchEpisodesPage(1, { initial: true });
 	});
 
 	$effect(() => {
@@ -430,9 +438,9 @@
 					<span>Episodes</span>
 					<span class="section-eyebrow-faint">
 						{#if episodes && episodes.length > 0 && detail.episode_count}
-							{episodes.length} of {detail.episode_count}
+							{epStart}–{epEnd} of {detail.episode_count}
 						{:else if episodes && episodes.length > 0}
-							{episodes.length} loaded
+							page {episodesPage}
 						{:else if episodesError}
 							unavailable
 						{:else}
@@ -440,6 +448,60 @@
 						{/if}
 					</span>
 				</h2>
+
+				{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === EPISODES_PAGE_SIZE)}
+					<div class="ep-controls">
+						<form class="ep-jump" onsubmit={jumpToEpisode}>
+							<label class="ep-jump-label">
+								<span class="ep-jump-key">Jump</span>
+								<input
+									type="number"
+									min="1"
+									max={detail.episode_count ?? 9999}
+									step="1"
+									placeholder="ep #"
+									aria-label="Jump to episode number"
+									bind:value={jumpInput}
+								/>
+							</label>
+							<button
+								type="submit"
+								class="ep-jump-go"
+								disabled={!jumpInput || episodesLoading}
+								aria-label="Go to episode"
+							>
+								↵
+							</button>
+						</form>
+						<div class="ep-pager" role="group" aria-label="Episode pagination">
+							<button
+								type="button"
+								class="ep-pager-btn"
+								onclick={() => gotoPage(episodesPage - 1)}
+								disabled={episodesPage <= 1 || episodesLoading}
+								aria-label="Previous page"
+							>
+								←
+							</button>
+							<span class="ep-pager-state">
+								{episodesPage}{#if totalEpisodePages}<span class="ep-pager-of">
+										/ {totalEpisodePages}</span
+									>{/if}
+							</span>
+							<button
+								type="button"
+								class="ep-pager-btn"
+								onclick={() => gotoPage(episodesPage + 1)}
+								disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
+									episodesLoading ||
+									(episodes !== null && episodes.length < EPISODES_PAGE_SIZE)}
+								aria-label="Next page"
+							>
+								→
+							</button>
+						</div>
+					</div>
+				{/if}
 				<ul class="ep-grid">
 					{#if episodes === null}
 						<!-- Skeleton while fetch is in flight -->
@@ -507,20 +569,6 @@
 						{/each}
 					{/if}
 				</ul>
-				{#if episodes && episodes.length > 0 && hasMoreEpisodes}
-					<button
-						type="button"
-						class="ep-load-more"
-						onclick={loadMoreEpisodes}
-						disabled={episodesLoadingMore}
-					>
-						<span class="ep-load-more-rule" aria-hidden="true"></span>
-						<span class="ep-load-more-label">
-							{episodesLoadingMore ? 'Loading…' : 'Load more episodes'}
-						</span>
-						<span class="ep-load-more-rule" aria-hidden="true"></span>
-					</button>
-				{/if}
 				{#if episodesError}
 					<p class="ep-grid-foot ep-grid-foot-warn">
 						Episode metadata unavailable from Kitsu — playable list above is a fallback.
@@ -1180,41 +1228,119 @@
 		color: color-mix(in oklab, var(--accent-oxblood) 60%, var(--bone-400));
 	}
 
-	/* Load-more button: hairline rules either side of a mono label, no
-	   button-shape — fits the editorial register, doesn't read as a CTA. */
-	.ep-load-more {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
+	/* Episode panel controls: jump-to-N input + prev/next pager. Sits
+	   between the section header and the grid. Replaces the additive
+	   load-more pattern (which made 500-episode shows render a vertical
+	   wall on the page). */
+	.ep-controls {
+		display: flex;
+		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-4);
-		inline-size: 100%;
-		margin-block-start: var(--space-5);
-		padding: var(--space-3) var(--space-4);
-		background: transparent;
-		border: 0;
-		color: var(--bone-300);
-		cursor: pointer;
-		transition: color var(--dur-fast) var(--ease-out-soft);
+		margin-block-end: var(--space-3);
+		padding-block-end: var(--space-3);
+		border-block-end: 1px solid var(--ink-200);
 	}
-	.ep-load-more:hover:not(:disabled) {
-		color: var(--bone-100);
+	@media (max-inline-size: 600px) {
+		.ep-controls {
+			flex-direction: column;
+			align-items: stretch;
+		}
 	}
-	.ep-load-more:disabled {
-		cursor: progress;
-		color: var(--bone-400);
+	.ep-jump {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
-	.ep-load-more-rule {
-		block-size: 1px;
-		background: var(--ink-200);
+	.ep-jump-label {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
-	.ep-load-more:hover:not(:disabled) .ep-load-more-rule {
-		background: color-mix(in oklab, var(--accent) 50%, var(--ink-300));
-	}
-	.ep-load-more-label {
+	.ep-jump-key {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.ep-jump input {
+		inline-size: 4.5rem;
+		padding: 4px var(--space-2);
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-meta);
+		color: var(--bone-100);
+		background: transparent;
+		border: 0;
+		border-block-end: 1px solid var(--bone-300);
+		outline: 0;
+		transition: border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-jump input:focus {
+		border-block-end-color: var(--bone-100);
+	}
+	.ep-jump input::-webkit-inner-spin-button,
+	.ep-jump input::-webkit-outer-spin-button {
+		appearance: none;
+	}
+	.ep-jump-go {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-300);
+		padding: 2px var(--space-2);
+		border: 1px solid var(--ink-300);
+		border-radius: 2px;
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-jump-go:hover:not(:disabled) {
+		color: var(--bone-100);
+		border-color: var(--bone-300);
+	}
+	.ep-jump-go:disabled {
+		color: var(--bone-400);
+		cursor: not-allowed;
+	}
+	.ep-pager {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.ep-pager-btn {
+		display: grid;
+		place-items: center;
+		inline-size: 1.75rem;
+		block-size: 1.75rem;
+		font-family: var(--font-display);
+		font-size: var(--type-body-l);
+		color: var(--bone-200);
+		border: 1px solid var(--ink-300);
+		border-radius: 2px;
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-pager-btn:hover:not(:disabled) {
+		color: var(--bone-100);
+		border-color: var(--bone-300);
+	}
+	.ep-pager-btn:disabled {
+		color: var(--bone-400);
+		border-color: var(--ink-200);
+		cursor: not-allowed;
+	}
+	.ep-pager-state {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-meta);
+		color: var(--bone-100);
+		min-inline-size: 4rem;
+		text-align: center;
+	}
+	.ep-pager-of {
+		color: var(--bone-400);
 	}
 
 	/* — Skeletons. */
