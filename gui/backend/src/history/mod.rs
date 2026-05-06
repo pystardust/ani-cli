@@ -361,4 +361,82 @@ mod tests {
         assert_eq!(v2[0].id, "a");
         assert_eq!(v2[0].ep_no, "99");
     }
+
+    // — Properties ────────────────────────────────────────────────────
+    //
+    // The TSV format is shared with the bash `ani-cli` script — both
+    // have to agree on what the file means. Roundtripping (serialize
+    // then parse) is the load-bearing invariant: if it ever breaks,
+    // history written by the GUI silently disappears the next time
+    // the CLI loads the file (or vice versa).
+    use proptest::prelude::*;
+
+    /// Generate a single field that's safe to put in a TSV row.
+    ///
+    /// Excludes `\t` and `\n` because they're the column/row
+    /// separators, and `\r` because Rust's `str::lines()` (which
+    /// `parse` uses) strips a trailing `\r` from each line as part
+    /// of CRLF normalization — so a title containing `\r` wouldn't
+    /// roundtrip. The bash CLI on Linux writes pure `\n`, so this
+    /// set of constraints matches the format we share with it.
+    fn tsv_field(min_len: usize, max_len: usize) -> impl Strategy<Value = String> {
+        proptest::collection::vec(any::<char>(), min_len..=max_len)
+            .prop_filter("no tabs, newlines, or carriage returns", |chars| {
+                chars.iter().all(|c| *c != '\t' && *c != '\n' && *c != '\r')
+            })
+            .prop_map(|chars| chars.into_iter().collect())
+    }
+
+    fn entry_strategy() -> impl Strategy<Value = HistoryEntry> {
+        // ep_no and id must be non-empty (parse() drops rows otherwise).
+        // title may be empty.
+        (tsv_field(1, 8), tsv_field(1, 32), tsv_field(0, 64))
+            .prop_map(|(ep_no, id, title)| HistoryEntry { ep_no, id, title })
+    }
+
+    proptest! {
+        /// `parse(serialize(entries)) == entries` for any well-formed
+        /// vector. The format has no escaping, so the property only
+        /// holds when fields are TSV-clean (no embedded tabs/newlines)
+        /// — exactly what the bash CLI produces.
+        #[test]
+        fn parse_serialize_roundtrip(
+            entries in proptest::collection::vec(entry_strategy(), 0..16),
+        ) {
+            let body = serialize(&entries);
+            let parsed = parse(&body);
+            prop_assert_eq!(entries, parsed);
+        }
+
+        /// `upsert` is idempotent on the same entry: applying it twice
+        /// produces the same vector as applying it once. The CLI relies
+        /// on this — replaying the same play action mustn't multiply
+        /// rows.
+        #[test]
+        fn upsert_is_idempotent(
+            initial in proptest::collection::vec(entry_strategy(), 0..8),
+            new in entry_strategy(),
+        ) {
+            let mut once = initial.clone();
+            upsert(&mut once, new.clone());
+            let mut twice = once.clone();
+            upsert(&mut twice, new);
+            prop_assert_eq!(once, twice);
+        }
+
+        /// `remove_by_id` followed by `upsert` of the same id leaves
+        /// the entry present exactly once, with the new ep_no/title.
+        #[test]
+        fn remove_then_upsert_yields_single_entry(
+            initial in proptest::collection::vec(entry_strategy(), 0..8),
+            target in entry_strategy(),
+        ) {
+            let mut entries = initial;
+            remove_by_id(&mut entries, &target.id);
+            upsert(&mut entries, target.clone());
+            let matches: Vec<&HistoryEntry> = entries.iter().filter(|e| e.id == target.id).collect();
+            prop_assert_eq!(matches.len(), 1);
+            prop_assert_eq!(matches[0], &target);
+        }
+    }
 }

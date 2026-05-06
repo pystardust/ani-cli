@@ -258,4 +258,52 @@ mod tests {
             Err(AniError::ParseFailed { .. })
         ));
     }
+
+    // — Properties ────────────────────────────────────────────────────
+    //
+    // The on-disk image cache is filesystem-keyed by `hash_url(src)`,
+    // so two invariants must hold for the cache to be a cache at all:
+    //   1. Determinism: same URL always hashes to the same string.
+    //   2. Shape: the hash is exactly 32 lowercase hex chars, used as
+    //      the filename + first-two-chars bucket directory.
+    //
+    // Collision-resistance is delegated to SHA-256 itself; we don't
+    // assert it (would require billions of cases to exercise). What
+    // we DO check is that distinct inputs in our actual use space
+    // (Kitsu/AniList CDN URLs) produce distinct hashes — small but
+    // catches accidental truncation that destroys the property.
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Same URL → same hash, every call.
+        #[test]
+        fn hash_url_is_deterministic_property(
+            url in r"https://[a-zA-Z0-9./_-]{5,200}",
+        ) {
+            prop_assert_eq!(hash_url(&url), hash_url(&url));
+        }
+
+        /// Hash is always exactly 32 lowercase hex characters,
+        /// regardless of input length or character mix.
+        #[test]
+        fn hash_url_is_32_lowercase_hex(
+            url in r"[\PC]{1,500}",
+        ) {
+            let h = hash_url(&url);
+            prop_assert_eq!(h.len(), 32);
+            prop_assert!(h.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        }
+
+        /// Different URLs in our actual input space produce different
+        /// hashes. This is a weaker statement than collision-resistance
+        /// but rules out the "bug truncates input" failure mode.
+        #[test]
+        fn distinct_urls_hash_distinctly(
+            a in r"https://[a-zA-Z0-9./_-]{5,80}",
+            b in r"https://[a-zA-Z0-9./_-]{5,80}",
+        ) {
+            prop_assume!(a != b);
+            prop_assert_ne!(hash_url(&a), hash_url(&b));
+        }
+    }
 }

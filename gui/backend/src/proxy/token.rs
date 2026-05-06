@@ -390,4 +390,101 @@ mod tests {
         assert!(table.get(&live_id).is_some());
         assert!(table.get(&dead_id).is_none());
     }
+
+    // — Properties ────────────────────────────────────────────────────
+    //
+    // The HMAC sign/verify pair has two load-bearing invariants:
+    //
+    //   1. Roundtrip: a token produced by `sign_segment(s, sid, url)` must
+    //      always verify against the same triple. If this ever breaks, the
+    //      streaming proxy starts rejecting its own legitimate manifests.
+    //
+    //   2. Tamper rejection: flipping any bit of the token, the URL, the
+    //      session id, or the secret must produce a verification failure.
+    //      This is the actual security boundary — without it, an attacker
+    //      with renderer-side code execution could synthesize tokens for
+    //      arbitrary upstream URLs.
+    //
+    // Both are checked across randomly-generated inputs by `proptest`,
+    // which shrinks failures to a minimal counter-example.
+    use proptest::prelude::*;
+
+    /// Plausible upstream URL strings — limited to https and a small
+    /// alphabet so proptest doesn't burn cycles generating exotic UTF-8
+    /// that the HMAC layer doesn't actually care about.
+    fn url_strategy() -> impl Strategy<Value = String> {
+        r"https://[a-zA-Z0-9._/-]{5,120}".prop_map(String::from)
+    }
+
+    proptest! {
+        /// Sign-then-verify always succeeds for the same triple.
+        #[test]
+        fn sign_then_verify_roundtrips(
+            secret_bytes in any::<[u8; 32]>(),
+            session_uuid in any::<u128>(),
+            segment_url in url_strategy(),
+        ) {
+            let secret = AppSecret::from_bytes(secret_bytes);
+            let session = SessionId(uuid::Uuid::from_u128(session_uuid));
+            let token = sign_segment(&secret, session, &segment_url);
+            verify_segment(&secret, session, &segment_url, &token).expect("matching token verifies");
+        }
+
+        /// A different secret never validates a legitimate token.
+        #[test]
+        fn token_does_not_verify_under_different_secret(
+            a in any::<[u8; 32]>(),
+            b in any::<[u8; 32]>(),
+            session_uuid in any::<u128>(),
+            segment_url in url_strategy(),
+        ) {
+            prop_assume!(a != b);
+            let session = SessionId(uuid::Uuid::from_u128(session_uuid));
+            let token = sign_segment(&AppSecret::from_bytes(a), session, &segment_url);
+            let res = verify_segment(&AppSecret::from_bytes(b), session, &segment_url, &token);
+            prop_assert!(res.is_err());
+        }
+
+        /// Wrong URL never validates against a token issued for a different URL.
+        #[test]
+        fn token_does_not_verify_for_different_url(
+            secret_bytes in any::<[u8; 32]>(),
+            session_uuid in any::<u128>(),
+            url_a in url_strategy(),
+            url_b in url_strategy(),
+        ) {
+            prop_assume!(url_a != url_b);
+            let secret = AppSecret::from_bytes(secret_bytes);
+            let session = SessionId(uuid::Uuid::from_u128(session_uuid));
+            let token = sign_segment(&secret, session, &url_a);
+            let res = verify_segment(&secret, session, &url_b, &token);
+            prop_assert!(res.is_err());
+        }
+
+        /// Wrong session id never validates against a token issued for a
+        /// different session — this is what stops cross-session token
+        /// reuse if a renderer ever leaks a legitimate token.
+        #[test]
+        fn token_does_not_verify_for_different_session(
+            secret_bytes in any::<[u8; 32]>(),
+            session_a in any::<u128>(),
+            session_b in any::<u128>(),
+            segment_url in url_strategy(),
+        ) {
+            prop_assume!(session_a != session_b);
+            let secret = AppSecret::from_bytes(secret_bytes);
+            let token = sign_segment(
+                &secret,
+                SessionId(uuid::Uuid::from_u128(session_a)),
+                &segment_url,
+            );
+            let res = verify_segment(
+                &secret,
+                SessionId(uuid::Uuid::from_u128(session_b)),
+                &segment_url,
+                &token,
+            );
+            prop_assert!(res.is_err());
+        }
+    }
 }

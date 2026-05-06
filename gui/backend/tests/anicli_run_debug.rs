@@ -126,79 +126,9 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
         path_override: Some(path),
     };
 
-    let out = match run_debug(&opts, "test", "1", "best", "sub").await {
-        Ok(v) => v,
-        Err(e) => {
-            // CI has been failing here with `error.scraper.parse_failed`
-            // and the bare assertion gave us nothing to debug from. On
-            // failure, dump every input the test process can still
-            // observe so the next CI run carries enough breadcrumbs.
-            let dump_dir = |label: &str, p: &std::path::Path| {
-                eprintln!("--- {label}: {} ---", p.display());
-                if let Ok(entries) = std::fs::read_dir(p) {
-                    for e in entries.flatten() {
-                        eprintln!("  {}", e.path().display());
-                    }
-                }
-            };
-            eprintln!("\n=== run_debug failed: {e:?} ===");
-            dump_dir("tmp", tmp.path());
-            dump_dir("fixtures", &fixtures);
-            dump_dir("bin", &bin);
-            eprintln!("--- ani-cli script: {} ---", opts.ani_cli_path.display());
-            eprintln!("--- PATH override: {:?} ---", opts.path_override);
-            eprintln!("--- repo_root() = {} ---", repo_root().display());
-
-            // Probe ani-cli's `dep_ch` deps directly. The previous
-            // diagnostic dump told us env state was correct, but
-            // `run_debug` consumed the script's actual stdout/stderr
-            // before returning the parse-failed error key. Rerun with
-            // `-h` (which exercises dep_ch then exits immediately) and
-            // fall back to a `command -v` probe for each dep so we can
-            // tell at a glance whether the runner is missing fzf,
-            // openssl, etc. — that's the most likely failure mode.
-            let path_str = opts.path_override.clone().unwrap_or_default();
-            let probe = std::process::Command::new(&opts.ani_cli_path)
-                .env_clear()
-                .env("PATH", &path_str)
-                .env("HOME", "/tmp")
-                .arg("-h")
-                .output();
-            match probe {
-                Ok(o) => {
-                    eprintln!("--- ani-cli -h exit: {:?} ---", o.status);
-                    eprintln!(
-                        "--- ani-cli -h stdout ---\n{}",
-                        String::from_utf8_lossy(&o.stdout)
-                    );
-                    eprintln!(
-                        "--- ani-cli -h stderr ---\n{}",
-                        String::from_utf8_lossy(&o.stderr)
-                    );
-                }
-                Err(spawn_err) => {
-                    eprintln!("--- ani-cli -h spawn failed: {spawn_err} ---");
-                }
-            }
-            for tool in [
-                "fzf", "curl", "openssl", "sed", "grep", "mpv", "aria2c", "ffmpeg",
-            ] {
-                let r = std::process::Command::new("sh")
-                    .env_clear()
-                    .env("PATH", &path_str)
-                    .arg("-c")
-                    .arg(format!("command -v {tool} || echo MISSING"))
-                    .output();
-                if let Ok(o) = r {
-                    eprintln!(
-                        "--- which {tool}: {} ---",
-                        String::from_utf8_lossy(&o.stdout).trim()
-                    );
-                }
-            }
-            panic!("run_debug failed; see stderr dump above for env state");
-        }
-    };
+    let out = run_debug(&opts, "test", "1", "best", "sub")
+        .await
+        .expect("run_debug succeeds");
 
     assert_eq!(out.selected_url, "https://wixmp.example/video.mp4");
     assert!(out
