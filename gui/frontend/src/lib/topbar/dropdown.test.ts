@@ -5,7 +5,8 @@ import {
 	cycleSelectedIdx,
 	decideEnterAction,
 	mergeRecents,
-	parseStoredRecents
+	parseStoredRecents,
+	shouldRenderDropdown
 } from './dropdown';
 
 describe('cycleSelectedIdx', () => {
@@ -198,6 +199,65 @@ describe('mergeRecents (properties)', () => {
 				return out.every((x) => x === query || existingSet.has(x));
 			})
 		);
+	});
+});
+
+describe('shouldRenderDropdown', () => {
+	const base = {
+		dropdownOpen: true,
+		liveResults: null as unknown[] | null,
+		liveError: null as unknown,
+		queryTrimmed: '',
+		recentsCount: 0
+	};
+	const opts = { liveMinChars: 2 };
+
+	it('returns false when the dropdown is closed', () => {
+		expect(shouldRenderDropdown({ ...base, dropdownOpen: false }, opts)).toBe(false);
+	});
+
+	it('returns false when nothing would render — empty query, no recents, no results, no error', () => {
+		// This is the empty-row bug: with no recent searches, clicking
+		// the search bar opens an empty dropdown card.
+		expect(shouldRenderDropdown(base, opts)).toBe(false);
+	});
+
+	it('returns true when there are live results', () => {
+		expect(shouldRenderDropdown({ ...base, liveResults: [{}] }, opts)).toBe(true);
+	});
+
+	it('returns true on error so the user sees a recovery hint', () => {
+		expect(shouldRenderDropdown({ ...base, liveError: new Error('boom') }, opts)).toBe(true);
+	});
+
+	it('returns true when the query has hit MIN_CHARS but found zero matches', () => {
+		expect(
+			shouldRenderDropdown(
+				{ ...base, liveResults: [], queryTrimmed: 'jo' },
+				{ liveMinChars: 2 }
+			)
+		).toBe(true);
+	});
+
+	it('returns false when the query is below MIN_CHARS and there are no recents', () => {
+		expect(
+			shouldRenderDropdown(
+				{ ...base, liveResults: [], queryTrimmed: 'j' },
+				{ liveMinChars: 2 }
+			)
+		).toBe(false);
+	});
+
+	it('returns true with empty query when there ARE recent searches', () => {
+		expect(shouldRenderDropdown({ ...base, recentsCount: 3 }, opts)).toBe(true);
+	});
+
+	it('returns false with non-empty (below-MIN_CHARS) query even if there are recents — recents only show on empty-query', () => {
+		// Mirrors the existing branch order in the component: recents
+		// only render when the query is fully empty.
+		expect(
+			shouldRenderDropdown({ ...base, queryTrimmed: 'a', recentsCount: 5 }, opts)
+		).toBe(false);
 	});
 });
 
