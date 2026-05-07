@@ -12,6 +12,7 @@
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import loadingJson from '$lib/anim/loading.json';
 
 	let { visible = false, progress = null } = $props<{
@@ -61,9 +62,19 @@
 	<div class="backdrop" role="status" aria-live="polite" aria-label="Loading">
 		<div class="band">
 			<div bind:this={container} class="anim"></div>
-			{#if progress}
-				<p class="progress" aria-live="polite">{progress}</p>
-			{/if}
+			<div class="progress-row" aria-live="polite">
+				{#if progress}
+					{#key progress}
+						<p
+							class="progress"
+							in:fly={{ x: -16, duration: 220 }}
+							out:fly={{ x: 16, duration: 220 }}
+						>
+							{progress}
+						</p>
+					{/key}
+				{/if}
+			</div>
 		</div>
 	</div>
 {/if}
@@ -92,19 +103,34 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: 0.75rem 0;
-		gap: var(--space-2);
+		padding: 0.75rem 0 1.25rem;
+		gap: 0;
 	}
 	.anim {
 		height: 180px;
 		aspect-ratio: 1 / 1;
 	}
+	/* Fixed-height row so the in/out transitions can overlap without
+	   the band reflowing. A negative margin-top tucks the row up
+	   under the Lottie's bottom; the row itself has comfortable
+	   padding-bottom so the text sits well off the band's edge. */
+	.progress-row {
+		position: relative;
+		margin-top: -0.75rem;
+		width: 100%;
+		height: 1.4rem;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
 	.progress {
+		position: absolute;
 		margin: 0;
 		font-family: var(--font-mono, monospace);
 		font-size: var(--text-sm, 0.85rem);
 		color: rgba(255, 255, 255, 0.78);
 		letter-spacing: 0.02em;
+		white-space: nowrap;
 	}
 	@keyframes fade-in {
 		from {
