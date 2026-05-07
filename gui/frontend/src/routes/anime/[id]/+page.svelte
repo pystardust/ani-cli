@@ -31,6 +31,7 @@
 	} from '$lib/api';
 	import { cubicOut } from 'svelte/easing';
 	import { SvelteMap } from 'svelte/reactivity';
+	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
@@ -256,6 +257,11 @@
 	// Inline status banner when an action isn't wired yet (Play/Download/External
 	// hit allanime, which is M2). Kept tight; not a modal.
 	let actionNotice = $state<string | null>(null);
+	/** Separate state from `actionNotice` so the inline status banner
+	 *  (used for transient hints like "downloads land later") doesn't
+	 *  share a slot with hard play-call failures. The failure shows in
+	 *  a fixed-position overlay regardless of scroll. */
+	let playFailure = $state<{ episode: number; message: string } | null>(null);
 	// True while a play/playExternal request is in flight. Buttons
 	// disable themselves to keep the user from double-clicking ani-cli
 	// into a stack of concurrent spawns.
@@ -615,11 +621,13 @@
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			actionBusy = false;
-			// Sticky inline message rather than the 4s toast — the user
-			// just clicked their primary action and it failed, so they
-			// need to read it without time pressure. They dismiss by
-			// clicking another episode (success clears actionNotice).
-			actionNotice = describePlayFailure(e);
+			// Fixed-position overlay rather than an inline banner — the
+			// user just clicked their primary action and it failed,
+			// scrolled out of view of the page header, so the message
+			// needs to follow them. They dismiss explicitly (button /
+			// Escape / backdrop click) so it doesn't auto-disappear
+			// while they're reading.
+			playFailure = { episode: ep, message: describePlayFailure(e) };
 		}
 	}
 
@@ -1027,6 +1035,14 @@
 </main>
 
 <LoadingOverlay visible={actionBusy} progress={actionProgress} />
+
+{#if playFailure}
+	<ErrorOverlay
+		headline={`Couldn't play episode ${playFailure.episode}`}
+		body={playFailure.message}
+		onDismiss={() => (playFailure = null)}
+	/>
+{/if}
 
 <style>
 	.page {

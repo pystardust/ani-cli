@@ -51,6 +51,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
+	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
@@ -220,6 +221,33 @@
 		return String(e);
 	}
 
+	/** Human-readable copy for a play-call failure. Mirrors the detail
+	 *  page helper of the same name — kept duplicated so the two routes
+	 *  can diverge messaging without coupling. */
+	function describePlayFailure(e: unknown): string {
+		const raw = describeError(e).toLowerCase();
+		if (raw.includes('no_results')) {
+			return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
+		}
+		if (raw.includes('scraper')) {
+			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
+		}
+		if (raw.includes('timeout')) {
+			return 'The streaming source took too long to respond. Try again in a few minutes.';
+		}
+		if (raw.includes('network') || raw.includes('upstream')) {
+			return 'Network trouble reaching the streaming source. Check your connection and try again.';
+		}
+		return "Couldn't start this episode right now. Try again in a few minutes.";
+	}
+
+	/** Hard-failure overlay state — distinct from `playerError` (which
+	 *  shows in the player area when the video element / hls.js errors
+	 *  *during* playback). This one fires when the play *call* itself
+	 *  fails (switchToEpisode catch); the overlay must follow the user
+	 *  even if they've scrolled to the episode strip. */
+	let playFailure = $state<{ episode: number; message: string } | null>(null);
+
 	onMount(() => {
 		if (!id) {
 			detailError = 'Missing show id in URL.';
@@ -350,7 +378,12 @@
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
-			playerError = describeError(e);
+			// switchToEpisode is the play *call* failing — the user
+			// might be scrolled into the episode strip when this fires,
+			// so a fixed-position overlay is the only visible surface.
+			// playerError stays for *playback*-time errors (in-place
+			// `<p class="player-empty">` substitute for the video).
+			playFailure = { episode: targetEp, message: describePlayFailure(e) };
 		} finally {
 			switchBusy = false;
 		}
@@ -589,6 +622,14 @@
 
 <LoadingOverlay visible={switchBusy} progress={switchProgress} />
 
+{#if playFailure}
+	<ErrorOverlay
+		headline={`Couldn't play episode ${playFailure.episode}`}
+		body={playFailure.message}
+		onDismiss={() => (playFailure = null)}
+	/>
+{/if}
+
 <style>
 	.page {
 		display: flex;
@@ -744,9 +785,11 @@
 		place-items: center;
 		text-align: center;
 		padding: var(--space-6);
-		color: var(--bone-300);
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		color: var(--bone-100);
+		font-family: var(--font-body);
+		font-size: var(--type-body-l);
+		font-weight: 500;
+		line-height: 1.5;
 	}
 	.player-busy video {
 		opacity: 0.5;
