@@ -530,6 +530,110 @@ mod tests {
         assert!(session_args.subtitle_url.is_none());
     }
 
+    /// Build an `AppState` for the `try_serve_cached` tests. Mirrors
+    /// `app::tests::fake_state` (private, unreachable from here) so the
+    /// shape stays in lock-step.
+    fn state_with_proxy_origin() -> AppState {
+        use crate::app::SCRAPER_CONCURRENCY;
+        use crate::meta::kitsu::KitsuClient;
+        use crate::proxy::{AppSecret, ProxyOrigin, SessionTable};
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+        AppState {
+            secret: AppSecret::random(),
+            sessions: SessionTable::new(),
+            proxy_http: reqwest::Client::new(),
+            proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
+            ani_cli_path: std::path::PathBuf::from("/tmp/ani-cli"),
+            history_path: std::path::PathBuf::from("/tmp/ani-cli/ani-hsts"),
+            scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
+            image_cache_dir: std::path::PathBuf::from("/tmp/ani-gui-images"),
+            cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
+            kitsu: KitsuClient::new(reqwest::Client::new()),
+            config_path: std::path::PathBuf::from("/tmp/ani-gui-config.toml"),
+        }
+    }
+
+    #[tokio::test]
+    async fn try_serve_cached_returns_none_when_url_is_unparseable() {
+        // A corrupt cache row with garbage in upstream_url shouldn't
+        // crash — fall through to ani-cli.
+        let state = state_with_proxy_origin();
+        let cached = CachedResolution {
+            upstream_url: "not://a valid url at all".into(),
+            referer: String::new(),
+            subtitle_url: None,
+            media_kind: MediaKind::Mp4,
+        };
+        assert!(try_serve_cached(&state, &cached).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn try_serve_cached_returns_session_on_2xx_head() {
+        // Cache hit happy path: upstream HEAD returns 200 → we register
+        // a session and return its CreateSessionResponse. This is the
+        // ~50ms path that replaces the ~30s ani-cli spawn.
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .and(wiremock::matchers::path("/video.mp4"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let cached = CachedResolution {
+            upstream_url: format!("{}/video.mp4", server.uri()),
+            referer: String::new(),
+            subtitle_url: None,
+            media_kind: MediaKind::Mp4,
+        };
+        let resp = try_serve_cached(&state, &cached).await.expect("hit");
+        // Session is freshly created, but the upstream + kind match.
+        assert!(resp.media_url.contains("/file.mp4"));
+        assert_eq!(resp.media_kind, MediaKind::Mp4);
+    }
+
+    #[tokio::test]
+    async fn try_serve_cached_returns_none_on_404() {
+        // Stale wixmp URL — HEAD 404 means the row is dead. Return
+        // None so the caller falls through to ani-cli (which will
+        // overwrite the row with a fresh resolution).
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let cached = CachedResolution {
+            upstream_url: format!("{}/expired.mp4", server.uri()),
+            referer: String::new(),
+            subtitle_url: None,
+            media_kind: MediaKind::Mp4,
+        };
+        assert!(try_serve_cached(&state, &cached).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn try_serve_cached_sends_referer_header_when_set() {
+        // fast4speed.rsvp upstreams 403 without `Referer:
+        // https://allmanga.to`. The cached referer must round-trip
+        // through the HEAD validation; otherwise the row appears dead
+        // even when it isn't.
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .and(wiremock::matchers::header("referer", "https://allmanga.to"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let cached = CachedResolution {
+            upstream_url: format!("{}/sub/1", server.uri()),
+            referer: "https://allmanga.to".into(),
+            subtitle_url: None,
+            media_kind: MediaKind::Mp4,
+        };
+        assert!(try_serve_cached(&state, &cached).await.is_some());
+    }
+
     #[test]
     fn play_args_quality_defaults_to_best() {
         let args = PlayArgs {
