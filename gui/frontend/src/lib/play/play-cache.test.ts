@@ -153,6 +153,58 @@ describe('getOrFire', () => {
 	});
 });
 
+describe('PREFETCH_CONCURRENCY semaphore', () => {
+	it('queues fires beyond the cap and only releases when an in-flight one settles', async () => {
+		// PREFETCH_CONCURRENCY = 2 (see play-cache.ts). Fire 4 entries
+		// at once: the first two should run immediately, the latter
+		// two queue at the `await new Promise(resolve => fireQueue.push(resolve))`
+		// branch until a slot frees up.
+		let runningNow = 0;
+		let peakConcurrent = 0;
+		const releasers: Array<() => void> = [];
+		const fire = (seed: string) => () =>
+			new Promise<CreateSessionResponse>((resolve) => {
+				runningNow += 1;
+				peakConcurrent = Math.max(peakConcurrent, runningNow);
+				releasers.push(() => {
+					runningNow -= 1;
+					resolve(fakeResp(seed));
+				});
+			});
+
+		const p1 = getOrFire(makeKey('s', 1, 'sub', 'best'), fire('a'));
+		const p2 = getOrFire(makeKey('s', 2, 'sub', 'best'), fire('b'));
+		const p3 = getOrFire(makeKey('s', 3, 'sub', 'best'), fire('c'));
+		const p4 = getOrFire(makeKey('s', 4, 'sub', 'best'), fire('d'));
+
+		// Yield enough microtasks for the first two to enter their fire()
+		// bodies; the last two should still be waiting on the queue.
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(releasers).toHaveLength(2);
+		expect(runningNow).toBe(2);
+
+		// Drain in order. Releasing one slot should immediately admit
+		// the next queued fire on the next microtask.
+		releasers[0]();
+		await p1;
+		await Promise.resolve();
+		expect(releasers).toHaveLength(3);
+
+		releasers[1]();
+		await p2;
+		await Promise.resolve();
+		expect(releasers).toHaveLength(4);
+
+		releasers[2]();
+		releasers[3]();
+		await Promise.all([p3, p4]);
+
+		// Cap held at 2 throughout — the queue did its job.
+		expect(peakConcurrent).toBe(2);
+	});
+});
+
 describe('clearForShow', () => {
 	it('drops every entry whose key starts with the given show id', async () => {
 		const fire = vi.fn(plainFire(fakeResp('x')));

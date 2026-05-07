@@ -22,7 +22,9 @@ import {
 	proxyBaseUrl,
 	settingsGet,
 	settingsPut,
-	type Config
+	type Config,
+	type CreateSessionResponse,
+	type PlayProgress
 } from './api';
 
 const BASE = 'http://127.0.0.1:1234';
@@ -250,8 +252,10 @@ describe('playExternal', () => {
 });
 
 describe('playStream', () => {
-	// Minimal EventSource shim. The real browser type has many fields
-	// we don't touch; this fake exposes only what `playStream` reads
+	// Minimal EventSource shim: enough surface area for `playStream` to
+	// register handlers and for tests to dispatch synthetic events. The
+	// real browser type has many fields we don't touch; this fake
+	// exposes only what the implementation actually reads
 	// (addEventListener / close) plus a `dispatch` test seam.
 	type EsHandler = (ev: MessageEvent) => void;
 	class FakeEventSource {
@@ -287,6 +291,112 @@ describe('playStream', () => {
 		delete g.EventSource;
 	});
 
+	function donePayload(): CreateSessionResponse {
+		return {
+			session_id: 'sid',
+			media_url: `${BASE}/s/sid/master.m3u8`,
+			media_kind: 'hls',
+			subtitle_url: null
+		};
+	}
+
+	it('opens an SSE URL with title/episode/mode/quality/episode_count query params', async () => {
+		const onProgress = vi.fn();
+		const promise = playStream(
+			{ title: 'One Piece', episode: '1', mode: 'sub', quality: 'best', episode_count: 1100 },
+			onProgress
+		);
+		// `apiBase()` is async — give the promise chain one tick to construct
+		// the EventSource before we inspect it.
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es).toBeTruthy();
+		expect(es.url).toBe(
+			`${BASE}/api/play/stream?title=One+Piece&episode=1&mode=sub&quality=best&episode_count=1100`
+		);
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('omits quality and episode_count when not provided', async () => {
+		const promise = playStream({ title: 'X', episode: '2', mode: 'dub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.url).toBe(`${BASE}/api/play/stream?title=X&episode=2&mode=dub`);
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('forwards parsed progress events to onProgress in arrival order', async () => {
+		const seen: PlayProgress[] = [];
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, (p) => seen.push(p));
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('progress', JSON.stringify({ kind: 'links_fetched', provider: 'youtube' }));
+		es.dispatch('progress', JSON.stringify({ kind: 'banner', text: 'hi' }));
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+		expect(seen).toEqual([
+			{ kind: 'links_fetched', provider: 'youtube' },
+			{ kind: 'banner', text: 'hi' }
+		]);
+	});
+
+	it('swallows malformed progress JSON without rejecting', async () => {
+		const onProgress = vi.fn();
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, onProgress);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('progress', '{ not json');
+		expect(onProgress).not.toHaveBeenCalled();
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await expect(promise).resolves.toMatchObject({ session_id: 'sid' });
+	});
+
+	it('resolves with the parsed done payload and closes the EventSource', async () => {
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('done', JSON.stringify(donePayload()));
+		const resp = await promise;
+		expect(resp.session_id).toBe('sid');
+		expect(es.closed).toBe(true);
+	});
+
+	it('rejects when done payload is malformed JSON', async () => {
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('done', '{ broken');
+		await expect(promise).rejects.toBeInstanceOf(SyntaxError);
+		expect(es.closed).toBe(true);
+	});
+
+	it('rejects with the parsed error payload when an error event carries data', async () => {
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('error', JSON.stringify({ kind: 'upstream_403', detail: 'blocked' }));
+		await expect(promise).rejects.toMatchObject({ kind: 'upstream_403' });
+		expect(es.closed).toBe(true);
+	});
+
+	it('rejects with a generic Error when an error event has no data', async () => {
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('error');
+		await expect(promise).rejects.toThrow(/Stream closed before resolution finished/);
+	});
+
 	it('rejects with a generic Error when error data is non-JSON garbage', async () => {
 		// Regression guard. The previous implementation called
 		// `finish(() => reject(JSON.parse(data)))` — `JSON.parse`
@@ -301,6 +411,82 @@ describe('playStream', () => {
 		const es = FakeEventSource.instances[0];
 		es.dispatch('error', '{ not json');
 		await expect(promise).rejects.toThrow(/Stream closed before resolution finished/);
+	});
+
+	it('ignores events that arrive after settling (no double-resolve)', async () => {
+		const seen: PlayProgress[] = [];
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, (p) => seen.push(p));
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+		// Late events should be no-ops once settled. The `settled` guard
+		// in playStream is what stops a second resolve/close cycle.
+		es.dispatch('done', JSON.stringify(donePayload()));
+		es.dispatch('error');
+		// Progress still fires its handler (no settle guard there) — that's
+		// fine: subscribers receive whatever the producer sends. We only
+		// assert nothing throws and the resolved value stayed sid.
+		expect(es.closed).toBe(true);
+	});
+
+	it('falls back to play() POST when EventSource is unavailable', async () => {
+		delete g.EventSource;
+		const fetchMock = mockFetchOnce(donePayload());
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const onProgress = vi.fn();
+		const resp = await playStream({ title: 't', episode: '1', mode: 'sub' }, onProgress);
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play`);
+		expect(init?.method).toBe('POST');
+		expect(resp.session_id).toBe('sid');
+		expect(onProgress).not.toHaveBeenCalled();
+	});
+});
+
+describe('apiBase configuration', () => {
+	type WinHolder = { window?: { aniGui?: { apiBase?: string } } };
+	const g = globalThis as unknown as WinHolder;
+
+	afterEach(() => {
+		delete g.window;
+		__resetApiBaseForTests(BASE); // restore for other tests
+	});
+
+	it('throws a configuration error when neither window.aniGui nor env is set', async () => {
+		__resetApiBaseForTests(null);
+		// No window stub, and vitest's import.meta.env.VITE_ANI_GUI_API_BASE
+		// is not set in this run. Any call that needs the base should throw.
+		await expect(appInfo()).rejects.toThrow(/apiBase is not configured/);
+	});
+
+	it('uses window.aniGui.apiBase when present (Electron preload path)', async () => {
+		__resetApiBaseForTests(null);
+		g.window = { aniGui: { apiBase: 'http://127.0.0.1:9999' } };
+		const fetchMock = mockFetchOnce({
+			version: '0.0.0',
+			ani_cli_path: '/x',
+			history_path: '/y',
+			proxy_base_url: 'http://127.0.0.1:1'
+		});
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await appInfo();
+		expect(lastCall(fetchMock).url).toBe('http://127.0.0.1:9999/api/app-info');
+	});
+});
+
+describe('expect2xx error fallback', () => {
+	it('synthesizes {kind:"http",status} when the backend returns a non-JSON error body', async () => {
+		const response = {
+			ok: false,
+			status: 502,
+			async json(): Promise<unknown> {
+				throw new SyntaxError('not json');
+			}
+		} as unknown as Response;
+		globalThis.fetch = vi.fn(async () => response) as unknown as typeof fetch;
+		await expect(appInfo()).rejects.toMatchObject({ kind: 'http', status: 502 });
 	});
 });
 
