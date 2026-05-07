@@ -77,11 +77,19 @@ pub struct PlayArgs {
 #[must_use]
 pub fn select_first_with_hits(
     primary: &str,
-    _results: &[(String, Vec<Candidate>)],
-    _expected: u32,
-    _mode: &str,
+    results: &[(String, Vec<Candidate>)],
+    expected: u32,
+    mode: &str,
 ) -> (String, usize) {
-    // Red placeholder — green commit walks the results.
+    for (title, cands) in results {
+        if cands.is_empty() {
+            continue;
+        }
+        // pick_by_ep_count returns None only on empty input; we already
+        // filtered that, so the unwrap_or is a belt-and-braces fallback.
+        let pick = scraper::pick_by_ep_count(cands, expected, mode).unwrap_or(1);
+        return (title.clone(), pick);
+    }
     (primary.to_string(), 1)
 }
 
@@ -90,37 +98,56 @@ pub fn select_first_with_hits(
 /// before the user is better served by an error than a stuck spinner.
 const RUN_DEBUG_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Resolve which 1-based candidate index to pass to ani-cli's `-S`
-/// flag. Calls our own allanime search, picks the candidate whose
-/// `availableEpisodes` is closest to Kitsu's, and returns that index.
-/// Falls through to 1 (legacy behaviour) on any failure or missing
-/// signal — playback should never block on the disambiguator.
-async fn pick_index_or_default(state: &AppState, args: &PlayArgs) -> usize {
+/// Resolve which `(title, 1-based candidate index)` to pass to
+/// `ani-cli -S`. Calls our own allanime search for the canonical
+/// title first; if that returns zero hits, walks `args.alt_titles`
+/// in order until one returns a non-empty list, then runs
+/// `pick_by_ep_count` over the winner. Falls through to
+/// `(args.title, 1)` (legacy behaviour) on every-list-empty or when
+/// `episode_count` is unknown.
+async fn pick_title_and_index(state: &AppState, args: &PlayArgs) -> (String, usize) {
+    let primary = args.title.clone();
     let Some(expected) = args.episode_count else {
-        return 1;
+        return (primary, 1);
     };
     let mode = if args.mode == "dub" { "dub" } else { "sub" };
-    match scraper::search(&state.proxy_http, &args.title, mode, None).await {
-        Ok(cands) => {
-            let pick = scraper::pick_by_ep_count(&cands, expected, mode).unwrap_or(1);
-            tracing::info!(
-                title = %args.title,
-                expected_eps = expected,
-                candidates = cands.len(),
-                pick = pick,
-                "play: disambiguated allanime candidate by episode count",
-            );
-            pick
-        }
-        Err(e) => {
-            tracing::warn!(
-                title = %args.title,
-                error = ?e,
-                "play: allanime search failed; falling back to -S 1",
-            );
-            1
+
+    // Build (title, candidates) pairs by querying allanime for each
+    // candidate title in turn. Stop at the first non-empty list — no
+    // point making three GraphQL calls when the canonical worked.
+    let mut results: Vec<(String, Vec<Candidate>)> = Vec::new();
+    for title in
+        std::iter::once(args.title.as_str()).chain(args.alt_titles.iter().map(String::as_str))
+    {
+        match scraper::search(&state.proxy_http, title, mode, None).await {
+            Ok(cands) => {
+                let was_empty = cands.is_empty();
+                results.push((title.to_string(), cands));
+                if !was_empty {
+                    break;
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    title,
+                    error = ?e,
+                    "play: allanime search failed; trying next candidate",
+                );
+                results.push((title.to_string(), Vec::new()));
+            }
         }
     }
+
+    let (chosen_title, pick) = select_first_with_hits(&primary, &results, expected, mode);
+    tracing::info!(
+        primary = %primary,
+        alt_count = args.alt_titles.len(),
+        chosen_title = %chosen_title,
+        expected_eps = expected,
+        pick = pick,
+        "play: disambiguated allanime candidate by episode count",
+    );
+    (chosen_title, pick)
 }
 
 fn debug_options_for(state: &AppState) -> DebugOptions {
@@ -175,13 +202,15 @@ where
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
 
-    // Disambiguate which allanime candidate ani-cli should pick. See
-    // play() docstring above; behaviour is identical.
-    let select_index = pick_index_or_default(state, args).await;
+    // Pick which (title, candidate index) ani-cli should use. The title
+    // may differ from args.title when alt_titles produced the winning
+    // hit (e.g. romanized fallback for shows whose Kitsu canonicalTitle
+    // is the English form). See pick_title_and_index().
+    let (search_title, select_index) = pick_title_and_index(state, args).await;
 
     let resolved = run_debug_streaming(
         &opts,
-        &args.title,
+        &search_title,
         &args.episode,
         quality,
         &args.mode,
@@ -257,10 +286,10 @@ where
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let select_index = pick_index_or_default(state, args).await;
+    let (search_title, select_index) = pick_title_and_index(state, args).await;
     let resolved = run_debug(
         &opts,
-        &args.title,
+        &search_title,
         &args.episode,
         quality,
         &args.mode,
