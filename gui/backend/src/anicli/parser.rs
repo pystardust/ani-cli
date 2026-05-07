@@ -34,6 +34,74 @@ pub struct SearchResult {
     pub episode_count: u32,
 }
 
+/// One line of progress emitted on `ani-cli`'s stderr while it
+/// resolves a stream. Used to forward incremental status to the
+/// renderer's loading overlay over SSE so the user sees something
+/// happening during the 8-30 s wait.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum ProgressLine {
+    /// A startup banner (`Checking dependencies...`).
+    Banner {
+        /// The full banner text, ANSI-stripped.
+        text: String,
+    },
+    /// `<provider> Links Fetched` — emitted by `provider_init` for
+    /// each embed source ani-cli successfully queried. Drives the
+    /// "youtube → sharepoint → wixmp → hianime" trail in the UI.
+    LinksFetched {
+        /// Provider label as printed by ani-cli (`youtube`,
+        /// `sharepoint`, `wixmp`, `hianime`, …).
+        provider: String,
+    },
+    /// Any other line we don't recognise; passed through verbatim
+    /// so the overlay can fall back to "raw output" mode if upstream
+    /// adds a new line we haven't taught the parser about.
+    Other {
+        /// The original line, ANSI-stripped and trimmed.
+        text: String,
+    },
+}
+
+/// Classify a single (already ANSI-stripped) line of `ani-cli` stderr
+/// into a [`ProgressLine`].
+///
+/// Returns `None` for empty or whitespace-only lines so the SSE stream
+/// doesn't ferry blank events to the renderer.
+///
+/// # Drift contract
+///
+/// The `<provider> Links Fetched` shape comes from `ani-cli`'s
+/// `provider_init` (`printf "\033[1;32m%s\033[0m Links Fetched\n"`).
+/// If upstream changes that format, this parser falls back to
+/// `ProgressLine::Other` and the overlay stops showing the friendly
+/// label — but playback still works. The integration drift test in
+/// `tests/anicli_progress_format.rs` runs real `ani-cli` through the
+/// curl shim and fails loudly if the expected format disappears.
+#[must_use]
+pub fn parse_progress_line(line: &str) -> Option<ProgressLine> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.starts_with("Checking dependencies") {
+        return Some(ProgressLine::Banner {
+            text: trimmed.to_string(),
+        });
+    }
+    if let Some(provider) = trimmed.strip_suffix(" Links Fetched") {
+        let provider = provider.trim();
+        if !provider.is_empty() {
+            return Some(ProgressLine::LinksFetched {
+                provider: provider.to_string(),
+            });
+        }
+    }
+    Some(ProgressLine::Other {
+        text: trimmed.to_string(),
+    })
+}
+
 /// Parsed output of `ANI_CLI_PLAYER=debug ani-cli ...`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugOutput {
@@ -152,6 +220,90 @@ pub fn parse_debug_output(stdout: &str) -> Result<DebugOutput> {
         referer,
         subtitle_url,
     })
+}
+
+#[cfg(test)]
+#[allow(missing_docs)]
+mod progress_tests {
+    use super::*;
+
+    #[test]
+    fn parse_progress_line_classifies_links_fetched_with_provider_name() {
+        assert_eq!(
+            parse_progress_line("youtube Links Fetched"),
+            Some(ProgressLine::LinksFetched {
+                provider: "youtube".into()
+            })
+        );
+        assert_eq!(
+            parse_progress_line("sharepoint Links Fetched"),
+            Some(ProgressLine::LinksFetched {
+                provider: "sharepoint".into()
+            })
+        );
+    }
+
+    #[test]
+    fn parse_progress_line_classifies_dependency_banner() {
+        assert_eq!(
+            parse_progress_line("Checking dependencies..."),
+            Some(ProgressLine::Banner {
+                text: "Checking dependencies...".into()
+            })
+        );
+    }
+
+    #[test]
+    fn parse_progress_line_passes_unknown_lines_through_as_other() {
+        assert_eq!(
+            parse_progress_line("Some unrecognised log line"),
+            Some(ProgressLine::Other {
+                text: "Some unrecognised log line".into()
+            })
+        );
+    }
+
+    #[test]
+    fn parse_progress_line_strips_whitespace_around_provider_name() {
+        // The strip_ansi step usually leaves trailing spaces from the
+        // colour reset bytes; the parser should tolerate them.
+        assert_eq!(
+            parse_progress_line("  hianime   Links Fetched"),
+            Some(ProgressLine::LinksFetched {
+                provider: "hianime".into()
+            })
+        );
+    }
+
+    #[test]
+    fn parse_progress_line_returns_none_for_blank_lines() {
+        assert_eq!(parse_progress_line(""), None);
+        assert_eq!(parse_progress_line("   \t  "), None);
+    }
+
+    #[test]
+    fn parse_progress_line_handles_real_post_strip_input() {
+        // Output captured from `ani-cli -S 1 -e 1 -q best "Test"`,
+        // stderr only, after running through strip_ansi. Pinning a
+        // representative snippet so a regression in strip_ansi or
+        // the parser is loud.
+        let lines = ["Checking dependencies...", "youtube Links Fetched", ""];
+        let parsed: Vec<_> = lines
+            .iter()
+            .filter_map(|l| parse_progress_line(l))
+            .collect();
+        assert_eq!(
+            parsed,
+            vec![
+                ProgressLine::Banner {
+                    text: "Checking dependencies...".into()
+                },
+                ProgressLine::LinksFetched {
+                    provider: "youtube".into()
+                },
+            ]
+        );
+    }
 }
 
 #[cfg(test)]
