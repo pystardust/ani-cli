@@ -49,6 +49,11 @@ interface CacheEntry {
 	 *  sit on a Lottie while ani-cli warms unrelated episodes.
 	 *  Cleared once the slot is acquired and `fire` actually starts. */
 	startNow?: () => void;
+	/** Drives cancellation when the user navigates away mid-resolve
+	 *  (clearForShow aborts; playStream's listener closes the
+	 *  EventSource and rejects). One controller per entry — getOrFire's
+	 *  `fire` argument receives the signal as its second parameter. */
+	abortController: AbortController;
 }
 
 const cached = new Map<CacheKey, CacheEntry>();
@@ -139,22 +144,24 @@ function withSlot<T>(fn: () => Promise<T>): {
  */
 export function getOrFire(
 	key: CacheKey,
-	fire: (emit: (p: PlayProgress) => void) => Promise<CreateSessionResponse>,
+	fire: (emit: (p: PlayProgress) => void, signal: AbortSignal) => Promise<CreateSessionResponse>,
 	onProgress?: (p: PlayProgress) => void
 ): Promise<CreateSessionResponse> {
 	let entry = cached.get(key);
 	if (!entry) {
 		const subscribers = new Set<(p: PlayProgress) => void>();
+		const abortController = new AbortController();
 		const newEntry: CacheEntry = {
 			promise: Promise.resolve({} as CreateSessionResponse), // placeholder, replaced below
 			latestProgress: null,
-			subscribers
+			subscribers,
+			abortController
 		};
 		const emit = (p: PlayProgress) => {
 			newEntry.latestProgress = p;
 			for (const s of subscribers) s(p);
 		};
-		const slot = withSlot(() => fire(emit));
+		const slot = withSlot(() => fire(emit, abortController.signal));
 		newEntry.promise = slot.promise;
 		newEntry.startNow = slot.startNow;
 		cached.set(key, newEntry);
@@ -178,22 +185,33 @@ export function getOrFire(
 }
 
 /**
- * Drop every cache entry for the given show. Called on detail-page /
- * player-page unmount so prefetched-but-unused sessions don't leak
- * into a future visit (the backend GCs them after 4 h regardless).
+ * Drop every cache entry for the given show and abort any in-flight
+ * fires. Called on detail-page / player-page unmount so prefetched-
+ * but-unused sessions don't keep streaming SSE events into the void
+ * (and don't keep ani-cli holding allmanga rate-limit slots) while
+ * the user is on a different page.
+ *
+ * The abort propagates through `fire`'s signal argument — playStream
+ * closes its EventSource and rejects with an "aborted" error. Cache
+ * entries are deleted regardless of fire state, so a future click on
+ * the same key fires fresh.
  */
 export function clearForShow(showId: string): void {
 	const prefix = `${showId}|`;
-	for (const key of cached.keys()) {
-		if (key.startsWith(prefix)) cached.delete(key);
+	for (const [key, entry] of cached) {
+		if (!key.startsWith(prefix)) continue;
+		entry.abortController.abort();
+		cached.delete(key);
 	}
 }
 
 /** Test seam: wipe the whole cache between vitest cases, including
  *  the withSlot semaphore. Without resetting activeFires/fireQueue,
  *  state from a prior test where saturated fires never resolved
- *  would leak — the next test's fire would queue forever. */
+ *  would leak — the next test's fire would queue forever. Each
+ *  entry's controller is also aborted to release any awaits. */
 export function __resetPlayCacheForTests(): void {
+	for (const entry of cached.values()) entry.abortController.abort();
 	cached.clear();
 	activeFires = 0;
 	fireQueue.length = 0;

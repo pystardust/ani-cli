@@ -49,7 +49,7 @@
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
-	import { getOrFire, makeKey } from '$lib/play/play-cache';
+	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
@@ -177,7 +177,15 @@
 		};
 	});
 
-	onDestroy(teardown);
+	onDestroy(() => {
+		teardown();
+		// Cancel any in-flight prefetches for this show. Without this,
+		// abandoned ani-cli spawns keep streaming SSE events to a
+		// closed page and holding allmanga rate-limit slots. Note this
+		// runs on real component unmount only — episode switching keeps
+		// the component alive and prefetches remain valid.
+		if (id) clearForShow(id);
+	});
 
 	function describeError(e: unknown): string {
 		if (typeof e === 'object' && e !== null) {
@@ -251,7 +259,7 @@
 		for (const ep of episodes) {
 			const targetEp = ep.number ?? ep.relative_number ?? null;
 			if (targetEp === null) continue;
-			void getOrFire(makeKey(id, targetEp, mode, quality), (emit) =>
+			void getOrFire(makeKey(id, targetEp, mode, quality), (emit, signal) =>
 				playStream(
 					{
 						title,
@@ -261,10 +269,12 @@
 						episode_count: detail?.episode_count ?? null,
 						alt_titles: altTitles
 					},
-					emit
+					emit,
+					signal
 				)
 			).catch(() => {
-				/* the click handler surfaces errors when it fires */
+				/* click surfaces errors when it fires; abort on unmount
+				 *  rejects with "aborted" which we swallow */
 			});
 		}
 	});
@@ -285,7 +295,7 @@
 			// click races a prefetch that hasn't finished yet.
 			const session = await getOrFire(
 				makeKey(id, targetEp, mode, quality),
-				(emit) =>
+				(emit, signal) =>
 					playStream(
 						{
 							title,
@@ -295,7 +305,8 @@
 							episode_count: detail?.episode_count ?? null,
 							alt_titles: altTitlesFromKitsu(detail)
 						},
-						emit
+						emit,
+						signal
 					),
 				(p) => {
 					switchProgress = progressLabel(p);

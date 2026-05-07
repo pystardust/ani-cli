@@ -480,11 +480,7 @@ describe('playStream', () => {
 		// abandoned prefetch keeps streaming SSE events into the void
 		// while the user is on a different page.
 		const ctrl = new AbortController();
-		const promise = playStream(
-			{ title: 't', episode: '1', mode: 'sub' },
-			() => {},
-			ctrl.signal
-		);
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {}, ctrl.signal);
 		await Promise.resolve();
 		await Promise.resolve();
 		const es = FakeEventSource.instances[0];

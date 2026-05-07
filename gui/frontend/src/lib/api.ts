@@ -343,10 +343,16 @@ export type PlayProgress =
  *
  *  Falls back to a plain `play()` POST when `EventSource` isn't
  *  available — e.g. server-side rendering or older webviews. The
- *  `onProgress` callback simply never fires in that case. */
+ *  `onProgress` callback simply never fires in that case.
+ *
+ *  When `signal` is provided and aborted, the EventSource is closed
+ *  and the promise rejects with an "aborted" error. Used by
+ *  play-cache's `clearForShow` to cancel abandoned prefetches when
+ *  the user navigates away from a show. */
 export function playStream(
 	args: PlayArgs,
-	onProgress: (p: PlayProgress) => void
+	onProgress: (p: PlayProgress) => void,
+	signal?: AbortSignal
 ): Promise<CreateSessionResponse> {
 	if (typeof EventSource === 'undefined') {
 		return play(args);
@@ -377,6 +383,16 @@ export function playStream(
 					es.close();
 					fn();
 				};
+				// Cancellation: abort during a streaming resolve closes
+				// the EventSource and rejects. If the signal is already
+				// aborted, finish synchronously before any listeners
+				// attach. Listening on the signal once captures both
+				// cases without leaking — `finish` is idempotent.
+				if (signal) {
+					const onAbort = () => finish(() => reject(new Error('playStream: aborted')));
+					if (signal.aborted) onAbort();
+					else signal.addEventListener('abort', onAbort, { once: true });
+				}
 				es.addEventListener('progress', (ev) => {
 					try {
 						onProgress(JSON.parse((ev as MessageEvent).data) as PlayProgress);

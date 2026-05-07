@@ -12,7 +12,7 @@
     Play / Download / External are wired to TODOs with inline notice.
 -->
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -35,7 +35,7 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
-	import { getOrFire, makeKey } from '$lib/play/play-cache';
+	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import {
 		decideEpisodeFetchAction,
 		parseEpParam,
@@ -294,6 +294,14 @@
 		{ key: 'worst', label: 'Worst' }
 	];
 
+	// Cancel in-flight prefetches for this show on unmount. Prevents
+	// abandoned ani-cli spawns from holding allmanga slots after the
+	// user navigates away — clearForShow aborts each entry's signal
+	// which closes the SSE EventSource and rejects the promise.
+	onDestroy(() => {
+		if (id) clearForShow(id);
+	});
+
 	onMount(() => {
 		if (!id) {
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
@@ -350,7 +358,7 @@
 			: [defaultEpisode()];
 		const altTitles = altTitlesFromKitsu(detail);
 		for (const ep of targets) {
-			void getOrFire(makeKey(id, ep, mode, quality), (emit) =>
+			void getOrFire(makeKey(id, ep, mode, quality), (emit, signal) =>
 				playStream(
 					{
 						title,
@@ -360,10 +368,12 @@
 						episode_count: detail?.episode_count ?? null,
 						alt_titles: altTitles
 					},
-					emit
+					emit,
+					signal
 				)
 			).catch(() => {
-				/* the click handler will see the error if it ever fires */
+				/* the click handler will see the error if it ever fires;
+				 *  unmount-cancel rejects with "aborted" which we swallow */
 			});
 		}
 	});
@@ -550,7 +560,7 @@
 			// sees `<provider> ✓` ticks while ani-cli runs.
 			const session = await getOrFire(
 				makeKey(id, ep, mode, quality),
-				(emit) =>
+				(emit, signal) =>
 					playStream(
 						{
 							title,
@@ -560,7 +570,8 @@
 							episode_count: detail?.episode_count ?? null,
 							alt_titles: altTitlesFromKitsu(detail)
 						},
-						emit
+						emit,
+						signal
 					),
 				(p) => {
 					actionProgress = progressLabel(p);
