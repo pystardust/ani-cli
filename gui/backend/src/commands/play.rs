@@ -58,8 +58,38 @@ pub struct PlayArgs {
     /// canonicalTitle is the English form (e.g. "JoJo's Bizarre
     /// Adventure: Stone Ocean") but allmanga only indexes the
     /// romanized name. Tried in order.
-    #[serde(default)]
+    ///
+    /// Wire formats accepted (driven by `deserialize_alt_titles`):
+    /// - JSON array (POST /api/play body): `["a","b"]`
+    /// - Newline-joined string (SSE GET /api/play/stream query): `"a\nb"`.
+    ///   Required because EventSource is GET-only and serde_urlencoded
+    ///   doesn't handle repeated keys.
+    #[serde(default, deserialize_with = "deserialize_alt_titles")]
     pub alt_titles: Vec<String>,
+}
+
+/// Accept either a JSON array of strings or a single newline-joined
+/// string for `alt_titles`. The string form is the SSE-query path —
+/// serde_urlencoded can't decode `alt_titles=a&alt_titles=b` as a Vec.
+fn deserialize_alt_titles<'de, D>(d: D) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Wire {
+        List(Vec<String>),
+        Joined(String),
+    }
+    Option::<Wire>::deserialize(d).map(|opt| match opt {
+        None => Vec::new(),
+        Some(Wire::List(v)) => v,
+        Some(Wire::Joined(s)) => s
+            .split('\n')
+            .filter(|p| !p.is_empty())
+            .map(String::from)
+            .collect(),
+    })
 }
 
 /// Choose which `(title, candidate_index)` to feed `ani-cli -S`. Walks
@@ -416,6 +446,25 @@ mod tests {
             args.alt_titles[0],
             "Jojo no Kimyou na Bouken Part 6: Stone Ocean"
         );
+    }
+
+    #[test]
+    fn play_args_deserializes_alt_titles_from_newline_joined_query_string() {
+        // SSE GET path — EventSource can't POST, and serde_urlencoded
+        // can't deserialize Vec<String> from repeated keys. The frontend
+        // joins alt_titles with `\n` for this path; backend splits.
+        let qs = "title=Stone+Ocean&episode=1&mode=sub&alt_titles=a%0Ab%0Ac";
+        let args: PlayArgs = serde_urlencoded::from_str(qs).expect("parses");
+        assert_eq!(args.alt_titles, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn play_args_treats_empty_alt_titles_string_as_empty_vec() {
+        // The frontend sends `alt_titles=` for shows whose Kitsu titles
+        // map is empty (rare but real). Backend must still parse.
+        let qs = "title=X&episode=1&mode=sub&alt_titles=";
+        let args: PlayArgs = serde_urlencoded::from_str(qs).expect("parses");
+        assert!(args.alt_titles.is_empty());
     }
 
     /// Build a Candidate row with the right `availableEpisodes.sub`

@@ -83,6 +83,10 @@ proptest = "1.5"
 wiremock = "0.6"
 tempfile = "3.13"
 tokio-test = "0.4"
+# Used by play::tests to round-trip PlayArgs through the same encoder
+# axum's Query extractor uses, so the SSE GET path's deserializer
+# behaves identically to production.
+serde_urlencoded = "0.7"
 # `tower::ServiceExt::oneshot` lets us drive the axum router under test
 # without binding a real socket. Used by `api::tests`.
 tower = { version = "0.5", features = ["util"] }
