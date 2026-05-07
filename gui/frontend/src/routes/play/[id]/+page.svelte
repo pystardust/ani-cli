@@ -368,7 +368,6 @@
 		const title = detail.canonical_title;
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
-		// eslint-disable-next-line no-console
 		console.info('[play] silent retry after cache-hit failure:', reason);
 		try {
 			await evictPlayCache({
