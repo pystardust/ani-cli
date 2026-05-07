@@ -352,17 +352,26 @@ export function playStream(
 				es.addEventListener('error', (ev) => {
 					// Both `error` events emitted by the server (with data)
 					// and EventSource transport errors land here. Carry the
-					// data when present; otherwise surface a generic error.
+					// parsed payload when present; otherwise surface a
+					// generic error. Parsing happens outside `finish` so
+					// a malformed payload doesn't strand the promise — the
+					// throw used to fire after `settled = true` was set,
+					// making the fall-through `finish()` a no-op.
 					const data = (ev as MessageEvent).data;
+					let payload: unknown;
+					let parsed = false;
 					if (typeof data === 'string' && data.length > 0) {
 						try {
-							finish(() => reject(JSON.parse(data)));
-							return;
+							payload = JSON.parse(data);
+							parsed = true;
 						} catch {
-							/* fall through */
+							/* fall through to generic error */
 						}
 					}
-					finish(() => reject(new Error('Stream closed before resolution finished.')));
+					finish(() => {
+						if (parsed) reject(payload);
+						else reject(new Error('Stream closed before resolution finished.'));
+					});
 				});
 			})
 	);
