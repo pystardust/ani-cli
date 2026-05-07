@@ -484,6 +484,34 @@ mod tests {
     }
 
     #[test]
+    fn select_first_with_hits_walks_alt_titles_when_episode_count_unknown() {
+        // Real-world reproducer: Kitsu returns null `episodeCount` for
+        // some shows even when they're finished (Stone Ocean Part 6 was
+        // observed in the wild). The early `let Some(expected) = …`
+        // guard used to short-circuit the alt_titles loop, which meant
+        // `args.title` was the only thing tried — and for shows whose
+        // canonical doesn't match allmanga's index, that's a guaranteed
+        // miss. The fix: always walk the candidate list, only the
+        // pick_by_ep_count step is gated on episode_count.
+        let results = vec![
+            ("JoJo's Bizarre Adventure: Stone Ocean".into(), vec![]),
+            (
+                "Jojo no Kimyou na Bouken Part 6: Stone Ocean".into(),
+                vec![cand("a1", "Stone Ocean", 12)],
+            ),
+        ];
+        // expected = None signals "no Kitsu episode_count to disambiguate".
+        let (title, idx) = select_first_with_hits_opt(
+            "JoJo's Bizarre Adventure: Stone Ocean",
+            &results,
+            None,
+            "sub",
+        );
+        assert_eq!(title, "Jojo no Kimyou na Bouken Part 6: Stone Ocean");
+        assert_eq!(idx, 1, "first hit when no ep_count to compare");
+    }
+
+    #[test]
     fn select_first_with_hits_returns_primary_when_every_list_is_empty() {
         // Stone Ocean reproduces this when every candidate title (canonical
         // English + en_jp + ja_jp) misses allmanga's index. We fall
