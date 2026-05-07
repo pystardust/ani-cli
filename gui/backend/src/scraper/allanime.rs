@@ -258,6 +258,28 @@ mod tests {
         assert_eq!(cands[1].available_episodes.sub, 1);
     }
 
+    #[test]
+    fn encode_query_for_allanime_replaces_spaces_with_plus() {
+        // Drift-critical: ani-cli does `printf '%s' "$1" | sed 's| |+|g'`
+        // before posting the GraphQL query (line ~178). Allanime treats
+        // `+` as a literal character, so a clean-spaces query and a
+        // plus-joined query return *different* hit lists. When our
+        // scraper search disagrees with ani-cli's own search, our
+        // pick_by_ep_count picks an index that ani-cli's `-S N` can't
+        // reach (Stone Ocean Part 2 reproduces this — we saw 11 hits
+        // and picked 3, ani-cli saw 2 hits and exited because index 3
+        // is out of range).
+        assert_eq!(
+            encode_query_for_allanime("JoJo no Kimyou na Bouken: Stone Ocean Part 2"),
+            "JoJo+no+Kimyou+na+Bouken:+Stone+Ocean+Part+2"
+        );
+        assert_eq!(encode_query_for_allanime(""), "");
+        assert_eq!(encode_query_for_allanime("nospace"), "nospace");
+        // Multiple consecutive spaces collapse one-to-one (mirrors
+        // ani-cli's sed behaviour, which doesn't squeeze).
+        assert_eq!(encode_query_for_allanime("a  b"), "a++b");
+    }
+
     #[tokio::test]
     async fn search_returns_upstream_error_on_5xx() {
         let server = wiremock::MockServer::start().await;

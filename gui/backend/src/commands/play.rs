@@ -263,6 +263,15 @@ where
     // is the English form). See pick_title_and_index().
     let (search_title, select_index) = pick_title_and_index(state, args).await;
 
+    tracing::info!(
+        search_title = %search_title,
+        episode = %args.episode,
+        select_index = select_index,
+        mode = %args.mode,
+        quality = quality,
+        "play: spawning ani-cli",
+    );
+
     let resolved = run_debug_streaming(
         &opts,
         &search_title,
@@ -271,12 +280,30 @@ where
         &args.mode,
         select_index,
         |line| {
+            // Mirror every ani-cli stderr line into our own logs so a
+            // failed play has a paper trail. parse_progress_line still
+            // runs on the same line for the SSE overlay.
+            tracing::info!(line = %line, "anicli.stderr");
             if let Some(p) = parse_progress_line(line) {
                 on_progress(p);
             }
         },
     )
-    .await?;
+    .await
+    .inspect_err(|e| {
+        // Log explicitly so `RUST_LOG=ani_gui=info` surfaces the
+        // actual reason instead of leaving the user staring at an
+        // overlay that flashed and disappeared. The `?` would
+        // propagate it but no logger between here and the SSE
+        // serializer prints it.
+        tracing::error!(
+            search_title = %search_title,
+            episode = %args.episode,
+            select_index = select_index,
+            error = ?e,
+            "play: ani-cli step failed",
+        );
+    })?;
 
     // Decide media kind: cheap path-extension first, HEAD fallback
     // when the URL is opaque (fast4speed.rsvp/<id>/sub/1, etc).

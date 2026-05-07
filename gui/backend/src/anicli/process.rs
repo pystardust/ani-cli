@@ -181,6 +181,13 @@ pub async fn run_debug(
 
     if !exit.success() {
         let stderr_text = super::parser::strip_ansi(&stderr_bytes);
+        let stdout_text = super::parser::strip_ansi(&stdout_bytes);
+        tracing::error!(
+            exit = ?exit.code(),
+            stderr = %stderr_text,
+            stdout = %stdout_text,
+            "anicli: non-zero exit",
+        );
         if stderr_text.contains("No results found") {
             return Err(AniError::NoResults);
         }
@@ -323,6 +330,13 @@ where
 
     if !exit.success() {
         let stderr_text = super::parser::strip_ansi(&stderr_bytes);
+        let stdout_text = super::parser::strip_ansi(&stdout_bytes);
+        tracing::error!(
+            exit = ?exit.code(),
+            stderr = %stderr_text,
+            stdout = %stdout_text,
+            "anicli (streaming): non-zero exit",
+        );
         if stderr_text.contains("No results found") {
             return Err(AniError::NoResults);
         }
