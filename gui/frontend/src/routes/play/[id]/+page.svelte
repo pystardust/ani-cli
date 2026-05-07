@@ -217,31 +217,38 @@
 			});
 	});
 
-	// Background prefetch: warm episode N+1 as soon as the player
-	// mounts so the next-episode click feels instant. Reruns on every
-	// episode swap (since episodeNum is in the dep set), so each new
-	// landing page warms the next one. Skips when there's no next ep
-	// (current == episode_count). The play-cache dedupes across
-	// triggers — a click before the prefetch finishes shares the same
-	// promise.
+	// Background prefetch: warm every episode visible in the strip
+	// concurrently so any click in the page is instant. Re-runs when
+	// the strip page changes (different `episodes` array) or settings
+	// flip mode/quality. The play-cache dedupes across calls — duplicate
+	// keys share a single in-flight promise, so reloading the same page
+	// after a swap doesn't refire requests already resolved.
+	//
+	// Backend will see up to 12 concurrent ani-cli spawns; if allanime
+	// or local CPU complains, wire SCRAPER_CONCURRENCY (already on
+	// AppState) into run_debug. Today the semaphore is allocated but
+	// not acquired — bumping the radius is what surfaces the need.
 	$effect(() => {
-		if (!detail || !config || !hasNext) return;
+		if (!detail || !config || !episodes) return;
 		const title = detail.canonical_title;
 		if (!title) return;
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
-		const targetEp = episodeNum + 1;
-		void getOrFire(makeKey(id, targetEp, mode, quality), () =>
-			play({
-				title,
-				episode: String(targetEp),
-				mode,
-				quality,
-				episode_count: detail?.episode_count ?? null
-			})
-		).catch(() => {
-			/* the prev/next click handler surfaces errors when it fires */
-		});
+		for (const ep of episodes) {
+			const targetEp = ep.number ?? ep.relative_number ?? null;
+			if (targetEp === null) continue;
+			void getOrFire(makeKey(id, targetEp, mode, quality), () =>
+				play({
+					title,
+					episode: String(targetEp),
+					mode,
+					quality,
+					episode_count: detail?.episode_count ?? null
+				})
+			).catch(() => {
+				/* the click handler surfaces errors when it fires */
+			});
+		}
 	});
 
 	async function switchToEpisode(targetEp: number) {

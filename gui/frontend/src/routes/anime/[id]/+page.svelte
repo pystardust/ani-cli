@@ -317,20 +317,34 @@
 	$effect(() => {
 		const title = detail?.canonical_title;
 		if (!id || !title || !config) return;
-		const ep = defaultEpisode();
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
-		void getOrFire(makeKey(id, ep, mode, quality), () =>
-			play({
-				title,
-				episode: String(ep),
-				mode,
-				quality,
-				episode_count: detail?.episode_count ?? null
-			})
-		).catch(() => {
-			/* the click handler will see the error if it ever fires */
-		});
+
+		// Fan out a prefetch for every visible episode tile in the
+		// strip. The play-cache dedupes simultaneous calls — clicking
+		// any tile while the strip is still resolving shares the same
+		// in-flight promise. The default-episode prefetch (ep 1) falls
+		// out of the same loop; if `episodes` hasn't loaded yet we
+		// still warm ep 1 so the hero "Play" button is instant.
+		const targets = episodes
+			? episodes.flatMap((e) => {
+					const n = e.number ?? e.relative_number ?? null;
+					return n === null ? [] : [n];
+				})
+			: [defaultEpisode()];
+		for (const ep of targets) {
+			void getOrFire(makeKey(id, ep, mode, quality), () =>
+				play({
+					title,
+					episode: String(ep),
+					mode,
+					quality,
+					episode_count: detail?.episode_count ?? null
+				})
+			).catch(() => {
+				/* the click handler will see the error if it ever fires */
+			});
+		}
 	});
 
 	// Drive the episode page off the URL ?page= param. Re-runs on
@@ -1183,15 +1197,6 @@
 	.btn-outline:hover {
 		border-color: var(--bone-100);
 	}
-	.btn-ghost {
-		color: var(--bone-300);
-		border-color: transparent;
-		padding-inline: var(--space-2);
-	}
-	.btn-ghost:hover {
-		color: var(--bone-100);
-	}
-
 	/* — Segmented controls (sub/dub + quality). */
 	.controls {
 		display: flex;
