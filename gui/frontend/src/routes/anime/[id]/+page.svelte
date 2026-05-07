@@ -372,7 +372,12 @@
 						mode,
 						quality,
 						episode_count: detail?.episode_count ?? null,
-						alt_titles: altTitles
+						alt_titles: altTitles,
+						// Prefetches must NOT update Continue Watching — the
+						// 12 calls fired here resolve in arbitrary order, so
+						// whichever finishes last would overwrite the user's
+						// actual click. The click handler leaves this false.
+						prefetch: true
 					},
 					emit,
 					signal

@@ -320,6 +320,13 @@ export interface PlayArgs {
 	 *  search result. Used to recover Stone Ocean Part 6 and similar
 	 *  shows whose Kitsu canonical disagrees with allmanga's index. */
 	alt_titles?: string[];
+	/** `true` when the call is a background prefetch (warming the
+	 *  cache for an episode the user hasn't clicked yet). The backend
+	 *  uses it to skip Continue Watching updates — prefetches resolve
+	 *  in arbitrary order, so the last one to finish would otherwise
+	 *  overwrite the user's actual click. Click handlers leave this
+	 *  unset (defaults to false on the wire). */
+	prefetch?: boolean;
 }
 
 /** Play an episode in the embedded player. Returns the session URLs
@@ -385,6 +392,7 @@ export function playStream(
 	// Newline is unlikely in any real title and survives URL encoding.
 	if (args.alt_titles && args.alt_titles.length > 0)
 		params.set('alt_titles', args.alt_titles.join('\n'));
+	if (args.prefetch === true) params.set('prefetch', '1');
 
 	return apiBase().then(
 		(base) =>

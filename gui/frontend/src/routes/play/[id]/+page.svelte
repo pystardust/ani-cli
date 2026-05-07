@@ -317,7 +317,11 @@
 						mode,
 						quality,
 						episode_count: detail?.episode_count ?? null,
-						alt_titles: altTitles
+						alt_titles: altTitles,
+						// Prefetches must NOT update Continue Watching —
+						// switchToEpisode (the click path) does that
+						// directly via prefetch:false (default).
+						prefetch: true
 					},
 					emit,
 					signal

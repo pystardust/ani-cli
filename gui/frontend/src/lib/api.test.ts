@@ -376,6 +376,31 @@ describe('playStream', () => {
 		await promise;
 	});
 
+	it('appends prefetch=1 when args.prefetch is true', async () => {
+		// Backend deserialize_loose_bool accepts "1" / "true" / "yes".
+		// The renderer's prefetch loops set this so the backend skips
+		// Continue Watching updates for warming calls.
+		const promise = playStream({ title: 'X', episode: '5', mode: 'sub', prefetch: true }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.url).toContain('prefetch=1');
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('omits prefetch param entirely when not set or false', async () => {
+		// Click path: leave the field default. Backend treats absence
+		// as false, history-write fires.
+		const promise = playStream({ title: 'X', episode: '5', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.url).not.toContain('prefetch');
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
 	it('omits alt_titles entirely when the array is empty', async () => {
 		const promise = playStream({ title: 'X', episode: '1', mode: 'sub', alt_titles: [] }, () => {});
 		await Promise.resolve();

@@ -67,6 +67,18 @@ pub struct PlayArgs {
     ///   doesn't handle repeated keys.
     #[serde(default, deserialize_with = "deserialize_alt_titles")]
     pub alt_titles: Vec<String>,
+    /// `true` when this call is a background prefetch (warming the
+    /// cache for an episode the user hasn't clicked yet). Prefetches
+    /// must NOT touch `ani-hsts` — the page-mount loop fires 12+ play
+    /// calls in parallel and whichever resolves last would overwrite
+    /// the user's actual click. The flag drives both:
+    ///   - skipping our cache-hit history write
+    ///   - redirecting ani-cli's `$ANI_CLI_HIST_DIR` to a tempdir so
+    ///     ani-cli's own `update_history` writes to a throwaway file
+    ///
+    /// Frontend prefetch loops set it; click handlers leave it false.
+    #[serde(default, deserialize_with = "deserialize_loose_bool")]
+    pub prefetch: bool,
 }
 
 /// Accept either a JSON array of strings or a single newline-joined
@@ -90,6 +102,26 @@ where
             .filter(|p| !p.is_empty())
             .map(String::from)
             .collect(),
+    })
+}
+
+/// Accept JSON bool OR `"1"` / `"true"` / `"0"` / `"false"` strings —
+/// the SSE GET path goes through serde_urlencoded which only knows
+/// strings, so a plain `bool` field would reject `?prefetch=1`.
+fn deserialize_loose_bool<'de, D>(d: D) -> std::result::Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Wire {
+        Bool(bool),
+        Str(String),
+    }
+    Option::<Wire>::deserialize(d).map(|opt| match opt {
+        None => false,
+        Some(Wire::Bool(b)) => b,
+        Some(Wire::Str(s)) => matches!(s.as_str(), "1" | "true" | "yes"),
     })
 }
 
@@ -225,15 +257,25 @@ async fn pick_title_and_index(
     (chosen_title, pick, chosen)
 }
 
-fn debug_options_for(state: &AppState) -> DebugOptions {
+/// Build the spawn options for an ani-cli invocation. When
+/// `override_hist_dir` is `Some`, ani-cli writes its `ani-hsts` to that
+/// path instead of the user's real history file — used by the prefetch
+/// path to keep background warming out of Continue Watching.
+fn debug_options_for(
+    state: &AppState,
+    override_hist_dir: Option<&std::path::Path>,
+) -> DebugOptions {
+    let hist_dir = override_hist_dir
+        .map(std::path::Path::to_path_buf)
+        .or_else(|| {
+            state
+                .history_path
+                .parent()
+                .map(std::path::Path::to_path_buf)
+        });
     DebugOptions {
         ani_cli_path: state.ani_cli_path.clone(),
-        // ani-cli writes/reads its history file alongside the GUI's,
-        // so plays through here also surface in Continue Watching.
-        hist_dir: state
-            .history_path
-            .parent()
-            .map(std::path::Path::to_path_buf),
+        hist_dir,
         timeout: RUN_DEBUG_TIMEOUT,
         // None → inherit the backend process's PATH. Tests inject a
         // shimmed PATH by calling `run_debug` directly with their own
@@ -274,7 +316,16 @@ pub async fn play_with_progress<F>(
 where
     F: FnMut(ProgressLine) + Send,
 {
-    let opts = debug_options_for(state);
+    // Per-call scratch dir for ani-cli's history write when this is a
+    // prefetch — keeps background warming out of the user's real
+    // ani-hsts. Held across the await so the dir lives until ani-cli
+    // exits; auto-cleaned on drop.
+    let prefetch_hist_dir = if args.prefetch {
+        Some(tempfile::tempdir().map_err(|_| AniError::Io)?)
+    } else {
+        None
+    };
+    let opts = debug_options_for(state, prefetch_hist_dir.as_ref().map(|d| d.path()));
     let quality = args.quality.as_deref().unwrap_or("best");
 
     // Long-term cache check. A successful prior resolution under the
@@ -295,9 +346,10 @@ where
             // Update Continue Watching: the cache-miss path got history
             // for free via ani-cli's `update_history`. We don't run
             // ani-cli on a hit, so we do it ourselves. Skipped silently
-            // for legacy rows (show_id empty) — they re-cache fresh on
-            // their next miss and pick up the metadata then.
-            if !cached.show_id.is_empty() {
+            // for legacy rows (show_id empty) and for prefetch calls
+            // (background warming must not bump the user's last-played
+            // episode — prefetches resolve in arbitrary order).
+            if !args.prefetch && !cached.show_id.is_empty() {
                 let entry = crate::history::HistoryEntry {
                     ep_no: args.episode.clone(),
                     id: cached.show_id.clone(),
@@ -498,7 +550,9 @@ async fn try_serve_cached(
 /// [`external_player::open_external_player`] (missing binary,
 /// non-zero spawn status).
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
-    let opts = debug_options_for(state);
+    // play_external is always a click — never a prefetch — so no
+    // hist_dir override needed.
+    let opts = debug_options_for(state, None);
     let quality = args.quality.as_deref().unwrap_or("best");
     let (search_title, select_index, _chosen_candidate) = pick_title_and_index(state, args).await;
     let resolved = run_debug(
@@ -728,6 +782,7 @@ mod tests {
             quality: None,
             episode_count: None,
             alt_titles: vec![],
+            prefetch: false,
         };
         assert_eq!(args.quality.as_deref().unwrap_or("best"), "best");
     }
@@ -771,6 +826,39 @@ mod tests {
         let qs = "title=X&episode=1&mode=sub&alt_titles=";
         let args: PlayArgs = serde_urlencoded::from_str(qs).expect("parses");
         assert!(args.alt_titles.is_empty());
+    }
+
+    #[test]
+    fn play_args_prefetch_defaults_to_false_when_omitted() {
+        // Older clients (and click handlers that don't bother passing
+        // the field) leave prefetch implicit — must default to false
+        // so the history-write path stays active for clicks.
+        let json = r#"{"title":"x","episode":"1","mode":"sub"}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(!args.prefetch);
+    }
+
+    #[test]
+    fn play_args_prefetch_accepts_json_bool() {
+        let json = r#"{"title":"x","episode":"1","mode":"sub","prefetch":true}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(args.prefetch);
+    }
+
+    #[test]
+    fn play_args_prefetch_accepts_query_string_one() {
+        // SSE GET path: serde_urlencoded can't decode bool directly.
+        // The custom deserializer handles "1" / "true" / "yes" / "0".
+        let qs = "title=X&episode=1&mode=sub&prefetch=1";
+        let args: PlayArgs = serde_urlencoded::from_str(qs).expect("parses");
+        assert!(args.prefetch);
+    }
+
+    #[test]
+    fn play_args_prefetch_zero_string_means_false() {
+        let qs = "title=X&episode=1&mode=sub&prefetch=0";
+        let args: PlayArgs = serde_urlencoded::from_str(qs).expect("parses");
+        assert!(!args.prefetch);
     }
 
     /// Build a Candidate row with the right `availableEpisodes.sub`

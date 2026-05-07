@@ -75,6 +75,11 @@ uuid = { version = "1.10", features = ["v4", "serde"] }
 # DashMap for concurrent stream-session table
 dashmap = "6.1"
 
+# tempfile: prefetch path uses a per-call TempDir to redirect ani-cli's
+# ANI_CLI_HIST_DIR away from the user's real ani-hsts so prefetches
+# don't bump Continue Watching.
+tempfile = "3.13"
+
 # AniList GraphQL — added in M3, listed here so cargo-deny audits the dep tree
 # cynic = { version = "3.10", features = ["http-reqwest"] }
 
