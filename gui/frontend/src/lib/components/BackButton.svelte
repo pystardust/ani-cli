@@ -29,33 +29,64 @@
 </script>
 
 <a class="back" href={resolve(fallback as '/')} onclick={onClick} aria-label={label}>
-	<span class="back-arrow" aria-hidden="true">←</span>
+	<svg class="back-arrow" viewBox="0 0 16 16" aria-hidden="true">
+		<path
+			d="M10.5 3.5 6 8l4.5 4.5"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+	</svg>
 	<span class="back-label">{label}</span>
 </a>
 
 <style>
+	/* Pill-shaped control. Bone-100 + weight 600 matches .btn copy
+	   weight elsewhere; the chevron is a 16x16 SVG so it's tightly
+	   sized to the cap-height instead of using a display-serif `←`
+	   that overshoots the type baseline. */
 	.back {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-2) var(--space-3);
-		margin-inline-start: calc(-1 * var(--space-3));
+		gap: var(--space-2);
+		padding: 0.5rem 0.95rem 0.5rem 0.7rem;
+		margin-inline-start: calc(-1 * var(--space-2));
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
+		font-weight: 600;
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
-		color: var(--bone-200);
-		transition: color var(--dur-fast) var(--ease-out-soft);
+		color: var(--bone-100);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-pill, 999px);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.back:hover {
-		color: var(--bone-100);
+		background: color-mix(in oklab, var(--bone-100) 8%, transparent);
+		border-color: color-mix(in oklab, var(--bone-100) 22%, transparent);
 	}
+	.back:focus-visible {
+		outline: none;
+		background: color-mix(in oklab, var(--bone-100) 10%, transparent);
+		border-color: color-mix(in oklab, var(--bone-100) 50%, transparent);
+	}
+	.back:active {
+		transform: translateY(1px);
+	}
+	/* Chevron: stroked SVG so the line weight matches the type weight
+	   (2px stroke ≈ font-weight 600 letterforms). The hover nudge
+	   slides it left to suggest direction. */
 	.back-arrow {
-		font-family: var(--font-display);
-		font-size: var(--type-display-s);
-		line-height: 1;
-		color: var(--bone-100);
-		font-style: normal;
+		inline-size: 1rem;
+		block-size: 1rem;
+		color: currentColor;
 		transition: transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.back:hover .back-arrow {
