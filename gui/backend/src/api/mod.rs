@@ -14,10 +14,14 @@ use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
+use futures_util::stream::Stream;
 use serde::Deserialize;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower_http::cors::CorsLayer;
 
 use crate::app::AppState;
@@ -82,6 +86,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/cache", delete(delete_cache))
         .route("/api/image", get(get_image))
         .route("/api/play", post(post_play))
+        .route("/api/play/stream", get(get_play_stream))
         .route("/api/play/external", post(post_play_external))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
@@ -274,6 +279,52 @@ async fn post_play(
     Json(args): Json<play_inner::PlayArgs>,
 ) -> Result<Json<session_inner::CreateSessionResponse>, AniError> {
     Ok(Json(play_inner::play(&state, &args).await?))
+}
+
+/// SSE variant of `/api/play`. Same resolution chain, but the body is
+/// a `text/event-stream` that emits a `progress` event for every
+/// parsed `<provider> Links Fetched` line on ani-cli's stderr, then a
+/// final `done` event with the resolved CreateSessionResponse. Errors
+/// are sent as a single `error` event before the stream closes.
+///
+/// EventSource is GET-only, so PlayArgs comes through the query
+/// string (form-urlencoded). A successful POST equivalent at
+/// `/api/play` is still available for callers that don't want SSE.
+async fn get_play_stream(
+    State(state): State<Arc<AppState>>,
+    Query(args): Query<play_inner::PlayArgs>,
+) -> Sse<impl Stream<Item = std::result::Result<Event, std::convert::Infallible>>> {
+    let (tx, rx) = mpsc::unbounded_channel();
+
+    // Drive the play resolution on its own task so the SSE response
+    // can stream events as they arrive. The closure passed to
+    // play_with_progress sends one Event per parsed progress line;
+    // when resolution finishes (success or error), we push a single
+    // terminal `done` / `error` event and the channel closes — which
+    // ends the stream and returns axum's response.
+    let tx_for_progress = tx.clone();
+    tokio::spawn(async move {
+        let result = play_inner::play_with_progress(&state, &args, move |progress| {
+            if let Ok(ev) = Event::default().event("progress").json_data(&progress) {
+                let _ = tx_for_progress.send(Ok(ev));
+            }
+        })
+        .await;
+
+        let final_event = match result {
+            Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(serde_json::json!({"error": format!("{e:?}")}))
+                .ok(),
+        };
+        if let Some(ev) = final_event {
+            let _ = tx.send(Ok(ev));
+        }
+        // tx drops here → channel closes → stream ends.
+    });
+
+    Sse::new(UnboundedReceiverStream::new(rx)).keep_alive(KeepAlive::default())
 }
 
 /// Same resolution chain as `post_play`, but hands the upstream URL

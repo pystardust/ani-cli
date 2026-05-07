@@ -22,6 +22,7 @@
 		kitsuEpisodes,
 		kitsuSearch,
 		play,
+		playStream,
 		settingsGet,
 		settingsPut,
 		type Config,
@@ -259,6 +260,21 @@
 	// disable themselves to keep the user from double-clicking ani-cli
 	// into a stack of concurrent spawns.
 	let actionBusy = $state(false);
+	let actionProgress = $state<string | null>(null);
+
+	/** Format a single ProgressLine into the one-liner the overlay
+	 *  shows under the Lottie. Keeps copy short — the band is
+	 *  intentionally minimal. */
+	function progressLabel(p: import('$lib/api').PlayProgress): string {
+		switch (p.kind) {
+			case 'banner':
+				return p.text;
+			case 'links_fetched':
+				return `${p.provider} ✓`;
+			case 'other':
+				return p.text;
+		}
+	}
 
 	const id = $derived(page.params.id ?? '');
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
@@ -519,19 +535,27 @@
 		// busy and surfaces an error toast.
 		actionBusy = true;
 		actionNotice = null;
+		actionProgress = null;
 		try {
 			// Hits the play-cache: a prefetch from onMount or an earlier
 			// click against the same (show, ep, mode, quality) tuple
 			// completes instantly here. Fresh resolutions land in the
-			// cache for the next click within this session.
+			// cache for the next click within this session. The streaming
+			// variant feeds progress events into the overlay so the user
+			// sees `<provider> ✓` ticks while ani-cli runs.
 			const session = await getOrFire(makeKey(id, ep, mode, quality), () =>
-				play({
-					title,
-					episode: String(ep),
-					mode,
-					quality,
-					episode_count: detail?.episode_count ?? null
-				})
+				playStream(
+					{
+						title,
+						episode: String(ep),
+						mode,
+						quality,
+						episode_count: detail?.episode_count ?? null
+					},
+					(p) => {
+						actionProgress = progressLabel(p);
+					}
+				)
 			);
 			actionNotice = null;
 			// The target is built from `resolve()` plus a query string;
@@ -955,7 +979,7 @@
 	{/if}
 </main>
 
-<LoadingOverlay visible={actionBusy} />
+<LoadingOverlay visible={actionBusy} progress={actionProgress} />
 
 <style>
 	.page {

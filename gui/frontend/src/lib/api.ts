@@ -290,6 +290,84 @@ export function playExternal(args: PlayArgs): Promise<void> {
 	return postJson<void>('/api/play/external', args);
 }
 
+/** One incremental progress event surfaced by `playStream`. Mirrors the
+ *  Rust `ProgressLine` enum's tagged JSON shape. */
+export type PlayProgress =
+	| { kind: 'banner'; text: string }
+	| { kind: 'links_fetched'; provider: string }
+	| { kind: 'other'; text: string };
+
+/** Streaming variant of {@link play}: opens an SSE connection so the
+ *  caller hears `<provider> Links Fetched` events as ani-cli emits
+ *  them. Resolves with the same `CreateSessionResponse` `play()`
+ *  returns; rejects on server-side errors or when the stream closes
+ *  without a `done` event.
+ *
+ *  Falls back to a plain `play()` POST when `EventSource` isn't
+ *  available — e.g. server-side rendering or older webviews. The
+ *  `onProgress` callback simply never fires in that case. */
+export function playStream(
+	args: PlayArgs,
+	onProgress: (p: PlayProgress) => void
+): Promise<CreateSessionResponse> {
+	if (typeof EventSource === 'undefined') {
+		return play(args);
+	}
+	const params = new URLSearchParams();
+	params.set('title', args.title);
+	params.set('episode', args.episode);
+	params.set('mode', args.mode);
+	if (args.quality) params.set('quality', args.quality);
+	if (typeof args.episode_count === 'number')
+		params.set('episode_count', String(args.episode_count));
+
+	return apiBase().then(
+		(base) =>
+			new Promise<CreateSessionResponse>((resolve, reject) => {
+				const url = `${base.replace(/\/+$/, '')}/api/play/stream?${params.toString()}`;
+				const es = new EventSource(url);
+				let settled = false;
+				const finish = (fn: () => void) => {
+					if (settled) return;
+					settled = true;
+					es.close();
+					fn();
+				};
+				es.addEventListener('progress', (ev) => {
+					try {
+						onProgress(JSON.parse((ev as MessageEvent).data) as PlayProgress);
+					} catch {
+						// Ignore malformed progress payloads — overlay just
+						// stops updating; the resolution still completes.
+					}
+				});
+				es.addEventListener('done', (ev) => {
+					try {
+						const resp = JSON.parse((ev as MessageEvent).data) as CreateSessionResponse;
+						finish(() => resolve(resp));
+					} catch (e) {
+						finish(() => reject(e));
+					}
+				});
+				es.addEventListener('error', (ev) => {
+					// Both `error` events emitted by the server (with data)
+					// and EventSource transport errors land here. Carry the
+					// data when present; otherwise surface a generic error.
+					const data = (ev as MessageEvent).data;
+					if (typeof data === 'string' && data.length > 0) {
+						try {
+							finish(() => reject(JSON.parse(data)));
+							return;
+						} catch {
+							/* fall through */
+						}
+					}
+					finish(() => reject(new Error('Stream closed before resolution finished.')));
+				});
+			})
+	);
+}
+
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
 	return postJson<KitsuAnimeRef[]>('/api/kitsu/search', { query });
 }

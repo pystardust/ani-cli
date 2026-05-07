@@ -18,7 +18,8 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use crate::anicli::process::{run_debug, DebugOptions};
+use crate::anicli::parser::{parse_progress_line, ProgressLine};
+use crate::anicli::process::{run_debug, run_debug_streaming, DebugOptions};
 use crate::app::AppState;
 use crate::commands::{
     external_player::{self, LaunchArgs},
@@ -116,25 +117,48 @@ fn debug_options_for(state: &AppState) -> DebugOptions {
 /// errors) and [`create_session`] (URL-shape validation on the
 /// resolved upstream).
 pub async fn play(state: &AppState, args: &PlayArgs) -> Result<CreateSessionResponse> {
+    play_with_progress(state, args, |_| {}).await
+}
+
+/// Like [`play`], but invokes `on_progress` once for every parsed
+/// `ani-cli` stderr line as the resolution runs. Used by the SSE
+/// `/api/play/stream` endpoint to forward incremental status to the
+/// renderer's loading overlay.
+///
+/// The callback runs on the same async task as the resolution; a slow
+/// callback stalls the subprocess. SSE handlers should push events
+/// through an `mpsc` channel inside the callback rather than do work
+/// inline.
+///
+/// # Errors
+/// Same as [`play`].
+pub async fn play_with_progress<F>(
+    state: &AppState,
+    args: &PlayArgs,
+    mut on_progress: F,
+) -> Result<CreateSessionResponse>
+where
+    F: FnMut(ProgressLine) + Send,
+{
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
 
-    // Disambiguate which allanime candidate ani-cli should pick. When
-    // we know Kitsu's expected episode_count, run our own search GraphQL
-    // call and pick the candidate whose ep_count is closest. Drives
-    // ani-cli's `-S <n>` so the embed pipeline still owns the play.
-    // Falls back to `-S 1` (the legacy behaviour) on any failure or
-    // when episode_count is unknown — never blocks a play on the
-    // disambiguator.
+    // Disambiguate which allanime candidate ani-cli should pick. See
+    // play() docstring above; behaviour is identical.
     let select_index = pick_index_or_default(state, args).await;
 
-    let resolved = run_debug(
+    let resolved = run_debug_streaming(
         &opts,
         &args.title,
         &args.episode,
         quality,
         &args.mode,
         select_index,
+        |line| {
+            if let Some(p) = parse_progress_line(line) {
+                on_progress(p);
+            }
+        },
     )
     .await?;
 

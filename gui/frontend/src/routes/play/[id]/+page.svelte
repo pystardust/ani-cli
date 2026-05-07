@@ -39,6 +39,7 @@
 		kitsuEpisodes,
 		kitsuSearch,
 		play,
+		playStream,
 		playExternal,
 		settingsGet,
 		type Config,
@@ -71,6 +72,18 @@
 	let detailError = $state<string | null>(null);
 	let playerError = $state<string | null>(null);
 	let switchBusy = $state(false);
+	let switchProgress = $state<string | null>(null);
+
+	function progressLabel(p: import('$lib/api').PlayProgress): string {
+		switch (p.kind) {
+			case 'banner':
+				return p.text;
+			case 'links_fetched':
+				return `${p.provider} ✓`;
+			case 'other':
+				return p.text;
+		}
+	}
 
 	let videoEl: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
@@ -258,18 +271,26 @@
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config?.quality ?? 'best';
 		switchBusy = true;
+		switchProgress = null;
 		playerError = null;
 		try {
 			// Hits the play-cache: ep+1 was prefetched on mount, so the
-			// next-episode click is usually instant.
+			// next-episode click is usually instant. Streaming variant
+			// surfaces `<provider> ✓` ticks under the Lottie when the
+			// click races a prefetch that hasn't finished yet.
 			const session = await getOrFire(makeKey(id, targetEp, mode, quality), () =>
-				play({
-					title,
-					episode: String(targetEp),
-					mode,
-					quality,
-					episode_count: detail?.episode_count ?? null
-				})
+				playStream(
+					{
+						title,
+						episode: String(targetEp),
+						mode,
+						quality,
+						episode_count: detail?.episode_count ?? null
+					},
+					(p) => {
+						switchProgress = progressLabel(p);
+					}
+				)
 			);
 			// goto navigates within the same route, so the page doesn't
 			// fully unmount — `$effect` above re-fires with the new
@@ -487,7 +508,7 @@
 	{/if}
 </main>
 
-<LoadingOverlay visible={switchBusy} />
+<LoadingOverlay visible={switchBusy} progress={switchProgress} />
 
 <style>
 	.page {

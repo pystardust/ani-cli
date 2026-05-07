@@ -14,7 +14,14 @@
 	import { onDestroy } from 'svelte';
 	import loadingJson from '$lib/anim/loading.json';
 
-	let { visible = false } = $props<{ visible?: boolean }>();
+	let { visible = false, progress = null } = $props<{
+		visible?: boolean;
+		/** Optional one-line status caption shown under the Lottie.
+		 *  Null hides the caption entirely; setting it shows the band
+		 *  in its taller variant so the layout doesn't pop on first
+		 *  progress event. */
+		progress?: string | null;
+	}>();
 
 	let container: HTMLDivElement | undefined = $state();
 	type LottieInstance = { destroy: () => void };
@@ -54,6 +61,9 @@
 	<div class="backdrop" role="status" aria-live="polite" aria-label="Loading">
 		<div class="band">
 			<div bind:this={container} class="anim"></div>
+			{#if progress}
+				<p class="progress" aria-live="polite">{progress}</p>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -79,13 +89,22 @@
 		width: 100%;
 		background: rgb(0, 0, 0);
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		padding: 0.75rem 0;
+		gap: var(--space-2);
 	}
 	.anim {
 		height: 180px;
 		aspect-ratio: 1 / 1;
+	}
+	.progress {
+		margin: 0;
+		font-family: var(--font-mono, monospace);
+		font-size: var(--text-sm, 0.85rem);
+		color: rgba(255, 255, 255, 0.78);
+		letter-spacing: 0.02em;
 	}
 	@keyframes fade-in {
 		from {
