@@ -18,7 +18,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use ani_gui::anicli::process::{run_debug, DebugOptions};
+use ani_gui::anicli::process::{run_debug, run_debug_streaming, DebugOptions};
 
 /// Repo root, computed from this test file's location.
 fn repo_root() -> PathBuf {
@@ -146,4 +146,75 @@ async fn run_search_returns_empty_until_unblocked() {
         .await
         .expect("stub returns Ok");
     assert!(v.is_empty(), "stub yields no results");
+}
+
+/// Streaming variant must call `on_stderr_line` for every stderr line
+/// (with ANSI escapes stripped) AND return the same parsed DebugOutput
+/// the non-streaming variant returns. The captured lines are what the
+/// SSE endpoint forwards to the renderer's loading overlay.
+#[tokio::test]
+async fn run_debug_streaming_forwards_stderr_lines_in_order() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let fixtures = tmp.path().join("fixtures");
+    std::fs::create_dir_all(&fixtures).expect("mkdir fixtures");
+    build_fixtures(&fixtures);
+    let bin = stage_curl_shim(tmp.path());
+    let hist = tmp.path().join("hist");
+    std::fs::create_dir_all(&hist).expect("mkdir hist");
+
+    let wrapped_shim = bin.join("curl");
+    let shim_body = format!(
+        "#!/bin/sh\nexport CURL_FIXTURE_DIR={fixtures}\nexec sh {repo}/tests/bash/helpers/curl_shim.sh \"$@\"\n",
+        fixtures = fixtures.display(),
+        repo = repo_root().display(),
+    );
+    std::fs::write(&wrapped_shim, shim_body).expect("write wrapped shim");
+    #[allow(unused_mut)]
+    let mut perms = std::fs::metadata(&wrapped_shim).unwrap().permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(0o755);
+    }
+    std::fs::set_permissions(&wrapped_shim, perms).expect("chmod +x");
+
+    let ani_cli_path = repo_root().join("ani-cli");
+    let system_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{system_path}", bin.display());
+
+    let opts = DebugOptions {
+        ani_cli_path,
+        hist_dir: Some(hist),
+        timeout: std::time::Duration::from_secs(60),
+        path_override: Some(path),
+    };
+
+    // Collect every stderr line into a Mutex<Vec> via the callback.
+    let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let captured_for_cb = captured.clone();
+
+    let out = run_debug_streaming(&opts, "test", "1", "best", "sub", 1, move |line| {
+        captured_for_cb
+            .lock()
+            .expect("mutex")
+            .push(line.to_string());
+    })
+    .await
+    .expect("run_debug_streaming succeeds");
+
+    // Same DebugOutput contract as the non-streaming variant.
+    assert_eq!(out.selected_url, "https://wixmp.example/video.mp4");
+
+    // Callback should have fired for at least one `<provider> Links
+    // Fetched` line. Drift here is independently caught by the
+    // anicli_progress_format integration test; assertion here is
+    // strictly that the streaming machinery passes the line through.
+    let lines = captured.lock().expect("mutex").clone();
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains("Links Fetched") || l.contains("Checking dependencies")),
+        "expected at least one progress line in callback; got: {lines:#?}"
+    );
 }

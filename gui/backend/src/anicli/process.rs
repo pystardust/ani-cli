@@ -205,6 +205,141 @@ async fn read_to_end<R: tokio::io::AsyncRead + Unpin>(mut r: R) -> std::io::Resu
     Ok(buf)
 }
 
+/// Variant of [`run_debug`] that calls `on_stderr_line` for every line
+/// the script emits on stderr while it runs. Used by the SSE play
+/// endpoint to forward `<provider> Links Fetched` progress to the
+/// renderer in real time.
+///
+/// The callback receives lines **with ANSI escapes stripped**, in the
+/// order they arrive. It MUST NOT block — the line reader awaits its
+/// completion before pulling the next chunk from the pipe, so a slow
+/// callback stalls the subprocess.
+///
+/// On exit, the subprocess's stdout is parsed exactly as in
+/// [`run_debug`] and returned. Errors are mapped the same way.
+///
+/// # Errors
+/// Same as [`run_debug`].
+pub async fn run_debug_streaming<F>(
+    opts: &DebugOptions,
+    query: &str,
+    ep: &str,
+    quality: &str,
+    mode: &str,
+    select_index: usize,
+    mut on_stderr_line: F,
+) -> Result<super::parser::DebugOutput>
+where
+    F: FnMut(&str) + Send,
+{
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    use tokio::process::Command;
+
+    let select_str = select_index.max(1).to_string();
+
+    let mut cmd = Command::new(&opts.ani_cli_path);
+    cmd.arg("-S")
+        .arg(&select_str)
+        .arg("-e")
+        .arg(ep)
+        .arg("-q")
+        .arg(quality);
+    if mode == "dub" {
+        cmd.arg("--dub");
+    }
+    cmd.arg("--").arg(query);
+
+    cmd.env_clear();
+    let path_value = opts
+        .path_override
+        .clone()
+        .or_else(|| std::env::var("PATH").ok())
+        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
+    cmd.env("PATH", path_value);
+    if let Some(home) = std::env::var_os("HOME") {
+        cmd.env("HOME", home);
+    }
+    cmd.env("TERM", "dumb");
+    cmd.env("NO_COLOR", "1");
+    cmd.env("ANI_CLI_PLAYER", "debug");
+    if let Some(dir) = &opts.hist_dir {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    } else if let Some(dir) = std::env::var_os("ANI_CLI_HIST_DIR") {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    }
+
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true);
+
+    let mut child = cmd.spawn().map_err(|_| AniError::MissingBinary)?;
+
+    let stdout_reader = child.stdout.take().expect("stdout piped");
+    let stderr_reader = child.stderr.take().expect("stderr piped");
+
+    // Read stderr line-by-line and forward each (ANSI-stripped) line
+    // to the caller. Buffer stderr bytes too so the existing
+    // post-exit error handling (No results found / Episode not
+    // released) keeps working.
+    let stderr_collected: std::sync::Arc<std::sync::Mutex<Vec<u8>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let collected_for_reader = stderr_collected.clone();
+
+    let stream_fut = async {
+        let mut reader = BufReader::new(stderr_reader);
+        let mut buf = String::new();
+        loop {
+            buf.clear();
+            let read = reader.read_line(&mut buf).await?;
+            if read == 0 {
+                break;
+            }
+            // Persist the raw bytes for the post-exit error check.
+            {
+                let mut lock = collected_for_reader.lock().expect("mutex");
+                lock.extend_from_slice(buf.as_bytes());
+            }
+            let stripped = super::parser::strip_ansi(buf.as_bytes());
+            for line in stripped.lines() {
+                on_stderr_line(line);
+            }
+        }
+        std::io::Result::Ok(())
+    };
+
+    let collected = tokio::time::timeout(opts.timeout, async move {
+        let stdout_fut = read_to_end(stdout_reader);
+        let (out, err_io) = tokio::join!(stdout_fut, stream_fut);
+        err_io?;
+        let status = child.wait().await?;
+        Result::<(Vec<u8>, std::process::ExitStatus)>::Ok((out?, status))
+    })
+    .await
+    .map_err(|_| AniError::Timeout)??;
+
+    let (stdout_bytes, exit) = collected;
+    let stderr_bytes = stderr_collected.lock().expect("mutex").clone();
+
+    if !exit.success() {
+        let stderr_text = super::parser::strip_ansi(&stderr_bytes);
+        if stderr_text.contains("No results found") {
+            return Err(AniError::NoResults);
+        }
+        if stderr_text.contains("Episode not released") {
+            return Err(AniError::Scraper {
+                key: crate::i18n::keys::SCRAPER_PARSE_FAILED,
+            });
+        }
+        return Err(AniError::Scraper {
+            key: crate::i18n::keys::SCRAPER_PARSE_FAILED,
+        });
+    }
+
+    let stdout_text = super::parser::strip_ansi(&stdout_bytes);
+    super::parser::parse_debug_output(&stdout_text)
+}
+
 /// Run `ani-cli` in search mode and return the parsed result list. Stub
 /// pending either an upstream `--list-only` flag or migrating GUI search
 /// to Kitsu metadata (the planned M2 path). See
