@@ -395,6 +395,7 @@ mod tests {
 
     /// Build a stub `ani-cli` script that emits `stderr_msg` and exits
     /// with `code`. Returned tempdir keeps the file alive for the test.
+    #[cfg(unix)]
     fn stub_ani_cli(stderr_msg: &str, code: i32) -> (tempfile::TempDir, PathBuf) {
         use std::io::Write;
         use std::os::unix::fs::PermissionsExt;
@@ -411,6 +412,7 @@ mod tests {
         (td, path)
     }
 
+    #[cfg(unix)]
     fn debug_opts(path: PathBuf) -> DebugOptions {
         let mut opts = DebugOptions::new(path);
         // Pin PATH so the parallel `locate_ani_cli_*` test (which
@@ -426,6 +428,11 @@ mod tests {
     /// Scraper. Bundled into one test so the parallel
     /// `locate_ani_cli_*` test can't race-clear $PATH between sub-
     /// cases and turn a spawn into MissingBinary.
+    ///
+    /// Unix-only because the stub ani-cli script needs shebang
+    /// interpretation; the classification logic itself is platform-
+    /// neutral and exercised on Windows via unit-level parser tests.
+    #[cfg(unix)]
     #[tokio::test]
     async fn run_debug_classifies_nonzero_exits_by_stderr_pattern() {
         let _guard = ENV_LOCK.lock().await;
@@ -444,6 +451,7 @@ mod tests {
 
     /// Same exit-classification logic in the streaming variant — covers
     /// the SSE play endpoint's error paths.
+    #[cfg(unix)]
     #[tokio::test]
     async fn run_debug_streaming_classifies_nonzero_exits_by_stderr_pattern() {
         let _guard = ENV_LOCK.lock().await;
