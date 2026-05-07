@@ -14,6 +14,8 @@
 //! `averageRating` arrives as a string (e.g. `"83.98"`) and is parsed to
 //! `f32` here so callers can compute / compare without re-parsing.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AniError, Result};
@@ -37,8 +39,16 @@ pub const EPISODE_FIELDS: &str =
 pub struct KitsuAnimeRef {
     /// Stringified Kitsu anime id (e.g. `"12"` for One Piece).
     pub id: String,
-    /// Title Kitsu considers canonical (often the romanized Japanese form).
+    /// Title Kitsu considers canonical (often the romanized Japanese form,
+    /// but for some shows — Stone Ocean, Stardust Crusaders — the English
+    /// rendering wins). Don't assume romanization.
     pub canonical_title: String,
+    /// Localized title variants Kitsu serves under `attributes.titles`.
+    /// Common keys: `en`, `en_jp` (romanized JP), `en_us`, `ja_jp` (kana).
+    /// Used by the play flow to retry allmanga lookups under the romanized
+    /// form when the canonical (often English) name doesn't match its
+    /// index — see `commands/play.rs`. Always present, possibly empty.
+    pub titles: HashMap<String, String>,
     /// URL slug Kitsu uses on its public site (`kitsu.io/anime/<slug>`).
     pub slug: Option<String>,
     /// Long-form synopsis. Often several paragraphs.
@@ -218,6 +228,8 @@ fn into_ref(r: AnimeResource) -> KitsuAnimeRef {
     KitsuAnimeRef {
         id: r.id,
         canonical_title: r.attributes.canonical_title.unwrap_or_default(),
+        // Red placeholder — populated by green commit.
+        titles: HashMap::new(),
         slug: r.attributes.slug,
         synopsis: r.attributes.synopsis,
         start_date: r.attributes.start_date,
@@ -490,6 +502,31 @@ mod tests {
         assert_eq!(first.canonical_title, "One Piece");
         assert_eq!(first.subtype.as_deref(), Some("TV"));
         assert_eq!(first.status.as_deref(), Some("current"));
+    }
+
+    #[test]
+    fn parse_search_surfaces_titles_map_with_localized_variants() {
+        // Kitsu serves `attributes.titles: { en, en_jp, ja_jp[, en_us] }`
+        // alongside `canonicalTitle`. The play flow needs the romanized
+        // (`en_jp`) variant to retry allmanga searches when the canonical
+        // (often English) title doesn't appear in allmanga's index —
+        // Stone Ocean Part 6 reproduces this. Without the titles map
+        // surfaced on the public ref, the retry has nothing to fall back
+        // to and the user sees an empty results list.
+        let hits = parse_search_response(SEARCH_FIXTURE).expect("parses");
+        let one_piece = &hits[0];
+        assert_eq!(
+            one_piece.titles.get("en").map(String::as_str),
+            Some("One Piece")
+        );
+        assert_eq!(
+            one_piece.titles.get("en_jp").map(String::as_str),
+            Some("One Piece")
+        );
+        assert_eq!(
+            one_piece.titles.get("ja_jp").map(String::as_str),
+            Some("ONE PIECE")
+        );
     }
 
     #[test]
