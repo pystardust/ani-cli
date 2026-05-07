@@ -4,6 +4,7 @@ import {
 	altTitlesFromKitsu,
 	appInfo,
 	createSession,
+	evictPlayCache,
 	play,
 	playExternal,
 	playStream,
@@ -249,6 +250,30 @@ describe('playExternal', () => {
 			title: 'Cowboy Bebop',
 			episode: '5',
 			mode: 'dub'
+		});
+	});
+});
+
+describe('evictPlayCache', () => {
+	it('POSTs the PlayArgs payload to /api/play/cache/evict', async () => {
+		// 204 No Content is the documented success status for the
+		// eviction endpoint — there's no body to parse, just confirm
+		// the request shape.
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await evictPlayCache({
+			title: 'Stone Ocean',
+			episode: '1',
+			mode: 'sub',
+			quality: 'best'
+		});
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play/cache/evict`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			title: 'Stone Ocean',
+			episode: '1',
+			mode: 'sub'
 		});
 	});
 });
