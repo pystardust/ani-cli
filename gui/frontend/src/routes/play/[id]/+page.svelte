@@ -38,7 +38,6 @@
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
-		play,
 		playStream,
 		playExternal,
 		settingsGet,
@@ -250,14 +249,17 @@
 		for (const ep of episodes) {
 			const targetEp = ep.number ?? ep.relative_number ?? null;
 			if (targetEp === null) continue;
-			void getOrFire(makeKey(id, targetEp, mode, quality), () =>
-				play({
-					title,
-					episode: String(targetEp),
-					mode,
-					quality,
-					episode_count: detail?.episode_count ?? null
-				})
+			void getOrFire(makeKey(id, targetEp, mode, quality), (emit) =>
+				playStream(
+					{
+						title,
+						episode: String(targetEp),
+						mode,
+						quality,
+						episode_count: detail?.episode_count ?? null
+					},
+					emit
+				)
 			).catch(() => {
 				/* the click handler surfaces errors when it fires */
 			});
@@ -278,19 +280,22 @@
 			// next-episode click is usually instant. Streaming variant
 			// surfaces `<provider> ✓` ticks under the Lottie when the
 			// click races a prefetch that hasn't finished yet.
-			const session = await getOrFire(makeKey(id, targetEp, mode, quality), () =>
-				playStream(
-					{
-						title,
-						episode: String(targetEp),
-						mode,
-						quality,
-						episode_count: detail?.episode_count ?? null
-					},
-					(p) => {
-						switchProgress = progressLabel(p);
-					}
-				)
+			const session = await getOrFire(
+				makeKey(id, targetEp, mode, quality),
+				(emit) =>
+					playStream(
+						{
+							title,
+							episode: String(targetEp),
+							mode,
+							quality,
+							episode_count: detail?.episode_count ?? null
+						},
+						emit
+					),
+				(p) => {
+					switchProgress = progressLabel(p);
+				}
 			);
 			// goto navigates within the same route, so the page doesn't
 			// fully unmount — `$effect` above re-fires with the new

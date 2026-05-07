@@ -21,7 +21,6 @@
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
-		play,
 		playStream,
 		settingsGet,
 		settingsPut,
@@ -349,14 +348,17 @@
 				})
 			: [defaultEpisode()];
 		for (const ep of targets) {
-			void getOrFire(makeKey(id, ep, mode, quality), () =>
-				play({
-					title,
-					episode: String(ep),
-					mode,
-					quality,
-					episode_count: detail?.episode_count ?? null
-				})
+			void getOrFire(makeKey(id, ep, mode, quality), (emit) =>
+				playStream(
+					{
+						title,
+						episode: String(ep),
+						mode,
+						quality,
+						episode_count: detail?.episode_count ?? null
+					},
+					emit
+				)
 			).catch(() => {
 				/* the click handler will see the error if it ever fires */
 			});
@@ -543,19 +545,22 @@
 			// cache for the next click within this session. The streaming
 			// variant feeds progress events into the overlay so the user
 			// sees `<provider> ✓` ticks while ani-cli runs.
-			const session = await getOrFire(makeKey(id, ep, mode, quality), () =>
-				playStream(
-					{
-						title,
-						episode: String(ep),
-						mode,
-						quality,
-						episode_count: detail?.episode_count ?? null
-					},
-					(p) => {
-						actionProgress = progressLabel(p);
-					}
-				)
+			const session = await getOrFire(
+				makeKey(id, ep, mode, quality),
+				(emit) =>
+					playStream(
+						{
+							title,
+							episode: String(ep),
+							mode,
+							quality,
+							episode_count: detail?.episode_count ?? null
+						},
+						emit
+					),
+				(p) => {
+					actionProgress = progressLabel(p);
+				}
 			);
 			actionNotice = null;
 			// The target is built from `resolve()` plus a query string;
