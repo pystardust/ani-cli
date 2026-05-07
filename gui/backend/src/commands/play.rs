@@ -21,6 +21,7 @@ use serde::Deserialize;
 use crate::anicli::parser::{parse_progress_line, ProgressLine};
 use crate::anicli::process::{run_debug, run_debug_streaming, DebugOptions};
 use crate::app::AppState;
+use crate::commands::play_resolution_cache::{self, CachedResolution};
 use crate::commands::{
     external_player::{self, LaunchArgs},
     session::{create_session_with_kind, CreateSessionArgs, CreateSessionResponse},
@@ -257,6 +258,32 @@ where
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
 
+    // Long-term cache check. A successful prior resolution under the
+    // same (title, mode, quality, episode) tuple is replayable for up
+    // to PLAY_RESOLUTION_TTL — we just have to confirm the upstream
+    // URL is still alive (wixmp / sharepoint URLs rotate). HEAD is
+    // ~50ms; ani-cli is ~30s. Worth the round-trip.
+    let cache_key =
+        play_resolution_cache::cache_key(&args.title, &args.mode, quality, &args.episode);
+    if let Ok(Some(cached)) = play_resolution_cache::get(&state.cache_pool, &cache_key) {
+        if let Some(resp) = try_serve_cached(state, &cached).await {
+            tracing::info!(
+                title = %args.title,
+                episode = %args.episode,
+                upstream = cached.upstream_url.as_str(),
+                "play: cache hit (HEAD ok)",
+            );
+            return Ok(resp);
+        }
+        // HEAD failed — the cached URL is dead. Fall through to
+        // ani-cli, which will overwrite the row with a fresh result.
+        tracing::info!(
+            title = %args.title,
+            episode = %args.episode,
+            "play: cache row stale, falling back to ani-cli",
+        );
+    }
+
     // Pick which (title, candidate index) ani-cli should use. The title
     // may differ from args.title when alt_titles produced the winning
     // hit (e.g. romanized fallback for shows whose Kitsu canonicalTitle
@@ -348,12 +375,50 @@ where
         "play: ani-cli resolved upstream",
     );
 
+    // Persist the resolution so the next play of the same episode
+    // skips ani-cli entirely (subject to TTL + HEAD validation).
+    let cached_resolution = CachedResolution {
+        upstream_url: resolved.selected_url.clone(),
+        referer: referer.clone(),
+        subtitle_url: resolved.subtitle_url.clone(),
+        media_kind: kind,
+    };
+    play_resolution_cache::put(&state.cache_pool, &cache_key, &cached_resolution);
+
     let session_args = CreateSessionArgs {
         upstream_url: resolved.selected_url,
         referer,
         subtitle_url: resolved.subtitle_url,
     };
     create_session_with_kind(state, &session_args, kind)
+}
+
+/// HEAD-validate a cached upstream URL. Returns a fresh
+/// CreateSessionResponse on success, or `None` if the URL is dead /
+/// unreachable / returns an error status — caller should fall through
+/// to a fresh ani-cli spawn.
+async fn try_serve_cached(
+    state: &AppState,
+    cached: &CachedResolution,
+) -> Option<CreateSessionResponse> {
+    let url = url::Url::parse(&cached.upstream_url).ok()?;
+    let mut req = state.proxy_http.head(url.as_str());
+    if !cached.referer.is_empty() {
+        req = req.header(reqwest::header::REFERER, &cached.referer);
+    }
+    let resp = req.send().await.ok()?;
+    // 2xx and 3xx (CDN edge redirects) both count as live. 4xx/5xx
+    // mean the URL has rotated or the CDN is unhappy — treat as dead
+    // and let ani-cli resolve fresh.
+    if !(resp.status().is_success() || resp.status().is_redirection()) {
+        return None;
+    }
+    let session_args = CreateSessionArgs {
+        upstream_url: cached.upstream_url.clone(),
+        referer: cached.referer.clone(),
+        subtitle_url: cached.subtitle_url.clone(),
+    };
+    create_session_with_kind(state, &session_args, cached.media_kind).ok()
 }
 
 /// Resolve `args` against ani-cli and hand the upstream URL straight
