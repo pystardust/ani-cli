@@ -224,6 +224,33 @@ pub fn title_match_put(state: &AppState, title: &str, cour: u32, kitsu_id: &str)
     )
 }
 
+/// Cache key for the reverse `allmanga show_id → kitsu_id` mapping.
+/// Recorded on every successful play (where we know both ids) so
+/// the home-page Continue Watching strip can look up the right
+/// Kitsu entry by show_id instead of fuzzy-text-searching the
+/// possibly-typo'd allmanga title.
+fn allmanga_kitsu_key(show_id: &str) -> String {
+    format!("allmanga2kitsu:v1:{show_id}")
+}
+
+/// Read the cached `allmanga show_id → kitsu_id` mapping. Returns
+/// `None` on miss; SQLite errors propagate.
+pub fn allmanga_kitsu_get(state: &AppState, show_id: &str) -> Result<Option<String>> {
+    meta_cache_get(&state.cache_pool, &allmanga_kitsu_key(show_id))
+}
+
+/// Persist an `allmanga show_id → kitsu_id` mapping. Same TTL as
+/// `title_match` (30d) — the mapping is as stable as Kitsu's id
+/// space, and re-puts on every successful play keep it fresh.
+pub fn allmanga_kitsu_put(state: &AppState, show_id: &str, kitsu_id: &str) -> Result<()> {
+    meta_cache_put(
+        &state.cache_pool,
+        &allmanga_kitsu_key(show_id),
+        kitsu_id,
+        TITLE_MATCH_TTL.as_secs(),
+    )
+}
+
 /// Fetch a single anime by Kitsu id. Cache key: `kitsu:anime:<id>`.
 ///
 /// # Errors
