@@ -254,6 +254,34 @@ describe('priority subscriber promotion', () => {
 	});
 });
 
+describe('clearForShow — abort in-flight', () => {
+	it('aborts the signal passed to fire, propagating cancellation downstream', async () => {
+		// fire receives an AbortSignal. clearForShow flips it. The
+		// playStream layer (real fire) closes its EventSource on the
+		// signal so abandoned prefetches stop streaming.
+		let receivedSignal: AbortSignal | null = null;
+		const fire = (
+			_emit: (p: PlayProgress) => void,
+			signal: AbortSignal
+		): Promise<CreateSessionResponse> => {
+			receivedSignal = signal;
+			return new Promise<CreateSessionResponse>((_resolve, reject) => {
+				signal.addEventListener('abort', () => reject(new Error('aborted')));
+			});
+		};
+
+		const k = makeKey('show-x', 1, 'sub', 'best');
+		const promise = getOrFire(k, fire);
+		await Promise.resolve();
+		expect(receivedSignal).not.toBeNull();
+		expect(receivedSignal!.aborted).toBe(false);
+
+		clearForShow('show-x');
+		expect(receivedSignal!.aborted).toBe(true);
+		await expect(promise).rejects.toThrow('aborted');
+	});
+});
+
 describe('clearForShow', () => {
 	it('drops every entry whose key starts with the given show id', async () => {
 		const fire = vi.fn(plainFire(fakeResp('x')));

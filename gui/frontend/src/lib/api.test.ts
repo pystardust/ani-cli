@@ -473,6 +473,27 @@ describe('playStream', () => {
 		expect(es.closed).toBe(true);
 	});
 
+	it('closes the EventSource and rejects when the signal is aborted', async () => {
+		// Cancel-on-unmount path. The detail / player page calls
+		// clearForShow(id) on onDestroy; play-cache aborts each entry's
+		// controller; the abort propagates here. Without this, an
+		// abandoned prefetch keeps streaming SSE events into the void
+		// while the user is on a different page.
+		const ctrl = new AbortController();
+		const promise = playStream(
+			{ title: 't', episode: '1', mode: 'sub' },
+			() => {},
+			ctrl.signal
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.closed).toBe(false);
+		ctrl.abort();
+		await expect(promise).rejects.toThrow(/aborted|cancelled|abort/i);
+		expect(es.closed).toBe(true);
+	});
+
 	it('falls back to play() POST when EventSource is unavailable', async () => {
 		delete g.EventSource;
 		const fetchMock = mockFetchOnce(donePayload());
