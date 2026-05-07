@@ -910,4 +910,205 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
+
+    /// `mark-watched` covers the click-reuses-prefetch case: getOrFire
+    /// hands the click subscriber the in-flight prefetch promise, so
+    /// the backend never sees prefetch=false and skips the history
+    /// write. The frontend then follows up with this call to stamp
+    /// Continue Watching from the cached metadata.
+    ///
+    /// Three branches matter:
+    ///   1. Cache miss — 204, history untouched.
+    ///   2. Cache hit but pre-v2 row (empty show_id) — 204, history
+    ///      untouched. The bump to v2 should make this unreachable in
+    ///      practice; the branch exists so legacy rows degrade
+    ///      gracefully if they ever survive a schema bump.
+    ///   3. Cache hit with full v2 metadata — 204, history file
+    ///      contains the upserted row.
+    #[tokio::test]
+    async fn mark_watched_with_cache_miss_returns_204_and_writes_no_history() {
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let history_path = state.history_path.clone();
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/mark-watched")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Some Show","episode":"1","mode":"sub"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert!(
+            !history_path.exists(),
+            "history file should not be created on cache miss"
+        );
+    }
+
+    #[tokio::test]
+    async fn mark_watched_with_legacy_row_skips_write() {
+        use crate::commands::play_resolution_cache::{cache_key, put, CachedResolution};
+        use crate::proxy::MediaKind;
+
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let history_path = state.history_path.clone();
+        // Seed a v2 cache row with the show_id explicitly empty —
+        // the on-disk shape a legacy v1 row would deserialize into.
+        let key = cache_key("Legacy Show", "sub", "best", "3");
+        put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: "https://example/x.m3u8".into(),
+                referer: String::new(),
+                subtitle_url: None,
+                media_kind: MediaKind::Hls,
+                show_id: String::new(),
+                show_title: String::new(),
+            },
+        );
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/mark-watched")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Legacy Show","episode":"3","mode":"sub"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert!(
+            !history_path.exists(),
+            "legacy row (empty show_id) must not write history"
+        );
+    }
+
+    #[tokio::test]
+    async fn mark_watched_with_cache_hit_writes_history_entry() {
+        use crate::commands::play_resolution_cache::{cache_key, put, CachedResolution};
+        use crate::proxy::MediaKind;
+
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let history_path = state.history_path.clone();
+        let key = cache_key("Naruto: Shippuuden", "sub", "best", "150");
+        put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: "https://video.example/720p.mp4".into(),
+                referer: "https://allmanga.to".into(),
+                subtitle_url: None,
+                media_kind: MediaKind::Mp4,
+                show_id: "vDTSJHSpYnrkZnAvG".into(),
+                show_title: "Nato: Shippuuden (500 episodes)".into(),
+            },
+        );
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/mark-watched")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Naruto: Shippuuden","episode":"150","mode":"sub"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        let body = std::fs::read_to_string(&history_path).expect("history file written");
+        // Format: ep_no\tid\ttitle\n — same TSV the bash CLI produces.
+        assert_eq!(
+            body, "150\tvDTSJHSpYnrkZnAvG\tNato: Shippuuden (500 episodes)\n",
+            "history line should match cache metadata"
+        );
+    }
+
+    /// Evict route is the player's feedback path: a cached URL that
+    /// HEAD-validated still 4xxs at playback time, so the renderer drops
+    /// the row and retries fresh. Must be idempotent — 204 even when no
+    /// row exists.
+    #[tokio::test]
+    async fn cache_evict_with_no_row_returns_204() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/cache/evict")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"title":"Nope","episode":"1","mode":"sub"}"#))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn cache_evict_drops_the_seeded_row() {
+        use crate::commands::play_resolution_cache::{cache_key, get, put, CachedResolution};
+        use crate::proxy::MediaKind;
+
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let key = cache_key("Some Show", "sub", "best", "5");
+        put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: "https://example/m.m3u8".into(),
+                referer: String::new(),
+                subtitle_url: None,
+                media_kind: MediaKind::Hls,
+                show_id: "abc".into(),
+                show_title: "Some Show (12 episodes)".into(),
+            },
+        );
+        let pool = state.cache_pool.clone();
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/cache/evict")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Some Show","episode":"5","mode":"sub"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert!(
+            get(&pool, &key).expect("get").is_none(),
+            "row should be evicted"
+        );
+    }
 }
