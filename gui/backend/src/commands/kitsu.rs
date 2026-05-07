@@ -21,6 +21,13 @@ use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
 use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
 
+// Schema version is encoded in the cache key prefix (`kitsu:v2:`).
+// Bump when KitsuAnimeRef gains a field consumers depend on — v2 was
+// the bump that added the `titles` map; v1 payloads have no titles
+// map and would silently break the play flow's alt_titles fallback.
+// Old un-versioned keys become misses on first access and the data
+// re-fetches with the new schema.
+
 /// Max search result page size we ask Kitsu for. Keeping this conservative
 /// because the UI only renders a handful of cards before scrolling needs
 /// pagination (which we don't support yet).
@@ -33,7 +40,7 @@ const SEARCH_PAGE_LIMIT: u8 = 20;
 /// # Errors
 /// Inherits from [`crate::meta::kitsu::KitsuClient::search`] on cache miss.
 pub async fn kitsu_search(state: &AppState, query: &str) -> Result<Vec<KitsuAnimeRef>> {
-    let key = format!("kitsu:search:{}", normalize_query(query));
+    let key = format!("kitsu:v2:search:{}", normalize_query(query));
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
             return Ok(hits);
@@ -59,7 +66,7 @@ pub async fn kitsu_search(state: &AppState, query: &str) -> Result<Vec<KitsuAnim
 pub async fn kitsu_trending(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
     discovery_cached(
         state,
-        "kitsu:trending",
+        "kitsu:v2:trending",
         TRENDING_TTL.as_secs(),
         |limit| async move { state.kitsu.currently_airing_by_user_count(limit).await },
     )
@@ -74,7 +81,7 @@ pub async fn kitsu_trending(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
 pub async fn kitsu_top_rated(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
     discovery_cached(
         state,
-        "kitsu:top_rated",
+        "kitsu:v2:top_rated",
         DISCOVERY_TTL.as_secs(),
         |limit| async move { state.kitsu.top_rated(limit).await },
     )
@@ -162,7 +169,7 @@ pub async fn kitsu_episodes(
 /// # Errors
 /// Inherits from [`crate::meta::kitsu::KitsuClient::anime_by_slug`].
 pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<KitsuAnimeRef>> {
-    let key = format!("kitsu:anime-slug:{slug}");
+    let key = format!("kitsu:v2:anime-slug:{slug}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(detail) = serde_json::from_str::<Option<KitsuAnimeRef>>(&body) {
             return Ok(detail);
@@ -222,7 +229,7 @@ pub fn title_match_put(state: &AppState, title: &str, cour: u32, kitsu_id: &str)
 /// # Errors
 /// Inherits from [`crate::meta::kitsu::KitsuClient::anime_detail`] on miss.
 pub async fn kitsu_anime_detail(state: &AppState, id: &str) -> Result<KitsuAnimeRef> {
-    let key = format!("kitsu:anime:{id}");
+    let key = format!("kitsu:v2:anime:{id}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(detail) = serde_json::from_str::<KitsuAnimeRef>(&body) {
             return Ok(detail);
