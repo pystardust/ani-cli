@@ -39,11 +39,16 @@ export const EPISODES_UI_PAGE_SIZE = 12;
 export const EPISODES_KITSU_PAGE_SIZE = 20;
 
 export interface ResumeTarget {
-	/** Title as it appears in ani-cli's history, with the trailing
-	 *  "(N episodes)" parenthetical stripped. The source of truth for
-	 *  what the user is actually watching — Kitsu's canonical title
-	 *  collapses cours into one row and would render two distinct
-	 *  Continue Watching cards as identical strings. */
+	/** What Continue Watching renders for the show name. Prefers Kitsu's
+	 *  canonical_title when a match is available so this surface agrees
+	 *  with the detail page (the user navigates from one to the other
+	 *  and they need to read as the same show). Falls back to the
+	 *  history entry with the trailing "(N episodes)" parenthetical
+	 *  stripped when there's no Kitsu match.
+	 *
+	 *  Cours stay distinct because Kitsu typically gives each cour its
+	 *  own entry (`Stone Ocean` vs `Stone Ocean Part 2`); the EP number
+	 *  on the card disambiguates further. */
 	displayTitle: string;
 	/** Title to feed into Kitsu's text search. Verbatim copy of
 	 *  displayTitle today — Kitsu often stores multi-cour shows as
@@ -109,8 +114,14 @@ export function resolveHistoryEntry(
 	const mappingNote: ResumeTarget['mappingNote'] = kitsuMatch ? 'direct' : 'no-kitsu-match';
 	const uiPage = kitsuEpisode ? Math.max(1, Math.ceil(kitsuEpisode / EPISODES_UI_PAGE_SIZE)) : 1;
 
+	// Match the detail page when we have a Kitsu hit; fall through to
+	// the stripped history title only when the resolver couldn't find
+	// a match (placeholder card destined for /search).
+	const kitsuTitle = kitsuMatch?.canonical_title?.trim();
+	const displayTitle = kitsuTitle && kitsuTitle.length > 0 ? kitsuTitle : stripped;
+
 	return {
-		displayTitle: stripped,
+		displayTitle,
 		searchTitle,
 		displayEpisode,
 		courSize,

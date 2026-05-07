@@ -42,26 +42,26 @@ describe('resolveHistoryEntry — display vs search title', () => {
 		expect(r.displayTitle).toBe("JoJo's Bizarre Adventure: Stone Ocean");
 	});
 
-	it('strips the trailing "(N episodes)" parenthetical from displayTitle', () => {
-		const r = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), stubKitsu());
+	it('strips the trailing "(N episodes)" parenthetical when no Kitsu match', () => {
+		const r = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
+		// No Kitsu match → fall back to the stripped history title.
 		expect(r.displayTitle).toBe('Demon Slayer');
-		// Title-search query is the same — no cour suffix to strip.
+		// searchTitle still derives from the history entry regardless of
+		// whether a match is present — it's the input to a *future* Kitsu
+		// search, not a label.
 		expect(r.searchTitle).toBe('Demon Slayer');
 	});
 
-	it('keeps the cour suffix on both display and search', () => {
+	it('keeps the cour suffix on searchTitle (still drives Kitsu search)', () => {
 		// Empirically Kitsu often stores multi-cour shows as separate
 		// entries (Part 1, Part 2, …). Stripping the suffix collapsed
 		// Stone Ocean Part 2 onto Part 1's 12-episode page, breaking
 		// navigation. Verbatim search lets Kitsu pick the matching
-		// per-cour entry when one exists; when it doesn't, both cours
-		// land on the same Kitsu page and the cards stay distinct via
-		// displayTitle alone.
+		// per-cour entry when one exists.
 		const r = resolveHistoryEntry(
 			entry('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2 (12 episodes)', '4'),
-			stubKitsu()
+			null
 		);
-		expect(r.displayTitle).toBe('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2');
 		expect(r.searchTitle).toBe('JoJo no Kimyou na Bouken Part 6: Stone Ocean Part 2');
 	});
 });
