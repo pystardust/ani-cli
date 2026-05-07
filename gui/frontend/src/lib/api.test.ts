@@ -5,6 +5,7 @@ import {
 	createSession,
 	play,
 	playExternal,
+	playStream,
 	historyClear,
 	historyList,
 	imageProxyUrl,
@@ -245,6 +246,61 @@ describe('playExternal', () => {
 			episode: '5',
 			mode: 'dub'
 		});
+	});
+});
+
+describe('playStream', () => {
+	// Minimal EventSource shim. The real browser type has many fields
+	// we don't touch; this fake exposes only what `playStream` reads
+	// (addEventListener / close) plus a `dispatch` test seam.
+	type EsHandler = (ev: MessageEvent) => void;
+	class FakeEventSource {
+		static instances: FakeEventSource[] = [];
+		url: string;
+		listeners: Record<string, EsHandler[]> = {};
+		closed = false;
+		constructor(url: string) {
+			this.url = url;
+			FakeEventSource.instances.push(this);
+		}
+		addEventListener(name: string, handler: EsHandler) {
+			(this.listeners[name] ??= []).push(handler);
+		}
+		close() {
+			this.closed = true;
+		}
+		dispatch(name: string, data?: string) {
+			const ev = { data: data ?? '', type: name } as unknown as MessageEvent;
+			for (const h of this.listeners[name] ?? []) h(ev);
+		}
+	}
+
+	type GlobalLike = { EventSource?: typeof FakeEventSource };
+	const g = globalThis as unknown as GlobalLike;
+
+	beforeEach(() => {
+		FakeEventSource.instances.length = 0;
+		g.EventSource = FakeEventSource;
+	});
+
+	afterEach(() => {
+		delete g.EventSource;
+	});
+
+	it('rejects with a generic Error when error data is non-JSON garbage', async () => {
+		// Regression guard. The previous implementation called
+		// `finish(() => reject(JSON.parse(data)))` — `JSON.parse`
+		// fired *inside* `finish`, which had already set `settled = true`
+		// before the throw. The fall-through `finish(...generic Error)`
+		// then short-circuited on `if (settled) return`, leaving the
+		// promise pending forever. This test would time out under that
+		// behaviour.
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('error', '{ not json');
+		await expect(promise).rejects.toThrow(/Stream closed before resolution finished/);
 	});
 });
 
