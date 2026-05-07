@@ -17,6 +17,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import {
+		altTitlesFromKitsu,
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
@@ -347,6 +348,7 @@
 					return n === null ? [] : [n];
 				})
 			: [defaultEpisode()];
+		const altTitles = altTitlesFromKitsu(detail);
 		for (const ep of targets) {
 			void getOrFire(makeKey(id, ep, mode, quality), (emit) =>
 				playStream(
@@ -355,7 +357,8 @@
 						episode: String(ep),
 						mode,
 						quality,
-						episode_count: detail?.episode_count ?? null
+						episode_count: detail?.episode_count ?? null,
+						alt_titles: altTitles
 					},
 					emit
 				)
@@ -554,7 +557,8 @@
 							episode: String(ep),
 							mode,
 							quality,
-							episode_count: detail?.episode_count ?? null
+							episode_count: detail?.episode_count ?? null,
+							alt_titles: altTitlesFromKitsu(detail)
 						},
 						emit
 					),

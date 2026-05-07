@@ -34,6 +34,7 @@
 	import { resolve } from '$app/paths';
 	import Hls from 'hls.js';
 	import {
+		altTitlesFromKitsu,
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
@@ -246,6 +247,7 @@
 		if (!title) return;
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
+		const altTitles = altTitlesFromKitsu(detail);
 		for (const ep of episodes) {
 			const targetEp = ep.number ?? ep.relative_number ?? null;
 			if (targetEp === null) continue;
@@ -256,7 +258,8 @@
 						episode: String(targetEp),
 						mode,
 						quality,
-						episode_count: detail?.episode_count ?? null
+						episode_count: detail?.episode_count ?? null,
+						alt_titles: altTitles
 					},
 					emit
 				)
@@ -289,7 +292,8 @@
 							episode: String(targetEp),
 							mode,
 							quality,
-							episode_count: detail?.episode_count ?? null
+							episode_count: detail?.episode_count ?? null,
+							alt_titles: altTitlesFromKitsu(detail)
 						},
 						emit
 					),
@@ -352,7 +356,8 @@
 				episode: String(episodeNum),
 				mode,
 				quality,
-				episode_count: detail?.episode_count ?? null
+				episode_count: detail?.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(detail)
 			});
 			externalNotice = `Episode ${episodeNum} sent to external player.`;
 		} catch (e) {

@@ -222,6 +222,14 @@ export interface KitsuEpisode {
 export interface KitsuAnimeRef {
 	id: string;
 	canonical_title: string;
+	/** Localized title variants Kitsu serves under `attributes.titles`.
+	 *  Common keys: `en`, `en_jp` (romanized JP), `en_us`, `ja_jp`
+	 *  (kana). Missing keys are absent from the map entirely. The play
+	 *  flow uses these to retry allanime lookups when the canonical
+	 *  title (often English) doesn't match allmanga's index — see
+	 *  {@link altTitlesFromKitsu}. May be missing on cached responses
+	 *  produced before titles were surfaced; treat as `?:`. */
+	titles?: Record<string, string>;
 	slug: string | null;
 	synopsis: string | null;
 	start_date: string | null;
@@ -234,6 +242,30 @@ export interface KitsuAnimeRef {
 	popularity_rank: number | null;
 	poster_image: KitsuPosterImage | null;
 	cover_image: KitsuCoverImage | null;
+}
+
+/**
+ * Build the fallback-title list for a play call from a Kitsu ref.
+ * Returns the localized variants (`en_jp`, `ja_jp`, `en`, `en_us`)
+ * that aren't already the canonical, in priority order: romanized
+ * Japanese first because allmanga indexes shows under that form, then
+ * raw kana, then English alternates.
+ *
+ * Empty / null-ish titles are dropped. The output is deduped so the
+ * backend never makes redundant allanime queries.
+ */
+export function altTitlesFromKitsu(ref: KitsuAnimeRef | null | undefined): string[] {
+	if (!ref?.titles) return [];
+	const seen = new Set<string>([ref.canonical_title]);
+	const out: string[] = [];
+	for (const key of ['en_jp', 'ja_jp', 'en', 'en_us']) {
+		const v = ref.titles[key];
+		if (typeof v === 'string' && v.length > 0 && !seen.has(v)) {
+			seen.add(v);
+			out.push(v);
+		}
+	}
+	return out;
 }
 
 export function appInfo(): Promise<AppInfo> {
@@ -275,6 +307,12 @@ export interface PlayArgs {
 	 *  1-ep side story. Optional: if missing, the backend falls back
 	 *  to allanime's first match. */
 	episode_count?: number | null;
+	/** Fallback titles to try when the canonical title returns no
+	 *  allanime hits. Build with {@link altTitlesFromKitsu}. The
+	 *  backend walks them in order and stops at the first non-empty
+	 *  search result. Used to recover Stone Ocean Part 6 and similar
+	 *  shows whose Kitsu canonical disagrees with allmanga's index. */
+	alt_titles?: string[];
 }
 
 /** Play an episode in the embedded player. Returns the session URLs
@@ -320,6 +358,12 @@ export function playStream(
 	if (args.quality) params.set('quality', args.quality);
 	if (typeof args.episode_count === 'number')
 		params.set('episode_count', String(args.episode_count));
+	// alt_titles is a Vec<String> on the backend. serde_urlencoded can't
+	// decode that from repeated keys, so we join with `\n` and the
+	// backend's custom deserializer splits on the same separator.
+	// Newline is unlikely in any real title and survives URL encoding.
+	if (args.alt_titles && args.alt_titles.length > 0)
+		params.set('alt_titles', args.alt_titles.join('\n'));
 
 	return apiBase().then(
 		(base) =>

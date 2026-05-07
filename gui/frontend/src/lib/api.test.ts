@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	__resetApiBaseForTests,
+	altTitlesFromKitsu,
 	appInfo,
 	createSession,
 	play,
@@ -24,6 +25,7 @@ import {
 	settingsPut,
 	type Config,
 	type CreateSessionResponse,
+	type KitsuAnimeRef,
 	type PlayProgress
 } from './api';
 
@@ -319,6 +321,46 @@ describe('playStream', () => {
 		await promise;
 	});
 
+	it('joins alt_titles with `\\n` for the SSE query (matches backend deserializer)', async () => {
+		// Backend's deserialize_alt_titles splits on `\n`. URLSearchParams
+		// percent-encodes the newline as %0A. Stone Ocean's full
+		// candidate list is the realistic case for this test.
+		const promise = playStream(
+			{
+				title: "JoJo's Bizarre Adventure: Stone Ocean",
+				episode: '1',
+				mode: 'sub',
+				alt_titles: [
+					'Jojo no Kimyou na Bouken Part 6: Stone Ocean',
+					'ジョジョの奇妙な冒険 ストーンオーシャン'
+				]
+			},
+			() => {}
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		// URLSearchParams form-encodes spaces as `+` (vs encodeURIComponent's
+		// `%20`), so build the expected encoding the same way to compare.
+		const expectedEncoded = new URLSearchParams({
+			alt_titles:
+				'Jojo no Kimyou na Bouken Part 6: Stone Ocean\nジョジョの奇妙な冒険 ストーンオーシャン'
+		}).toString();
+		expect(es.url).toContain(expectedEncoded);
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('omits alt_titles entirely when the array is empty', async () => {
+		const promise = playStream({ title: 'X', episode: '1', mode: 'sub', alt_titles: [] }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.url).not.toContain('alt_titles');
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
 	it('omits quality and episode_count when not provided', async () => {
 		const promise = playStream({ title: 'X', episode: '2', mode: 'dub' }, () => {});
 		await Promise.resolve();
@@ -442,6 +484,74 @@ describe('playStream', () => {
 		expect(init?.method).toBe('POST');
 		expect(resp.session_id).toBe('sid');
 		expect(onProgress).not.toHaveBeenCalled();
+	});
+});
+
+describe('altTitlesFromKitsu', () => {
+	const baseRef = (overrides: Partial<KitsuAnimeRef>): KitsuAnimeRef => ({
+		id: '12',
+		canonical_title: 'Stub',
+		titles: undefined,
+		slug: null,
+		synopsis: null,
+		start_date: null,
+		end_date: null,
+		episode_count: null,
+		average_rating: null,
+		subtype: null,
+		status: null,
+		age_rating: null,
+		popularity_rank: null,
+		poster_image: null,
+		cover_image: null,
+		...overrides
+	});
+
+	it('returns empty list when titles is missing', () => {
+		expect(altTitlesFromKitsu(baseRef({}))).toEqual([]);
+	});
+
+	it('returns empty list when ref is null', () => {
+		expect(altTitlesFromKitsu(null)).toEqual([]);
+		expect(altTitlesFromKitsu(undefined)).toEqual([]);
+	});
+
+	it('emits en_jp first (allmanga indexes under romanized JP)', () => {
+		const ref = baseRef({
+			canonical_title: "JoJo's Bizarre Adventure: Stone Ocean",
+			titles: {
+				en: "JoJo's Bizarre Adventure: Stone Ocean",
+				en_jp: 'Jojo no Kimyou na Bouken Part 6: Stone Ocean',
+				ja_jp: 'ジョジョの奇妙な冒険 ストーンオーシャン'
+			}
+		});
+		expect(altTitlesFromKitsu(ref)[0]).toBe('Jojo no Kimyou na Bouken Part 6: Stone Ocean');
+	});
+
+	it('drops the canonical title from the alt list', () => {
+		// One Piece's titles map duplicates the canonical across en/en_jp.
+		// We don't want to send the same title twice.
+		const ref = baseRef({
+			canonical_title: 'One Piece',
+			titles: { en: 'One Piece', en_jp: 'One Piece', ja_jp: 'ONE PIECE' }
+		});
+		expect(altTitlesFromKitsu(ref)).toEqual(['ONE PIECE']);
+	});
+
+	it('skips empty / undefined values', () => {
+		const ref = baseRef({
+			canonical_title: 'Show',
+			titles: { en: 'Show', en_jp: '', ja_jp: 'ja' }
+		});
+		expect(altTitlesFromKitsu(ref)).toEqual(['ja']);
+	});
+
+	it('preserves priority order en_jp → ja_jp → en → en_us', () => {
+		const ref = baseRef({
+			canonical_title: 'Canon',
+			titles: { en_us: 'us', en: 'en', ja_jp: 'ja', en_jp: 'enjp' }
+		});
+		expect(altTitlesFromKitsu(ref)).toEqual(['enjp', 'ja', 'en', 'us']);
 	});
 });
 
