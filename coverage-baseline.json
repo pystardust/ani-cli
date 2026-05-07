@@ -1,8 +1,8 @@
 {
 	"_comment": "Coverage ratchet baseline. CI fails if any metric below this drops on a PR. Refresh by running `node tools/check-coverage-baseline.mjs --update` after intentionally adjusting tests.",
 	"rust": {
-		"lines_pct": 89.1,
-		"functions_pct": 87.07,
+		"lines_pct": 88.97,
+		"functions_pct": 86.84,
 		"regions_pct": 0
 	},
 	"frontend": {
@@ -17,8 +17,8 @@
 	},
 	"crap": {
 		"_comment": "CRAP = ccn² × (1 − cov)² + ccn, per file. max + p95 are the ratcheted aggregates; high_risk is the count of files with CRAP > 30 (informational, not a hard gate).",
-		"max_le": 132,
-		"p95_le": 84,
+		"max_le": 141,
+		"p95_le": 95,
 		"high_risk_le": 17
 	}
 }

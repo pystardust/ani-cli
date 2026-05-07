@@ -64,6 +64,11 @@ url = "2.5"
 bytes = "1.7"
 futures-util = "0.3"
 
+# tokio_stream::wrappers::UnboundedReceiverStream feeds the mpsc channel
+# into axum's Sse handler so progress events from run_debug_streaming
+# stream to the renderer as they happen.
+tokio-stream = "0.1"
+
 # UUID for stream session ids
 uuid = { version = "1.10", features = ["v4", "serde"] }
 

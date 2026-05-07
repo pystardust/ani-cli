@@ -47,7 +47,7 @@ pub enum ProgressLine {
         text: String,
     },
     /// `<provider> Links Fetched` — emitted by `provider_init` for
-    /// each embed source ani-cli successfully queried. Drives the
+    /// every embed provider the CLI successfully queried. Drives the
     /// "youtube → sharepoint → wixmp → hianime" trail in the UI.
     LinksFetched {
         /// Provider label as printed by ani-cli (`youtube`,
