@@ -67,8 +67,8 @@
 					{#key progress}
 						<p
 							class="progress"
-							in:fly={{ x: -16, duration: 220 }}
-							out:fly={{ x: 16, duration: 220 }}
+							in:fly={{ x: -16, duration: 360 }}
+							out:fly={{ x: 16, duration: 360 }}
 						>
 							{progress}
 						</p>
@@ -103,7 +103,7 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: 0.75rem 0 1.25rem;
+		padding: 0.5rem 0 1.75rem;
 		gap: 0;
 	}
 	.anim {
@@ -116,9 +116,9 @@
 	   padding-bottom so the text sits well off the band's edge. */
 	.progress-row {
 		position: relative;
-		margin-top: -0.75rem;
+		margin-top: -1.5rem;
 		width: 100%;
-		height: 1.4rem;
+		height: 1.6rem;
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -127,8 +127,8 @@
 		position: absolute;
 		margin: 0;
 		font-family: var(--font-mono, monospace);
-		font-size: var(--text-sm, 0.85rem);
-		color: rgba(255, 255, 255, 0.78);
+		font-size: 1rem;
+		color: rgba(255, 255, 255, 0.85);
 		letter-spacing: 0.02em;
 		white-space: nowrap;
 	}
