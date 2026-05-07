@@ -41,6 +41,15 @@ pub struct CreateSessionResponse {
     pub media_kind: MediaKind,
     /// Full proxy URL for the subtitle, when present.
     pub subtitle_url: Option<String>,
+    /// `true` when the play resolution came from the long-term cache
+    /// (no fresh ani-cli spawn). The renderer uses this to decide
+    /// whether to silently evict + retry on a player error: a cache
+    /// hit can be evicted and re-resolved, while a fresh-fetch failure
+    /// already exhausted the resolve path and the user should see a
+    /// real error. Defaults to false on construction; the play layer
+    /// flips it when serving cached.
+    #[serde(default)]
+    pub cache_hit: bool,
 }
 
 /// Validate the inputs and register a new [`StreamSession`] in
@@ -104,6 +113,7 @@ fn create_session_inner(
         media_url,
         media_kind,
         subtitle_url,
+        cache_hit: false, // play layer flips when serving cached
     })
 }
 
@@ -298,6 +308,7 @@ mod tests {
             media_url: "http://x/m".into(),
             media_kind: crate::proxy::MediaKind::Hls,
             subtitle_url: None,
+            cache_hit: false,
         };
         let s = serde_json::to_string(&r).unwrap();
         assert!(s.contains("\"session_id\":\"abc\""));

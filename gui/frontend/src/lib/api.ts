@@ -152,6 +152,13 @@ export interface CreateSessionResponse {
 	/** Tells the renderer which player to mount around `media_url`. */
 	media_kind: MediaKind;
 	subtitle_url: string | null;
+	/** True when this play resolution came from the long-term cache
+	 *  (no fresh ani-cli spawn). The play page uses it to decide
+	 *  whether a player error is silently retryable: cache hits can
+	 *  be evicted + re-resolved; fresh fetches already exhausted the
+	 *  resolve path so the user should see the error. Optional for
+	 *  forward compat with older backends — treat absence as `false`. */
+	cache_hit?: boolean;
 }
 
 /** Input to `cmd_open_external_player`. */
@@ -326,6 +333,14 @@ export function play(args: PlayArgs): Promise<CreateSessionResponse> {
  *  directly with the resolved Referer. */
 export function playExternal(args: PlayArgs): Promise<void> {
 	return postJson<void>('/api/play/external', args);
+}
+
+/** Drop the cached play resolution for `args` so the next play call
+ *  cache-misses and re-runs ani-cli. Used by the player error path:
+ *  if the cached upstream URL 4xx'd (rotated *after* our HEAD said
+ *  it was alive), the renderer evicts and silently retries. */
+export function evictPlayCache(args: PlayArgs): Promise<void> {
+	return postJson<void>('/api/play/cache/evict', args);
 }
 
 /** One incremental progress event surfaced by `playStream`. Mirrors the

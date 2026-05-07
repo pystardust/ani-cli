@@ -451,6 +451,28 @@
 		return String(e);
 	}
 
+	/** Human-readable copy for a play-call failure. The raw AniError
+	 *  shape is `{kind, key?, detail?}` — `kind: "scraper"` is the
+	 *  most common one (allmanga returned no usable upstream); `kind:
+	 *  "timeout"` means ani-cli took >60s; everything else collapses
+	 *  to a generic message. The user shouldn't have to read JSON. */
+	function describePlayFailure(e: unknown): string {
+		const raw = describeErrorString(e).toLowerCase();
+		if (raw.includes('no_results')) {
+			return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
+		}
+		if (raw.includes('scraper')) {
+			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
+		}
+		if (raw.includes('timeout')) {
+			return 'The streaming source took too long to respond. Try again in a few minutes.';
+		}
+		if (raw.includes('network') || raw.includes('upstream')) {
+			return 'Network trouble reaching the streaming source. Check your connection and try again.';
+		}
+		return "Couldn't start this episode right now. Try again in a few minutes.";
+	}
+
 	function heroFor(d: KitsuAnimeRef): { url: string | null; isCover: boolean } {
 		const cover = d.cover_image?.large ?? d.cover_image?.original ?? d.cover_image?.small ?? null;
 		if (cover) return { url: imageProxyUrl(cover), isCover: true };
@@ -587,12 +609,17 @@
 			void goto(
 				resolve('/play/[id]', { id }) +
 					`?session=${encodeURIComponent(session.session_id)}` +
-					`&episode=${ep}&kind=${session.media_kind}`
+					`&episode=${ep}&kind=${session.media_kind}` +
+					(session.cache_hit === true ? '&cache_hit=1' : '')
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			actionBusy = false;
-			notify(describeErrorString(e));
+			// Sticky inline message rather than the 4s toast — the user
+			// just clicked their primary action and it failed, so they
+			// need to read it without time pressure. They dismiss by
+			// clicking another episode (success clears actionNotice).
+			actionNotice = describePlayFailure(e);
 		}
 	}
 

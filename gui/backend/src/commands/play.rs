@@ -275,12 +275,16 @@ where
             );
             return Ok(resp);
         }
-        // HEAD failed — the cached URL is dead. Fall through to
-        // ani-cli, which will overwrite the row with a fresh result.
+        // HEAD failed — the cached URL is dead. Evict the row and
+        // fall through to ani-cli. Eviction is explicit (not just
+        // overwrite-on-put) because if the fresh ani-cli call ALSO
+        // fails, we don't want the stale row to linger and bite the
+        // next attempt.
+        play_resolution_cache::evict(&state.cache_pool, &cache_key);
         tracing::info!(
             title = %args.title,
             episode = %args.episode,
-            "play: cache row stale, falling back to ani-cli",
+            "play: cache row stale (HEAD failed), evicted, falling back to ani-cli",
         );
     }
 
@@ -418,7 +422,12 @@ async fn try_serve_cached(
         referer: cached.referer.clone(),
         subtitle_url: cached.subtitle_url.clone(),
     };
-    create_session_with_kind(state, &session_args, cached.media_kind).ok()
+    let mut resp = create_session_with_kind(state, &session_args, cached.media_kind).ok()?;
+    // Tag so the renderer can decide whether a player error is
+    // retryable (cache hit can be evicted + re-resolved) or terminal
+    // (fresh fetch, no cache to clear).
+    resp.cache_hit = true;
+    Some(resp)
 }
 
 /// Resolve `args` against ani-cli and hand the upstream URL straight
@@ -590,6 +599,13 @@ mod tests {
         // Session is freshly created, but the upstream + kind match.
         assert!(resp.media_url.contains("/file.mp4"));
         assert_eq!(resp.media_kind, MediaKind::Mp4);
+        // The cache_hit flag is what tells the renderer whether a
+        // player error is silently retryable. Cache-served responses
+        // must set it; the post-ani-cli path must not.
+        assert!(
+            resp.cache_hit,
+            "try_serve_cached must tag the response so the renderer can retry on player error"
+        );
     }
 
     #[tokio::test]

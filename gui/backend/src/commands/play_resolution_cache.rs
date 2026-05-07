@@ -34,7 +34,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::cache::ttl::PLAY_RESOLUTION_TTL;
-use crate::cache::{meta_cache_get, meta_cache_put, SqlitePool};
+use crate::cache::{meta_cache_delete, meta_cache_get, meta_cache_put, SqlitePool};
 use crate::proxy::MediaKind;
 
 /// Schema version for cached play resolutions. Bump when the struct
@@ -100,6 +100,19 @@ pub fn put(pool: &SqlitePool, key: &str, value: &CachedResolution) {
     let _ = meta_cache_put(pool, key, &body, PLAY_RESOLUTION_TTL.as_secs());
 }
 
+/// Drop a single cached resolution. Two callers feed this:
+/// 1. The play flow's HEAD-fail branch — the cached URL is dead so
+///    the row should not linger if the fresh ani-cli call also fails.
+/// 2. The frontend's player-error feedback path — the player tried
+///    the cached upstream and got a 4xx/5xx, so the URL has rotated
+///    even though our HEAD said it was alive.
+///
+/// Errors are swallowed (best-effort) for the same reason `put` does:
+/// a delete failure shouldn't propagate to the user.
+pub fn evict(pool: &SqlitePool, key: &str) {
+    let _ = meta_cache_delete(pool, key);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +174,31 @@ mod tests {
         let pool = pool();
         let got = get(&pool, "play:v1:Nope:sub:best:1").expect("ok");
         assert!(got.is_none());
+    }
+
+    #[test]
+    fn evict_removes_a_row_so_subsequent_get_misses() {
+        let pool = pool();
+        let key = cache_key("Stone Ocean", "sub", "best", "1");
+        put(&pool, &key, &sample_resolution());
+        assert!(get(&pool, &key).expect("ok").is_some());
+        evict(&pool, &key);
+        assert!(
+            get(&pool, &key).expect("ok").is_none(),
+            "evict() must wipe the row, not just expire it"
+        );
+    }
+
+    #[test]
+    fn evict_is_idempotent_on_missing_key() {
+        let pool = pool();
+        // Eviction by frontend feedback may race the natural
+        // eviction-on-HEAD-fail in the backend. Both callers should
+        // be safe to invoke even when the row is already gone.
+        evict(&pool, "play:v1:Never:Cached:best:1");
+        assert!(get(&pool, "play:v1:Never:Cached:best:1")
+            .expect("ok")
+            .is_none());
     }
 
     #[test]

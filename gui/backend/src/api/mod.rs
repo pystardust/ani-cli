@@ -88,6 +88,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
         .route("/api/play/external", post(post_play_external))
+        .route("/api/play/cache/evict", post(post_play_cache_evict))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -337,6 +338,29 @@ async fn post_play_external(
 ) -> Result<StatusCode, AniError> {
     play_inner::play_external(&state, &args).await?;
     Ok(StatusCode::ACCEPTED)
+}
+
+/// Evict the cached play resolution for `(title, mode, quality,
+/// episode)`. Idempotent — returns 204 even if no row matched.
+///
+/// Frontend feedback path: when the player errors loading a cached
+/// upstream URL (URL rotated *after* our HEAD validated, or the CDN
+/// throttled), the renderer calls this to drop the row before
+/// retrying the play call. The retry then cache-misses and runs
+/// ani-cli fresh.
+async fn post_play_cache_evict(
+    State(state): State<Arc<AppState>>,
+    Json(args): Json<play_inner::PlayArgs>,
+) -> StatusCode {
+    let quality = args.quality.as_deref().unwrap_or("best");
+    let key = crate::commands::play_resolution_cache::cache_key(
+        &args.title,
+        &args.mode,
+        quality,
+        &args.episode,
+    );
+    crate::commands::play_resolution_cache::evict(&state.cache_pool, &key);
+    StatusCode::NO_CONTENT
 }
 
 #[cfg(test)]

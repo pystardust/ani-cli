@@ -120,6 +120,19 @@ pub fn meta_cache_clear(pool: &SqlitePool) -> Result<()> {
     Ok(())
 }
 
+/// Delete a single meta_cache entry. Used by feedback eviction (a
+/// cached play resolution that the player just failed to load — drop
+/// it so the next attempt re-fetches from upstream).
+///
+/// # Errors
+/// [`AniError::Cache`] on write failure.
+pub fn meta_cache_delete(pool: &SqlitePool, key: &str) -> Result<()> {
+    let conn = pool.get().map_err(|_| AniError::Cache)?;
+    conn.execute("DELETE FROM meta_cache WHERE key = ?1", params![key])
+        .map_err(|_| AniError::Cache)?;
+    Ok(())
+}
+
 // --- title_match ---------------------------------------------------------
 
 /// One row of the title_match table: a normalized user query string

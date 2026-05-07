@@ -35,6 +35,7 @@
 	import Hls from 'hls.js';
 	import {
 		altTitlesFromKitsu,
+		evictPlayCache,
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
@@ -63,6 +64,12 @@
 	const mediaKind = $derived<MediaKind>(
 		page.url.searchParams.get('kind') === 'mp4' ? 'mp4' : 'hls'
 	);
+	// True when the play resolution that produced the current session
+	// came from the long-term cache. Used to decide whether a player
+	// error is silently retryable (cache hit → evict + re-resolve) or
+	// terminal (fresh fetch already exhausted the resolve path).
+	// Re-set in switchToEpisode whenever a new session lands.
+	let cacheHit = $state(page.url.searchParams.get('cache_hit') === '1');
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
 
 	let detail = $state<KitsuAnimeRef | null>(null);
@@ -147,7 +154,18 @@
 					3: 'decode',
 					4: 'not-supported'
 				}[code] ?? 'unknown';
-			playerError = `Playback error: ${codeName}${err?.message ? ` (${err.message})` : ''}`;
+			const reason = `${codeName}${err?.message ? ` (${err.message})` : ''}`;
+			// network errors on a cache-hit play almost always mean the
+			// upstream URL rotated since our HEAD validated. Silent
+			// evict + retry rather than dumping a cryptic error on the
+			// user. Decode/not-supported errors aren't URL-rotation
+			// symptoms, so let them surface.
+			if (cacheHit && code === 2) {
+				cacheHit = false; // don't infinite-loop if retry also fails
+				void silentRetryAfterCacheHitFailure(`video ${reason}`);
+				return;
+			}
+			playerError = `Playback error: ${reason}`;
 		};
 		videoEl.addEventListener('error', onVideoError);
 
@@ -162,9 +180,13 @@
 			hls.loadSource(mediaUrl);
 			hls.attachMedia(videoEl);
 			hls.on(Hls.Events.ERROR, (_, data) => {
-				if (data.fatal) {
-					playerError = `Playback error: ${data.type} / ${data.details}`;
+				if (!data.fatal) return;
+				if (cacheHit && data.type === 'networkError') {
+					cacheHit = false;
+					void silentRetryAfterCacheHitFailure(`hls ${data.details}`);
+					return;
 				}
+				playerError = `Playback error: ${data.type} / ${data.details}`;
 			});
 		} else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
 			videoEl.src = mediaUrl;
@@ -318,11 +340,13 @@
 			// from `resolve()` plus a query string; the no-resolve
 			// lint rule's pattern matcher only recognises a literal
 			// `goto(resolve(...))` call, so we suppress around the call.
+			cacheHit = session.cache_hit === true;
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(
 				resolve('/play/[id]', { id }) +
 					`?session=${encodeURIComponent(session.session_id)}` +
-					`&episode=${targetEp}&kind=${session.media_kind}`
+					`&episode=${targetEp}&kind=${session.media_kind}` +
+					(cacheHit ? '&cache_hit=1' : '')
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
@@ -330,6 +354,41 @@
 		} finally {
 			switchBusy = false;
 		}
+	}
+
+	/** Hand off to a fresh ani-cli resolve when a cached play fails at
+	 *  the player layer (4xx mid-stream, hls.js fatal error). Drops
+	 *  the cache row server-side AND in memory, then re-runs
+	 *  switchToEpisode for the current ep — which cache-misses,
+	 *  runs ani-cli, swaps the session URL. LoadingOverlay shows
+	 *  naturally during the retry because switchBusy goes high inside
+	 *  switchToEpisode. */
+	async function silentRetryAfterCacheHitFailure(reason: string) {
+		if (!detail || !config) return;
+		const title = detail.canonical_title;
+		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config.quality ?? 'best';
+		// eslint-disable-next-line no-console
+		console.info('[play] silent retry after cache-hit failure:', reason);
+		try {
+			await evictPlayCache({
+				title,
+				episode: String(episodeNum),
+				mode,
+				quality,
+				episode_count: detail.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(detail)
+			});
+		} catch {
+			/* eviction-endpoint failure shouldn't block retry — the
+			 *  server may have already evicted on HEAD-fail */
+		}
+		// Drop in-memory entries so getOrFire fires fresh. clearForShow
+		// is broader than needed (drops sibling episodes too) but the
+		// sibling prefetches are warming work; losing them costs only
+		// the next slow play, which is acceptable for the retry.
+		clearForShow(id);
+		await switchToEpisode(episodeNum);
 	}
 
 	function onPrev() {

@@ -24,11 +24,13 @@ pub const EPISODES_TTL: Duration = Duration::from_secs(24 * 60 * 60); // 1d
 pub const TITLE_MATCH_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60); // 30d
 
 /// TTL for cached play resolutions (canonical_title + mode + quality +
-/// episode → upstream URL + referer + subtitle + media_kind). 24h is
-/// the practical ceiling: wixmp / sharepoint URLs rotate every few
-/// hours to days, so anything longer increases the dead-link rate.
-/// HEAD-validation on read catches early rotations within the window.
-pub const PLAY_RESOLUTION_TTL: Duration = Duration::from_secs(24 * 60 * 60); // 1d
+/// episode → upstream URL + referer + subtitle + media_kind). 7d is
+/// generous because the *real* validity gate is the per-read HEAD
+/// check + an evict-on-player-failure feedback loop — a stale row
+/// survives until the next access, where HEAD or playback failure
+/// kicks it out. The TTL is just a backstop for rows nobody touches
+/// for a week (probably abandoned shows).
+pub const PLAY_RESOLUTION_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60); // 7d
 
 #[cfg(test)]
 mod tests {
