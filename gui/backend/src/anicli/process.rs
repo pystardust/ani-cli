@@ -370,18 +370,89 @@ pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> 
 mod tests {
     use super::*;
 
-    #[test]
-    fn locate_ani_cli_with_no_path_and_no_fallback_errors() {
+    /// Serializes tests that mutate process-global env (PATH) with
+    /// tests that fork subprocesses (whose runtime resolves PATH at
+    /// spawn time on some kernels). Without this lock the suite flaked
+    /// at ~40% under `cargo test`'s default parallelism. Tokio mutex
+    /// because the guard crosses `.await` points.
+    static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    #[tokio::test]
+    async fn locate_ani_cli_with_no_path_and_no_fallback_errors() {
+        let _guard = ENV_LOCK.lock().await;
         // Save and clear $PATH so `which` cannot find ani-cli.
         let saved = std::env::var_os("PATH");
         // Use unsafe-free API: the std::env::set_var on stable is safe. The
-        // test mutates process global state, but the test is single-threaded
-        // (cargo test default) so no race.
+        // test mutates process global state; the lock above keeps
+        // subprocess-spawning tests out while PATH is empty.
         std::env::set_var("PATH", "");
         let r = locate_ani_cli(None);
         if let Some(p) = saved {
             std::env::set_var("PATH", p);
         }
         assert!(matches!(r, Err(AniError::MissingBinary)));
+    }
+
+    /// Build a stub `ani-cli` script that emits `stderr_msg` and exits
+    /// with `code`. Returned tempdir keeps the file alive for the test.
+    fn stub_ani_cli(stderr_msg: &str, code: i32) -> (tempfile::TempDir, PathBuf) {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let td = tempfile::tempdir().expect("tempdir");
+        let path = td.path().join("ani-cli");
+        let mut f = std::fs::File::create(&path).expect("create stub");
+        // POSIX sh: forward stderr_msg to stderr, exit with the requested
+        // code. Quoting `stderr_msg` is safe because we only ever pass
+        // hard-coded fixture strings here.
+        writeln!(f, "#!/bin/sh\necho \"{stderr_msg}\" 1>&2\nexit {code}").expect("write stub");
+        let mut perm = f.metadata().expect("perm").permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&path, perm).expect("chmod");
+        (td, path)
+    }
+
+    fn debug_opts(path: PathBuf) -> DebugOptions {
+        let mut opts = DebugOptions::new(path);
+        // Pin PATH so the parallel `locate_ani_cli_*` test (which
+        // temporarily empties $PATH) can't race-clear our subprocess's
+        // PATH and turn the spawn into MissingBinary.
+        opts.path_override = Some("/usr/bin:/bin".into());
+        opts
+    }
+
+    /// Cover the three exit-classification branches in `run_debug`'s
+    /// non-zero path: "No results found" → typed NoResults; "Episode
+    /// not released" → keyed Scraper; any other stderr → catch-all
+    /// Scraper. Bundled into one test so the parallel
+    /// `locate_ani_cli_*` test can't race-clear $PATH between sub-
+    /// cases and turn a spawn into MissingBinary.
+    #[tokio::test]
+    async fn run_debug_classifies_nonzero_exits_by_stderr_pattern() {
+        let _guard = ENV_LOCK.lock().await;
+        let (_td1, p1) = stub_ani_cli("No results found", 1);
+        let r1 = run_debug(&debug_opts(p1), "any", "1", "best", "sub", 1).await;
+        assert!(matches!(r1, Err(AniError::NoResults)), "got: {r1:?}");
+
+        let (_td2, p2) = stub_ani_cli("Episode not released", 1);
+        let r2 = run_debug(&debug_opts(p2), "any", "999", "best", "sub", 1).await;
+        assert!(matches!(r2, Err(AniError::Scraper { .. })), "got: {r2:?}");
+
+        let (_td3, p3) = stub_ani_cli("could not resolve host", 6);
+        let r3 = run_debug(&debug_opts(p3), "any", "1", "best", "sub", 1).await;
+        assert!(matches!(r3, Err(AniError::Scraper { .. })), "got: {r3:?}");
+    }
+
+    /// Same exit-classification logic in the streaming variant — covers
+    /// the SSE play endpoint's error paths.
+    #[tokio::test]
+    async fn run_debug_streaming_classifies_nonzero_exits_by_stderr_pattern() {
+        let _guard = ENV_LOCK.lock().await;
+        let (_td1, p1) = stub_ani_cli("No results found", 1);
+        let r1 = run_debug_streaming(&debug_opts(p1), "any", "1", "best", "sub", 1, |_| {}).await;
+        assert!(matches!(r1, Err(AniError::NoResults)), "got: {r1:?}");
+
+        let (_td2, p2) = stub_ani_cli("Episode not released", 1);
+        let r2 = run_debug_streaming(&debug_opts(p2), "any", "1", "best", "sub", 1, |_| {}).await;
+        assert!(matches!(r2, Err(AniError::Scraper { .. })), "got: {r2:?}");
     }
 }
