@@ -72,6 +72,21 @@ pub fn pick_by_ep_count(candidates: &[Candidate], expected: u32, mode: &str) -> 
 
 const ALLANIME_API: &str = "https://api.allanime.day";
 const ALLANIME_REFERER: &str = "https://allmanga.to";
+
+/// Replace ASCII space with `+` to match ani-cli's `search_anime`
+/// pre-processing (line ~178: `printf '%s' "$1" | sed 's| |+|g'`).
+/// Allanime treats `+` as a literal character in the search query,
+/// so a clean-spaces query and a plus-joined query return *different*
+/// hit lists. Both layers must agree byte-for-byte or our index pick
+/// won't line up with what ani-cli sees — Stone Ocean Part 2
+/// reproduces this when our scraper saw 11 hits and ani-cli saw 2.
+///
+/// No further URL-encoding is applied; ani-cli doesn't either, and
+/// allanime's GraphQL accepts the field as JSON-stringified text.
+#[must_use]
+pub fn encode_query_for_allanime(s: &str) -> String {
+    s.replace(' ', "+")
+}
 const SEARCH_GQL: &str = "query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}";
 
 /// Hit allanime's GraphQL `shows.search` endpoint with the same
@@ -99,13 +114,17 @@ pub async fn search(
         detail: format!("allanime search url: {url}"),
     })?;
 
-    // Body shape mirrors ani-cli's `search_anime` POST byte-for-byte.
+    // Body shape mirrors ani-cli's `search_anime` POST byte-for-byte —
+    // including the space→`+` substitution. See encode_query_for_allanime
+    // for why; without it our hit list disagrees with ani-cli's and our
+    // index pick lands on a candidate ani-cli's `-S N` can't reach.
+    let encoded_query = encode_query_for_allanime(query);
     let body = serde_json::json!({
         "variables": {
             "search": {
                 "allowAdult": false,
                 "allowUnknown": false,
-                "query": query,
+                "query": encoded_query,
             },
             "limit": 40,
             "page": 1,
