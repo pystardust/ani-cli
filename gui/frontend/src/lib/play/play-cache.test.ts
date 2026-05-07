@@ -213,12 +213,10 @@ describe('priority subscriber promotion', () => {
 		// wait for one of the active two to drain — otherwise the
 		// loading overlay sits idle while ani-cli's queue clears.
 		const releasers: Array<() => void> = [];
-		const fire =
-			(seed: string) =>
-			() =>
-				new Promise<CreateSessionResponse>((resolve) => {
-					releasers.push(() => resolve(fakeResp(seed)));
-				});
+		const fire = (seed: string) => () =>
+			new Promise<CreateSessionResponse>((resolve) => {
+				releasers.push(() => resolve(fakeResp(seed)));
+			});
 
 		// Two prefetches saturate the cap.
 		void getOrFire(makeKey('s', 1, 'sub', 'best'), fire('a'));

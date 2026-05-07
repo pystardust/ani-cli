@@ -43,6 +43,12 @@ interface CacheEntry {
 	 *  members. Subscribers add themselves on getOrFire and stay
 	 *  attached until the entry is evicted. */
 	subscribers: Set<(p: PlayProgress) => void>;
+	/** When the entry is still waiting for a slot in `withSlot`'s queue,
+	 *  this is the resolver that, when called, lets it run. A click
+	 *  (priority subscriber) calls this to cut the queue rather than
+	 *  sit on a Lottie while ani-cli warms unrelated episodes.
+	 *  Cleared once the slot is acquired and `fire` actually starts. */
+	startNow?: () => void;
 }
 
 const cached = new Map<CacheKey, CacheEntry>();
@@ -61,18 +67,52 @@ const PREFETCH_CONCURRENCY = 2;
 let activeFires = 0;
 const fireQueue: Array<() => void> = [];
 
-async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-	if (activeFires >= PREFETCH_CONCURRENCY) {
-		await new Promise<void>((resolve) => fireQueue.push(resolve));
-	}
-	activeFires += 1;
-	try {
-		return await fn();
-	} finally {
-		activeFires -= 1;
-		const next = fireQueue.shift();
-		if (next) next();
-	}
+/**
+ * Schedule `fn` under the prefetch concurrency cap. Returns the
+ * promise + a `startNow` escape hatch that callers can invoke to cut
+ * the queue (used by clicks). `startNow` is a no-op once the slot is
+ * already running.
+ *
+ * Bypassing the cap briefly exceeds PREFETCH_CONCURRENCY by one for
+ * each click — that's the explicit trade. The cap is for *background*
+ * warming; foreground clicks shouldn't be punished for the warming
+ * having queued ahead of them.
+ */
+function withSlot<T>(fn: () => Promise<T>): {
+	promise: Promise<T>;
+	startNow: () => void;
+} {
+	let slotResolver: (() => void) | null = null;
+	let started = false;
+	const promise = (async () => {
+		if (activeFires >= PREFETCH_CONCURRENCY) {
+			await new Promise<void>((resolve) => {
+				slotResolver = resolve;
+				fireQueue.push(resolve);
+			});
+		}
+		started = true;
+		slotResolver = null;
+		activeFires += 1;
+		try {
+			return await fn();
+		} finally {
+			activeFires -= 1;
+			const next = fireQueue.shift();
+			if (next) next();
+		}
+	})();
+	const startNow = () => {
+		if (started || !slotResolver) return;
+		// Pull the resolver out of the queue, then resolve it. Bypasses
+		// the cap; activeFires temporarily exceeds PREFETCH_CONCURRENCY.
+		const idx = fireQueue.indexOf(slotResolver);
+		if (idx >= 0) fireQueue.splice(idx, 1);
+		const r = slotResolver;
+		slotResolver = null;
+		r();
+	};
+	return { promise, startNow };
 }
 
 /**
@@ -114,7 +154,9 @@ export function getOrFire(
 			newEntry.latestProgress = p;
 			for (const s of subscribers) s(p);
 		};
-		newEntry.promise = withSlot(() => fire(emit));
+		const slot = withSlot(() => fire(emit));
+		newEntry.promise = slot.promise;
+		newEntry.startNow = slot.startNow;
 		cached.set(key, newEntry);
 		newEntry.promise.catch(() => {
 			// Only drop if this is still the current entry — a race where
@@ -129,6 +171,8 @@ export function getOrFire(
 		// Replay the most recent event so a late subscriber sees the
 		// state the rest of the band is already in.
 		if (entry.latestProgress) onProgress(entry.latestProgress);
+		// Foreground click — cut the queue. No-op if already running.
+		entry.startNow?.();
 	}
 	return entry.promise;
 }
@@ -145,7 +189,12 @@ export function clearForShow(showId: string): void {
 	}
 }
 
-/** Test seam: wipe the whole cache between vitest cases. */
+/** Test seam: wipe the whole cache between vitest cases, including
+ *  the withSlot semaphore. Without resetting activeFires/fireQueue,
+ *  state from a prior test where saturated fires never resolved
+ *  would leak — the next test's fire would queue forever. */
 export function __resetPlayCacheForTests(): void {
 	cached.clear();
+	activeFires = 0;
+	fireQueue.length = 0;
 }
