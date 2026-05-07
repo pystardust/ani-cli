@@ -6,10 +6,10 @@
 		"regions_pct": 0
 	},
 	"frontend": {
-		"lines_pct": 99.17,
+		"lines_pct": 99.29,
 		"functions_pct": 100,
-		"statements_pct": 98.96,
-		"branches_pct": 94.73
+		"statements_pct": 99.11,
+		"branches_pct": 95.34
 	},
 	"bash": {
 		"pure_covered_min": 78,

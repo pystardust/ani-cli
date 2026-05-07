@@ -42,13 +42,25 @@ export function cycleSelectedIdx(current: number, direction: 1 | -1, total: numb
 
 /** Prepend `query` to `existing`, deduplicate (keeping the freshest
  *  occurrence first), cap at `max`. Pure — caller is responsible for
- *  persisting the result. */
+ *  persisting the result.
+ *
+ *  Deduplication uses a Set rather than a single `!==` filter against
+ *  `query`, so duplicates already present in `existing` (a corrupted
+ *  localStorage blob, or a freshly-written list that hadn't been
+ *  cleaned) are also collapsed. The earliest occurrence wins. */
 export function mergeRecents(
 	existing: readonly string[],
 	query: string,
 	max: number = RECENT_LIMIT
 ): string[] {
-	return [query, ...existing.filter((x) => x !== query)].slice(0, max);
+	const seen = new Set<string>([query]);
+	const out: string[] = [query];
+	for (const x of existing) {
+		if (seen.has(x)) continue;
+		seen.add(x);
+		out.push(x);
+	}
+	return out.slice(0, max);
 }
 
 /** Defensive parse of a localStorage payload that should be a JSON

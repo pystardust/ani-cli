@@ -473,6 +473,22 @@ describe('playStream', () => {
 		expect(es.closed).toBe(true);
 	});
 
+	it('rejects synchronously when the signal is already aborted at call time', async () => {
+		// A click that races a clearForShow can hand us an already-
+		// aborted signal. The implementation must finish before the
+		// EventSource has a chance to do anything — otherwise the
+		// promise stays pending and the loading overlay sits open
+		// against a dead session.
+		const ctrl = new AbortController();
+		ctrl.abort();
+		const promise = playStream({ title: 't', episode: '1', mode: 'sub' }, () => {}, ctrl.signal);
+		await expect(promise).rejects.toThrow(/aborted/i);
+		// The EventSource was constructed (apiBase resolves first),
+		// but should be closed by now.
+		const es = FakeEventSource.instances[0];
+		expect(es.closed).toBe(true);
+	});
+
 	it('closes the EventSource and rejects when the signal is aborted', async () => {
 		// Cancel-on-unmount path. The detail / player page calls
 		// clearForShow(id) on onDestroy; play-cache aborts each entry's
