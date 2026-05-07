@@ -205,6 +205,57 @@ describe('PREFETCH_CONCURRENCY semaphore', () => {
 	});
 });
 
+describe('priority subscriber promotion', () => {
+	it('cuts a queued entry to the head when a click subscribes', async () => {
+		// PREFETCH_CONCURRENCY = 2. Two prefetches saturate the cap; a
+		// third queues. A user click on the third (passing an onProgress
+		// callback) should promote it to run immediately rather than
+		// wait for one of the active two to drain — otherwise the
+		// loading overlay sits idle while ani-cli's queue clears.
+		const releasers: Array<() => void> = [];
+		const fire =
+			(seed: string) =>
+			() =>
+				new Promise<CreateSessionResponse>((resolve) => {
+					releasers.push(() => resolve(fakeResp(seed)));
+				});
+
+		// Two prefetches saturate the cap.
+		void getOrFire(makeKey('s', 1, 'sub', 'best'), fire('a'));
+		void getOrFire(makeKey('s', 2, 'sub', 'best'), fire('b'));
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(releasers).toHaveLength(2);
+
+		// Third prefetch — queues, doesn't run.
+		void getOrFire(makeKey('s', 3, 'sub', 'best'), fire('c'));
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(releasers).toHaveLength(2);
+
+		// User clicks ep 3 → attach an onProgress subscriber. The cache
+		// should detect this is a click and start the queued fire now.
+		void getOrFire(makeKey('s', 3, 'sub', 'best'), fire('c'), () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(releasers).toHaveLength(3); // ep 3 is running
+
+		// Drain so the test exits cleanly.
+		releasers.forEach((r) => r());
+	});
+
+	it('is a no-op when the entry has already started running', async () => {
+		// A click on an actively-running entry should not double-fire.
+		const fire = vi.fn(plainFire(fakeResp('a')));
+		const k = makeKey('show', 1, 'sub', 'best');
+		const promise = getOrFire(k, fire);
+		await promise; // entry now resolved
+		void getOrFire(k, fire, () => {}); // subscribe later
+		await Promise.resolve();
+		expect(fire).toHaveBeenCalledTimes(1);
+	});
+});
+
 describe('clearForShow', () => {
 	it('drops every entry whose key starts with the given show id', async () => {
 		const fire = vi.fn(plainFire(fakeResp('x')));
