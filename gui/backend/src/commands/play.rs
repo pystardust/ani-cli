@@ -130,21 +130,36 @@ pub fn select_first_with_hits_opt(
     expected: Option<u32>,
     mode: &str,
 ) -> (String, usize) {
+    let (title, idx, _) = select_first_with_hits_with_candidate(primary, results, expected, mode);
+    (title, idx)
+}
+
+/// Like [`select_first_with_hits_opt`] but also returns a clone of the
+/// chosen [`Candidate`] (the row whose `id` + `name` we'll cache for
+/// the history-write feedback path). `None` for the candidate when no
+/// list had hits — the caller falls back to writing nothing.
+#[must_use]
+pub fn select_first_with_hits_with_candidate(
+    primary: &str,
+    results: &[(String, Vec<Candidate>)],
+    expected: Option<u32>,
+    mode: &str,
+) -> (String, usize, Option<Candidate>) {
     for (title, cands) in results {
         if cands.is_empty() {
             continue;
         }
         let pick = match expected {
-            // pick_by_ep_count returns None only on empty input; we
-            // already filtered that, so unwrap_or is a belt-and-braces
-            // fallback.
             Some(n) => scraper::pick_by_ep_count(cands, n, mode).unwrap_or(1),
-            // No ep count to compare — trust allanime's order.
             None => 1,
         };
-        return (title.clone(), pick);
+        // `pick` is 1-based; clamp into the slice in case
+        // pick_by_ep_count ever returns out-of-bounds (defence in
+        // depth — its current contract is 1..=len).
+        let idx0 = pick.saturating_sub(1).min(cands.len() - 1);
+        return (title.clone(), pick, Some(cands[idx0].clone()));
     }
-    (primary.to_string(), 1)
+    (primary.to_string(), 1, None)
 }
 
 /// Spawn timeout for the ani-cli search+resolve step. Real-world
@@ -159,7 +174,10 @@ const RUN_DEBUG_TIMEOUT: Duration = Duration::from_secs(60);
 /// `pick_by_ep_count` over the winner. Falls through to
 /// `(args.title, 1)` (legacy behaviour) on every-list-empty or when
 /// `episode_count` is unknown.
-async fn pick_title_and_index(state: &AppState, args: &PlayArgs) -> (String, usize) {
+async fn pick_title_and_index(
+    state: &AppState,
+    args: &PlayArgs,
+) -> (String, usize, Option<Candidate>) {
     let primary = args.title.clone();
     let mode = if args.mode == "dub" { "dub" } else { "sub" };
 
@@ -193,17 +211,18 @@ async fn pick_title_and_index(state: &AppState, args: &PlayArgs) -> (String, usi
         }
     }
 
-    let (chosen_title, pick) =
-        select_first_with_hits_opt(&primary, &results, args.episode_count, mode);
+    let (chosen_title, pick, chosen) =
+        select_first_with_hits_with_candidate(&primary, &results, args.episode_count, mode);
     tracing::info!(
         primary = %primary,
         alt_count = args.alt_titles.len(),
         chosen_title = %chosen_title,
         expected_eps = ?args.episode_count,
         pick = pick,
+        chosen_show_id = chosen.as_ref().map(|c| c.id.as_str()).unwrap_or(""),
         "play: chose ani-cli search title",
     );
-    (chosen_title, pick)
+    (chosen_title, pick, chosen)
 }
 
 fn debug_options_for(state: &AppState) -> DebugOptions {
@@ -273,6 +292,26 @@ where
                 upstream = cached.upstream_url.as_str(),
                 "play: cache hit (HEAD ok)",
             );
+            // Update Continue Watching: the cache-miss path got history
+            // for free via ani-cli's `update_history`. We don't run
+            // ani-cli on a hit, so we do it ourselves. Skipped silently
+            // for legacy rows (show_id empty) — they re-cache fresh on
+            // their next miss and pick up the metadata then.
+            if !cached.show_id.is_empty() {
+                let entry = crate::history::HistoryEntry {
+                    ep_no: args.episode.clone(),
+                    id: cached.show_id.clone(),
+                    title: cached.show_title.clone(),
+                };
+                if let Err(e) = crate::history::upsert_and_write(&state.history_path, entry) {
+                    tracing::warn!(
+                        title = %args.title,
+                        episode = %args.episode,
+                        error = ?e,
+                        "play: history write failed on cache hit",
+                    );
+                }
+            }
             return Ok(resp);
         }
         // HEAD failed — the cached URL is dead. Evict the row and
@@ -292,7 +331,7 @@ where
     // may differ from args.title when alt_titles produced the winning
     // hit (e.g. romanized fallback for shows whose Kitsu canonicalTitle
     // is the English form). See pick_title_and_index().
-    let (search_title, select_index) = pick_title_and_index(state, args).await;
+    let (search_title, select_index, chosen_candidate) = pick_title_and_index(state, args).await;
 
     tracing::info!(
         search_title = %search_title,
@@ -381,11 +420,30 @@ where
 
     // Persist the resolution so the next play of the same episode
     // skips ani-cli entirely (subject to TTL + HEAD validation).
+    // show_id + show_title come from the chosen allanime candidate
+    // (when our search picked one) so a future cache-hit can write to
+    // ani-hsts ourselves — ani-cli's update_history doesn't fire when
+    // we skip the subprocess on a cache hit.
+    let (show_id, show_title) = chosen_candidate
+        .as_ref()
+        .map(|c| {
+            (
+                c.id.clone(),
+                format!(
+                    "{} ({} episodes)",
+                    c.name,
+                    c.available_episodes.for_mode(&args.mode)
+                ),
+            )
+        })
+        .unwrap_or_default();
     let cached_resolution = CachedResolution {
         upstream_url: resolved.selected_url.clone(),
         referer: referer.clone(),
         subtitle_url: resolved.subtitle_url.clone(),
         media_kind: kind,
+        show_id,
+        show_title,
     };
     play_resolution_cache::put(&state.cache_pool, &cache_key, &cached_resolution);
 
@@ -442,7 +500,7 @@ async fn try_serve_cached(
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     let opts = debug_options_for(state);
     let quality = args.quality.as_deref().unwrap_or("best");
-    let (search_title, select_index) = pick_title_and_index(state, args).await;
+    let (search_title, select_index, _chosen_candidate) = pick_title_and_index(state, args).await;
     let resolved = run_debug(
         &opts,
         &search_title,
@@ -563,17 +621,31 @@ mod tests {
         }
     }
 
+    /// Build a CachedResolution with the new show_id/show_title fields
+    /// defaulted to empty (so try_serve_cached's history-write skip
+    /// branch fires). Tests that want history-write coverage override
+    /// the two fields explicitly.
+    fn cached_blank(upstream_url: String, referer: String, kind: MediaKind) -> CachedResolution {
+        CachedResolution {
+            upstream_url,
+            referer,
+            subtitle_url: None,
+            media_kind: kind,
+            show_id: String::new(),
+            show_title: String::new(),
+        }
+    }
+
     #[tokio::test]
     async fn try_serve_cached_returns_none_when_url_is_unparseable() {
         // A corrupt cache row with garbage in upstream_url shouldn't
         // crash — fall through to ani-cli.
         let state = state_with_proxy_origin();
-        let cached = CachedResolution {
-            upstream_url: "not://a valid url at all".into(),
-            referer: String::new(),
-            subtitle_url: None,
-            media_kind: MediaKind::Mp4,
-        };
+        let cached = cached_blank(
+            "not://a valid url at all".into(),
+            String::new(),
+            MediaKind::Mp4,
+        );
         assert!(try_serve_cached(&state, &cached).await.is_none());
     }
 
@@ -589,12 +661,11 @@ mod tests {
             .mount(&server)
             .await;
         let state = state_with_proxy_origin();
-        let cached = CachedResolution {
-            upstream_url: format!("{}/video.mp4", server.uri()),
-            referer: String::new(),
-            subtitle_url: None,
-            media_kind: MediaKind::Mp4,
-        };
+        let cached = cached_blank(
+            format!("{}/video.mp4", server.uri()),
+            String::new(),
+            MediaKind::Mp4,
+        );
         let resp = try_serve_cached(&state, &cached).await.expect("hit");
         // Session is freshly created, but the upstream + kind match.
         assert!(resp.media_url.contains("/file.mp4"));
@@ -619,12 +690,11 @@ mod tests {
             .mount(&server)
             .await;
         let state = state_with_proxy_origin();
-        let cached = CachedResolution {
-            upstream_url: format!("{}/expired.mp4", server.uri()),
-            referer: String::new(),
-            subtitle_url: None,
-            media_kind: MediaKind::Mp4,
-        };
+        let cached = cached_blank(
+            format!("{}/expired.mp4", server.uri()),
+            String::new(),
+            MediaKind::Mp4,
+        );
         assert!(try_serve_cached(&state, &cached).await.is_none());
     }
 
@@ -641,12 +711,11 @@ mod tests {
             .mount(&server)
             .await;
         let state = state_with_proxy_origin();
-        let cached = CachedResolution {
-            upstream_url: format!("{}/sub/1", server.uri()),
-            referer: "https://allmanga.to".into(),
-            subtitle_url: None,
-            media_kind: MediaKind::Mp4,
-        };
+        let cached = cached_blank(
+            format!("{}/sub/1", server.uri()),
+            "https://allmanga.to".into(),
+            MediaKind::Mp4,
+        );
         assert!(try_serve_cached(&state, &cached).await.is_some());
     }
 

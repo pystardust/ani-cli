@@ -56,6 +56,18 @@ pub struct CachedResolution {
     /// Whether the proxy should serve this as HLS (manifest rewrite)
     /// or MP4 (byte-stream pass-through).
     pub media_kind: MediaKind,
+    /// Allanime show id of the chosen candidate. Captured during the
+    /// fresh-fetch path so a subsequent cache-hit can update
+    /// `ani-hsts` (which `ani-cli`'s `update_history` keys on this id).
+    /// Empty string on rows written before this field existed —
+    /// callers fall back to skipping the history write.
+    #[serde(default)]
+    pub show_id: String,
+    /// Allanime title of the chosen candidate, including the
+    /// `(N episodes)` parenthetical that `ani-cli`'s `update_history`
+    /// stores in column three. Empty on legacy rows.
+    #[serde(default)]
+    pub show_title: String,
 }
 
 /// Build the SQLite key for a play resolution. Deterministic per
@@ -130,6 +142,8 @@ mod tests {
             referer: "https://allmanga.to".into(),
             subtitle_url: None,
             media_kind: MediaKind::Mp4,
+            show_id: "vDTSJHSpYnrkZnAvG".into(),
+            show_title: "Naruto: Shippuuden (500 episodes)".into(),
         }
     }
 
@@ -199,6 +213,23 @@ mod tests {
         assert!(get(&pool, "play:v1:Never:Cached:best:1")
             .expect("ok")
             .is_none());
+    }
+
+    #[test]
+    fn get_parses_legacy_rows_missing_show_id_and_title() {
+        // Rows written before the show_id/show_title fields existed
+        // must still deserialize — serde_default fills in empty strings
+        // and the cache-hit path skips the history-write when those
+        // are blank. Without this, the bump to v2 of CachedResolution
+        // would silently invalidate every row.
+        let pool = pool();
+        let key = "play:v1:Legacy:sub:best:1";
+        let legacy = r#"{"upstream_url":"https://x/y.mp4","referer":"","subtitle_url":null,"media_kind":"mp4"}"#;
+        meta_cache_put(&pool, key, legacy, 60).unwrap();
+        let got = get(&pool, key).expect("ok").expect("hit");
+        assert_eq!(got.show_id, "");
+        assert_eq!(got.show_title, "");
+        assert_eq!(got.upstream_url, "https://x/y.mp4");
     }
 
     #[test]
