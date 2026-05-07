@@ -22,6 +22,7 @@
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
+		markWatched,
 		playStream,
 		settingsGet,
 		settingsPut,
@@ -616,6 +617,20 @@
 			// a literal `goto(resolve(...))`, so we suppress around it.
 			// `kind` rides along so the player page knows whether to
 			// mount hls.js or a plain `<video src>`.
+			// Stamp Continue Watching for the click. getOrFire shares
+			// the prefetch's in-flight promise (which had prefetch=true),
+			// so the backend's auto-history-write stayed silent for
+			// cache-hit clicks — markWatched covers that gap. Cache-miss
+			// clicks ALSO call this; the backend op is idempotent (looks
+			// up cache by key, no-op when missing).
+			void markWatched({
+				title,
+				episode: String(ep),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(detail)
+			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(
 				resolve('/play/[id]', { id }) +

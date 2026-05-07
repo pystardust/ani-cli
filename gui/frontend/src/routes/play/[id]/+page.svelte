@@ -40,6 +40,7 @@
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
+		markWatched,
 		playStream,
 		playExternal,
 		settingsGet,
@@ -373,6 +374,16 @@
 			// lint rule's pattern matcher only recognises a literal
 			// `goto(resolve(...))` call, so we suppress around the call.
 			cacheHit = session.cache_hit === true;
+			// Stamp Continue Watching — see the equivalent block in
+			// /anime/[id] for the rationale (getOrFire reuse).
+			void markWatched({
+				title,
+				episode: String(targetEp),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(detail)
+			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(
 				resolve('/play/[id]', { id }) +

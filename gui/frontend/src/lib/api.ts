@@ -350,6 +350,22 @@ export function evictPlayCache(args: PlayArgs): Promise<void> {
 	return postJson<void>('/api/play/cache/evict', args);
 }
 
+/** Stamp Continue Watching for the just-clicked episode.
+ *
+ *  Why this exists separately from playStream: page-mount prefetches
+ *  fire playStream with prefetch=true so the backend skips its
+ *  history write (whichever prefetch resolves last would otherwise
+ *  clobber the user's actual click). When the user then clicks an
+ *  episode that's already cached, getOrFire returns the prefetch's
+ *  in-flight promise — the backend never sees a prefetch=false call,
+ *  so the history line never gets written.
+ *
+ *  Click handlers fire markWatched as a side-effect after getOrFire
+ *  resolves. Best-effort: caller should `void markWatched(...).catch(()=>{})`. */
+export function markWatched(args: PlayArgs): Promise<void> {
+	return postJson<void>('/api/play/mark-watched', args);
+}
+
 /** One incremental progress event surfaced by `playStream`. Mirrors the
  *  Rust `ProgressLine` enum's tagged JSON shape. */
 export type PlayProgress =

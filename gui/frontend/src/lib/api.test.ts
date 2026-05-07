@@ -5,6 +5,7 @@ import {
 	appInfo,
 	createSession,
 	evictPlayCache,
+	markWatched,
 	play,
 	playExternal,
 	playStream,
@@ -250,6 +251,29 @@ describe('playExternal', () => {
 			title: 'Cowboy Bebop',
 			episode: '5',
 			mode: 'dub'
+		});
+	});
+});
+
+describe('markWatched', () => {
+	it('POSTs the PlayArgs payload to /api/play/mark-watched', async () => {
+		// Backend writes Continue Watching by looking up the cache row
+		// for this key. 204 No Content on success, idempotent.
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await markWatched({
+			title: 'Naruto: Shippuuden',
+			episode: '150',
+			mode: 'sub',
+			quality: 'best'
+		});
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play/mark-watched`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			title: 'Naruto: Shippuuden',
+			episode: '150',
+			mode: 'sub'
 		});
 	});
 });

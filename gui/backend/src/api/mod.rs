@@ -89,6 +89,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/play/stream", get(get_play_stream))
         .route("/api/play/external", post(post_play_external))
         .route("/api/play/cache/evict", post(post_play_cache_evict))
+        .route("/api/play/mark-watched", post(post_play_mark_watched))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -338,6 +339,46 @@ async fn post_play_external(
 ) -> Result<StatusCode, AniError> {
     play_inner::play_external(&state, &args).await?;
     Ok(StatusCode::ACCEPTED)
+}
+
+/// Stamp Continue Watching for the just-clicked episode. Frontend
+/// calls this after a click resolves a play, regardless of whether
+/// the play came from cache or fresh ani-cli — covers the
+/// `getOrFire` reuse case where the click subscribes to an in-flight
+/// prefetch promise (so the backend never saw `prefetch=false`).
+///
+/// Idempotent: looks up the cache row, writes a history line keyed
+/// on the cached `show_id`. No-op when the cache row is missing or
+/// has no captured metadata (legacy / pre-resolve states).
+async fn post_play_mark_watched(
+    State(state): State<Arc<AppState>>,
+    Json(args): Json<play_inner::PlayArgs>,
+) -> StatusCode {
+    let quality = args.quality.as_deref().unwrap_or("best");
+    let key = crate::commands::play_resolution_cache::cache_key(
+        &args.title,
+        &args.mode,
+        quality,
+        &args.episode,
+    );
+    if let Ok(Some(cached)) = crate::commands::play_resolution_cache::get(&state.cache_pool, &key) {
+        if !cached.show_id.is_empty() {
+            let entry = crate::history::HistoryEntry {
+                ep_no: args.episode.clone(),
+                id: cached.show_id,
+                title: cached.show_title,
+            };
+            if let Err(e) = crate::history::upsert_and_write(&state.history_path, entry) {
+                tracing::warn!(
+                    title = %args.title,
+                    episode = %args.episode,
+                    error = ?e,
+                    "play: history write failed in mark-watched",
+                );
+            }
+        }
+    }
+    StatusCode::NO_CONTENT
 }
 
 /// Evict the cached play resolution for `(title, mode, quality,
