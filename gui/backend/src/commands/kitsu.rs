@@ -578,4 +578,61 @@ mod tests {
             Some("new".to_string())
         );
     }
+
+    // — allmanga → kitsu reverse mapping ——————————————————————————————
+    //
+    // Forward direction (Kitsu canonical_title → allmanga show) works
+    // through ani-cli's lenient catalog search. The reverse — taking
+    // an allmanga title from `ani-hsts` and finding its Kitsu entry —
+    // is broken when allmanga has typos (e.g. "Nato: Shippuuden" for
+    // Naruto), because Kitsu's text search isn't fuzzy and returns
+    // unrelated first hits. So we record the (allmanga show_id →
+    // kitsu_id) pair on every successful play (where we know both
+    // ids) and the home page reads it directly by show_id.
+
+    #[test]
+    fn allmanga_kitsu_cache_round_trips_for_a_given_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        allmanga_kitsu_put(&state, "vDTSJHSpYnrkZnAvG", "11469").expect("put ok");
+        let got = allmanga_kitsu_get(&state, "vDTSJHSpYnrkZnAvG").expect("get ok");
+        assert_eq!(got, Some("11469".to_string()));
+    }
+
+    #[test]
+    fn allmanga_kitsu_cache_returns_none_for_unknown_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        assert_eq!(
+            allmanga_kitsu_get(&state, "never-played").expect("get ok"),
+            None
+        );
+    }
+
+    #[test]
+    fn allmanga_kitsu_cache_overwrites_on_re_put() {
+        // If the user navigates to a different Kitsu entry for the
+        // same allmanga show (e.g. they corrected their pick), the
+        // newer mapping wins.
+        let state = state_with_kitsu_at("http://unused");
+        allmanga_kitsu_put(&state, "abc", "old-kitsu").expect("put old");
+        allmanga_kitsu_put(&state, "abc", "new-kitsu").expect("put new");
+        assert_eq!(
+            allmanga_kitsu_get(&state, "abc").expect("get"),
+            Some("new-kitsu".to_string())
+        );
+    }
+
+    #[test]
+    fn allmanga_kitsu_cache_separates_by_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        allmanga_kitsu_put(&state, "show-a", "kitsu-a").expect("put a");
+        allmanga_kitsu_put(&state, "show-b", "kitsu-b").expect("put b");
+        assert_eq!(
+            allmanga_kitsu_get(&state, "show-a").expect("get a"),
+            Some("kitsu-a".to_string())
+        );
+        assert_eq!(
+            allmanga_kitsu_get(&state, "show-b").expect("get b"),
+            Some("kitsu-b".to_string())
+        );
+    }
 }
