@@ -195,6 +195,11 @@ fn into_episode(r: EpisodeResource) -> KitsuEpisode {
 #[serde(rename_all = "camelCase")]
 struct AnimeAttributes {
     canonical_title: Option<String>,
+    /// Kitsu's localized titles map. Wire shape: `{ en, en_jp, ja_jp[, en_us] }`.
+    /// Some entries omit individual keys, so deserialize defensively as an
+    /// open map. Null on the wire is rare but handled — defaults to empty.
+    #[serde(default)]
+    titles: HashMap<String, Option<String>>,
     slug: Option<String>,
     synopsis: Option<String>,
     start_date: Option<String>,
@@ -228,8 +233,13 @@ fn into_ref(r: AnimeResource) -> KitsuAnimeRef {
     KitsuAnimeRef {
         id: r.id,
         canonical_title: r.attributes.canonical_title.unwrap_or_default(),
-        // Red placeholder — populated by green commit.
-        titles: HashMap::new(),
+        // Drop null values so consumers don't have to guard each key.
+        titles: r
+            .attributes
+            .titles
+            .into_iter()
+            .filter_map(|(k, v)| v.map(|s| (k, s)))
+            .collect(),
         slug: r.attributes.slug,
         synopsis: r.attributes.synopsis,
         start_date: r.attributes.start_date,
