@@ -29,6 +29,7 @@ use crate::config::read_config;
 use crate::error::{AniError, Result};
 use crate::proxy::{upstream, MediaKind};
 use crate::scraper;
+use crate::scraper::Candidate;
 
 /// Frontend → backend payload for both play endpoints.
 #[derive(Debug, Clone, Deserialize)]
@@ -51,6 +52,37 @@ pub struct PlayArgs {
     /// behaviour.
     #[serde(default)]
     pub episode_count: Option<u32>,
+    /// Fallback titles to try when the canonical title returns no
+    /// allanime hits. Frontend feeds Kitsu's `titles.en_jp` /
+    /// `titles.ja_jp` here so the play flow can recover when Kitsu's
+    /// canonicalTitle is the English form (e.g. "JoJo's Bizarre
+    /// Adventure: Stone Ocean") but allmanga only indexes the
+    /// romanized name. Tried in order.
+    #[serde(default)]
+    pub alt_titles: Vec<String>,
+}
+
+/// Choose which `(title, candidate_index)` to feed `ani-cli -S`. Walks
+/// the supplied `(title, candidates)` results in order and returns
+/// the first one whose candidate list is non-empty, paired with the
+/// 1-based index from [`scraper::pick_by_ep_count`] (closest match by
+/// episode count to `expected`).
+///
+/// When every list is empty (or the slice is empty), returns
+/// `(primary, 1)` — the legacy `-S 1` behaviour callers used before
+/// disambiguation existed. The play flow falls through to ani-cli
+/// with the primary title; ani-cli's own search will likely fail too,
+/// but the user sees a real error instead of a fake "we picked
+/// candidate 1" silent miss.
+#[must_use]
+pub fn select_first_with_hits(
+    primary: &str,
+    _results: &[(String, Vec<Candidate>)],
+    _expected: u32,
+    _mode: &str,
+) -> (String, usize) {
+    // Red placeholder — green commit walks the results.
+    (primary.to_string(), 1)
 }
 
 /// Spawn timeout for the ani-cli search+resolve step. Real-world
@@ -330,7 +362,111 @@ mod tests {
             mode: "sub".into(),
             quality: None,
             episode_count: None,
+            alt_titles: vec![],
         };
         assert_eq!(args.quality.as_deref().unwrap_or("best"), "best");
+    }
+
+    #[test]
+    fn play_args_alt_titles_default_to_empty_when_omitted() {
+        // Older clients (and `/api/play/external` callers that don't
+        // know about the field yet) send the JSON without alt_titles.
+        // Serde default keeps that path working — the play flow still
+        // runs with just the canonical title.
+        let json = r#"{"title":"x","episode":"1","mode":"sub"}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(args.alt_titles.is_empty());
+    }
+
+    #[test]
+    fn play_args_deserializes_alt_titles_when_present() {
+        let json = r#"{"title":"JoJo's Bizarre Adventure: Stone Ocean","episode":"1","mode":"sub","alt_titles":["Jojo no Kimyou na Bouken Part 6: Stone Ocean","ジョジョの奇妙な冒険 ストーンオーシャン"]}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert_eq!(args.alt_titles.len(), 2);
+        assert_eq!(
+            args.alt_titles[0],
+            "Jojo no Kimyou na Bouken Part 6: Stone Ocean"
+        );
+    }
+
+    /// Build a Candidate row with the right `availableEpisodes.sub`
+    /// field for the helper-selection tests below. The full struct
+    /// is verbose; this keeps each test focused on the behaviour it's
+    /// asserting (which title wins, which candidate index ani-cli
+    /// gets).
+    fn cand(id: &str, name: &str, sub_eps: u32) -> Candidate {
+        Candidate {
+            id: id.into(),
+            name: name.into(),
+            available_episodes: crate::scraper::allanime::AvailableEpisodes {
+                sub: sub_eps,
+                dub: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn select_first_with_hits_returns_primary_when_every_list_is_empty() {
+        // Stone Ocean reproduces this when every candidate title (canonical
+        // English + en_jp + ja_jp) misses allmanga's index. We fall
+        // through to the primary so the play flow's downstream error
+        // surfaces a real "no upstream" rather than silently picking
+        // index 1 of nothing.
+        let results: Vec<(String, Vec<Candidate>)> =
+            vec![("primary".into(), vec![]), ("alt1".into(), vec![])];
+        let (title, idx) = select_first_with_hits("primary", &results, 38, "sub");
+        assert_eq!(title, "primary");
+        assert_eq!(idx, 1);
+    }
+
+    #[test]
+    fn select_first_with_hits_uses_first_non_empty_list() {
+        // Primary has hits — we never even look at the alt titles.
+        let results = vec![
+            ("primary".into(), vec![cand("p1", "Primary Show", 38)]),
+            ("alt1".into(), vec![cand("a1", "Alt Show", 12)]),
+        ];
+        let (title, idx) = select_first_with_hits("primary", &results, 38, "sub");
+        assert_eq!(title, "primary");
+        assert_eq!(idx, 1, "single-candidate list always picks index 1");
+    }
+
+    #[test]
+    fn select_first_with_hits_skips_empty_primary_to_alt_with_hits() {
+        // Stone Ocean Part 6 case: canonical English → 0 hits, en_jp
+        // → multiple hits. We must use en_jp.
+        let results = vec![
+            ("JoJo's Bizarre Adventure: Stone Ocean".into(), vec![]),
+            (
+                "Jojo no Kimyou na Bouken Part 6: Stone Ocean".into(),
+                vec![
+                    cand("a1", "Stone Ocean main", 38),
+                    cand("a2", "side story", 1),
+                ],
+            ),
+        ];
+        let (title, idx) =
+            select_first_with_hits("JoJo's Bizarre Adventure: Stone Ocean", &results, 38, "sub");
+        assert_eq!(title, "Jojo no Kimyou na Bouken Part 6: Stone Ocean");
+        // 38-ep candidate is index 1 (closer to expected 38 than the
+        // 1-ep side story).
+        assert_eq!(idx, 1);
+    }
+
+    #[test]
+    fn select_first_with_hits_picks_by_ep_count_within_chosen_list() {
+        // Naruto: Shippuden case — multiple candidates under one title;
+        // the disambiguator chooses by episode count.
+        let results = vec![(
+            "Naruto: Shippuden".into(),
+            vec![
+                cand("a1", "side story", 1),
+                cand("a2", "main shippuden", 500),
+            ],
+        )];
+        let (title, idx) = select_first_with_hits("Naruto: Shippuden", &results, 500, "sub");
+        assert_eq!(title, "Naruto: Shippuden");
+        // Index 2 = the 500-ep main show.
+        assert_eq!(idx, 2);
     }
 }
