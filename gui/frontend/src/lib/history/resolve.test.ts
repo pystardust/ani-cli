@@ -26,6 +26,22 @@ const entry = (title: string, ep_no = '1'): HistoryEntry => ({
 });
 
 describe('resolveHistoryEntry — display vs search title', () => {
+	it('prefers the Kitsu canonical title for displayTitle when match present', () => {
+		// Continue Watching used to show the romanized history title
+		// while the detail page rendered Kitsu's canonical (English for
+		// some shows). The user clicked into Stone Ocean and saw two
+		// different names for the same show. With a Kitsu match, the
+		// resolver routes the canonical onto displayTitle so the two
+		// surfaces agree. Cours stay distinct via Kitsu's per-cour
+		// canonical (`Stone Ocean Part 2` is its own Kitsu entry) and
+		// the EP number — no Part badge needed.
+		const r = resolveHistoryEntry(
+			entry('Jojo no Kimyou na Bouken Part 6: Stone Ocean (38 episodes)', '4'),
+			{ ...stubKitsu(), canonical_title: "JoJo's Bizarre Adventure: Stone Ocean" }
+		);
+		expect(r.displayTitle).toBe("JoJo's Bizarre Adventure: Stone Ocean");
+	});
+
 	it('strips the trailing "(N episodes)" parenthetical from displayTitle', () => {
 		const r = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), stubKitsu());
 		expect(r.displayTitle).toBe('Demon Slayer');
