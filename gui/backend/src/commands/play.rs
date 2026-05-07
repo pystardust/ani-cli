@@ -111,13 +111,36 @@ pub fn select_first_with_hits(
     expected: u32,
     mode: &str,
 ) -> (String, usize) {
+    select_first_with_hits_opt(primary, results, Some(expected), mode)
+}
+
+/// `select_first_with_hits` variant where `expected` may be unknown.
+/// When `expected` is `None`, returns the first non-empty list with
+/// candidate index 1 (allanime's own ranking — same as ani-cli's
+/// default `-S 1`). When `Some`, behaves identically to the v1 helper.
+///
+/// This is the path Stone Ocean Part 6 needs: Kitsu's episode_count
+/// is null for that entry, so we can't disambiguate by ep count, but
+/// we still need to walk alt_titles to find one allmanga indexes.
+#[must_use]
+pub fn select_first_with_hits_opt(
+    primary: &str,
+    results: &[(String, Vec<Candidate>)],
+    expected: Option<u32>,
+    mode: &str,
+) -> (String, usize) {
     for (title, cands) in results {
         if cands.is_empty() {
             continue;
         }
-        // pick_by_ep_count returns None only on empty input; we already
-        // filtered that, so the unwrap_or is a belt-and-braces fallback.
-        let pick = scraper::pick_by_ep_count(cands, expected, mode).unwrap_or(1);
+        let pick = match expected {
+            // pick_by_ep_count returns None only on empty input; we
+            // already filtered that, so unwrap_or is a belt-and-braces
+            // fallback.
+            Some(n) => scraper::pick_by_ep_count(cands, n, mode).unwrap_or(1),
+            // No ep count to compare — trust allanime's order.
+            None => 1,
+        };
         return (title.clone(), pick);
     }
     (primary.to_string(), 1)
@@ -137,20 +160,21 @@ const RUN_DEBUG_TIMEOUT: Duration = Duration::from_secs(60);
 /// `episode_count` is unknown.
 async fn pick_title_and_index(state: &AppState, args: &PlayArgs) -> (String, usize) {
     let primary = args.title.clone();
-    let Some(expected) = args.episode_count else {
-        return (primary, 1);
-    };
     let mode = if args.mode == "dub" { "dub" } else { "sub" };
 
-    // Build (title, candidates) pairs by querying allanime for each
-    // candidate title in turn. Stop at the first non-empty list — no
-    // point making three GraphQL calls when the canonical worked.
+    // Walk the candidate list whether or not we have a Kitsu
+    // episode_count to disambiguate with — alt_titles is also the
+    // recovery path when canonical doesn't appear in allmanga's index
+    // (Stone Ocean Part 6 reproduces this even though its
+    // episode_count is null on Kitsu). Stop at the first non-empty
+    // list so we don't make three GraphQL calls when canonical worked.
     let mut results: Vec<(String, Vec<Candidate>)> = Vec::new();
     for title in
         std::iter::once(args.title.as_str()).chain(args.alt_titles.iter().map(String::as_str))
     {
         match scraper::search(&state.proxy_http, title, mode, None).await {
             Ok(cands) => {
+                tracing::info!(title, hits = cands.len(), "play: allanime search candidate",);
                 let was_empty = cands.is_empty();
                 results.push((title.to_string(), cands));
                 if !was_empty {
@@ -168,14 +192,15 @@ async fn pick_title_and_index(state: &AppState, args: &PlayArgs) -> (String, usi
         }
     }
 
-    let (chosen_title, pick) = select_first_with_hits(&primary, &results, expected, mode);
+    let (chosen_title, pick) =
+        select_first_with_hits_opt(&primary, &results, args.episode_count, mode);
     tracing::info!(
         primary = %primary,
         alt_count = args.alt_titles.len(),
         chosen_title = %chosen_title,
-        expected_eps = expected,
+        expected_eps = ?args.episode_count,
         pick = pick,
-        "play: disambiguated allanime candidate by episode count",
+        "play: chose ani-cli search title",
     );
     (chosen_title, pick)
 }
