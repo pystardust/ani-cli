@@ -918,12 +918,13 @@
 		gap: var(--space-7);
 		padding-block: var(--space-6) var(--space-9);
 		padding-inline: var(--space-8);
-		max-inline-size: var(--content-max-wide);
+		/* Cap pushed wide (130rem ≈ 2080px) so /play uses most of
+		   the screen at a 1920px window instead of leaving black
+		   margins. Only at 4K / ultrawide does the cap kick in.
+		   Other routes (editorial pages) keep --content-max-wide;
+		   /play is a watch surface and feels right when it spreads. */
+		max-inline-size: 130rem;
 		margin-inline: auto;
-		/* Subtle warm halo at the top of the page so the player has
-		   atmospheric depth instead of floating in pure black. Uses
-		   the per-anime accent so the glow always belongs to the
-		   show being watched. */
 		background: radial-gradient(
 			ellipse 70% 35% at 50% 0%,
 			color-mix(in oklab, var(--accent) 16%, transparent),

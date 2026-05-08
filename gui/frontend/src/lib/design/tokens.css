@@ -120,10 +120,13 @@
 	   here so the four wide-layout routes share a single ceiling. */
 	--content-max-wide: 110rem;
 	/* Comfortable viewing width for video. Caps the player frame on
-	   ultrawide monitors so the video doesn't blow out past the
-	   readable size — strips below can still spread to
-	   --content-max-wide. */
-	--player-max: 88rem;
+	   true ultrawide monitors so the video doesn't blow out past
+	   the readable size; on a typical 1920 monitor the .page
+	   padding is the actual binding constraint and the video
+	   spreads to fill most of the screen. Bumped from 88rem so
+	   /play feels less like an island floating in black on
+	   widescreen. */
+	--player-max: 120rem;
 	--hero-aspect: 21 / 5;
 	--poster-aspect: 5 / 7;
 	--rail-width: 5.5rem; /* 88px — narrow enough to feel like a margin, not a panel. */
