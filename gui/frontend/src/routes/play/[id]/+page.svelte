@@ -1154,9 +1154,12 @@
 	}
 
 	/* — Episode section: heading, pagination, modern card grid.
-	     Capped at --player-max and centered so its left edge aligns
-	     with the player's left edge above. The Similar Titles strip
-	     below uses the same cap via .similar-wrap. — */
+	     Capped at --player-max and centered so its block aligns
+	     with the player above. padding-inline: var(--space-8)
+	     mirrors Strip's internal --strip-pad so the ep grid's
+	     first card lines up vertically with the Similar Titles
+	     strip's first card below — same alignment the detail
+	     page gets between its body section and similar strip. — */
 	.ep-section {
 		display: flex;
 		flex-direction: column;
@@ -1165,6 +1168,7 @@
 		inline-size: 100%;
 		max-inline-size: var(--player-max);
 		margin-inline: auto;
+		padding-inline: var(--space-8);
 	}
 	.ep-section-header {
 		display: flex;
