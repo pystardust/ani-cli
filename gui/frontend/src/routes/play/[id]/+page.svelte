@@ -829,21 +829,29 @@
 		</div>
 
 		<aside class="ep-sidebar" aria-label="Episodes">
-			<h2 class="ep-sidebar-title">
-				<span class="eyebrow-key">Episodes</span>
-				<span class="eyebrow-rule" aria-hidden="true"></span>
-				<span class="eyebrow-value">
+			<header class="ep-sidebar-header">
+				<h2 class="ep-sidebar-heading">Episodes</h2>
+				<span class="ep-sidebar-counter">
 					{#if episodes && episodes.length > 0 && detail?.episode_count}
-						{epStart}–{epEnd} of {detail.episode_count}
+						<span class="ep-sidebar-counter-range">
+							<span class="num">{epStart}</span><span aria-hidden="true">–</span><span class="num"
+								>{epEnd}</span
+							>
+						</span>
+						<span class="ep-sidebar-counter-of"
+							>of <span class="num">{detail.episode_count}</span></span
+						>
 					{:else if episodes && episodes.length > 0}
-						page {episodesPage}
+						<span class="ep-sidebar-counter-range"
+							>page <span class="num">{episodesPage}</span></span
+						>
 					{:else if episodesError}
-						unavailable
+						<span class="ep-sidebar-counter-of">unavailable</span>
 					{:else}
-						loading
+						<span class="ep-sidebar-counter-of">loading…</span>
 					{/if}
 				</span>
-			</h2>
+			</header>
 
 			{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
 				<div class="ep-controls">
@@ -916,11 +924,29 @@
 								<span class="ep-card-thumb">
 									{#if epThumb}
 										<img src={epThumb} alt="" loading="lazy" />
+									{:else}
+										<span class="ep-card-thumb-placeholder" aria-hidden="true">
+											{n.toString().padStart(2, '0')}
+										</span>
 									{/if}
-									<span class="ep-card-thumb-num" aria-hidden="true">
-										<span class="ep-card-thumb-num-prefix">EP</span>
-										<span class="ep-card-thumb-num-value">{n}</span>
+
+									<!-- Default sidebar mode: text overlaid on the thumb
+									     with a top fade gradient. Hidden in theater mode
+									     where the foot below takes over. -->
+									<span class="ep-card-overlay" aria-hidden="true">
+										<span class="ep-card-overlay-num">EP {n}</span>
+										<span class="ep-card-overlay-title">
+											{ep.canonical_title ?? `Episode ${n}`}
+										</span>
 									</span>
+
+									<!-- Theater-mode tag — corner badge same as the
+									     detail-page tile. Hidden by default. -->
+									<span class="ep-card-tag" aria-hidden="true">
+										<span class="ep-card-tag-key">Ep</span>
+										<span class="ep-card-tag-num">{n}</span>
+									</span>
+
 									<span class="ep-card-thumb-play" aria-hidden="true">
 										<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 											<path d="M8 5v14l11-7z" fill="currentColor" />
@@ -930,7 +956,16 @@
 										<span class="ep-card-thumb-flag" aria-hidden="true">Now playing</span>
 									{/if}
 								</span>
-								<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
+
+								<!-- Theater-mode foot. Hidden by default. -->
+								<span class="ep-card-foot">
+									<span class="ep-card-foot-title">
+										{ep.canonical_title ?? `Episode ${n}`}
+									</span>
+									{#if ep.length}
+										<span class="ep-card-foot-meta">{ep.length}m</span>
+									{/if}
+								</span>
 							</button>
 						</li>
 					{/each}
@@ -1096,29 +1131,48 @@
 			max-block-size: calc(100dvh - 6rem);
 		}
 	}
-	.ep-sidebar-title {
-		display: inline-flex;
-		align-items: center;
+	/* Sidebar header — display-face heading + refined mono
+	   counter on a single baseline. Replaces the previous mono
+	   uppercase eyebrow + thin rule, which read flat. The accent
+	   underline gives "Episodes" a subtle anchor without becoming
+	   a heavy divider. */
+	.ep-sidebar-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
 		gap: var(--space-3);
+		padding-block-end: var(--space-3);
+		border-block-end: 1px solid color-mix(in oklab, var(--accent) 25%, var(--ink-300));
+	}
+	.ep-sidebar-heading {
 		margin: 0;
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-300);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-m);
 		font-weight: 500;
+		line-height: 1;
+		color: var(--bone-100);
+		letter-spacing: var(--tracking-display);
 	}
-	.ep-sidebar-title .eyebrow-key {
-		color: var(--accent);
-	}
-	.ep-sidebar-title .eyebrow-rule {
-		flex: 1;
-		block-size: 1px;
-		background: var(--ink-300);
-	}
-	.ep-sidebar-title .eyebrow-value {
-		color: var(--bone-200);
+	.ep-sidebar-counter {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		text-transform: uppercase;
+		color: var(--bone-300);
 		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.ep-sidebar-counter .num {
+		color: var(--bone-100);
+	}
+	.ep-sidebar-counter-range {
+		color: var(--bone-200);
+	}
+	.ep-sidebar-counter-of {
+		color: var(--bone-300);
 	}
 	.ep-list {
 		display: flex;
@@ -1451,17 +1505,18 @@
 		pointer-events: none;
 	}
 
-	/* Modern episode card: large 16:9 thumb with a numeral overlay,
-	   gradient scrim on hover, and a play-glyph that fades in. The
-	   title sits clean below the thumb in book serif/sans (per
-	   tokens), with the ep number living on the thumb itself rather
-	   than as a separate caption — fewer text rows, more recognition
-	   from the image. The previous build had two ep-number labels
-	   stacked + a thin caption row, which read flat and dated. */
+	/* Episode card — two visual modes:
+	     • Default sidebar: chunky 16:9 thumb fills the card; ep
+	       number + title float on top of the thumb under a top→
+	       bottom dark fade so they stay readable on bright frames.
+	     • Theater mode: thumb shrinks to detail-page-tile shape
+	       (16:9 image, corner badge), title + duration drop below
+	       in a dedicated foot. Same component as /anime/[id].
+	   The mode switch is CSS-only — markup carries both layers,
+	   visibility flips on .page.theater. */
 	.ep-card {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
+		position: relative;
+		display: block;
 		padding: 0;
 		inline-size: 100%;
 		border: 0;
@@ -1481,29 +1536,36 @@
 		cursor: not-allowed;
 	}
 
+	/* Thumb — chunkier rounding (12px instead of card 8px) to
+	   give the card more visual weight. */
 	.ep-card-thumb {
 		position: relative;
 		display: block;
 		aspect-ratio: 16 / 9;
-		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
-		border-radius: var(--radius-card);
+		background: linear-gradient(
+			135deg,
+			var(--ink-100),
+			color-mix(in oklab, var(--accent) 14%, var(--ink-100))
+		);
+		border-radius: 12px;
 		overflow: hidden;
 		box-shadow:
 			0 1px 2px rgb(0 0 0 / 0.45),
-			inset 0 0 0 1px var(--ink-300);
+			inset 0 0 0 1px color-mix(in oklab, var(--ink-300) 80%, transparent);
 		transition:
 			box-shadow var(--dur-med) var(--ease-out-soft),
 			transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.ep-card:hover:not(:disabled) .ep-card-thumb {
 		box-shadow:
-			0 8px 24px -4px rgb(0 0 0 / 0.6),
+			0 12px 28px -6px color-mix(in oklab, var(--accent) 28%, transparent),
+			0 4px 10px -4px rgb(0 0 0 / 0.45),
 			inset 0 0 0 1px color-mix(in oklab, var(--accent) 80%, var(--bone-300));
 	}
 	.ep-card-current .ep-card-thumb {
 		box-shadow:
 			0 0 0 2px var(--accent),
-			0 8px 24px -4px color-mix(in oklab, var(--accent) 50%, transparent);
+			0 8px 24px -4px color-mix(in oklab, var(--accent) 45%, transparent);
 	}
 	.ep-card-thumb img {
 		position: absolute;
@@ -1511,90 +1573,182 @@
 		inline-size: 100%;
 		block-size: 100%;
 		object-fit: cover;
-		transition: transform var(--dur-med) var(--ease-out-soft);
+		filter: brightness(0.92);
+		transition:
+			transform var(--dur-med) var(--ease-out-soft),
+			filter var(--dur-med) var(--ease-out-soft);
 	}
 	.ep-card:hover:not(:disabled) .ep-card-thumb img {
-		transform: scale(1.05);
+		transform: scale(1.04);
+		filter: brightness(1);
+	}
+	.ep-card-thumb-placeholder {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-l);
+		font-variant-numeric: tabular-nums lining-nums;
+		color: var(--bone-300);
 	}
 
-	/* Bottom scrim — keeps the ep number readable over light frames */
-	.ep-card-thumb::after {
-		content: '';
+	/* — DEFAULT MODE: text overlay on thumb with top fade — */
+	.ep-card-overlay {
 		position: absolute;
-		inset-block-end: 0;
+		inset-block-start: 0;
 		inset-inline: 0;
-		block-size: 50%;
-		background: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.7) 100%);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: var(--space-3) var(--space-3) var(--space-7);
+		background: linear-gradient(
+			180deg,
+			rgb(0 0 0 / 0.78) 0%,
+			rgb(0 0 0 / 0.45) 60%,
+			transparent 100%
+		);
 		pointer-events: none;
-		opacity: 0.65;
-		transition: opacity var(--dur-fast) var(--ease-out-soft);
 	}
-	.ep-card:hover:not(:disabled) .ep-card-thumb::after {
-		opacity: 0.95;
+	.ep-card-overlay-num {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
+		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+	}
+	.ep-card-overlay-title {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-body);
+		line-height: 1.2;
+		color: var(--bone-100);
+		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+	}
+	.ep-card-current .ep-card-overlay-num {
+		color: var(--accent);
 	}
 
-	.ep-card-thumb-num {
+	/* — THEATER MODE: corner tag (default-hidden) and foot (also
+	     hidden by default) — */
+	.ep-card-tag {
+		display: none; /* shown only in theater mode */
 		position: absolute;
-		inset-block-end: var(--space-2);
-		inset-inline-start: var(--space-3);
-		display: inline-flex;
+		inset-block-start: var(--space-2);
+		inset-inline-start: var(--space-2);
 		align-items: baseline;
-		gap: 0.35em;
-		font-family: var(--font-mono);
-		color: var(--bone-100);
-		text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
-		letter-spacing: 0.02em;
+		gap: var(--space-1);
+		padding: 2px var(--space-2);
+		background: color-mix(in oklab, var(--ink-000) 78%, transparent);
+		backdrop-filter: blur(4px);
+		border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--bone-400));
+		border-radius: var(--radius-control);
 	}
-	.ep-card-thumb-num-prefix {
+	.ep-card-tag-key {
+		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
 	}
-	.ep-card-thumb-num-value {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-m);
+	.ep-card-tag-num {
+		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-weight: 500;
-		line-height: 1;
+		font-size: var(--type-meta);
 		color: var(--bone-100);
 	}
-	.ep-card-current .ep-card-thumb-num-value {
-		color: var(--accent);
+	.ep-card-foot {
+		display: none; /* shown only in theater mode */
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-3) var(--space-4);
+		min-block-size: 5rem;
+		background: var(--ink-050);
+		border: 1px solid var(--ink-200);
+		border-block-start: 0;
+		border-end-end-radius: var(--radius-card);
+		border-end-start-radius: var(--radius-card);
+		margin-block-start: -12px; /* tuck under the chunky thumb radius */
+		padding-block-start: calc(var(--space-3) + 12px);
+	}
+	.ep-card-foot-title {
+		font-family: var(--font-display);
+		font-size: var(--type-body);
+		line-height: var(--leading-tight);
+		color: var(--bone-100);
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.ep-card-foot-meta {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		color: var(--bone-400);
 	}
 
-	/* Play glyph — fades in on hover. Centered in the upper-right
-	   so it doesn't fight the ep number in the bottom-left. */
+	/* Mode switch — when the page is in theater mode, suppress the
+	   thumb overlay (we want the image clean) and show the corner
+	   tag + foot instead. The ep card itself still uses the same
+	   element tree. */
+	.page.theater .ep-card-overlay {
+		display: none;
+	}
+	.page.theater .ep-card-tag {
+		display: inline-flex;
+	}
+	.page.theater .ep-card-foot {
+		display: flex;
+	}
+	.page.theater .ep-card-thumb {
+		/* Detail-page tile uses no extra rounding under the foot —
+		   the foot caps the bottom corners. Match that shape. */
+		border-end-end-radius: 0;
+		border-end-start-radius: 0;
+	}
+
+	/* Play glyph — fades in on hover. Sits in the bottom-right so
+	   it doesn't fight the title overlay (top) or the corner tag
+	   (top-left, theater mode). */
 	.ep-card-thumb-play {
 		position: absolute;
-		inset-block-start: var(--space-2);
+		inset-block-end: var(--space-2);
 		inset-inline-end: var(--space-2);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		inline-size: 2rem;
-		block-size: 2rem;
+		inline-size: 2.4rem;
+		block-size: 2.4rem;
 		border-radius: var(--radius-pill);
-		background: rgb(0 0 0 / 0.55);
+		background: color-mix(in oklab, var(--accent) 80%, var(--ink-000));
 		color: var(--bone-100);
 		opacity: 0;
-		transform: scale(0.85);
+		transform: scale(0.78);
 		transition:
 			opacity var(--dur-fast) var(--ease-out-soft),
 			transform var(--dur-fast) var(--ease-out-elastic);
+		box-shadow: 0 4px 12px -2px color-mix(in oklab, var(--accent) 50%, transparent);
 	}
 	.ep-card:hover:not(:disabled) .ep-card-thumb-play {
 		opacity: 1;
 		transform: scale(1);
 	}
 
-	/* "Now playing" flag on the active episode */
+	/* "Now playing" pill on the active episode (top-right) */
 	.ep-card-thumb-flag {
 		position: absolute;
 		inset-block-start: var(--space-2);
-		inset-inline-start: var(--space-2);
-		padding: 2px 8px;
+		inset-inline-end: var(--space-2);
+		padding: 3px 10px;
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
@@ -1602,24 +1756,14 @@
 		color: var(--ink-000);
 		background: var(--accent);
 		border-radius: var(--radius-pill);
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
 	}
-
-	.ep-card-title {
-		padding-inline: 2px;
-		font-family: var(--font-body);
-		font-weight: 500;
-		font-size: var(--type-meta);
-		color: var(--bone-100);
-		line-height: 1.3;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-	}
-	.ep-card-current .ep-card-title {
-		color: var(--accent);
+	.page.theater .ep-card-thumb-flag {
+		/* Theater mode has the corner tag in top-left; move flag
+		   to bottom so they don't collide. */
+		inset-block-start: auto;
+		inset-block-end: var(--space-2);
+		inset-inline-end: var(--space-2);
 	}
 
 	/* Pagination controls — same widget pair as /anime/[id]:
