@@ -174,29 +174,51 @@
 			</div>
 		</div>
 
-		<!-- Edge fades + page buttons: the visible scrollbar is gone, so
-		     the row's edges have to do the indicating. The fades say "more
-		     content this way" without taking up vertical real estate; the
-		     chevron buttons let the user advance without dragging. -->
+		<!-- Edge fades + arrow buttons. Split into two layers so the
+		     gradient stays a non-interactive backdrop ("more content
+		     this way") and the arrow is a small, deliberately-styled
+		     click target floating above the fade. Fades use a
+		     horizontal linear gradient against the page background
+		     so the falloff reads clearly even on dark posters. -->
+		<div class="strip-fade strip-fade-start" class:visible={canScrollLeft} aria-hidden="true"></div>
+		<div class="strip-fade strip-fade-end" class:visible={canScrollRight} aria-hidden="true"></div>
 		<button
 			type="button"
-			class="strip-edge strip-edge-start"
+			class="strip-arrow strip-arrow-start"
 			class:visible={canScrollLeft}
 			onclick={() => nudge(-1)}
 			aria-label="Previous"
 			tabindex="-1"
 		>
-			<span class="strip-edge-chev" aria-hidden="true">‹</span>
+			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+				<path
+					d="M15 6l-6 6 6 6"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
 		</button>
 		<button
 			type="button"
-			class="strip-edge strip-edge-end"
+			class="strip-arrow strip-arrow-end"
 			class:visible={canScrollRight}
 			onclick={() => nudge(1)}
 			aria-label="Next"
 			tabindex="-1"
 		>
-			<span class="strip-edge-chev" aria-hidden="true">›</span>
+			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+				<path
+					d="M9 6l6 6-6 6"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
 		</button>
 	</div>
 </section>
@@ -294,77 +316,96 @@
 		border-radius: 2px;
 	}
 
-	/* Edge-mounted page buttons. They sit absolutely positioned over the
-	   scroller, with a horizontal gradient fading IN against a slightly
-	   darker tone than the page background — that bumps the contrast
-	   against the (also-dark) cards so the fade actually reads as a
-	   gradient instead of just disappearing into the background. */
-	.strip-edge {
+	/* Edge fade — non-interactive gradient backdrop that says "more
+	   content this way". Wider (9rem ≈ 144px) and stronger than the
+	   previous radial: solid page-background at the edge, semi-solid
+	   in the middle, transparent past 70%. Reads clearly even when
+	   the cards underneath are dark posters. */
+	.strip-fade {
 		position: absolute;
 		inset-block: 0;
-		display: grid;
-		place-items: center;
-		inline-size: 6rem;
-		padding: 0;
-		border: 0;
+		inline-size: 9rem;
 		opacity: 0;
 		pointer-events: none;
 		transition: opacity var(--dur-med) var(--ease-out-soft);
 		z-index: 2;
 	}
-	.strip-edge.visible {
+	.strip-fade.visible {
 		opacity: 1;
-		pointer-events: auto;
 	}
-	/* Radial gradient anchored to the leading/trailing edge — wider
-	   than tall so it fades horizontally first, taller-than-the-box so
-	   the falloff at top + bottom is gradual. The corners get softer
-	   instead of cutting into a flat rectangle, while the interior
-	   contrast against the cards stays the same. */
-	.strip-edge-start {
+	.strip-fade-start {
 		inset-inline-start: 0;
-		background: radial-gradient(
-			ellipse 100% 180% at 0% 50%,
-			var(--ink-100) 0%,
-			color-mix(in oklab, var(--ink-100) 88%, transparent) 30%,
-			color-mix(in oklab, var(--ink-100) 50%, transparent) 60%,
+		background: linear-gradient(
+			to right,
+			var(--ink-000) 0%,
+			color-mix(in oklab, var(--ink-000) 90%, transparent) 30%,
+			color-mix(in oklab, var(--ink-000) 60%, transparent) 60%,
 			transparent 100%
 		);
 	}
-	.strip-edge-end {
+	.strip-fade-end {
 		inset-inline-end: 0;
-		background: radial-gradient(
-			ellipse 100% 180% at 100% 50%,
-			var(--ink-100) 0%,
-			color-mix(in oklab, var(--ink-100) 88%, transparent) 30%,
-			color-mix(in oklab, var(--ink-100) 50%, transparent) 60%,
+		background: linear-gradient(
+			to left,
+			var(--ink-000) 0%,
+			color-mix(in oklab, var(--ink-000) 90%, transparent) 30%,
+			color-mix(in oklab, var(--ink-000) 60%, transparent) 60%,
 			transparent 100%
 		);
 	}
-	.strip-edge-chev {
-		display: grid;
-		place-items: center;
-		inline-size: 2.25rem;
-		block-size: 2.25rem;
-		font-family: var(--font-body);
-		font-size: 1.5rem;
-		line-height: 1;
-		color: var(--bone-100);
-		background: color-mix(in oklab, var(--ink-100) 80%, transparent);
-		border: 1px solid var(--ink-300);
+
+	/* Arrow buttons — small floating circular controls layered on
+	   top of the fade. Sized 2.75rem (~44px) for a real click
+	   target with high-contrast surface (black/70 + white/10 border
+	   + backdrop blur) so they read clearly against busy posters. */
+	.strip-arrow {
+		position: absolute;
+		inset-block-start: 50%;
+		transform: translateY(-50%);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2.75rem;
+		block-size: 2.75rem;
+		padding: 0;
+		border: 1px solid color-mix(in oklab, var(--bone-100) 14%, transparent);
 		border-radius: var(--radius-pill);
-		backdrop-filter: blur(4px);
+		background: rgb(0 0 0 / 0.7);
+		color: var(--bone-100);
+		backdrop-filter: blur(8px);
+		box-shadow: 0 8px 24px -6px rgb(0 0 0 / 0.6);
+		opacity: 0;
+		pointer-events: none;
+		cursor: pointer;
 		transition:
+			opacity var(--dur-med) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft),
 			transform var(--dur-fast) var(--ease-out-soft);
+		z-index: 3;
 	}
-	.strip-edge:hover .strip-edge-chev {
-		background: var(--ink-100);
-		border-color: var(--bone-300);
-		transform: scale(1.08);
+	.strip-arrow.visible {
+		opacity: 1;
+		pointer-events: auto;
 	}
-	.strip-edge:active .strip-edge-chev {
-		transform: scale(0.96);
+	.strip-arrow-start {
+		inset-inline-start: var(--space-4);
+	}
+	.strip-arrow-end {
+		inset-inline-end: var(--space-4);
+	}
+	.strip-arrow:hover {
+		background: rgb(0 0 0 / 0.85);
+		border-color: color-mix(in oklab, var(--bone-100) 25%, transparent);
+		transform: translateY(-50%) scale(1.05);
+	}
+	.strip-arrow:active {
+		transform: translateY(-50%) scale(0.96);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.strip-arrow:hover,
+		.strip-arrow:active {
+			transform: translateY(-50%);
+		}
 	}
 </style>

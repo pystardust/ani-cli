@@ -146,12 +146,15 @@
 		padding-block-start: var(--space-3);
 	}
 	.card-title {
-		display: block;
 		font-family: var(--font-body);
 		font-size: 0.9375rem; /* 15px */
 		font-weight: 500;
 		line-height: 1.3;
-		color: var(--bone-100);
+		color: color-mix(in oklab, var(--bone-100) 90%, transparent);
+		/* Fixed two-line block so adjacent cards' metadata lines up
+		   on the same baseline regardless of title length. 2 lines
+		   × 1.3 line-height ≈ 2.6em. */
+		min-block-size: 2.6em;
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
@@ -163,11 +166,13 @@
 		align-items: baseline;
 		gap: var(--space-2);
 		margin-block-start: var(--space-2);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-meta);
-		color: var(--bone-300);
-		letter-spacing: var(--tracking-meta);
+		font-size: 0.75rem; /* 12px per spec */
+		font-weight: 500;
+		color: color-mix(in oklab, var(--bone-100) 45%, transparent);
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 	}
 	.card-meta .num {
 		color: var(--bone-100);
