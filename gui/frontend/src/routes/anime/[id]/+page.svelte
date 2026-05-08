@@ -471,7 +471,16 @@
 		if (cover) return { url: imageProxyUrl(cover), isCover: true };
 		const poster =
 			d.poster_image?.large ?? d.poster_image?.original ?? d.poster_image?.medium ?? null;
-		return { url: imageProxyUrl(poster), isCover: false };
+		if (poster) return { url: imageProxyUrl(poster), isCover: false };
+		// Both null — fall back to the first episode's thumbnail. Kitsu
+		// is sometimes missing show-level art for newly-aired sequels
+		// (e.g. Otonari no Tenshi-sama … 2nd Season) but ships per-
+		// episode thumbnails which read close enough as a hero. Treated
+		// as a "fallback" (blur+darken) so it doesn't claim to be the
+		// canonical cover. `episodes` may not be loaded yet on first
+		// paint; the markup re-renders when it lands.
+		const epThumb = episodes?.find((e) => e.thumbnail?.original)?.thumbnail?.original ?? null;
+		return { url: imageProxyUrl(epThumb), isCover: false };
 	}
 	function posterFor(d: KitsuAnimeRef): string | null {
 		return imageProxyUrl(
@@ -1072,7 +1081,18 @@
 		position: relative;
 		aspect-ratio: var(--hero-aspect);
 		overflow: hidden;
-		background: var(--ink-050);
+		/* Per-anime accent gradient shows through when Kitsu has no
+		   cover, no poster, and no episode thumbnail — the show
+		   still gets a branded backdrop instead of dead grey. The
+		   <img> below paints over this when available. */
+		background:
+			radial-gradient(
+				ellipse 80% 60% at 30% 30%,
+				color-mix(in oklab, var(--accent) 35%, var(--ink-050)) 0%,
+				color-mix(in oklab, var(--accent) 12%, var(--ink-050)) 45%,
+				var(--ink-050) 100%
+			),
+			var(--ink-050);
 		margin-block-end: var(--space-7);
 		/* Hero scales up subtly on entry — feels like the cover comes
 		   forward to the screen, per user's M3.7-era request. */
