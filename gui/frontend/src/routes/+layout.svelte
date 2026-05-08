@@ -22,7 +22,8 @@
 	import { resolve } from '$app/paths';
 	import { afterNavigate, goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
-	import BackButton from '$lib/components/BackButton.svelte';
+	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+	import { breadcrumb, defaultTrailFor } from '$lib/breadcrumb';
 	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
 	import { nextDepth, shouldShowBackButton, type NavType } from '$lib/history/nav-depth';
 	import {
@@ -76,6 +77,10 @@
 			}
 		}
 		canGoBack = shouldShowBackButton(navDepth);
+		// Reset the breadcrumb to a default URL-only trail on every
+		// navigation. Routes with richer labels (anime title, episode
+		// number) overwrite this in onMount once their data lands.
+		breadcrumb.set(defaultTrailFor(page.route?.id ?? null));
 	});
 
 	let topbarQuery = $state('');
@@ -358,7 +363,7 @@
 	<div class="main-area">
 		<header class="topbar">
 			{#if canGoBack}
-				<BackButton fallback="/" />
+				<Breadcrumb segments={$breadcrumb} />
 			{/if}
 			<form
 				class="topbar-search"

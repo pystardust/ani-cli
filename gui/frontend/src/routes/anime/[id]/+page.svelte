@@ -39,6 +39,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { decideEpisodeFetchAction, parsePageParam } from '$lib/history/url-deeplink';
+	import { breadcrumb } from '$lib/breadcrumb';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -310,6 +311,10 @@
 		void kitsuAnimeDetail(id)
 			.then((d) => {
 				detail = d;
+				// Override the layout's URL-only default with the
+				// loaded title so the breadcrumb reads the show
+				// instead of "Anime".
+				breadcrumb.set([{ label: 'Home', href: '/' }, { label: d.canonical_title ?? 'Anime' }]);
 				const seed = (d.canonical_title ?? '').split(/\s+/).slice(0, 2).join(' ').trim();
 				if (seed.length >= 2) {
 					void kitsuSearch(seed)

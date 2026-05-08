@@ -52,6 +52,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
+	import { breadcrumb } from '$lib/breadcrumb';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -287,6 +288,19 @@
 			.catch(() => {
 				config = null;
 			});
+	});
+
+	// Breadcrumb: Home › <title> › EP <n>. Re-runs when the episode
+	// number flips (next/prev buttons replaceState the URL) or when
+	// the title finally lands. The leaf is plain text — current page
+	// gets no href in the trail.
+	$effect(() => {
+		const title = detail?.canonical_title ?? null;
+		breadcrumb.set([
+			{ label: 'Home', href: '/' },
+			{ label: title ?? 'Anime', href: resolve('/anime/[id]', { id }) },
+			{ label: `EP ${episodeNum}` }
+		]);
 	});
 
 	// Background prefetch: warm every episode visible in the strip
