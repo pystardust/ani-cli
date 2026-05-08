@@ -485,7 +485,7 @@
 		/* Extra left gutter between the rail and route content so
 		   the main column doesn't feel glued to the nav. Stacks on
 		   top of each route's own padding-inline. */
-		padding-inline-start: var(--space-5);
+		padding-inline-start: var(--space-7);
 	}
 	@media (max-inline-size: 720px) {
 		/* Narrow shell collapses the rail to a horizontal bar at the
