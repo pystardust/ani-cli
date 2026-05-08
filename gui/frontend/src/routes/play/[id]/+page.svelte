@@ -123,6 +123,12 @@
 			detail?.poster_image?.small ??
 				detail?.poster_image?.medium ??
 				detail?.poster_image?.large ??
+				// Some Kitsu entries (e.g. recently-aired sequels) have
+				// no posterImage at all; fall back to whichever
+				// episode in the loaded page has a thumbnail. Matches
+				// the detail-page hero fallback so the surface stays
+				// branded for these shows.
+				episodes?.find((e) => e.thumbnail?.original)?.thumbnail?.original ??
 				null
 		)
 	);

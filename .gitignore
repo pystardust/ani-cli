@@ -69,3 +69,8 @@ logs/
 
 # Generated bindings
 gui/frontend/src/lib/bindings/
+
+# mpv ad-hoc screenshots (`s` key in player). Land in cwd, easy to
+# accidentally pick up via `git add -A` from the wrong directory.
+mpv-shot*.jpg
+mpv-shot*.png
