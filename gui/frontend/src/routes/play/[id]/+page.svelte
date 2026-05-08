@@ -36,7 +36,6 @@
 	import {
 		altTitlesFromKitsu,
 		evictPlayCache,
-		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
@@ -118,20 +117,12 @@
 		return episodes.find((e) => (e.number ?? e.relative_number ?? -1) === episodeNum) ?? null;
 	});
 
-	const showThumb = $derived(
-		imageProxyUrl(
-			// `original` last as defense — backend warms signed URLs
-			// at Kitsu cache-write time and stores bytes under a
-			// canonical hash, so the proxy serves cached bytes for
-			// stale signed URLs too. Placeholder still kicks in for
-			// shows with no posterImage at all.
-			detail?.poster_image?.small ??
-				detail?.poster_image?.medium ??
-				detail?.poster_image?.large ??
-				detail?.poster_image?.original ??
-				null
-		)
-	);
+	// showThumb derived used to feed a poster thumbnail in the
+	// player-header; the desktop redesign replaced that with a
+	// breadcrumb-driven nav, so the thumb derived has no consumer
+	// anymore. Keeping the markup-side intact (just the derived
+	// dropped) until we decide whether the slim controls bar
+	// wants a tiny poster after all.
 
 	function teardown() {
 		if (hls) {
@@ -547,43 +538,10 @@
 </svelte:head>
 
 <main class="page" style:--accent={accent}>
-	<!-- Header strip: show context + prev/next + episode label. -->
-	<header class="player-header">
-		<a
-			class="show-link"
-			href={resolve('/anime/[id]', { id })}
-			onclick={(e) => {
-				// Treat poster → details as an "up" navigation:
-				// replace the player history entry rather than push,
-				// so back from /anime/[id] returns to whatever opened
-				// the player (typically home), not to the player
-				// itself. Keep the href so right-click / middle-click
-				// still work for power users.
-				e.preventDefault();
-				void goto(resolve('/anime/[id]', { id }), { replaceState: true });
-			}}
-		>
-			<span class="show-thumb" aria-hidden="true">
-				{#if showThumb}
-					<img src={showThumb} alt="" loading="lazy" decoding="async" />
-				{:else if detail?.canonical_title}
-					<!-- Kitsu has no posterImage at any size — render the
-					     show's first two letters as a placeholder so the
-					     thumb slot reads as branded, not dead-grey. Same
-					     pattern PosterCard uses on the home strips. -->
-					<span class="show-thumb-placeholder">
-						{detail.canonical_title.slice(0, 2).toUpperCase()}
-					</span>
-				{/if}
-			</span>
-			<span class="show-meta">
-				<span class="eyebrow">
-					<span class="eyebrow-key">Now playing</span>
-				</span>
-				<span class="show-title">{detail?.canonical_title ?? 'Loading…'}</span>
-			</span>
-		</a>
-
+	<!-- Slim controls bar. Show context lives in the breadcrumb
+	     and the show-info section below the player; this row is
+	     just for episode nav + the external-player escape hatch. -->
+	<header class="player-controls">
 		<div class="ep-nav" role="group" aria-label="Episode navigation">
 			<button
 				type="button"
@@ -635,44 +593,104 @@
 	     selection lives in hls.js's auto behavior for now; an explicit
 	     selector lands when the player chrome polish (M1.8 / follow-ups)
 	     does. -->
-	<section class="player-frame" class:player-busy={switchBusy}>
-		{#if !sessionId}
-			<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
-		{:else if playerError}
-			<p class="player-empty">{playerError}</p>
-		{:else}
-			<video bind:this={videoEl} controls autoplay></video>
-		{/if}
-		{#if switchBusy}
-			<span class="player-spinner" aria-hidden="true">…</span>
+	<!-- Player stage: video on the left, episode sidebar on the right.
+	     CSS grid only kicks the two-column layout in at >=1280px;
+	     below that the sidebar drops below the video as a horizontal
+	     scroll, matching the small-window stack the page used to have. -->
+	<section class="player-stage">
+		<div class="player-column">
+			<section class="player-frame" class:player-busy={switchBusy}>
+				{#if !sessionId}
+					<p class="player-empty">
+						No session in URL — return to the show page and pick an episode.
+					</p>
+				{:else if playerError}
+					<p class="player-empty">{playerError}</p>
+				{:else}
+					<video bind:this={videoEl} controls autoplay></video>
+				{/if}
+				{#if switchBusy}
+					<span class="player-spinner" aria-hidden="true">…</span>
+				{/if}
+			</section>
+
+			{#if detailError}
+				<p class="player-empty">{detailError}</p>
+			{/if}
+
+			<!-- Show / episode metadata under the video. Title is the
+			     primary heading on the page (the topbar already shows
+			     the breadcrumb). Synopsis lives here so the user can
+			     read context next to what they're watching. -->
+			{#if detail}
+				<section class="show-info">
+					<a
+						class="show-info-title-link"
+						href={resolve('/anime/[id]', { id })}
+						onclick={(e) => {
+							e.preventDefault();
+							void goto(resolve('/anime/[id]', { id }), { replaceState: true });
+						}}
+					>
+						<h1 class="show-info-title">{detail.canonical_title}</h1>
+					</a>
+					{#if currentEpisodeMeta?.canonical_title}
+						<p class="show-info-ep">
+							<span class="show-info-ep-key">Episode {episodeNum}</span>
+							<span class="show-info-ep-rule" aria-hidden="true"></span>
+							<span class="show-info-ep-title">{currentEpisodeMeta.canonical_title}</span>
+						</p>
+					{/if}
+					<p class="show-info-meta">
+						{#if detail.subtype}<span>{detail.subtype.toUpperCase()}</span>{/if}
+						{#if detail.start_date}
+							<span class="show-info-meta-sep" aria-hidden="true">·</span>
+							<span>{detail.start_date.slice(0, 4)}</span>
+						{/if}
+						{#if detail.episode_count}
+							<span class="show-info-meta-sep" aria-hidden="true">·</span>
+							<span><span class="num">{detail.episode_count}</span> episodes</span>
+						{/if}
+						{#if detail.average_rating}
+							<span class="show-info-meta-sep" aria-hidden="true">·</span>
+							<span class="show-info-rating">★ {(detail.average_rating / 10).toFixed(1)}</span>
+						{/if}
+					</p>
+					{#if detail.synopsis}
+						<p class="show-info-synopsis">{detail.synopsis}</p>
+					{/if}
+				</section>
+			{/if}
+		</div>
+
+		{#if episodes && episodes.length > 0}
+			<aside class="ep-sidebar" aria-label="Episodes">
+				<h2 class="ep-sidebar-title">
+					<span class="eyebrow-key">Episodes</span>
+					<span class="eyebrow-rule" aria-hidden="true"></span>
+					<span class="eyebrow-value">{episodes.length}</span>
+				</h2>
+				<ol class="ep-list">
+					{#each episodes as ep (ep.id)}
+						{@const n = ep.number ?? ep.relative_number ?? 0}
+						{@const isCurrent = n === episodeNum}
+						<li>
+							<button
+								type="button"
+								class="ep-card"
+								class:ep-card-current={isCurrent}
+								disabled={switchBusy && !isCurrent}
+								onclick={() => onPickEpisode(ep)}
+							>
+								<span class="ep-card-num">Ep {n}</span>
+								<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
+							</button>
+						</li>
+					{/each}
+				</ol>
+			</aside>
 		{/if}
 	</section>
-
-	{#if detailError}
-		<p class="player-empty">{detailError}</p>
-	{/if}
-
-	<!-- Episode strip: highlights the current episode. Same Strip
-	     component the detail page uses, repurposed with episode tiles
-	     instead of poster cards. -->
-	{#if episodes && episodes.length > 0}
-		<Strip eyebrow="Episodes">
-			{#each episodes as ep (ep.id)}
-				{@const n = ep.number ?? ep.relative_number ?? 0}
-				{@const isCurrent = n === episodeNum}
-				<button
-					type="button"
-					class="ep-card"
-					class:ep-card-current={isCurrent}
-					disabled={switchBusy && !isCurrent}
-					onclick={() => onPickEpisode(ep)}
-				>
-					<span class="ep-card-num">Ep {n}</span>
-					<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
-				</button>
-			{/each}
-		</Strip>
-	{/if}
 
 	<!-- Similar titles — same component the detail page uses; gives
 	     the page somewhere to land the eye when an episode wraps. -->
@@ -706,80 +724,195 @@
 		margin-inline: auto;
 	}
 
-	.player-header {
+	.player-controls {
 		display: flex;
 		align-items: center;
-		gap: var(--space-7);
+		gap: var(--space-5);
 		flex-wrap: wrap;
 	}
 
-	.show-link {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		color: inherit;
-		text-decoration: none;
-		min-inline-size: 0;
-	}
-	.show-link:hover {
-		color: var(--bone-100);
-	}
-	.show-thumb {
-		flex: 0 0 auto;
-		inline-size: 4.5rem;
-		block-size: 6.3rem; /* 5:7 poster aspect */
-		border-radius: var(--radius-2);
-		overflow: hidden;
-		background: color-mix(in oklab, var(--accent) 18%, var(--ink-100));
-	}
-	.show-thumb img {
-		inline-size: 100%;
-		block-size: 100%;
-		object-fit: cover;
-	}
-	.show-thumb-placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 100%;
-		block-size: 100%;
-		font-family: var(--font-display);
-		font-style: italic;
-		font-weight: 600;
-		font-size: 1.6rem;
-		letter-spacing: 0.01em;
-		color: var(--bone-200);
-		background: linear-gradient(
-			145deg,
-			color-mix(in oklab, var(--accent) 28%, var(--ink-100)) 0%,
-			color-mix(in oklab, var(--accent) 12%, var(--ink-100)) 100%
-		);
-	}
-	.show-meta {
+	/* Two-column stage on wide screens: video + show info on the
+	   left, episode list pinned to the right. Single column below
+	   1280px so cramped layouts stack instead of crowding. */
+	.player-stage {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
+		gap: var(--space-6);
+	}
+	.player-column {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
 		min-inline-size: 0;
 	}
-	.eyebrow {
+	@media (min-inline-size: 1280px) {
+		.player-stage {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) clamp(20rem, 26vw, 28rem);
+			gap: var(--space-6);
+			align-items: start;
+		}
+	}
+
+	/* Episode sidebar — vertical list of episode cards. Sticks to
+	   the top of the viewport while scrolling and caps its block
+	   size to keep the surface from running off the page on long
+	   episode counts. */
+	.ep-sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		min-inline-size: 0;
+	}
+	@media (min-inline-size: 1280px) {
+		.ep-sidebar {
+			position: sticky;
+			inset-block-start: var(--space-7);
+			max-block-size: calc(100dvh - 8rem);
+		}
+	}
+	.ep-sidebar-title {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-3);
+		margin: 0;
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
 		color: var(--bone-300);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
+		font-weight: 500;
 	}
-	.eyebrow-key {
+	.ep-sidebar-title .eyebrow-key {
 		color: var(--accent);
 	}
-	.show-title {
-		font-size: var(--type-h2);
-		line-height: 1.1;
+	.ep-sidebar-title .eyebrow-rule {
+		flex: 1;
+		block-size: 1px;
+		background: var(--ink-300);
+	}
+	.ep-sidebar-title .eyebrow-value {
+		color: var(--bone-200);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.ep-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		min-inline-size: 0;
+	}
+	@media (min-inline-size: 1280px) {
+		.ep-list {
+			overflow-y: auto;
+			padding-inline-end: var(--space-2);
+		}
+	}
+	@media (max-inline-size: 1279px) {
+		.ep-list {
+			flex-direction: row;
+			overflow-x: auto;
+			overflow-y: visible;
+			scroll-snap-type: x mandatory;
+			padding-block-end: var(--space-2);
+		}
+		.ep-list li {
+			scroll-snap-align: start;
+			flex: 0 0 auto;
+		}
+	}
+	.ep-list li {
+		display: block;
+		min-inline-size: 0;
+	}
+	@media (max-inline-size: 1279px) {
+		.ep-list li {
+			min-inline-size: 11rem;
+		}
+	}
+
+	/* Show + episode metadata under the video. The show title is
+	   the page's H1 — the topbar already renders the breadcrumb,
+	   so there's no second copy of the same text. */
+	.show-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+		max-inline-size: 60ch;
+	}
+	.show-info-title-link {
+		text-decoration: none;
+		color: inherit;
+		display: inline-block;
+	}
+	.show-info-title {
+		margin: 0;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-h1);
+		line-height: 1.05;
 		color: var(--bone-100);
+	}
+	.show-info-title-link:hover .show-info-title {
+		color: var(--accent);
+	}
+	.show-info-ep {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-3);
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+		min-inline-size: 0;
+	}
+	.show-info-ep-key {
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.show-info-ep-rule {
+		flex: 0 0 1.5rem;
+		block-size: 1px;
+		background: var(--ink-300);
+		align-self: center;
+	}
+	.show-info-ep-title {
+		color: var(--bone-100);
+		min-inline-size: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.show-info-meta {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		color: var(--bone-300);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.show-info-meta .num {
+		color: var(--bone-100);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.show-info-meta-sep {
+		color: var(--bone-400);
+	}
+	.show-info-rating {
+		color: var(--accent);
+	}
+	.show-info-synopsis {
+		margin: 0;
+		font-family: var(--font-display);
+		font-size: var(--type-body);
+		line-height: 1.55;
+		color: var(--bone-200);
 	}
 
 	.ep-nav {
@@ -849,8 +982,6 @@
 	.player-frame {
 		position: relative;
 		inline-size: 100%;
-		max-inline-size: var(--player-max);
-		margin-inline: auto;
 		aspect-ratio: 16 / 9;
 		background: #000;
 		border-radius: var(--radius-3);
@@ -862,6 +993,11 @@
 		block-size: 100%;
 		display: block;
 		background: #000;
+		/* object-fit: contain mirrors YouTube/native HTML5 video
+		   behavior — videos that aren't 16:9 (the frame's
+		   aspect-ratio) get letterboxed inside the frame instead
+		   of being cropped or stretched. */
+		object-fit: contain;
 	}
 	.player-empty {
 		position: absolute;
@@ -897,9 +1033,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
-		padding: var(--space-4);
-		min-inline-size: 11rem;
-		max-inline-size: 14rem;
+		padding: var(--space-3) var(--space-4);
+		inline-size: 100%;
 		border: 1px solid var(--ink-300);
 		border-radius: var(--radius-2);
 		background: color-mix(in oklab, var(--ink-050) 60%, transparent);
@@ -909,6 +1044,15 @@
 		transition:
 			border-color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft);
+	}
+	@media (max-inline-size: 1279px) {
+		/* Horizontal-strip mode under 1280px: cap card width so the
+		   row reads as a strip of compact tiles, not stretched
+		   blocks. */
+		.ep-card {
+			min-inline-size: 11rem;
+			max-inline-size: 14rem;
+		}
 	}
 	.ep-card:hover:not(:disabled) {
 		border-color: var(--accent);
