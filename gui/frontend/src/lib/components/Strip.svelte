@@ -354,10 +354,11 @@
 		);
 	}
 
-	/* Arrow buttons — small floating circular controls layered on
-	   top of the fade. Sized 2.75rem (~44px) for a real click
-	   target with high-contrast surface (black/70 + white/10 border
-	   + backdrop blur) so they read clearly against busy posters. */
+	/* Arrow buttons — light glass surface so the control is
+	   visible against the dark page background. Black-on-dark
+	   was nearly invisible; a 14% bone-tinted fill plus a 30%
+	   bone border + halo shadow lifts it clearly. Hover swaps
+	   to the per-show accent for unmistakable affordance. */
 	.strip-arrow {
 		position: absolute;
 		inset-block-start: 50%;
@@ -365,15 +366,17 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		inline-size: 2.75rem;
-		block-size: 2.75rem;
+		inline-size: 3rem;
+		block-size: 3rem;
 		padding: 0;
-		border: 1px solid color-mix(in oklab, var(--bone-100) 14%, transparent);
+		border: 1px solid color-mix(in oklab, var(--bone-100) 30%, transparent);
 		border-radius: var(--radius-pill);
-		background: rgb(0 0 0 / 0.7);
+		background: color-mix(in oklab, var(--bone-100) 14%, var(--ink-100));
 		color: var(--bone-100);
-		backdrop-filter: blur(8px);
-		box-shadow: 0 8px 24px -6px rgb(0 0 0 / 0.6);
+		backdrop-filter: blur(10px);
+		box-shadow:
+			0 12px 28px -6px rgb(0 0 0 / 0.7),
+			0 0 0 1px rgb(0 0 0 / 0.4);
 		opacity: 0;
 		pointer-events: none;
 		cursor: pointer;
@@ -395,9 +398,13 @@
 		inset-inline-end: var(--space-4);
 	}
 	.strip-arrow:hover {
-		background: rgb(0 0 0 / 0.85);
-		border-color: color-mix(in oklab, var(--bone-100) 25%, transparent);
-		transform: translateY(-50%) scale(1.05);
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--ink-000);
+		transform: translateY(-50%) scale(1.08);
+		box-shadow:
+			0 14px 32px -6px color-mix(in oklab, var(--accent) 60%, transparent),
+			0 0 0 1px rgb(0 0 0 / 0.4);
 	}
 	.strip-arrow:active {
 		transform: translateY(-50%) scale(0.96);
