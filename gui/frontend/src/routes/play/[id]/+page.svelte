@@ -1009,13 +1009,16 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		padding-block: var(--space-5) var(--space-9);
-		padding-inline: var(--space-5);
+		/* Inline padding bumped from space-5 to space-7 so the
+		   layout breathes against the rail on the left and against
+		   the window edge on the right. The video sits in a
+		   correspondingly narrower column — feels less "spread to
+		   fill" and more anchored. */
+		padding-inline: var(--space-7);
 		/* No max-inline-size cap and no margin-inline: auto — /play
 		   uses the full viewport width so the ep list sits flush to
 		   the right edge of the page area instead of being centered
-		   inside a 110rem container. (Other routes that read like
-		   editorial pages keep the cap; /play is a watch surface
-		   and behaves more like a video app.) */
+		   inside a 110rem container. */
 	}
 
 	/* Theater mode (YouTube-style): the video grows to take the full
@@ -1705,29 +1708,17 @@
 	   detail page byte-for-byte so the two routes feel like one
 	   surface. */
 	.page.theater .ep-list {
-		/* Horizontal scrolling strip — single row of detail-page-
-		   shaped tiles that scrolls sideways. Drops the grid in
-		   favour of a flex row so cards keep a fixed width and
-		   the row never wraps. Snap-stop on each card so a quick
-		   flick lands on a tile boundary. Mirrors the home-page
-		   strips, but with the /anime/[id] tile shape (border +
-		   foot under thumb, brightness filter, lift on hover —
-		   styled in the .ep-card / .ep-card-foot rules below). */
-		display: flex;
-		flex-direction: row;
-		grid-template-columns: none;
+		/* Wrapping grid — cards flow left-to-right and wrap into
+		   additional rows once they fill the row width. Same
+		   shape /anime/[id]'s ep-grid uses, no horizontal scroll
+		   bar (the user wanted rows, not a strip). */
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
 		gap: var(--space-4);
-		overflow-x: auto;
-		overflow-y: visible;
-		scroll-snap-type: x mandatory;
+		overflow: visible;
 		max-block-size: none;
-		padding-block-end: var(--space-4);
-		padding-inline-end: var(--space-4);
-	}
-	.page.theater .ep-list li {
-		flex: 0 0 18rem;
-		min-inline-size: 0;
-		scroll-snap-align: start;
+		padding-inline-end: 0;
+		padding-block-end: 0;
 	}
 	.page.theater .ep-card {
 		display: grid;
