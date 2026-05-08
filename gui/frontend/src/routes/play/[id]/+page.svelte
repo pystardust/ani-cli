@@ -702,7 +702,7 @@
 		gap: var(--space-7);
 		padding-block: var(--space-6) var(--space-9);
 		padding-inline: var(--space-8);
-		max-inline-size: 92rem;
+		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
 	}
 
@@ -849,6 +849,8 @@
 	.player-frame {
 		position: relative;
 		inline-size: 100%;
+		max-inline-size: var(--player-max);
+		margin-inline: auto;
 		aspect-ratio: 16 / 9;
 		background: #000;
 		border-radius: var(--radius-3);

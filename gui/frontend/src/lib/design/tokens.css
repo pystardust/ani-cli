@@ -112,6 +112,18 @@
 
 	/* — Layout. */
 	--content-max: 76rem;
+	/* Wider cap for routes that want the strips/grids to spread on
+	   ultrawide monitors (home, search, /anime/[id], /play/[id]).
+	   Three other routes already reference this; previously it was
+	   undefined and `max-inline-size: var(--content-max-wide)` fell
+	   back to "no max", which is fine but inconsistent. Pinning it
+	   here so the four wide-layout routes share a single ceiling. */
+	--content-max-wide: 110rem;
+	/* Comfortable viewing width for video. Caps the player frame on
+	   ultrawide monitors so the video doesn't blow out past the
+	   readable size — strips below can still spread to
+	   --content-max-wide. */
+	--player-max: 88rem;
 	--hero-aspect: 21 / 5;
 	--poster-aspect: 5 / 7;
 	--rail-width: 5.5rem; /* 88px — narrow enough to feel like a margin, not a panel. */
