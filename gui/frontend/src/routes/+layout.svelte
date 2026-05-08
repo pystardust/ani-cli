@@ -482,6 +482,17 @@
 		display: flex;
 		flex-direction: column;
 		min-inline-size: 0; /* prevent overflow from blowing out the grid */
+		/* Extra left gutter between the rail and route content so
+		   the main column doesn't feel glued to the nav. Stacks on
+		   top of each route's own padding-inline. */
+		padding-inline-start: var(--space-5);
+	}
+	@media (max-inline-size: 720px) {
+		/* Narrow shell collapses the rail to a horizontal bar at the
+		   top, so the left gutter is irrelevant there. */
+		.main-area {
+			padding-inline-start: 0;
+		}
 	}
 
 	.rail {
