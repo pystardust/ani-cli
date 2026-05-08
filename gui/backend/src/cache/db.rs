@@ -133,6 +133,49 @@ pub fn meta_cache_delete(pool: &SqlitePool, key: &str) -> Result<()> {
     Ok(())
 }
 
+/// List every (key, body) pair under `prefix`, dropping expired rows.
+/// Used by the watched-at endpoint to return the full per-show stamp
+/// map in one query rather than N round-trips.
+///
+/// # Errors
+/// [`AniError::Cache`] on connection or query failure.
+pub fn meta_cache_list_prefix(pool: &SqlitePool, prefix: &str) -> Result<Vec<(String, String)>> {
+    let conn = pool.get().map_err(|_| AniError::Cache)?;
+    // SQL LIKE: escape the literal `%` and `_` chars in the caller's
+    // prefix so a key prefix like `play:v2:` doesn't accidentally
+    // match other underscore patterns. ESCAPE '\\' lets us mark them.
+    let escaped = prefix
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
+    let pattern = format!("{escaped}%");
+    let mut stmt = conn
+        .prepare(
+            "SELECT key, body, fetched_at, ttl_seconds FROM meta_cache \
+             WHERE key LIKE ?1 ESCAPE '\\'",
+        )
+        .map_err(|_| AniError::Cache)?;
+    let rows = stmt
+        .query_map(params![pattern], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, i64>(3)?,
+            ))
+        })
+        .map_err(|_| AniError::Cache)?;
+    let now = now_secs();
+    let mut out = Vec::new();
+    for row in rows {
+        let (key, body, fetched_at, ttl) = row.map_err(|_| AniError::Cache)?;
+        if now.saturating_sub(fetched_at) < ttl {
+            out.push((key, body));
+        }
+    }
+    Ok(out)
+}
+
 // --- title_match ---------------------------------------------------------
 
 /// One row of the title_match table: a normalized user query string

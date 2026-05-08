@@ -94,6 +94,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/api/allmanga-kitsu-map/:show_id",
             get(get_allmanga_kitsu_map),
         )
+        .route("/api/watched-at", get(get_watched_at_all))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -400,6 +401,20 @@ async fn post_play_mark_watched(
                     }
                 }
             }
+            // Watched-at stamp drives Continue Watching ordering.
+            // Only fires on click-side mark-watched (prefetches don't
+            // reach this handler). Failure is non-fatal.
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            if let Err(e) = kitsu_inner::watched_at_put(&state, &cached.show_id, now_ms) {
+                tracing::warn!(
+                    show_id = %cached.show_id,
+                    error = ?e,
+                    "play: watched-at stamp write failed",
+                );
+            }
         }
     }
     StatusCode::NO_CONTENT
@@ -410,6 +425,12 @@ async fn get_allmanga_kitsu_map(
     Path(show_id): Path<String>,
 ) -> Result<Json<Option<String>>, AniError> {
     Ok(Json(kitsu_inner::allmanga_kitsu_get(&state, &show_id)?))
+}
+
+async fn get_watched_at_all(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<std::collections::HashMap<String, i64>>, AniError> {
+    Ok(Json(kitsu_inner::watched_at_all(&state)?))
 }
 
 /// Evict the cached play resolution for `(title, mode, quality,
@@ -1158,10 +1179,8 @@ mod tests {
     async fn watched_at_endpoint_returns_stamps_keyed_by_show_id() {
         let td = TempDir::new().expect("tempdir");
         let state = test_app_state(&td);
-        crate::commands::kitsu::watched_at_put(&state, "show-a", 1_700_000_000_000)
-            .expect("put a");
-        crate::commands::kitsu::watched_at_put(&state, "show-b", 1_800_000_000_000)
-            .expect("put b");
+        crate::commands::kitsu::watched_at_put(&state, "show-a", 1_700_000_000_000).expect("put a");
+        crate::commands::kitsu::watched_at_put(&state, "show-b", 1_800_000_000_000).expect("put b");
         let router = build_api_router(Arc::new(state));
 
         let response = router

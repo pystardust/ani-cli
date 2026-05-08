@@ -251,6 +251,58 @@ pub fn allmanga_kitsu_put(state: &AppState, show_id: &str, kitsu_id: &str) -> Re
     )
 }
 
+/// Cache-key prefix for the per-show last-watched timestamp. Stamped
+/// on every GUI-driven `mark-watched` call; the home-page Continue
+/// Watching strip sorts by it descending so the user's most recent
+/// play surfaces first regardless of file position. CLI-only plays
+/// never stamp here, so those rows fall to the bottom of the strip
+/// (still rendered, just demoted).
+const WATCHED_AT_PREFIX: &str = "watched-at:v1:";
+
+fn watched_at_key(show_id: &str) -> String {
+    format!("{WATCHED_AT_PREFIX}{show_id}")
+}
+
+/// Read the millis-since-epoch wall-clock timestamp for the last GUI
+/// play of `show_id`. Returns `None` for shows the user has only
+/// played via the CLI (or hasn't played at all).
+pub fn watched_at_get(state: &AppState, show_id: &str) -> Result<Option<i64>> {
+    let body = meta_cache_get(&state.cache_pool, &watched_at_key(show_id))?;
+    Ok(body.and_then(|s| s.parse::<i64>().ok()))
+}
+
+/// Stamp `show_id` with `watched_at_ms`. Re-puts overwrite. Same TTL
+/// as the title-match cache (30d) — long enough that the user's
+/// recent history isn't churned, short enough that ancient stamps
+/// for shows they never replay don't pile up.
+pub fn watched_at_put(state: &AppState, show_id: &str, watched_at_ms: i64) -> Result<()> {
+    meta_cache_put(
+        &state.cache_pool,
+        &watched_at_key(show_id),
+        &watched_at_ms.to_string(),
+        TITLE_MATCH_TTL.as_secs(),
+    )
+}
+
+/// Return every stamped `(show_id → watched_at_ms)` pair. Frontend
+/// fetches this once on home mount, joins against the history list
+/// from `/api/history`, and sorts. `meta_cache_list_prefix` filters
+/// to non-expired rows.
+pub fn watched_at_all(state: &AppState) -> Result<std::collections::HashMap<String, i64>> {
+    let rows = crate::cache::meta_cache_list_prefix(&state.cache_pool, WATCHED_AT_PREFIX)?;
+    let mut out = std::collections::HashMap::with_capacity(rows.len());
+    for (key, body) in rows {
+        let show_id = key
+            .strip_prefix(WATCHED_AT_PREFIX)
+            .unwrap_or(&key)
+            .to_string();
+        if let Ok(ms) = body.parse::<i64>() {
+            out.insert(show_id, ms);
+        }
+    }
+    Ok(out)
+}
+
 /// Fetch a single anime by Kitsu id. Cache key: `kitsu:anime:<id>`.
 ///
 /// # Errors
@@ -675,8 +727,7 @@ mod tests {
     #[test]
     fn watched_at_round_trips_for_a_given_show_id() {
         let state = state_with_kitsu_at("http://unused");
-        watched_at_put(&state, "vDTSJHSpYnrkZnAvG", 1_700_000_000_000)
-            .expect("put");
+        watched_at_put(&state, "vDTSJHSpYnrkZnAvG", 1_700_000_000_000).expect("put");
         let got = watched_at_get(&state, "vDTSJHSpYnrkZnAvG").expect("get");
         assert_eq!(got, Some(1_700_000_000_000));
     }

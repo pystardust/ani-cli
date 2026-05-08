@@ -18,6 +18,6 @@ pub mod schema;
 pub mod ttl;
 
 pub use db::{
-    meta_cache_clear, meta_cache_delete, meta_cache_get, meta_cache_put, open_in_memory, open_pool,
-    title_match_get, title_match_put, SqlitePool, TitleMatch,
+    meta_cache_clear, meta_cache_delete, meta_cache_get, meta_cache_list_prefix, meta_cache_put,
+    open_in_memory, open_pool, title_match_get, title_match_put, SqlitePool, TitleMatch,
 };
