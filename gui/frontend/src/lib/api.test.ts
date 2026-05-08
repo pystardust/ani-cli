@@ -42,11 +42,21 @@ const BASE = 'http://127.0.0.1:1234';
  * body when `ok` is false, so the same helper covers both paths.
  */
 function mockFetchOnce(payload: unknown, status = 200): ReturnType<typeof vi.fn> {
+	// `text()` mirrors the real Response API — expect2xx now reads
+	// `text()` first to tolerate empty 2xx bodies, so the mock has
+	// to expose both. JSON-stringifying the payload here lets
+	// `text()` -> JSON.parse round-trip the way real fetch does.
+	// `undefined` payload means "no body" (the empty-body case);
+	// literal `null` is a JSON value the backend can return ("null").
+	const text = payload === undefined ? '' : JSON.stringify(payload);
 	const response = {
 		ok: status >= 200 && status < 300,
 		status,
 		async json() {
 			return payload;
+		},
+		async text() {
+			return text;
 		}
 	} as unknown as Response;
 	return vi.fn(async () => response);

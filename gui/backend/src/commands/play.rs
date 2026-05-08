@@ -518,6 +518,21 @@ where
     create_session_with_kind(state, &session_args, kind)
 }
 
+/// HEAD-validate that `url` is still alive, with the supplied
+/// `referer` (empty string means "no Referer header"). 2xx and 3xx
+/// (CDN edge redirects) both count as live; everything else,
+/// including network errors, is dead.
+async fn upstream_head_ok(client: &reqwest::Client, url: &url::Url, referer: &str) -> bool {
+    let mut req = client.head(url.as_str());
+    if !referer.is_empty() {
+        req = req.header(reqwest::header::REFERER, referer);
+    }
+    let Ok(resp) = req.send().await else {
+        return false;
+    };
+    resp.status().is_success() || resp.status().is_redirection()
+}
+
 /// HEAD-validate a cached upstream URL. Returns a fresh
 /// CreateSessionResponse on success, or `None` if the URL is dead /
 /// unreachable / returns an error status — caller should fall through
@@ -527,15 +542,7 @@ async fn try_serve_cached(
     cached: &CachedResolution,
 ) -> Option<CreateSessionResponse> {
     let url = url::Url::parse(&cached.upstream_url).ok()?;
-    let mut req = state.proxy_http.head(url.as_str());
-    if !cached.referer.is_empty() {
-        req = req.header(reqwest::header::REFERER, &cached.referer);
-    }
-    let resp = req.send().await.ok()?;
-    // 2xx and 3xx (CDN edge redirects) both count as live. 4xx/5xx
-    // mean the URL has rotated or the CDN is unhappy — treat as dead
-    // and let ani-cli resolve fresh.
-    if !(resp.status().is_success() || resp.status().is_redirection()) {
+    if !upstream_head_ok(&state.proxy_http, &url, &cached.referer).await {
         return None;
     }
     let session_args = CreateSessionArgs {
@@ -561,10 +568,53 @@ async fn try_serve_cached(
 /// [`external_player::open_external_player`] (missing binary,
 /// non-zero spawn status).
 pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
+    let quality = args.quality.as_deref().unwrap_or("best");
+    let cfg = read_config(&state.config_path).unwrap_or_default();
+
+    // Long-term cache reuse — same shape as play_with_progress. The
+    // embedded player likely just resolved this exact (title, mode,
+    // quality, episode) tuple seconds ago; without this the user
+    // would wait another 30s for ani-cli to spin up a fresh fetch.
+    // HEAD-validate so a stale/dead URL falls through to the fresh
+    // path instead of handing mpv a 403.
+    let cache_key =
+        play_resolution_cache::cache_key(&args.title, &args.mode, quality, &args.episode);
+    if let Ok(Some(cached)) = play_resolution_cache::get(&state.cache_pool, &cache_key) {
+        if let Ok(parsed) = url::Url::parse(&cached.upstream_url) {
+            if upstream_head_ok(&state.proxy_http, &parsed, &cached.referer).await {
+                tracing::info!(
+                    title = %args.title,
+                    episode = %args.episode,
+                    upstream = cached.upstream_url.as_str(),
+                    "play_external: cache hit (HEAD ok), launching mpv from cached URL",
+                );
+                let launch = LaunchArgs {
+                    stream_url: cached.upstream_url,
+                    referer: if cached.referer.is_empty() {
+                        None
+                    } else {
+                        Some(cached.referer)
+                    },
+                    subtitle_url: cached.subtitle_url,
+                    title: Some(format!("{} · ep {}", args.title, args.episode)),
+                    player_command: cfg.external_player,
+                };
+                return external_player::open_external_player(&launch);
+            }
+            // HEAD failed — drop the row so the next attempt isn't
+            // bitten by the same dead URL.
+            play_resolution_cache::evict(&state.cache_pool, &cache_key);
+            tracing::info!(
+                title = %args.title,
+                episode = %args.episode,
+                "play_external: cache row stale (HEAD failed), evicted, falling back to ani-cli",
+            );
+        }
+    }
+
     // play_external is always a click — never a prefetch — so no
     // hist_dir override needed.
     let opts = debug_options_for(state, None);
-    let quality = args.quality.as_deref().unwrap_or("best");
     let (search_title, select_index, _chosen_candidate) = pick_title_and_index(state, args).await;
     let resolved = run_debug(
         &opts,
@@ -589,12 +639,6 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
             _ => None,
         },
     };
-
-    // Player command comes from the user's settings file with the
-    // documented default (`mpv`). Falling back to the default config
-    // is intentional: a corrupt settings file shouldn't prevent the
-    // user from launching mpv if it's on PATH.
-    let cfg = read_config(&state.config_path).unwrap_or_default();
 
     let launch = LaunchArgs {
         stream_url: resolved.selected_url,

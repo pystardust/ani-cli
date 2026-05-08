@@ -83,8 +83,14 @@ async function expect2xx<T>(resp: Response): Promise<T> {
 		}
 		throw detail;
 	}
+	// Tolerate any 2xx with an empty body (the external-player
+	// endpoint returns 202 Accepted with no JSON to parse). `.json()`
+	// throws "Unexpected end of JSON input" on an empty body, which
+	// surfaced as a confusing toast even though the action succeeded.
 	if (resp.status === 204) return undefined as T;
-	return (await resp.json()) as T;
+	const text = await resp.text();
+	if (text.length === 0) return undefined as T;
+	return JSON.parse(text) as T;
 }
 
 async function getJson<T>(path: string): Promise<T> {
