@@ -1124,12 +1124,16 @@
 	}
 
 	/* Right cluster of the hero — episode nav row on top, action
-	   row below. Both right-aligned. */
+	   row below. Both rows share the same inline-size: the wrapper
+	   sits in the grid's auto column, ep-nav establishes the
+	   width with its 3 pills, and the action-row stretches to
+	   match. External grows to fill leftover space; bookmark
+	   stays fixed-square. */
 	.player-actions {
-		display: flex;
-		flex-direction: column;
-		align-items: end;
+		display: grid;
+		grid-auto-rows: auto;
 		gap: var(--space-3);
+		justify-items: stretch;
 	}
 	.ep-nav {
 		display: flex;
@@ -1137,9 +1141,13 @@
 		gap: var(--space-2);
 	}
 	.action-row {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--space-2);
+	}
+	.action-row .external {
+		flex: 1;
+		justify-content: center;
 	}
 	.ep-btn {
 		display: inline-flex;
