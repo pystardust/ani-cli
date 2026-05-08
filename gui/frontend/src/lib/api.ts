@@ -327,6 +327,14 @@ export interface PlayArgs {
 	 *  overwrite the user's actual click. Click handlers leave this
 	 *  unset (defaults to false on the wire). */
 	prefetch?: boolean;
+	/** Kitsu id of the anime the user is playing. Frontend passes the
+	 *  id from `/anime/[kitsu_id]`'s URL so the backend can persist
+	 *  an `(allmanga show_id → kitsu_id)` reverse mapping. The home
+	 *  page's Continue Watching strip then looks Kitsu up by show_id
+	 *  instead of fuzzy-text-searching the (sometimes typo'd)
+	 *  allmanga title. Optional; missing on legacy click sites that
+	 *  haven't been updated yet. */
+	kitsu_id?: string;
 }
 
 /** Play an episode in the embedded player. Returns the session URLs
@@ -527,6 +535,23 @@ export function kitsuTitleMatchGet(title: string, cour: number): Promise<string 
  */
 export function kitsuTitleMatchPut(title: string, cour: number, kitsuId: string): Promise<void> {
 	return putJson<void>('/api/title-match', { title, cour, kitsu_id: kitsuId });
+}
+
+/**
+ * Reverse-direction mapping: given an allmanga show_id (from
+ * ani-hsts column 2), look up the kitsu_id the user previously
+ * played it as. Returns `null` on miss. The mapping is recorded by
+ * the backend during `mark-watched` whenever the frontend supplies
+ * `kitsu_id` in PlayArgs — so any past click on `/anime/[id]/play`
+ * has already populated it.
+ *
+ * Continue Watching's resolver hits this BEFORE the legacy title-
+ * match path because allmanga's catalog has typos (e.g. "Nato:
+ * Shippuuden" for Naruto Shippuuden) that Kitsu's text search
+ * can't recover from. Show_id is unambiguous; the title isn't.
+ */
+export function allmangaKitsuMapGet(showId: string): Promise<string | null> {
+	return getJson<string | null>(`/api/allmanga-kitsu-map/${encodeURIComponent(showId)}`);
 }
 
 export function settingsGet(): Promise<Config> {

@@ -378,7 +378,13 @@
 						// 12 calls fired here resolve in arbitrary order, so
 						// whichever finishes last would overwrite the user's
 						// actual click. The click handler leaves this false.
-						prefetch: true
+						prefetch: true,
+						// Carry kitsu_id so the backend can record the
+						// (allmanga show_id → kitsu_id) reverse mapping
+						// even if the user only ever prefetches and never
+						// clicks (defense-in-depth; click-side carries it
+						// too via markWatched).
+						kitsu_id: id
 					},
 					emit,
 					signal
@@ -602,7 +608,8 @@
 							mode,
 							quality,
 							episode_count: detail?.episode_count ?? null,
-							alt_titles: altTitlesFromKitsu(detail)
+							alt_titles: altTitlesFromKitsu(detail),
+							kitsu_id: id
 						},
 						emit,
 						signal
@@ -629,7 +636,8 @@
 				mode,
 				quality,
 				episode_count: detail?.episode_count ?? null,
-				alt_titles: altTitlesFromKitsu(detail)
+				alt_titles: altTitlesFromKitsu(detail),
+				kitsu_id: id
 			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(

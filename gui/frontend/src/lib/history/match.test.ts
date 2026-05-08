@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveKitsuMatch } from './match';
 import { resolveHistoryEntry } from './resolve';
 import {
+	allmangaKitsuMapGet,
 	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
 	kitsuSearch,
@@ -17,6 +18,7 @@ import {
 // Mocking the module itself lets these tests survive any future
 // transport switch without churn.
 vi.mock('$lib/api', () => ({
+	allmangaKitsuMapGet: vi.fn(),
 	kitsuAnimeBySlug: vi.fn(),
 	kitsuAnimeDetail: vi.fn(),
 	kitsuSearch: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock('$lib/api', () => ({
 	kitsuTitleMatchPut: vi.fn()
 }));
 
+const mockedAllmangaMap = vi.mocked(allmangaKitsuMapGet);
 const mockedSlug = vi.mocked(kitsuAnimeBySlug);
 const mockedDetail = vi.mocked(kitsuAnimeDetail);
 const mockedSearch = vi.mocked(kitsuSearch);
@@ -54,6 +57,8 @@ const entry = (title: string, ep_no = '1'): HistoryEntry => ({
 });
 
 beforeEach(() => {
+	mockedAllmangaMap.mockReset();
+	mockedAllmangaMap.mockResolvedValue(null);
 	mockedSlug.mockReset();
 	mockedDetail.mockReset();
 	mockedSearch.mockReset();
@@ -208,5 +213,67 @@ describe('resolveKitsuMatch', () => {
 		const got = await resolveKitsuMatch(preliminary);
 		expect(got?.id).toBe('id-1');
 		expect(mockedSlug).not.toHaveBeenCalled();
+	});
+
+	// — allmanga show_id → kitsu_id reverse mapping ————————————————
+	//
+	// Once the user has played a show through the GUI, the backend
+	// has a deterministic id-keyed mapping that beats fuzzy text
+	// search. Resolver checks this first; on hit, no kitsuSearch /
+	// title-match round-trip is necessary.
+
+	it('uses allmanga→kitsu reverse mapping when present', async () => {
+		// Naruto's allmanga title is typo'd ("Nato: Shippuuden") so
+		// the title-match path mismatches it to Mysterious Girlfriend
+		// X. The reverse mapping recorded on play side-steps that
+		// failure mode entirely.
+		const preliminary = resolveHistoryEntry(
+			{ id: 'vDTSJHSpYnrkZnAvG', ep_no: '150', title: 'Nato: Shippuuden (500 episodes)' },
+			null
+		);
+		mockedAllmangaMap.mockResolvedValue('11061');
+		mockedDetail.mockResolvedValue(stubKitsu('11061', 'Naruto: Shippuuden'));
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('11061');
+		expect(mockedAllmangaMap).toHaveBeenCalledWith('vDTSJHSpYnrkZnAvG');
+		expect(mockedDetail).toHaveBeenCalledWith('11061');
+		expect(mockedGetMatch).not.toHaveBeenCalled();
+		expect(mockedSearch).not.toHaveBeenCalled();
+	});
+
+	it('falls through to title-match when reverse mapping misses', async () => {
+		// First-time load (no play through GUI yet). Returning null
+		// from the new endpoint must not break the legacy resolver.
+		const preliminary = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
+		mockedAllmangaMap.mockResolvedValue(null);
+		mockedGetMatch.mockResolvedValue('cached-id');
+		mockedDetail.mockResolvedValue(stubKitsu('cached-id', 'Demon Slayer'));
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('cached-id');
+		expect(mockedAllmangaMap).toHaveBeenCalled();
+		expect(mockedGetMatch).toHaveBeenCalled();
+	});
+
+	it('falls through to title-match when reverse-mapped detail fetch fails', async () => {
+		// Stale id (Kitsu removed the entry that was mapped). The
+		// resolver should not fail — it falls through to the live
+		// title-search path so the row eventually heals.
+		const preliminary = resolveHistoryEntry(
+			{ id: 'show-stale', ep_no: '5', title: 'Demon Slayer (26 episodes)' },
+			null
+		);
+		mockedAllmangaMap.mockResolvedValue('stale-kitsu');
+		mockedDetail.mockRejectedValueOnce(new Error('not found'));
+		mockedGetMatch.mockResolvedValue(null);
+		mockedSearch.mockResolvedValue([stubKitsu('fresh-id', 'Demon Slayer')]);
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('fresh-id');
+		expect(mockedSearch).toHaveBeenCalled();
 	});
 });

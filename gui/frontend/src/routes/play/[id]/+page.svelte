@@ -322,7 +322,8 @@
 						// Prefetches must NOT update Continue Watching —
 						// switchToEpisode (the click path) does that
 						// directly via prefetch:false (default).
-						prefetch: true
+						prefetch: true,
+						kitsu_id: id
 					},
 					emit,
 					signal
@@ -358,7 +359,8 @@
 							mode,
 							quality,
 							episode_count: detail?.episode_count ?? null,
-							alt_titles: altTitlesFromKitsu(detail)
+							alt_titles: altTitlesFromKitsu(detail),
+							kitsu_id: id
 						},
 						emit,
 						signal
@@ -382,7 +384,8 @@
 				mode,
 				quality,
 				episode_count: detail?.episode_count ?? null,
-				alt_titles: altTitlesFromKitsu(detail)
+				alt_titles: altTitlesFromKitsu(detail),
+				kitsu_id: id
 			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
 			void goto(

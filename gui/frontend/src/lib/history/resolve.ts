@@ -80,6 +80,12 @@ export interface ResumeTarget {
 	/** Diagnostic — which branch of the resolver fired. Surfaced in
 	 *  case we want to log misses or tag cards visually. */
 	mappingNote: 'direct' | 'no-kitsu-match';
+
+	/** allmanga show id from `ani-hsts` column 2. Used by the
+	 *  resolver as a deterministic key for the
+	 *  `(show_id → kitsu_id)` reverse-mapping cache, which beats
+	 *  fuzzy-text-searching the (sometimes typo'd) allmanga title. */
+	allmangaShowId: string;
 }
 
 /** Matches a `Part N` / `Cour N` / `Season N` token at the *end* of
@@ -129,7 +135,8 @@ export function resolveHistoryEntry(
 		kitsuId: kitsuMatch?.id ?? null,
 		kitsuEpisode,
 		uiPage,
-		mappingNote
+		mappingNote,
+		allmangaShowId: entry.id
 	};
 }
 

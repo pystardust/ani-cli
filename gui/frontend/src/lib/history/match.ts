@@ -11,6 +11,7 @@
  */
 
 import {
+	allmangaKitsuMapGet,
 	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
 	kitsuSearch,
@@ -21,6 +22,27 @@ import {
 import { deriveSlug, pickKitsuMatch, type ResumeTarget } from './resolve';
 
 export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<KitsuAnimeRef | null> {
+	// 0) Reverse-mapping lookup: allmanga show_id → kitsu_id. Recorded
+	//    by the backend on every successful play, so once the user
+	//    has played a show through the GUI the home-page strip can
+	//    skip every other path. Wins over title-match because the
+	//    show_id is deterministic — the title is sometimes a typo
+	//    (allmanga's "Nato: Shippuuden" for Naruto Shippuuden).
+	if (preliminary.allmangaShowId) {
+		try {
+			const kitsuId = await allmangaKitsuMapGet(preliminary.allmangaShowId);
+			if (kitsuId) {
+				try {
+					return await kitsuAnimeDetail(kitsuId);
+				} catch {
+					// Stale id — fall through to the title-search path.
+				}
+			}
+		} catch {
+			// Endpoint unavailable — fall through.
+		}
+	}
+
 	// 1) Cache lookup. If we've resolved this title→id before, fetch
 	//    the (cached, 7d-TTL) detail and short-circuit.
 	//
