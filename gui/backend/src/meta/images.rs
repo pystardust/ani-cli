@@ -18,12 +18,40 @@ use sha2::{Digest, Sha256};
 use crate::error::{AniError, Result};
 
 /// Stable 32-hex-char hash for a URL. First 16 bytes of SHA-256.
+///
+/// AWS-signed S3 URLs (Kitsu's Backblaze posters for some sequels)
+/// carry per-request `X-Amz-*` query params that change every time
+/// Kitsu re-issues them. Hashing the full URL would miss the on-disk
+/// cache for every refresh and force a re-fetch, which fails once
+/// the 15-min signature window lapses. Strip those params first so
+/// the same image keeps the same cache key across reissues.
 #[must_use]
 pub fn hash_url(url: &str) -> String {
+    let canonical = canonicalize_for_cache(url);
     let mut h = Sha256::new();
-    h.update(url.as_bytes());
+    h.update(canonical.as_bytes());
     let bytes = h.finalize();
     bytes.iter().take(16).map(|b| format!("{b:02x}")).collect()
+}
+
+/// Drop AWS S3 signature query params (`X-Amz-Signature`,
+/// `X-Amz-Date`, `X-Amz-Credential`, etc.) from a URL. Returns the
+/// scheme + host + path verbatim and any non-`X-Amz-*` query params
+/// in their original order. URLs without `X-Amz-` params pass
+/// through unchanged.
+fn canonicalize_for_cache(url: &str) -> String {
+    let Some((base, query)) = url.split_once('?') else {
+        return url.to_string();
+    };
+    let kept: Vec<&str> = query
+        .split('&')
+        .filter(|kv| !kv.to_ascii_lowercase().starts_with("x-amz-"))
+        .collect();
+    if kept.is_empty() {
+        base.to_string()
+    } else {
+        format!("{base}?{}", kept.join("&"))
+    }
 }
 
 /// Derive the on-disk path for a given hash + extension. The first two
@@ -179,6 +207,36 @@ mod tests {
         assert_eq!(h, hash_url("https://media.kitsu.app/anime/12/poster.jpg"));
         // Different URL → different hash.
         assert_ne!(h, hash_url("https://media.kitsu.app/anime/13/poster.jpg"));
+    }
+
+    #[test]
+    fn hash_url_strips_aws_signature_params() {
+        // Backblaze S3 signed URL — the signature changes per
+        // request but the same image must keep one cache key.
+        let base = "https://kitsu-production-media.s3.us-west-002.backblazeb2.com/anime/48069/poster.jpg";
+        let signed_a = format!("{base}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=cred1&X-Amz-Date=20260508T000000Z&X-Amz-Expires=900&X-Amz-Signature=sig-a");
+        let signed_b = format!("{base}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=cred1&X-Amz-Date=20260508T010000Z&X-Amz-Expires=900&X-Amz-Signature=sig-b");
+        let plain = base.to_string();
+        assert_eq!(hash_url(&signed_a), hash_url(&signed_b));
+        assert_eq!(hash_url(&signed_a), hash_url(&plain));
+    }
+
+    #[test]
+    fn hash_url_keeps_non_signature_query_params() {
+        // Non-X-Amz query params still differentiate the cache key
+        // (e.g. ?width=200 vs ?width=400 are conceptually different
+        // images). `?` ordering is preserved.
+        let a = hash_url("https://example.com/img.jpg?w=200");
+        let b = hash_url("https://example.com/img.jpg?w=400");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn hash_url_keeps_mixed_x_amz_and_normal_params_filters_only_aws() {
+        // ?w=200&X-Amz-Signature=… should canonicalize to ?w=200.
+        let mixed = "https://example.com/img.jpg?w=200&X-Amz-Signature=abc";
+        let plain = "https://example.com/img.jpg?w=200";
+        assert_eq!(hash_url(mixed), hash_url(plain));
     }
 
     #[test]
