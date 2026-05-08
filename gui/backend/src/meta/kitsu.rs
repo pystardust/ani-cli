@@ -286,6 +286,13 @@ pub fn parse_anime_response(body: &[u8]) -> Result<KitsuAnimeRef> {
 /// Parse `{ "data": [...] }` into a list of episodes. Used for
 /// `/anime/:id/episodes`.
 ///
+/// Filters out placeholder entries Kitsu pre-registers for ongoing
+/// shows: rows where both canonical_title and airdate are absent
+/// (null or empty). One Piece reports meta.count: 1387 in the API
+/// but only ~1106 of those have actual data — the rest are empty
+/// future-slot pads that would otherwise blow out the UI's
+/// pagination total.
+///
 /// # Errors
 /// Returns [`AniError::ParseFailed`] when the body isn't valid JSON:API
 /// for an episode collection.
@@ -294,7 +301,29 @@ pub fn parse_episodes_response(body: &[u8]) -> Result<Vec<KitsuEpisode>> {
         serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
             detail: format!("kitsu episodes parse: {e}"),
         })?;
-    Ok(parsed.data.into_iter().map(into_episode).collect())
+    Ok(parsed
+        .data
+        .into_iter()
+        .map(into_episode)
+        .filter(is_real_episode)
+        .collect())
+}
+
+/// Drop placeholder rows: an episode is "real" if it has at least
+/// a non-empty title or a non-empty airdate. Used to peel off the
+/// trailing future-slot pads in Kitsu's episodes endpoint.
+fn is_real_episode(ep: &KitsuEpisode) -> bool {
+    let has_title = ep
+        .canonical_title
+        .as_deref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    let has_airdate = ep
+        .airdate
+        .as_deref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    has_title || has_airdate
 }
 
 // --- Async client --------------------------------------------------------
