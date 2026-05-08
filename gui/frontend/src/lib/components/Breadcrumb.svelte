@@ -115,14 +115,27 @@
 	li {
 		display: inline-flex;
 		align-items: center;
-		max-inline-size: 18ch;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		min-inline-size: 0;
 	}
 	li.sep {
 		color: var(--bone-400);
 		font-weight: 400;
+	}
+	/* Ellipsis applies to the inline text node, not the flex `<li>`
+	   wrapper — `text-overflow` is silently a no-op on flex
+	   containers. inline-block + a max width gives the browser the
+	   block context it needs to clamp. 28ch fits "Naruto:
+	   Shippuuden" verbatim and softly trims anything longer
+	   ("JoJo no Kimyou na Bouken Part 6: Stone Ocean" → "JoJo no
+	   Kimyou na Bouken Part 6:…"). */
+	li a,
+	li.current span {
+		display: inline-block;
+		max-inline-size: 28ch;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		vertical-align: bottom;
 	}
 	li a {
 		color: var(--bone-300);
@@ -136,5 +149,13 @@
 	li.current span {
 		color: var(--bone-100);
 		font-weight: 600;
+	}
+	/* Tighter cap on narrow viewports — breadcrumbs share row with
+	   the search pill which gets the dominant width allocation. */
+	@media (max-inline-size: 720px) {
+		li a,
+		li.current span {
+			max-inline-size: 16ch;
+		}
 	}
 </style>
