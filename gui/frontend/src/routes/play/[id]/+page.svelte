@@ -726,10 +726,10 @@
 	     selection lives in hls.js's auto behavior for now; an explicit
 	     selector lands when the player chrome polish (M1.8 / follow-ups)
 	     does. -->
-	<!-- Player stage: video on the left, episode sidebar on the right.
-	     CSS grid only kicks the two-column layout in at >=1280px;
-	     below that the sidebar drops below the video as a horizontal
-	     scroll, matching the small-window stack the page used to have. -->
+	<!-- Player stage: video + show info on the left, episode list
+	     pinned to the right. 2-col is the default layout; only
+	     viewports under 800px (genuinely narrow / split-screen) fall
+	     back to a stack with the ep list spilled into a grid. -->
 	<section class="player-stage">
 		<div class="player-column">
 			<section class="player-frame" class:player-busy={switchBusy}>
@@ -960,11 +960,15 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-7);
-		padding-block: var(--space-6) var(--space-9);
-		padding-inline: var(--space-8);
-		max-inline-size: var(--content-max-wide);
-		margin-inline: auto;
+		gap: var(--space-6);
+		padding-block: var(--space-5) var(--space-9);
+		padding-inline: var(--space-5);
+		/* No max-inline-size cap and no margin-inline: auto — /play
+		   uses the full viewport width so the ep list sits flush to
+		   the right edge of the page area instead of being centered
+		   inside a 110rem container. (Other routes that read like
+		   editorial pages keep the cap; /play is a watch surface
+		   and behaves more like a video app.) */
 	}
 
 	/* Theater mode: hide the sidebar, drop the page's max-width and
@@ -1037,33 +1041,32 @@
 		stroke: var(--accent);
 	}
 
-	/* Two-column stage on wide screens: video + show info on the
-	   left, episode list pinned to the right. Single column below
-	   1280px so cramped layouts stack instead of crowding. */
+	/* Two-col stage IS the /play layout — video + show info on the
+	   left, episode list flush to the right. Earlier builds gated
+	   this behind a 1100/1280 viewport breakpoint and the user's
+	   feedback was that the page kept feeling stacked/centered at
+	   their working window size. The layout is now the default;
+	   only viewports below 800px (genuinely narrow — handheld /
+	   half-screen-split) fall back to a stack. Sidebar uses a
+	   clamp range with a hard ceiling so it doesn't grow on
+	   ultrawide. */
 	.player-stage {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) clamp(16rem, 20vw, 22rem);
+		gap: var(--space-5);
+		align-items: start;
 	}
 	.player-column {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
+		gap: var(--space-5);
 		min-inline-size: 0;
 	}
-	/* Two-col stage kicks in at 1100px instead of 1280px so the
-	   default Electron window (1280px outer ≈ 1264px inner) lands
-	   reliably in 2-col mode. Sidebar narrower than the previous
-	   pass — the user's note was that the previous 30vw forced
-	   width without earning it. clamp(18rem, 21vw, 23rem) gives a
-	   sidebar that's wide enough for vertical thumb cards and no
-	   wider. */
-	@media (min-inline-size: 1100px) {
+	@media (max-inline-size: 800px) {
 		.player-stage {
-			display: grid;
-			grid-template-columns: minmax(0, 1fr) clamp(18rem, 21vw, 23rem);
-			gap: var(--space-6);
-			align-items: start;
+			display: flex;
+			flex-direction: column;
+			gap: var(--space-5);
 		}
 	}
 	/* Theater mode collapses the grid back to a single column even
@@ -1085,11 +1088,11 @@
 		gap: var(--space-3);
 		min-inline-size: 0;
 	}
-	@media (min-inline-size: 1100px) {
+	@media (min-inline-size: 801px) {
 		.ep-sidebar {
 			position: sticky;
-			inset-block-start: var(--space-7);
-			max-block-size: calc(100dvh - 8rem);
+			inset-block-start: var(--space-5);
+			max-block-size: calc(100dvh - 6rem);
 		}
 	}
 	.ep-sidebar-title {
@@ -1125,18 +1128,17 @@
 		padding: 0;
 		min-inline-size: 0;
 	}
-	@media (min-inline-size: 1100px) {
+	@media (min-inline-size: 801px) {
 		.ep-list {
 			overflow-y: auto;
 			padding-inline-end: var(--space-2);
 		}
 	}
-	@media (max-inline-size: 1099px) {
+	@media (max-inline-size: 800px) {
 		.ep-list {
-			/* Below the 2-col breakpoint, the ep list goes back to a
-			   responsive grid (vertical cards in a 2-3 col layout).
-			   Pagination keeps the row count contained — same idea
-			   as /anime/[id]'s ep-grid. */
+			/* Stacked layout (truly narrow viewport) — ep cards spill
+			   into a responsive grid since they have full page width
+			   to play with. */
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
 			gap: var(--space-3);
