@@ -436,7 +436,6 @@
 				match?.poster_image?.medium ??
 					match?.poster_image?.large ??
 					match?.poster_image?.small ??
-					match?.poster_image?.original ??
 					null
 			)}
 			{@const image = epThumb ?? animePoster}

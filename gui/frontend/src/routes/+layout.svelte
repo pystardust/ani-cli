@@ -260,11 +260,10 @@
 	}
 
 	function hitPoster(hit: KitsuAnimeRef): string | null {
-		// `original` last as defense — Kitsu's list responses for some
-		// entries (recently-aired sequels) ship only posterImage.original
-		// with no other sizes.
-		const url =
-			hit.poster_image?.small ?? hit.poster_image?.medium ?? hit.poster_image?.original ?? null;
+		// Skip posterImage.original on purpose — see PosterCard for
+		// the rationale (signed S3 URLs go stale before our list-
+		// endpoint cache turns over).
+		const url = hit.poster_image?.small ?? hit.poster_image?.medium ?? null;
 		return imageProxyUrl(url);
 	}
 	function hitMeta(hit: KitsuAnimeRef): string {

@@ -79,21 +79,14 @@
 	}
 
 	function posterFor(hit: KitsuAnimeRef): string | null {
-		// `original` last as defense — list responses sometimes ship
-		// only posterImage.original with no other sizes (recently-aired
-		// sequels are the canonical case). Without this leg the
-		// search grid silently falls through to the title placeholder.
+		// Skip posterImage.original on purpose — see PosterCard for
+		// the rationale.
 		const url =
-			hit.poster_image?.medium ??
-			hit.poster_image?.large ??
-			hit.poster_image?.small ??
-			hit.poster_image?.original ??
-			null;
+			hit.poster_image?.medium ?? hit.poster_image?.large ?? hit.poster_image?.small ?? null;
 		return imageProxyUrl(url);
 	}
 	function posterHoverFor(hit: KitsuAnimeRef): string | null {
-		const url =
-			hit.poster_image?.large ?? hit.poster_image?.medium ?? hit.poster_image?.original ?? null;
+		const url = hit.poster_image?.large ?? hit.poster_image?.medium ?? null;
 		return imageProxyUrl(url);
 	}
 	function yearOf(hit: KitsuAnimeRef): string | null {

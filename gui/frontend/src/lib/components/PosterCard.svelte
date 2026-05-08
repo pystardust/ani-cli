@@ -16,16 +16,14 @@
 	const accent = $derived(accentFor(anime.id));
 	const poster = $derived(
 		imageProxyUrl(
-			// `original` last as defense — Kitsu's list responses for
-			// incomplete entries (e.g. recently-aired sequels like
-			// Otonari … 2nd Season) ship ONLY posterImage.original
-			// with no other sizes; without this leg the card silently
-			// falls through to the title placeholder.
-			anime.poster_image?.medium ??
-				anime.poster_image?.large ??
-				anime.poster_image?.small ??
-				anime.poster_image?.original ??
-				null
+			// Deliberately NOT walking posterImage.original. For some
+			// entries (recently-aired sequels) Kitsu only returns the
+			// `original` size, which is a Backblaze S3 signed URL with
+			// a 15-min expiry. Our list-endpoint responses are cached
+			// for hours, so handing those URLs to <img> after they go
+			// stale renders a broken-image icon — strictly worse than
+			// the title placeholder.
+			anime.poster_image?.medium ?? anime.poster_image?.large ?? anime.poster_image?.small ?? null
 		)
 	);
 </script>

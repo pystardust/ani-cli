@@ -120,15 +120,12 @@
 
 	const showThumb = $derived(
 		imageProxyUrl(
-			// Kitsu's /anime/:id sometimes returns posterImage.original
-			// only (no small/medium/large) — recently-aired sequels
-			// like Otonari no Tenshi-sama … 2nd Season are like this.
-			// `original` keeps the chain honest before we conclude
-			// "no image available."
+			// Skip posterImage.original deliberately — see PosterCard
+			// for rationale. The placeholder block in the markup
+			// handles entries with no usable image.
 			detail?.poster_image?.small ??
 				detail?.poster_image?.medium ??
 				detail?.poster_image?.large ??
-				detail?.poster_image?.original ??
 				null
 		)
 	);
