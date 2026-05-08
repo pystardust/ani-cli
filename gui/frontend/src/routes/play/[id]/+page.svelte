@@ -36,6 +36,7 @@
 	import {
 		altTitlesFromKitsu,
 		evictPlayCache,
+		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
@@ -117,12 +118,25 @@
 		return episodes.find((e) => (e.number ?? e.relative_number ?? -1) === episodeNum) ?? null;
 	});
 
-	// showThumb derived used to feed a poster thumbnail in the
-	// player-header; the desktop redesign replaced that with a
-	// breadcrumb-driven nav, so the thumb derived has no consumer
-	// anymore. Keeping the markup-side intact (just the derived
-	// dropped) until we decide whether the slim controls bar
-	// wants a tiny poster after all.
+	const showThumb = $derived(
+		imageProxyUrl(
+			detail?.poster_image?.small ??
+				detail?.poster_image?.medium ??
+				detail?.poster_image?.large ??
+				detail?.poster_image?.original ??
+				null
+		)
+	);
+
+	// Theater mode hides the episode sidebar and lets the player
+	// stretch edge-to-edge of the viewport (still windowed — not
+	// browser fullscreen). YouTube has the equivalent toggle next
+	// to its fullscreen button. Defaults off; per-session only.
+	let theaterMode = $state(false);
+
+	// Synopsis collapsed by default. Same pattern as /anime/[id]:
+	// 5-ish-line preview with a soft fade, expands on click.
+	let synopsisExpanded = $state(false);
 
 	function teardown() {
 		if (hls) {
@@ -537,7 +551,7 @@
 	</title>
 </svelte:head>
 
-<main class="page" style:--accent={accent}>
+<main class="page" class:theater={theaterMode} style:--accent={accent}>
 	<!-- Slim controls bar. Show context lives in the breadcrumb
 	     and the show-info section below the player; this row is
 	     just for episode nav + the external-player escape hatch. -->
@@ -571,17 +585,42 @@
 			</button>
 		</div>
 
-		<button
-			type="button"
-			class="ep-btn external"
-			onclick={onOpenExternal}
-			disabled={switchBusy || externalBusy}
-			aria-label="Open this episode in your external player"
-			title="Open in external player"
-		>
-			<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-			<span aria-hidden="true">↗</span>
-		</button>
+		<div class="player-actions">
+			<button
+				type="button"
+				class="ep-btn theater-toggle"
+				class:theater-on={theaterMode}
+				onclick={() => (theaterMode = !theaterMode)}
+				aria-pressed={theaterMode}
+				aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
+				title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
+			>
+				<svg
+					viewBox="0 0 24 24"
+					width="14"
+					height="14"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<rect x="3" y="6" width="18" height="12" rx="1" />
+				</svg>
+				<span>Theater</span>
+			</button>
+
+			<button
+				type="button"
+				class="ep-btn external"
+				onclick={onOpenExternal}
+				disabled={switchBusy || externalBusy}
+				aria-label="Open this episode in your external player"
+				title="Open in external player"
+			>
+				<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+				<span aria-hidden="true">↗</span>
+			</button>
+		</div>
 	</header>
 
 	{#if externalNotice}
@@ -657,7 +696,20 @@
 						{/if}
 					</p>
 					{#if detail.synopsis}
-						<p class="show-info-synopsis">{detail.synopsis}</p>
+						<div class="prose-wrap" class:expanded={synopsisExpanded}>
+							<p class="prose">{detail.synopsis}</p>
+							<div class="prose-fade" aria-hidden="true"></div>
+						</div>
+						{#if detail.synopsis.length > 360}
+							<button
+								type="button"
+								class="prose-toggle"
+								onclick={() => (synopsisExpanded = !synopsisExpanded)}
+								aria-expanded={synopsisExpanded}
+							>
+								{synopsisExpanded ? 'Read less' : 'Read more'}
+							</button>
+						{/if}
 					{/if}
 				</section>
 			{/if}
@@ -665,6 +717,41 @@
 
 		{#if episodes && episodes.length > 0}
 			<aside class="ep-sidebar" aria-label="Episodes">
+				<!-- Show identity card. Restored from the previous layout
+				     so the cover + title still anchor the page; placed at
+				     the top of the sidebar instead of as a header band so
+				     the player is the first thing the eye lands on. -->
+				{#if detail}
+					<a
+						class="show-card"
+						href={resolve('/anime/[id]', { id })}
+						onclick={(e) => {
+							e.preventDefault();
+							void goto(resolve('/anime/[id]', { id }), { replaceState: true });
+						}}
+					>
+						{#if showThumb}
+							<img
+								class="show-card-cover"
+								src={showThumb}
+								alt={`Cover art for ${detail.canonical_title}`}
+								loading="lazy"
+							/>
+						{:else}
+							<span class="show-card-cover show-card-cover-placeholder" aria-hidden="true"></span>
+						{/if}
+						<span class="show-card-text">
+							<span class="show-card-eyebrow">Now watching</span>
+							<span class="show-card-title">{detail.canonical_title}</span>
+							{#if detail.episode_count}
+								<span class="show-card-meta">
+									<span class="num">{detail.episode_count}</span> episodes
+								</span>
+							{/if}
+						</span>
+					</a>
+				{/if}
+
 				<h2 class="ep-sidebar-title">
 					<span class="eyebrow-key">Episodes</span>
 					<span class="eyebrow-rule" aria-hidden="true"></span>
@@ -674,6 +761,7 @@
 					{#each episodes as ep (ep.id)}
 						{@const n = ep.number ?? ep.relative_number ?? 0}
 						{@const isCurrent = n === episodeNum}
+						{@const epThumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 						<li>
 							<button
 								type="button"
@@ -682,8 +770,25 @@
 								disabled={switchBusy && !isCurrent}
 								onclick={() => onPickEpisode(ep)}
 							>
-								<span class="ep-card-num">Ep {n}</span>
-								<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
+								<span class="ep-card-thumb" aria-hidden="true">
+									{#if epThumb}
+										<img src={epThumb} alt="" loading="lazy" />
+									{/if}
+									<span class="ep-card-thumb-num">{n}</span>
+								</span>
+								<span class="ep-card-text">
+									<span class="ep-card-num">Ep {n}</span>
+									<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
+									{#if ep.length || ep.airdate}
+										<span class="ep-card-meta">
+											{#if ep.length}<span>{ep.length}m</span>{/if}
+											{#if ep.length && ep.airdate}
+												<span class="ep-card-meta-sep" aria-hidden="true">·</span>
+											{/if}
+											{#if ep.airdate}<span>{ep.airdate}</span>{/if}
+										</span>
+									{/if}
+								</span>
 							</button>
 						</li>
 					{/each}
@@ -724,11 +829,48 @@
 		margin-inline: auto;
 	}
 
+	/* Theater mode: hide the sidebar, drop the page's max-width and
+	   inline padding so the player consumes the whole window. The
+	   show-info section stays at editorial width below the video so
+	   the prose doesn't run off the screen. */
+	.page.theater {
+		max-inline-size: none;
+		padding-inline: 0;
+		gap: var(--space-5);
+	}
+	.page.theater .player-controls {
+		padding-inline: var(--space-8);
+	}
+	.page.theater .ep-sidebar {
+		display: none;
+	}
+	.page.theater .show-info {
+		padding-inline: var(--space-8);
+	}
+	.page.theater .player-frame {
+		border-radius: 0;
+		box-shadow: none;
+	}
+
 	.player-controls {
 		display: flex;
 		align-items: center;
 		gap: var(--space-5);
 		flex-wrap: wrap;
+	}
+	.player-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin-inline-start: auto;
+	}
+	.theater-toggle {
+		gap: var(--space-2);
+	}
+	.theater-toggle.theater-on {
+		border-color: var(--accent);
+		color: var(--bone-100);
+		background: color-mix(in oklab, var(--accent) 14%, var(--ink-050));
 	}
 
 	/* Two-column stage on wide screens: video + show info on the
@@ -748,10 +890,22 @@
 	@media (min-inline-size: 1280px) {
 		.player-stage {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) clamp(20rem, 26vw, 28rem);
-			gap: var(--space-6);
+			/* Wider sidebar — the page no longer caps at the player's
+			   right edge, so the sidebar can spread into real estate
+			   the previous layout left empty. clamp at 24rem floor /
+			   34rem ceiling keeps ep cards readable across screens. */
+			grid-template-columns: minmax(0, 1fr) clamp(24rem, 30vw, 34rem);
+			gap: var(--space-7);
 			align-items: start;
 		}
+	}
+	/* Theater mode collapses the grid back to a single column even
+	   when the viewport is wide enough for two — the sidebar is
+	   hidden, so a 2-col grid would leave a phantom empty track. */
+	.page.theater .player-stage {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
 	}
 
 	/* Episode sidebar — vertical list of episode cards. Sticks to
@@ -851,7 +1005,7 @@
 		margin: 0;
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: var(--type-h1);
+		font-size: var(--type-display-l);
 		line-height: 1.05;
 		color: var(--bone-100);
 	}
@@ -907,19 +1061,72 @@
 	.show-info-rating {
 		color: var(--accent);
 	}
-	.show-info-synopsis {
+	/* Synopsis collapse/expand. Same pattern + visual rhythm as
+	   /anime/[id]: 5-ish-line preview, soft fade at the bottom,
+	   editorial display face with a drop cap when expanded. The
+	   font ladder lifts to display-m so the prose below the video
+	   feels like a proper editorial column instead of a caption. */
+	.prose-wrap {
+		position: relative;
+		max-block-size: 9.5rem;
+		overflow: hidden;
+		transition: max-block-size var(--dur-slow) var(--ease-out-soft);
+	}
+	.prose-wrap.expanded {
+		max-block-size: 200rem;
+	}
+	.prose {
 		margin: 0;
 		font-family: var(--font-display);
-		font-size: var(--type-body);
-		line-height: 1.55;
+		font-size: var(--type-display-m);
+		line-height: 1.5;
+		color: var(--bone-100);
+	}
+	.prose::first-letter {
+		font-family: var(--font-display);
+		float: inline-start;
+		font-size: 3.4em;
+		line-height: 0.9;
+		padding-inline-end: 0.08em;
+		padding-block-start: 0.06em;
+		color: var(--bone-100);
+		font-style: italic;
+	}
+	.prose-fade {
+		position: absolute;
+		inset-block-end: 0;
+		inset-inline: 0;
+		block-size: 4rem;
+		background: linear-gradient(180deg, transparent 0%, var(--ink-000) 90%);
+		pointer-events: none;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
+	}
+	.prose-wrap.expanded .prose-fade {
+		opacity: 0;
+	}
+	.prose-toggle {
+		align-self: flex-start;
+		margin-block-start: var(--space-3);
+		padding: 4px 0;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
 		color: var(--bone-200);
+		border-block-end: 1px solid var(--bone-300);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.prose-toggle:hover {
+		color: var(--bone-100);
+		border-block-end-color: var(--bone-100);
 	}
 
 	.ep-nav {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		margin-inline-start: auto;
 		flex-wrap: wrap;
 	}
 	.ep-btn {
@@ -947,16 +1154,13 @@
 		opacity: 0.4;
 		cursor: not-allowed;
 	}
-	.ep-btn.external {
-		margin-inline-start: auto;
-	}
 	.external-notice {
 		margin: var(--space-3) 0 0;
 		padding: var(--space-2) var(--space-3);
-		font-size: var(--text-sm);
+		font-size: var(--type-meta);
 		color: var(--bone-100);
 		background: rgba(0, 0, 0, 0.4);
-		border-radius: var(--radius-2);
+		border-radius: var(--radius-control);
 	}
 	.ep-current {
 		display: inline-flex;
@@ -984,7 +1188,7 @@
 		inline-size: 100%;
 		aspect-ratio: 16 / 9;
 		background: #000;
-		border-radius: var(--radius-3);
+		border-radius: var(--radius-card);
 		overflow: hidden;
 		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
 	}
@@ -1023,20 +1227,96 @@
 		place-items: center;
 		color: var(--accent);
 		font-family: var(--font-mono);
-		font-size: var(--type-h1);
+		font-size: var(--type-display-l);
 		pointer-events: none;
 	}
 
-	/* Episode tiles in the strip below the player. Smaller than poster
-	   cards and oriented around the episode number. */
-	.ep-card {
+	/* Show identity card at the top of the sidebar — restored from
+	   the previous layout's player-header. Cover poster + title +
+	   ep count, the whole thing is a link to the detail page. */
+	.show-card {
+		display: grid;
+		grid-template-columns: 4.5rem 1fr;
+		gap: var(--space-4);
+		align-items: center;
+		padding: var(--space-3);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-card);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		text-decoration: none;
+		color: inherit;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
+	}
+	.show-card:hover {
+		border-color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 10%, var(--ink-050));
+	}
+	.show-card-cover {
+		display: block;
+		inline-size: 100%;
+		aspect-ratio: 5 / 7;
+		object-fit: cover;
+		border-radius: var(--radius-control);
+		background: var(--ink-100);
+	}
+	.show-card-cover-placeholder {
+		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+	}
+	.show-card-text {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
-		padding: var(--space-3) var(--space-4);
+		min-inline-size: 0;
+	}
+	.show-card-eyebrow {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.show-card-title {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-m);
+		line-height: 1.15;
+		color: var(--bone-100);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+	}
+	.show-card-meta {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		color: var(--bone-300);
+		text-transform: uppercase;
+	}
+	.show-card-meta .num {
+		color: var(--bone-100);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+
+	/* Horizontal episode card: thumbnail (16:9) on the left, ep
+	   number + title + meta on the right. Reads like the
+	   YouTube/Crunchyroll watch-next list — recognition by image
+	   first, scan by title second. The thumb shows the ep number
+	   in the corner so even the placeholder (no thumb) still
+	   identifies the row. */
+	.ep-card {
+		display: grid;
+		grid-template-columns: 7rem 1fr;
+		gap: var(--space-3);
+		align-items: stretch;
+		padding: var(--space-2);
 		inline-size: 100%;
 		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-2);
+		border-radius: var(--radius-card);
 		background: color-mix(in oklab, var(--ink-050) 60%, transparent);
 		color: inherit;
 		text-align: start;
@@ -1046,12 +1326,11 @@
 			background var(--dur-fast) var(--ease-out-soft);
 	}
 	@media (max-inline-size: 1279px) {
-		/* Horizontal-strip mode under 1280px: cap card width so the
-		   row reads as a strip of compact tiles, not stretched
-		   blocks. */
+		/* Under 1280px the sidebar reverts to a horizontal scroll
+		   strip; cap card width so each tile keeps its shape. */
 		.ep-card {
-			min-inline-size: 11rem;
-			max-inline-size: 14rem;
+			min-inline-size: 18rem;
+			max-inline-size: 22rem;
 		}
 	}
 	.ep-card:hover:not(:disabled) {
@@ -1065,19 +1344,67 @@
 		border-color: var(--accent);
 		background: color-mix(in oklab, var(--accent) 14%, var(--ink-050));
 	}
-	.ep-card-num {
+	.ep-card-thumb {
+		position: relative;
+		display: block;
+		aspect-ratio: 16 / 9;
+		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+		border-radius: var(--radius-control);
+		overflow: hidden;
+	}
+	.ep-card-thumb img {
+		position: absolute;
+		inset: 0;
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+	}
+	.ep-card-thumb-num {
+		position: absolute;
+		inset-block-end: 0.25rem;
+		inset-inline-start: 0.4rem;
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
+		font-variant-numeric: tabular-nums lining-nums;
+		color: var(--bone-100);
+		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		letter-spacing: 0.04em;
+	}
+	.ep-card-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-inline-size: 0;
+		padding-block: var(--space-1);
+	}
+	.ep-card-num {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-meta);
+		text-transform: uppercase;
 		color: var(--accent);
 	}
 	.ep-card-title {
 		font-size: var(--type-body);
-		color: var(--bone-200);
+		color: var(--bone-100);
+		line-height: 1.25;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+	}
+	.ep-card-meta {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		color: var(--bone-300);
+		margin-block-start: 2px;
+	}
+	.ep-card-meta-sep {
+		color: var(--bone-400);
 	}
 </style>
