@@ -108,6 +108,62 @@
 	let videoEl: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
 
+	// Custom controls — Chromium's native media controls don't
+	// honor accent-color on the timeline shadow DOM, so we render
+	// our own progress bar / play / volume / fullscreen UI on top
+	// of the video. Bindings keep the bar in sync with the video
+	// element's actual state without polling.
+	let isPaused = $state(true);
+	let currentTime = $state(0);
+	let duration = $state(0);
+	let videoVolume = $state(1);
+	let isMuted = $state(false);
+	let scrubberHover = $state(false);
+
+	function formatTime(seconds: number): string {
+		if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+		const total = Math.floor(seconds);
+		const h = Math.floor(total / 3600);
+		const m = Math.floor((total % 3600) / 60);
+		const s = total % 60;
+		const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+		const ss = String(s).padStart(2, '0');
+		return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+	}
+
+	function togglePlay() {
+		if (!videoEl) return;
+		if (videoEl.paused) void videoEl.play();
+		else videoEl.pause();
+	}
+
+	function toggleMute() {
+		if (!videoEl) return;
+		videoEl.muted = !videoEl.muted;
+	}
+
+	function seekToFraction(fraction: number) {
+		if (!videoEl || !duration) return;
+		videoEl.currentTime = Math.max(0, Math.min(duration, fraction * duration));
+	}
+
+	function onScrubberClick(event: MouseEvent) {
+		const target = event.currentTarget as HTMLElement;
+		const rect = target.getBoundingClientRect();
+		const fraction = (event.clientX - rect.left) / rect.width;
+		seekToFraction(fraction);
+	}
+
+	function toggleFullscreen() {
+		if (!videoEl) return;
+		const frame = videoEl.closest('.player-frame');
+		if (!document.fullscreenElement) {
+			void (frame ?? videoEl).requestFullscreen?.();
+		} else {
+			void document.exitFullscreen?.();
+		}
+	}
+
 	/** Reconstruct the proxy URL from the session id + kind. The proxy
 	 *  mounts each session at /s/<id>/master.m3u8 (HLS) or /s/<id>/file.mp4
 	 *  (MP4) — the pattern is stable, so we don't round-trip the backend
@@ -766,7 +822,110 @@
 			{:else if playerError}
 				<p class="player-empty">{playerError}</p>
 			{:else}
-				<video bind:this={videoEl} controls autoplay></video>
+				<video
+					bind:this={videoEl}
+					bind:currentTime
+					bind:duration
+					bind:paused={isPaused}
+					bind:volume={videoVolume}
+					bind:muted={isMuted}
+					autoplay
+					onclick={togglePlay}
+				></video>
+
+				<!-- Custom controls overlay. Built on top of the native
+				     <video> so we can theme the progress bar with the
+				     per-show accent — Chromium's shadow-DOM controls
+				     don't honor accent-color on the timeline. -->
+				<div class="player-controls" class:scrubber-hover={scrubberHover}>
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={togglePlay}
+						aria-label={isPaused ? 'Play' : 'Pause'}
+					>
+						{#if isPaused}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path d="M8 5v14l11-7z" fill="currentColor" />
+							</svg>
+						{:else}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<rect x="6" y="5" width="4" height="14" fill="currentColor" />
+								<rect x="14" y="5" width="4" height="14" fill="currentColor" />
+							</svg>
+						{/if}
+					</button>
+
+					<span class="pc-time" aria-label="Current time">
+						{formatTime(currentTime)} <span class="pc-time-sep">/</span>
+						{formatTime(duration)}
+					</span>
+
+					<div
+						class="pc-scrubber"
+						role="slider"
+						tabindex="0"
+						aria-label="Seek"
+						aria-valuemin="0"
+						aria-valuemax={Math.max(1, Math.floor(duration))}
+						aria-valuenow={Math.floor(currentTime)}
+						onclick={onScrubberClick}
+						onmouseenter={() => (scrubberHover = true)}
+						onmouseleave={() => (scrubberHover = false)}
+						onkeydown={(e) => {
+							if (e.key === 'ArrowRight') seekToFraction((currentTime + 5) / duration);
+							else if (e.key === 'ArrowLeft') seekToFraction((currentTime - 5) / duration);
+						}}
+					>
+						<div class="pc-scrubber-track">
+							<div
+								class="pc-scrubber-fill"
+								style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
+							></div>
+							<div
+								class="pc-scrubber-thumb"
+								style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
+							></div>
+						</div>
+					</div>
+
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={toggleMute}
+						aria-label={isMuted ? 'Unmute' : 'Mute'}
+					>
+						{#if isMuted || videoVolume === 0}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path
+									d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
+									fill="currentColor"
+								/>
+							</svg>
+						{:else}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path
+									d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
+									fill="currentColor"
+								/>
+							</svg>
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={toggleFullscreen}
+						aria-label="Toggle fullscreen"
+					>
+						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+							<path
+								d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
+								fill="currentColor"
+							/>
+						</svg>
+					</button>
+				</div>
 			{/if}
 			{#if switchBusy}
 				<span class="player-spinner" aria-hidden="true">…</span>
@@ -1286,20 +1445,107 @@
 		block-size: 100%;
 		display: block;
 		background: #000;
-		/* Tint Chromium's native media controls with the per-show
-		   accent. accent-color reaches the timeline's "played"
-		   fill on Chrome 113+; the explicit
-		   ::-webkit-media-controls-timeline pseudo is a fallback
-		   that hooks the same internal slider, and `color`
-		   propagates to the button glyphs. */
-		accent-color: var(--accent);
-		color: var(--accent);
+		cursor: pointer;
 	}
-	.player-frame video::-webkit-media-controls-timeline {
-		accent-color: var(--accent);
+
+	/* Custom controls overlay — Chromium's native media controls
+	   timeline can't be styled (locked shadow DOM), so we render
+	   our own bar at the bottom of the frame. The progress fill
+	   uses var(--accent), so the timeline matches the rest of
+	   the page's per-show theming. */
+	.player-controls {
+		position: absolute;
+		inset-inline: 0;
+		inset-block-end: 0;
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		background: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.75) 100%);
+		color: var(--bone-100);
+		opacity: 0;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
 	}
-	.player-frame video::-webkit-media-controls-volume-slider {
-		accent-color: var(--accent);
+	.player-frame:hover .player-controls,
+	.player-controls:focus-within,
+	.player-controls.scrubber-hover {
+		opacity: 1;
+	}
+	.pc-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		padding: 0;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--bone-100);
+		cursor: pointer;
+		transition: background var(--dur-fast) var(--ease-out-soft);
+	}
+	.pc-btn:hover {
+		background: color-mix(in oklab, var(--bone-100) 18%, transparent);
+	}
+	.pc-time {
+		font-family: var(--font-body);
+		font-size: 0.8125rem; /* 13px */
+		font-variant-numeric: tabular-nums;
+		color: var(--bone-100);
+		min-inline-size: 8.5rem;
+		text-align: center;
+	}
+	.pc-time-sep {
+		color: color-mix(in oklab, var(--bone-100) 40%, transparent);
+		margin-inline: 0.2em;
+	}
+
+	.pc-scrubber {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		block-size: 1.5rem;
+		cursor: pointer;
+		min-inline-size: 0;
+	}
+	.pc-scrubber:focus-visible {
+		outline: none;
+	}
+	.pc-scrubber-track {
+		position: relative;
+		inline-size: 100%;
+		block-size: 4px;
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--bone-100) 18%, transparent);
+		transition: block-size var(--dur-fast) var(--ease-out-soft);
+	}
+	.pc-scrubber:hover .pc-scrubber-track,
+	.pc-scrubber:focus-visible .pc-scrubber-track {
+		block-size: 6px;
+	}
+	.pc-scrubber-fill {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-start: 0;
+		background: var(--accent);
+		border-radius: inherit;
+	}
+	.pc-scrubber-thumb {
+		position: absolute;
+		inset-block-start: 50%;
+		inline-size: 12px;
+		block-size: 12px;
+		margin-inline-start: -6px;
+		border-radius: 50%;
+		background: var(--accent);
+		transform: translateY(-50%) scale(0);
+		transition: transform var(--dur-fast) var(--ease-out-soft);
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+	}
+	.pc-scrubber:hover .pc-scrubber-thumb,
+	.pc-scrubber:focus-visible .pc-scrubber-thumb {
+		transform: translateY(-50%) scale(1);
 	}
 	.player-empty {
 		position: absolute;
