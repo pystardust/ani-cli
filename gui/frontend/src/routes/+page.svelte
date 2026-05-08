@@ -580,6 +580,13 @@
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
+		/* Escape the layout shell's left gutter — the banner stays
+		   flush with the rail edge, only the strips below carry the
+		   gutter inset. Negative margin + extra width grows the
+		   element's box back to the area before .main-area's
+		   padding-inline-start was applied. */
+		margin-inline-start: calc(-1 * var(--space-7));
+		inline-size: calc(100% + var(--space-7));
 	}
 
 	/* Each rotation tick mounts a new .hero-layer; the previous one

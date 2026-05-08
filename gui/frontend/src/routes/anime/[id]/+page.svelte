@@ -1040,6 +1040,11 @@
 		position: relative;
 		aspect-ratio: var(--hero-aspect);
 		overflow: hidden;
+		/* Escape the layout shell's left gutter so the banner stays
+		   flush with the rail; route content below keeps the
+		   gutter inset. */
+		margin-inline-start: calc(-1 * var(--space-7));
+		inline-size: calc(100% + var(--space-7));
 		/* Per-anime accent gradient shows through when Kitsu has no
 		   cover, no poster, and no episode thumbnail — the show
 		   still gets a branded backdrop instead of dead grey. The
