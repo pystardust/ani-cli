@@ -518,6 +518,52 @@ where
     create_session_with_kind(state, &session_args, kind)
 }
 
+/// Cache-hit branch of [`play_external`]: returns ready-to-launch
+/// `LaunchArgs` when the play_resolution_cache has a live row,
+/// otherwise `None` (caller falls through to a fresh ani-cli spawn).
+/// HEAD-fail evicts the row before returning None so the next
+/// attempt isn't bitten by the same dead URL.
+///
+/// Extracted from `play_external` so the cache-shaped logic is
+/// unit-testable without spawning mpv.
+async fn try_launch_args_from_cache(
+    state: &AppState,
+    args: &PlayArgs,
+    cfg: &crate::config::Config,
+) -> Option<LaunchArgs> {
+    let quality = args.quality.as_deref().unwrap_or("best");
+    let cache_key =
+        play_resolution_cache::cache_key(&args.title, &args.mode, quality, &args.episode);
+    let cached = play_resolution_cache::get(&state.cache_pool, &cache_key).ok()??;
+    let parsed = url::Url::parse(&cached.upstream_url).ok()?;
+    if !upstream_head_ok(&state.proxy_http, &parsed, &cached.referer).await {
+        play_resolution_cache::evict(&state.cache_pool, &cache_key);
+        tracing::info!(
+            title = %args.title,
+            episode = %args.episode,
+            "play_external: cache row stale (HEAD failed), evicted, falling back to ani-cli",
+        );
+        return None;
+    }
+    tracing::info!(
+        title = %args.title,
+        episode = %args.episode,
+        upstream = cached.upstream_url.as_str(),
+        "play_external: cache hit (HEAD ok), launching mpv from cached URL",
+    );
+    Some(LaunchArgs {
+        stream_url: cached.upstream_url,
+        referer: if cached.referer.is_empty() {
+            None
+        } else {
+            Some(cached.referer)
+        },
+        subtitle_url: cached.subtitle_url,
+        title: Some(format!("{} · ep {}", args.title, args.episode)),
+        player_command: cfg.external_player.clone(),
+    })
+}
+
 /// HEAD-validate that `url` is still alive, with the supplied
 /// `referer` (empty string means "no Referer header"). 2xx and 3xx
 /// (CDN edge redirects) both count as live; everything else,
@@ -577,39 +623,8 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     // would wait another 30s for ani-cli to spin up a fresh fetch.
     // HEAD-validate so a stale/dead URL falls through to the fresh
     // path instead of handing mpv a 403.
-    let cache_key =
-        play_resolution_cache::cache_key(&args.title, &args.mode, quality, &args.episode);
-    if let Ok(Some(cached)) = play_resolution_cache::get(&state.cache_pool, &cache_key) {
-        if let Ok(parsed) = url::Url::parse(&cached.upstream_url) {
-            if upstream_head_ok(&state.proxy_http, &parsed, &cached.referer).await {
-                tracing::info!(
-                    title = %args.title,
-                    episode = %args.episode,
-                    upstream = cached.upstream_url.as_str(),
-                    "play_external: cache hit (HEAD ok), launching mpv from cached URL",
-                );
-                let launch = LaunchArgs {
-                    stream_url: cached.upstream_url,
-                    referer: if cached.referer.is_empty() {
-                        None
-                    } else {
-                        Some(cached.referer)
-                    },
-                    subtitle_url: cached.subtitle_url,
-                    title: Some(format!("{} · ep {}", args.title, args.episode)),
-                    player_command: cfg.external_player,
-                };
-                return external_player::open_external_player(&launch);
-            }
-            // HEAD failed — drop the row so the next attempt isn't
-            // bitten by the same dead URL.
-            play_resolution_cache::evict(&state.cache_pool, &cache_key);
-            tracing::info!(
-                title = %args.title,
-                episode = %args.episode,
-                "play_external: cache row stale (HEAD failed), evicted, falling back to ani-cli",
-            );
-        }
+    if let Some(launch) = try_launch_args_from_cache(state, args, &cfg).await {
+        return external_player::open_external_player(&launch);
     }
 
     // play_external is always a click — never a prefetch — so no
@@ -826,6 +841,162 @@ mod tests {
             MediaKind::Mp4,
         );
         assert!(try_serve_cached(&state, &cached).await.is_some());
+    }
+
+    fn external_args(title: &str, episode: &str) -> PlayArgs {
+        PlayArgs {
+            title: title.into(),
+            episode: episode.into(),
+            mode: "sub".into(),
+            quality: Some("best".into()),
+            episode_count: None,
+            alt_titles: vec![],
+            prefetch: false,
+            kitsu_id: None,
+        }
+    }
+
+    fn external_cfg() -> crate::config::Config {
+        crate::config::Config {
+            external_player: "test-player".into(),
+            ..Default::default()
+        }
+    }
+
+    fn seed_play_cache(state: &AppState, args: &PlayArgs, upstream: &str, referer: &str) {
+        let key = play_resolution_cache::cache_key(
+            &args.title,
+            &args.mode,
+            args.quality.as_deref().unwrap_or("best"),
+            &args.episode,
+        );
+        play_resolution_cache::put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: upstream.into(),
+                referer: referer.into(),
+                subtitle_url: None,
+                media_kind: MediaKind::Mp4,
+                show_id: "abc".into(),
+                show_title: "Test (12 episodes)".into(),
+            },
+        );
+    }
+
+    #[tokio::test]
+    async fn try_launch_args_from_cache_returns_none_on_cache_miss() {
+        let state = state_with_proxy_origin();
+        let args = external_args("Never Played", "1");
+        let cfg = external_cfg();
+        assert!(try_launch_args_from_cache(&state, &args, &cfg)
+            .await
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn try_launch_args_from_cache_returns_launch_args_on_2xx_head() {
+        // Happy path — cache hit + HEAD ok → caller can hand the
+        // returned LaunchArgs to mpv without re-running ani-cli.
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Naruto", "5");
+        seed_play_cache(&state, &args, &format!("{}/v.mp4", server.uri()), "");
+        let cfg = external_cfg();
+
+        let launch = try_launch_args_from_cache(&state, &args, &cfg)
+            .await
+            .expect("hit");
+
+        assert!(launch.stream_url.contains("/v.mp4"));
+        assert!(
+            launch.referer.is_none(),
+            "empty cached referer must round-trip as None"
+        );
+        assert_eq!(launch.player_command, "test-player");
+        assert_eq!(launch.title.as_deref(), Some("Naruto · ep 5"));
+    }
+
+    #[tokio::test]
+    async fn try_launch_args_from_cache_evicts_and_returns_none_on_404() {
+        // Stale upstream — HEAD 404. The cache row must be evicted so a
+        // fresh ani-cli run will overwrite, AND we return None so the
+        // caller falls through to the fresh path.
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Stale", "1");
+        let upstream = format!("{}/dead.mp4", server.uri());
+        seed_play_cache(&state, &args, &upstream, "");
+        let cfg = external_cfg();
+
+        let result = try_launch_args_from_cache(&state, &args, &cfg).await;
+        assert!(result.is_none());
+
+        // Cache row should be gone; a fresh attempt would re-resolve.
+        let key = play_resolution_cache::cache_key(&args.title, &args.mode, "best", &args.episode);
+        assert!(
+            play_resolution_cache::get(&state.cache_pool, &key)
+                .ok()
+                .flatten()
+                .is_none(),
+            "stale cache row must be evicted on HEAD failure"
+        );
+    }
+
+    #[tokio::test]
+    async fn try_launch_args_from_cache_round_trips_referer_and_subtitle() {
+        // fast4speed.rsvp + signed-URL upstreams need the cached
+        // Referer header forwarded; subtitle URL too (mpv consumes it).
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .and(wiremock::matchers::header("referer", "https://allmanga.to"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Fast4", "3");
+        let key = play_resolution_cache::cache_key(&args.title, &args.mode, "best", &args.episode);
+        play_resolution_cache::put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: format!("{}/sub/3", server.uri()),
+                referer: "https://allmanga.to".into(),
+                subtitle_url: Some("https://example/cap.vtt".into()),
+                media_kind: MediaKind::Mp4,
+                show_id: "x".into(),
+                show_title: "Fast4 (12 episodes)".into(),
+            },
+        );
+        let cfg = external_cfg();
+
+        let launch = try_launch_args_from_cache(&state, &args, &cfg)
+            .await
+            .expect("hit");
+        assert_eq!(launch.referer.as_deref(), Some("https://allmanga.to"));
+        assert_eq!(
+            launch.subtitle_url.as_deref(),
+            Some("https://example/cap.vtt")
+        );
+    }
+
+    #[tokio::test]
+    async fn try_launch_args_from_cache_returns_none_on_unparseable_url() {
+        let state = state_with_proxy_origin();
+        let args = external_args("Bad URL", "1");
+        seed_play_cache(&state, &args, "not://a valid url", "");
+        let cfg = external_cfg();
+        assert!(try_launch_args_from_cache(&state, &args, &cfg)
+            .await
+            .is_none());
     }
 
     #[test]
