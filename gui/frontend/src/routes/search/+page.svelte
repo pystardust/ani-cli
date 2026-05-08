@@ -79,14 +79,18 @@
 	}
 
 	function posterFor(hit: KitsuAnimeRef): string | null {
-		// Skip posterImage.original on purpose — see PosterCard for
-		// the rationale.
+		// `original` last — see PosterCard for the chain rationale.
 		const url =
-			hit.poster_image?.medium ?? hit.poster_image?.large ?? hit.poster_image?.small ?? null;
+			hit.poster_image?.medium ??
+			hit.poster_image?.large ??
+			hit.poster_image?.small ??
+			hit.poster_image?.original ??
+			null;
 		return imageProxyUrl(url);
 	}
 	function posterHoverFor(hit: KitsuAnimeRef): string | null {
-		const url = hit.poster_image?.large ?? hit.poster_image?.medium ?? null;
+		const url =
+			hit.poster_image?.large ?? hit.poster_image?.medium ?? hit.poster_image?.original ?? null;
 		return imageProxyUrl(url);
 	}
 	function yearOf(hit: KitsuAnimeRef): string | null {

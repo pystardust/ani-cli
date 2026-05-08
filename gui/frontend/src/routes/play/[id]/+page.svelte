@@ -120,12 +120,15 @@
 
 	const showThumb = $derived(
 		imageProxyUrl(
-			// Skip posterImage.original deliberately — see PosterCard
-			// for rationale. The placeholder block in the markup
-			// handles entries with no usable image.
+			// `original` last as defense — backend warms signed URLs
+			// at Kitsu cache-write time and stores bytes under a
+			// canonical hash, so the proxy serves cached bytes for
+			// stale signed URLs too. Placeholder still kicks in for
+			// shows with no posterImage at all.
 			detail?.poster_image?.small ??
 				detail?.poster_image?.medium ??
 				detail?.poster_image?.large ??
+				detail?.poster_image?.original ??
 				null
 		)
 	);

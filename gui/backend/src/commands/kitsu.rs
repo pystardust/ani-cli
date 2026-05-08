@@ -44,6 +44,11 @@ pub async fn kitsu_search(state: &AppState, query: &str) -> Result<Vec<KitsuAnim
     let key = format!("kitsu:v2:search:{}", normalize_query(query));
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
+            // Warm-on-hit: idempotent. get_or_fetch returns from
+            // disk on bytes-cache hit (no network), so this is cheap.
+            // Catches the case where meta_cache outlives the image
+            // cache (LRU evicted the bytes, response still warm).
+            warm_signed_image_urls(state, &body);
             return Ok(hits);
         }
         // Cached body deserialized as something else — treat as miss and
@@ -112,6 +117,7 @@ where
 {
     if let Some(body) = meta_cache_get(&state.cache_pool, cache_key)? {
         if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
+            warm_signed_image_urls(state, &body);
             return Ok(hits);
         }
     }
@@ -149,6 +155,7 @@ pub async fn kitsu_episodes(
     let key = format!("kitsu:episodes:{anime_id}:p{p}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(eps) = serde_json::from_str::<Vec<KitsuEpisode>>(&body) {
+            warm_signed_image_urls(state, &body);
             return Ok(eps);
         }
     }
@@ -176,6 +183,7 @@ pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<
     let key = format!("kitsu:v2:anime-slug:{slug}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(detail) = serde_json::from_str::<Option<KitsuAnimeRef>>(&body) {
+            warm_signed_image_urls(state, &body);
             return Ok(detail);
         }
     }
@@ -316,6 +324,7 @@ pub async fn kitsu_anime_detail(state: &AppState, id: &str) -> Result<KitsuAnime
     let key = format!("kitsu:v2:anime:{id}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(detail) = serde_json::from_str::<KitsuAnimeRef>(&body) {
+            warm_signed_image_urls(state, &body);
             return Ok(detail);
         }
     }

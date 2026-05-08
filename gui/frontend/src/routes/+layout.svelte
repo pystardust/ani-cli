@@ -260,10 +260,11 @@
 	}
 
 	function hitPoster(hit: KitsuAnimeRef): string | null {
-		// Skip posterImage.original on purpose — see PosterCard for
-		// the rationale (signed S3 URLs go stale before our list-
-		// endpoint cache turns over).
-		const url = hit.poster_image?.small ?? hit.poster_image?.medium ?? null;
+		// `original` last — backend's eager-warm caches bytes under a
+		// canonical hash so signed-URL staleness no longer breaks
+		// rendering. See PosterCard for the chain rationale.
+		const url =
+			hit.poster_image?.small ?? hit.poster_image?.medium ?? hit.poster_image?.original ?? null;
 		return imageProxyUrl(url);
 	}
 	function hitMeta(hit: KitsuAnimeRef): string {

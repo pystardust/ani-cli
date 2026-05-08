@@ -16,14 +16,18 @@
 	const accent = $derived(accentFor(anime.id));
 	const poster = $derived(
 		imageProxyUrl(
-			// Deliberately NOT walking posterImage.original. For some
-			// entries (recently-aired sequels) Kitsu only returns the
-			// `original` size, which is a Backblaze S3 signed URL with
-			// a 15-min expiry. Our list-endpoint responses are cached
-			// for hours, so handing those URLs to <img> after they go
-			// stale renders a broken-image icon — strictly worse than
-			// the title placeholder.
-			anime.poster_image?.medium ?? anime.poster_image?.large ?? anime.poster_image?.small ?? null
+			// `original` last as defense — for recently-aired sequels
+			// Kitsu only returns posterImage.original (a Backblaze S3
+			// signed URL). The backend's eager-warm fetches those bytes
+			// at cache-write time and stores them under a canonical
+			// (signature-stripped) hash, so the image proxy serves the
+			// cached bytes regardless of whether the embedded URL has
+			// gone stale.
+			anime.poster_image?.medium ??
+				anime.poster_image?.large ??
+				anime.poster_image?.small ??
+				anime.poster_image?.original ??
+				null
 		)
 	);
 </script>
