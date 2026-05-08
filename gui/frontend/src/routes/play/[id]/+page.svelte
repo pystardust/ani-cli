@@ -1286,10 +1286,19 @@
 		block-size: 100%;
 		display: block;
 		background: #000;
-		/* Native HTML5 controls honor accent-color for the timeline
-		   slider and volume in Chromium renderers — Electron uses
-		   Chromium, so the progress bar takes the per-show accent
-		   automatically. */
+		/* Tint Chromium's native media controls with the per-show
+		   accent. accent-color reaches the timeline's "played"
+		   fill on Chrome 113+; the explicit
+		   ::-webkit-media-controls-timeline pseudo is a fallback
+		   that hooks the same internal slider, and `color`
+		   propagates to the button glyphs. */
+		accent-color: var(--accent);
+		color: var(--accent);
+	}
+	.player-frame video::-webkit-media-controls-timeline {
+		accent-color: var(--accent);
+	}
+	.player-frame video::-webkit-media-controls-volume-slider {
 		accent-color: var(--accent);
 	}
 	.player-empty {
