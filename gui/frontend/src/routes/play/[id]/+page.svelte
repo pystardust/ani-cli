@@ -902,14 +902,18 @@
 		{/if}
 	</section>
 
-	<!-- Similar titles — same component the detail page uses; gives
-	     the page somewhere to land the eye when an episode wraps. -->
+	<!-- Similar titles — same component the detail page uses. Wrapped
+	     in a similar-wrap div so the strip's outer block aligns with
+	     the player and ep section above (max-inline-size: --player-max,
+	     centered). -->
 	{#if similar && similar.length > 0}
-		<Strip eyebrow="Similar titles" caption="via Kitsu search">
-			{#each similar as hit (hit.id)}
-				<PosterCard anime={hit} />
-			{/each}
-		</Strip>
+		<div class="similar-wrap">
+			<Strip eyebrow="Similar titles" caption="via Kitsu search">
+				{#each similar as hit (hit.id)}
+					<PosterCard anime={hit} />
+				{/each}
+			</Strip>
+		</div>
 	{/if}
 </main>
 
@@ -1143,12 +1147,24 @@
 		pointer-events: none;
 	}
 
-	/* — Episode section: heading, pagination, modern card grid — */
+	.similar-wrap {
+		inline-size: 100%;
+		max-inline-size: var(--player-max);
+		margin-inline: auto;
+	}
+
+	/* — Episode section: heading, pagination, modern card grid.
+	     Capped at --player-max and centered so its left edge aligns
+	     with the player's left edge above. The Similar Titles strip
+	     below uses the same cap via .similar-wrap. — */
 	.ep-section {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
 		min-inline-size: 0;
+		inline-size: 100%;
+		max-inline-size: var(--player-max);
+		margin-inline: auto;
 	}
 	.ep-section-header {
 		display: flex;
