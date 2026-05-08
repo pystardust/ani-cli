@@ -1148,12 +1148,16 @@
 	}
 
 	/* Similar Titles strip wrapper — caps at --player-max and zeroes
-	   Strip's internal --strip-pad so the strip's content extends
-	   flush with the video edges above. */
+	   Strip's internal --strip-pad (via a :global pierce, since the
+	   .strip element redeclares the variable on itself). The strip's
+	   content now extends flush with the video edges above instead
+	   of sitting inside its own 4.5rem inset. */
 	.similar-wrap {
 		inline-size: 100%;
 		max-inline-size: var(--player-max);
 		margin-inline: auto;
+	}
+	.similar-wrap :global(.strip) {
 		--strip-pad: 0;
 	}
 
