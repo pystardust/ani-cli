@@ -673,6 +673,29 @@ mod tests {
     }
 
     #[test]
+    fn parse_episodes_drops_placeholder_entries_without_title_or_airdate() {
+        // Kitsu pre-registers future episode slots for ongoing shows
+        // (e.g. One Piece reports 1387 entries, but only ~1106 have
+        // any data — the rest are empty rows with null title and null
+        // airdate). Those should be filtered out at parse time so
+        // pagination, episode_count, and the UI all see the real
+        // count, not Kitsu's pre-allocation.
+        let body = br#"{"data":[
+            {"id":"1","type":"episodes","attributes":{"canonicalTitle":"Real ep","number":1,"airdate":"2020-01-01"}},
+            {"id":"2","type":"episodes","attributes":{"canonicalTitle":null,"number":2,"airdate":null}},
+            {"id":"3","type":"episodes","attributes":{"canonicalTitle":"","number":3,"airdate":""}},
+            {"id":"4","type":"episodes","attributes":{"canonicalTitle":"Title only","number":4,"airdate":null}},
+            {"id":"5","type":"episodes","attributes":{"canonicalTitle":null,"number":5,"airdate":"2020-02-01"}}
+        ]}"#;
+        let eps = parse_episodes_response(body).expect("parses");
+        // 1 (real), 4 (title only), 5 (airdate only) survive.
+        // 2, 3 are placeholders (no title AND no airdate).
+        assert_eq!(eps.len(), 3, "placeholder rows filtered");
+        let nums: Vec<_> = eps.iter().filter_map(|e| e.number).collect();
+        assert_eq!(nums, vec![1, 4, 5]);
+    }
+
+    #[test]
     fn deserialize_optional_f32_string_handles_null_empty_and_invalid() {
         // Helper for testing the custom deserializer in isolation via a wrapper struct.
         #[derive(Deserialize)]
