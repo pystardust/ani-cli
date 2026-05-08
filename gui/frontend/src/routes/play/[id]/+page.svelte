@@ -997,14 +997,21 @@
 		margin-inline: auto;
 	}
 
+	/* Header is a 2-column grid: show identity (poster + title +
+	   meta) on the left, controls cluster on the right at the
+	   same y. flex-wrap was letting the actions drop to a new
+	   line when the title got long, which broke the screenshot's
+	   layout. Below 900px it collapses to a single column. */
 	.player-header {
-		display: flex;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--space-6);
 		align-items: center;
-		gap: var(--space-5);
-		flex-wrap: wrap;
 	}
-	.show-link {
-		margin-inline-end: auto;
+	@media (max-inline-size: 900px) {
+		.player-header {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.show-link {
