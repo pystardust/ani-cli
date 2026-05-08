@@ -913,16 +913,24 @@
 								disabled={switchBusy && !isCurrent}
 								onclick={() => onPickEpisode(ep)}
 							>
-								<span class="ep-card-thumb" aria-hidden="true">
+								<span class="ep-card-thumb">
 									{#if epThumb}
 										<img src={epThumb} alt="" loading="lazy" />
 									{/if}
-									<span class="ep-card-thumb-num">{n}</span>
+									<span class="ep-card-thumb-num" aria-hidden="true">
+										<span class="ep-card-thumb-num-prefix">EP</span>
+										<span class="ep-card-thumb-num-value">{n}</span>
+									</span>
+									<span class="ep-card-thumb-play" aria-hidden="true">
+										<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+											<path d="M8 5v14l11-7z" fill="currentColor" />
+										</svg>
+									</span>
+									{#if isCurrent}
+										<span class="ep-card-thumb-flag" aria-hidden="true">Now playing</span>
+									{/if}
 								</span>
-								<span class="ep-card-text">
-									<span class="ep-card-num">Ep {n}</span>
-									<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
-								</span>
+								<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
 							</button>
 						</li>
 					{/each}
@@ -971,46 +979,39 @@
 		   and behaves more like a video app.) */
 	}
 
-	/* Theater mode: hide the sidebar, drop the page's max-width and
-	   inline padding so the player consumes the whole window width.
-	   The frame is then capped by viewport height — YouTube-style:
-	   the video sits as a centered 16:9 box that grows up to the
-	   window's height (minus the slim controls bar + breadcrumb
-	   chrome) and centers horizontally with letterboxing on
-	   ultrawide displays. The show-info below stays inside the
-	   normal page padding so the synopsis has the same editorial
-	   width it does outside theater mode. */
-	.page.theater {
-		max-inline-size: none;
-		padding-inline: 0;
-		gap: var(--space-5);
-	}
-	.page.theater .player-controls {
-		padding-inline: var(--space-8);
+	/* Theater mode (YouTube-style): the video grows to take the full
+	   stage width that the sidebar used to occupy, AND the ep list
+	   moves below the video instead of disappearing. The user
+	   explicitly wanted the list to stay visible — losing it on
+	   toggle felt like a punishment for a UX choice that was
+	   supposed to enlarge, not strip. */
+	.page.theater .player-stage {
+		grid-template-columns: 1fr;
 	}
 	.page.theater .ep-sidebar {
-		display: none;
+		/* Override the sticky right-column rules so the list flows
+		   naturally below the player. */
+		position: static;
+		max-block-size: none;
 	}
-	.page.theater .show-info {
-		padding-inline: var(--space-8);
-		max-inline-size: var(--content-max);
-		margin-inline: auto;
-	}
-	.page.theater .player-column {
-		/* Center the capped player horizontally. Frame gets a
-		   block-size derived from viewport height (less the
-		   breadcrumb + slim controls chrome); inline-size is then
-		   computed by aspect-ratio. On ultrawide displays this
-		   leaves vertical letterbox space on the sides — matching
-		   YouTube's theater behavior exactly. */
-		align-items: center;
+	.page.theater .ep-list {
+		/* Below the player, the list spreads as a responsive grid
+		   to use the horizontal real estate the ep cards lost when
+		   the sidebar disappeared. */
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+		gap: var(--space-3);
+		overflow-y: visible;
+		max-block-size: none;
 	}
 	.page.theater .player-frame {
-		inline-size: auto;
-		max-inline-size: 100vw;
-		block-size: calc(100dvh - 6rem);
-		border-radius: 0;
-		box-shadow: none;
+		/* Cap by viewport height so the video doesn't push the ep
+		   grid below the fold on shallow windows. aspect-ratio
+		   continues to drive the 16:9 shape; max-block-size kicks
+		   in only when the natural inline-size would compute a
+		   block-size taller than (100dvh − chrome). */
+		max-block-size: calc(100dvh - 10rem);
+		margin-inline: auto;
 	}
 
 	.player-controls {
@@ -1399,6 +1400,13 @@
 		position: relative;
 		inline-size: 100%;
 		aspect-ratio: 16 / 9;
+		/* Height cap so the video never grows so tall it pushes the
+		   show-info / synopsis below the fold, even when the player
+		   column is very wide. The aspect-ratio still drives shape;
+		   when max-block-size kicks in, inline-size is reduced to
+		   match (and the frame centers via margin-inline auto). */
+		max-block-size: calc(100dvh - 14rem);
+		margin-inline: auto;
 		background: #000;
 		border-radius: var(--radius-card);
 		overflow: hidden;
@@ -1443,51 +1451,59 @@
 		pointer-events: none;
 	}
 
-	/* Vertical episode card: thumb on top, ep number + title below.
-	   Compact — sits flush in a 21vw sidebar (~14rem) without
-	   wasted horizontal space. Same shape as the detail page's
-	   ep-tile so the two pages feel related. */
+	/* Modern episode card: large 16:9 thumb with a numeral overlay,
+	   gradient scrim on hover, and a play-glyph that fades in. The
+	   title sits clean below the thumb in book serif/sans (per
+	   tokens), with the ep number living on the thumb itself rather
+	   than as a separate caption — fewer text rows, more recognition
+	   from the image. The previous build had two ep-number labels
+	   stacked + a thin caption row, which read flat and dated. */
 	.ep-card {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 		padding: 0;
 		inline-size: 100%;
-		border: 1px solid transparent;
+		border: 0;
 		border-radius: var(--radius-card);
 		background: transparent;
 		color: inherit;
 		text-align: start;
 		cursor: pointer;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
+		isolation: isolate;
+		transition: transform var(--dur-fast) var(--ease-out-soft);
 	}
 	.ep-card:hover:not(:disabled) {
-		background: color-mix(in oklab, var(--accent) 10%, var(--ink-050));
-	}
-	.ep-card:hover:not(:disabled) .ep-card-thumb {
-		border-color: var(--accent);
+		transform: translateY(-2px);
 	}
 	.ep-card:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-	.ep-card-current .ep-card-thumb {
-		border-color: var(--accent);
-	}
-	.ep-card-current .ep-card-num {
-		color: var(--accent);
-	}
+
 	.ep-card-thumb {
 		position: relative;
 		display: block;
 		aspect-ratio: 16 / 9;
 		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-control);
+		border-radius: var(--radius-card);
 		overflow: hidden;
-		transition: border-color var(--dur-fast) var(--ease-out-soft);
+		box-shadow:
+			0 1px 2px rgb(0 0 0 / 0.45),
+			inset 0 0 0 1px var(--ink-300);
+		transition:
+			box-shadow var(--dur-med) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-card:hover:not(:disabled) .ep-card-thumb {
+		box-shadow:
+			0 8px 24px -4px rgb(0 0 0 / 0.6),
+			inset 0 0 0 1px color-mix(in oklab, var(--accent) 80%, var(--bone-300));
+	}
+	.ep-card-current .ep-card-thumb {
+		box-shadow:
+			0 0 0 2px var(--accent),
+			0 8px 24px -4px color-mix(in oklab, var(--accent) 50%, transparent);
 	}
 	.ep-card-thumb img {
 		position: absolute;
@@ -1495,35 +1511,103 @@
 		inline-size: 100%;
 		block-size: 100%;
 		object-fit: cover;
+		transition: transform var(--dur-med) var(--ease-out-soft);
 	}
+	.ep-card:hover:not(:disabled) .ep-card-thumb img {
+		transform: scale(1.05);
+	}
+
+	/* Bottom scrim — keeps the ep number readable over light frames */
+	.ep-card-thumb::after {
+		content: '';
+		position: absolute;
+		inset-block-end: 0;
+		inset-inline: 0;
+		block-size: 50%;
+		background: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.7) 100%);
+		pointer-events: none;
+		opacity: 0.65;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-card:hover:not(:disabled) .ep-card-thumb::after {
+		opacity: 0.95;
+	}
+
 	.ep-card-thumb-num {
 		position: absolute;
-		inset-block-end: 0.3rem;
-		inset-inline-start: 0.5rem;
-		padding: 1px 6px;
+		inset-block-end: var(--space-2);
+		inset-inline-start: var(--space-3);
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.35em;
 		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		font-variant-numeric: tabular-nums lining-nums;
 		color: var(--bone-100);
-		background: rgb(0 0 0 / 0.55);
-		border-radius: var(--radius-control);
-		letter-spacing: 0.04em;
+		text-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
+		letter-spacing: 0.02em;
 	}
-	.ep-card-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-inline-size: 0;
-		padding-inline: var(--space-1);
-	}
-	.ep-card-num {
-		font-family: var(--font-mono);
+	.ep-card-thumb-num-prefix {
 		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-meta);
+		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
 	}
+	.ep-card-thumb-num-value {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-m);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-weight: 500;
+		line-height: 1;
+		color: var(--bone-100);
+	}
+	.ep-card-current .ep-card-thumb-num-value {
+		color: var(--accent);
+	}
+
+	/* Play glyph — fades in on hover. Centered in the upper-right
+	   so it doesn't fight the ep number in the bottom-left. */
+	.ep-card-thumb-play {
+		position: absolute;
+		inset-block-start: var(--space-2);
+		inset-inline-end: var(--space-2);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		border-radius: var(--radius-pill);
+		background: rgb(0 0 0 / 0.55);
+		color: var(--bone-100);
+		opacity: 0;
+		transform: scale(0.85);
+		transition:
+			opacity var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-fast) var(--ease-out-elastic);
+	}
+	.ep-card:hover:not(:disabled) .ep-card-thumb-play {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	/* "Now playing" flag on the active episode */
+	.ep-card-thumb-flag {
+		position: absolute;
+		inset-block-start: var(--space-2);
+		inset-inline-start: var(--space-2);
+		padding: 2px 8px;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--ink-000);
+		background: var(--accent);
+		border-radius: var(--radius-pill);
+	}
+
 	.ep-card-title {
+		padding-inline: 2px;
+		font-family: var(--font-body);
+		font-weight: 500;
 		font-size: var(--type-meta);
 		color: var(--bone-100);
 		line-height: 1.3;
@@ -1533,6 +1617,9 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+	}
+	.ep-card-current .ep-card-title {
+		color: var(--accent);
 	}
 
 	/* Pagination controls — same widget pair as /anime/[id]:
