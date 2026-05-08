@@ -1045,6 +1045,111 @@ mod tests {
         );
     }
 
+    /// `mark-watched` is the second carrier of the reverse mapping —
+    /// the click handler always fires it after `getOrFire` resolves,
+    /// passing the kitsu_id from the URL it came from. The handler
+    /// looks up the cached resolution (which has show_id) and pairs
+    /// it with the supplied kitsu_id to write the
+    /// allmanga2kitsu mapping. After this call, the home-page strip
+    /// can render the right Kitsu match for this show on next mount.
+    #[tokio::test]
+    async fn mark_watched_persists_allmanga_kitsu_mapping_when_kitsu_id_provided() {
+        use crate::commands::play_resolution_cache::{cache_key, put, CachedResolution};
+        use crate::proxy::MediaKind;
+
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let key = cache_key("Naruto: Shippuuden", "sub", "best", "150");
+        put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: "https://video.example/720p.mp4".into(),
+                referer: String::new(),
+                subtitle_url: None,
+                media_kind: MediaKind::Mp4,
+                show_id: "vDTSJHSpYnrkZnAvG".into(),
+                show_title: "Nato: Shippuuden (500 episodes)".into(),
+            },
+        );
+        let pool = state.cache_pool.clone();
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/mark-watched")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Naruto: Shippuuden","episode":"150","mode":"sub","kitsu_id":"11061"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        // Verify the reverse mapping was persisted by reading the
+        // cache row directly. The frontend will read this via the
+        // GET /api/allmanga-kitsu-map/:show_id endpoint.
+        let key = format!("allmanga2kitsu:v1:vDTSJHSpYnrkZnAvG");
+        let body = crate::cache::meta_cache_get(&pool, &key).expect("get");
+        assert_eq!(body, Some("11061".to_string()));
+    }
+
+    /// Reverse-mapping endpoint: given an allmanga show_id (the id
+    /// in column 2 of `ani-hsts`), return the kitsu_id that the user
+    /// played it as — when we've recorded it. The home-page Continue
+    /// Watching strip uses this to render the right Kitsu metadata
+    /// for shows whose allmanga title is typo'd (e.g. "Nato:
+    /// Shippuuden" → Naruto Shippuuden), bypassing Kitsu text search.
+    /// Returns `null` body on miss so the frontend can fall through
+    /// to the legacy title-match path.
+    #[tokio::test]
+    async fn allmanga_kitsu_map_get_returns_null_when_unmapped() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/allmanga-kitsu-map/never-played")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_string(response).await;
+        assert_eq!(body.trim(), "null");
+    }
+
+    #[tokio::test]
+    async fn allmanga_kitsu_map_get_returns_mapped_kitsu_id() {
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        crate::commands::kitsu::allmanga_kitsu_put(&state, "vDTSJHSpYnrkZnAvG", "11061")
+            .expect("put");
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/allmanga-kitsu-map/vDTSJHSpYnrkZnAvG")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_string(response).await;
+        assert_eq!(body.trim(), "\"11061\"");
+    }
+
     /// Evict route is the player's feedback path: a cached URL that
     /// HEAD-validated still 4xxs at playback time, so the renderer drops
     /// the row and retries fresh. Must be idempotent — 204 even when no
