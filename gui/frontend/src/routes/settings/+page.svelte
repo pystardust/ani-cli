@@ -10,6 +10,7 @@
 	import {
 		appInfo,
 		historyClear,
+		imageCacheClear,
 		settingsGet,
 		settingsPut,
 		type AppInfo,
@@ -23,6 +24,8 @@
 	let savedAt = $state<number | null>(null);
 	let clearing = $state(false);
 	let cleared = $state(false);
+	let clearingImages = $state(false);
+	let imagesCleared = $state(false);
 
 	const QUALITIES: Array<{ key: string; label: string }> = [
 		{ key: 'best', label: 'Best' },
@@ -109,6 +112,19 @@
 			saveError = describeError(e);
 		} finally {
 			clearing = false;
+		}
+	}
+
+	async function clearImages() {
+		clearingImages = true;
+		try {
+			await imageCacheClear();
+			imagesCleared = true;
+			setTimeout(() => (imagesCleared = false), 2400);
+		} catch (e) {
+			saveError = describeError(e);
+		} finally {
+			clearingImages = false;
 		}
 	}
 
@@ -272,6 +288,26 @@
 					/>
 					<span class="number-suffix" aria-hidden="true">MB</span>
 				</div>
+			</div>
+
+			<div class="field field-stack">
+				<div class="field-label">
+					<span class="field-key">Clear cached images</span>
+					<span class="field-hint">
+						Removes posters and thumbnails on disk at <code>~/.cache/ani-gui/images/</code>. Useful
+						after a Kitsu re-cataloguing or to reclaim disk before the LRU prune kicks in.
+					</span>
+				</div>
+				<button type="button" class="btn-danger" onclick={clearImages} disabled={clearingImages}>
+					<span aria-hidden="true">×</span>
+					<span
+						>{clearingImages
+							? 'Clearing…'
+							: imagesCleared
+								? 'Image cache cleared'
+								: 'Clear image cache'}</span
+					>
+				</button>
 			</div>
 
 			<div class="field field-stack">
