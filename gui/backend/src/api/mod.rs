@@ -90,6 +90,10 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/play/external", post(post_play_external))
         .route("/api/play/cache/evict", post(post_play_cache_evict))
         .route("/api/play/mark-watched", post(post_play_mark_watched))
+        .route(
+            "/api/allmanga-kitsu-map/:show_id",
+            get(get_allmanga_kitsu_map),
+        )
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -348,8 +352,11 @@ async fn post_play_external(
 /// prefetch promise (so the backend never saw `prefetch=false`).
 ///
 /// Idempotent: looks up the cache row, writes a history line keyed
-/// on the cached `show_id`. No-op when the cache row is missing or
-/// has no captured metadata (legacy / pre-resolve states).
+/// on the cached `show_id`, and (when `args.kitsu_id` is supplied)
+/// records the (allmanga show_id → kitsu_id) reverse mapping so the
+/// home-page strip can resolve the right Kitsu match without a
+/// fuzzy text search. No-op when the cache row is missing or has
+/// no captured metadata (legacy / pre-resolve states).
 async fn post_play_mark_watched(
     State(state): State<Arc<AppState>>,
     Json(args): Json<play_inner::PlayArgs>,
@@ -363,10 +370,11 @@ async fn post_play_mark_watched(
     );
     if let Ok(Some(cached)) = crate::commands::play_resolution_cache::get(&state.cache_pool, &key) {
         if !cached.show_id.is_empty() {
+            // History write — same as before the kitsu_id field landed.
             let entry = crate::history::HistoryEntry {
                 ep_no: args.episode.clone(),
-                id: cached.show_id,
-                title: cached.show_title,
+                id: cached.show_id.clone(),
+                title: cached.show_title.clone(),
             };
             if let Err(e) = crate::history::upsert_and_write(&state.history_path, entry) {
                 tracing::warn!(
@@ -376,9 +384,32 @@ async fn post_play_mark_watched(
                     "play: history write failed in mark-watched",
                 );
             }
+            // Reverse mapping — store (allmanga show_id → kitsu_id)
+            // when the frontend supplied kitsu_id. Errors are
+            // swallowed (logged) because the play already succeeded;
+            // the mapping is opportunistic.
+            if let Some(kid) = args.kitsu_id.as_deref() {
+                if !kid.is_empty() {
+                    if let Err(e) = kitsu_inner::allmanga_kitsu_put(&state, &cached.show_id, kid) {
+                        tracing::warn!(
+                            show_id = %cached.show_id,
+                            kitsu_id = %kid,
+                            error = ?e,
+                            "play: allmanga→kitsu mapping write failed",
+                        );
+                    }
+                }
+            }
         }
     }
     StatusCode::NO_CONTENT
+}
+
+async fn get_allmanga_kitsu_map(
+    State(state): State<Arc<AppState>>,
+    Path(show_id): Path<String>,
+) -> Result<Json<Option<String>>, AniError> {
+    Ok(Json(kitsu_inner::allmanga_kitsu_get(&state, &show_id)?))
 }
 
 /// Evict the cached play resolution for `(title, mode, quality,
@@ -1093,8 +1124,8 @@ mod tests {
         // Verify the reverse mapping was persisted by reading the
         // cache row directly. The frontend will read this via the
         // GET /api/allmanga-kitsu-map/:show_id endpoint.
-        let key = format!("allmanga2kitsu:v1:vDTSJHSpYnrkZnAvG");
-        let body = crate::cache::meta_cache_get(&pool, &key).expect("get");
+        let key = "allmanga2kitsu:v1:vDTSJHSpYnrkZnAvG";
+        let body = crate::cache::meta_cache_get(&pool, key).expect("get");
         assert_eq!(body, Some("11061".to_string()));
     }
 

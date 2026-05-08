@@ -79,6 +79,17 @@ pub struct PlayArgs {
     /// Frontend prefetch loops set it; click handlers leave it false.
     #[serde(default, deserialize_with = "deserialize_loose_bool")]
     pub prefetch: bool,
+    /// Kitsu id of the anime the user is playing. The frontend knows
+    /// it (the user came from `/anime/[kitsu_id]`); we don't, until
+    /// the user passes it in. Recording the
+    /// (allmanga show_id → kitsu_id) pair on every successful play
+    /// turns the home-page Continue Watching lookup from "fuzzy
+    /// kitsuSearch on a possibly-typo'd allmanga title" into a
+    /// deterministic id-keyed lookup. Empty string when the caller
+    /// has no kitsu_id available (e.g. the SSE fallback path or a
+    /// direct API user).
+    #[serde(default)]
+    pub kitsu_id: Option<String>,
 }
 
 /// Accept either a JSON array of strings or a single newline-joined
@@ -783,6 +794,7 @@ mod tests {
             episode_count: None,
             alt_titles: vec![],
             prefetch: false,
+            kitsu_id: None,
         };
         assert_eq!(args.quality.as_deref().unwrap_or("best"), "best");
     }
