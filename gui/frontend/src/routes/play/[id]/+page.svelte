@@ -34,6 +34,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Hls from 'hls.js';
+	import { settle, settleOut } from '$lib/transitions/settle';
 	import {
 		altTitlesFromKitsu,
 		evictPlayCache,
@@ -909,11 +910,14 @@
 
 			{#if episodes && episodes.length > 0}
 				<ol class="ep-list">
-					{#each episodes as ep (ep.id)}
+					{#each episodes as ep, i (ep.id)}
 						{@const n = ep.number ?? ep.relative_number ?? 0}
 						{@const isCurrent = n === episodeNum}
 						{@const epThumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
-						<li>
+						<li
+							in:settle={{ duration: 620, delay: i * 45 }}
+							out:settleOut={{ duration: 320, delay: i * 18 }}
+						>
 							<button
 								type="button"
 								class="ep-card"
@@ -1088,7 +1092,10 @@
 	   ultrawide. */
 	.player-stage {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) clamp(16rem, 20vw, 22rem);
+		/* Sidebar bumped wider (was clamp 16-22rem) so the ep list
+		   can run as a 2-col grid of chunky thumbnails without
+		   cards getting squeezed below readable width. */
+		grid-template-columns: minmax(0, 1fr) clamp(24rem, 28vw, 30rem);
 		gap: var(--space-5);
 		align-items: start;
 	}
@@ -1174,10 +1181,13 @@
 	.ep-sidebar-counter-of {
 		color: var(--bone-300);
 	}
+	/* Sidebar ep list — 2-col grid of chunky thumbnail cards with
+	   real margin between items. Below 800px the list spreads as
+	   an auto-fill responsive grid since the page is stacked. */
 	.ep-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--space-4) var(--space-3);
 		list-style: none;
 		margin: 0;
 		padding: 0;
@@ -1186,17 +1196,13 @@
 	@media (min-inline-size: 801px) {
 		.ep-list {
 			overflow-y: auto;
+			padding-block-end: var(--space-2);
 			padding-inline-end: var(--space-2);
 		}
 	}
 	@media (max-inline-size: 800px) {
 		.ep-list {
-			/* Stacked layout (truly narrow viewport) — ep cards spill
-			   into a responsive grid since they have full page width
-			   to play with. */
-			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-			gap: var(--space-3);
 		}
 	}
 	.ep-list li {
@@ -1696,10 +1702,61 @@
 		color: var(--bone-400);
 	}
 
-	/* Mode switch — when the page is in theater mode, suppress the
-	   thumb overlay (we want the image clean) and show the corner
-	   tag + foot instead. The ep card itself still uses the same
-	   element tree. */
+	/* Theater mode = literal /anime/[id] ep-tile shape: a single
+	   bordered card wrapping a 16:9 thumb on top and a foot below,
+	   with brightness-filter on the image, lift + scale on hover,
+	   accent-tinted shadow halo, and a transform-origin that pulls
+	   the lift upward instead of pushing the row below. Mirrors the
+	   detail page byte-for-byte so the two routes feel like one
+	   surface. */
+	.page.theater .ep-list {
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		gap: var(--space-4);
+		overflow: visible;
+		max-block-size: none;
+	}
+	.page.theater .ep-card {
+		display: grid;
+		grid-template-rows: auto 1fr;
+		gap: 0;
+		background: var(--ink-050);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-card);
+		overflow: hidden;
+		transform-origin: 50% 80%;
+		transition:
+			transform var(--dur-med) var(--ease-out-elastic),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-med) var(--ease-out-soft);
+	}
+	.page.theater .ep-card:hover:not(:disabled) {
+		transform: translateY(-4px) scale(1.04);
+		z-index: 1;
+		border-color: color-mix(in oklab, var(--accent) 80%, var(--ink-300));
+		box-shadow:
+			0 12px 28px -6px color-mix(in oklab, var(--accent) 28%, transparent),
+			0 4px 10px -4px rgb(0 0 0 / 0.45);
+	}
+	.page.theater .ep-card-thumb {
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.page.theater .ep-card-thumb img {
+		filter: brightness(0.85);
+	}
+	.page.theater .ep-card:hover:not(:disabled) .ep-card-thumb img {
+		transform: none;
+		filter: brightness(1);
+	}
+	.page.theater .ep-card-current {
+		border-color: var(--accent);
+	}
+	.page.theater .ep-card-current .ep-card-thumb {
+		box-shadow: none;
+	}
+
+	/* Mode switch — show theater-only elements, hide sidebar-only. */
 	.page.theater .ep-card-overlay {
 		display: none;
 	}
@@ -1708,12 +1765,13 @@
 	}
 	.page.theater .ep-card-foot {
 		display: flex;
+		background: transparent;
+		border: 0;
+		margin-block-start: 0;
+		padding-block-start: var(--space-3);
 	}
-	.page.theater .ep-card-thumb {
-		/* Detail-page tile uses no extra rounding under the foot —
-		   the foot caps the bottom corners. Match that shape. */
-		border-end-end-radius: 0;
-		border-end-start-radius: 0;
+	.page.theater .ep-card-thumb-play {
+		display: none;
 	}
 
 	/* Play glyph — fades in on hover. Sits in the bottom-right so

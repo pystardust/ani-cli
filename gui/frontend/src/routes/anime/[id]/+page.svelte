@@ -30,8 +30,8 @@
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
-	import { cubicOut } from 'svelte/easing';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { settle, settleOut } from '$lib/transitions/settle';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -178,60 +178,6 @@
 		const target = Math.ceil(n / UI_PAGE_SIZE);
 		gotoPage(target);
 		jumpInput = '';
-	}
-
-	// Custom transition: tiles fade up + scale + de-blur into place.
-	// Combined with cubicOut, the early motion is fast and the tile
-	// decelerates as it lands. With a per-index delay this gives a
-	// staggered "settle" feel between page transitions. Reduced motion
-	// drops to a flat fade.
-	//
-	// css(t, u): for `in:`, t goes 0→1 and u = 1−t. So at t=0 the tile
-	// starts at opacity 0, scaled to 0.9, translated +28px below its
-	// final position, and blurred by 8px; it eases out to its rest
-	// state by t=1. The same function is reused for `out:` via
-	// settleOut, which mirrors the easing curve on the way out (drop
-	// down + fade + soft blur). Stagger comes from `delay` chosen by
-	// the caller, not the function itself, so cards on different
-	// indices run with different offsets.
-	function settle(
-		_node: Element,
-		{ delay = 0, duration = 620 }: { delay?: number; duration?: number } = {}
-	) {
-		const reduced =
-			typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-		return {
-			delay,
-			duration: reduced ? 0 : duration,
-			easing: cubicOut,
-			css: (t: number, u: number) =>
-				reduced
-					? `opacity: ${t};`
-					: `opacity: ${t}; transform: translateY(${u * 28}px) scale(${0.9 + t * 0.1}); filter: blur(${u * 8}px);`
-		};
-	}
-
-	function settleOut(
-		_node: Element,
-		{ delay = 0, duration = 320 }: { delay?: number; duration?: number } = {}
-	) {
-		const reduced =
-			typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-		return {
-			delay,
-			duration: reduced ? 0 : duration,
-			easing: cubicOut,
-			// For `out:` transitions Svelte runs t from 1→0; u = 1−t. So
-			// at the start t=1 (rest), at the end t=0 (gone). Mirror the
-			// in: shape but drop downward instead of up so it doesn't
-			// feel like the same gesture playing in reverse.
-			css: (t: number, u: number) =>
-				reduced
-					? `opacity: ${t};`
-					: `opacity: ${t}; transform: translateY(${u * -16}px) scale(${0.94 + t * 0.06}); filter: blur(${u * 4}px);`
-		};
 	}
 
 	let config = $state<Config | null>(null);
