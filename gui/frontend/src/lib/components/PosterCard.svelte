@@ -16,7 +16,16 @@
 	const accent = $derived(accentFor(anime.id));
 	const poster = $derived(
 		imageProxyUrl(
-			anime.poster_image?.medium ?? anime.poster_image?.large ?? anime.poster_image?.small ?? null
+			// `original` last as defense — Kitsu's list responses for
+			// incomplete entries (e.g. recently-aired sequels like
+			// Otonari … 2nd Season) ship ONLY posterImage.original
+			// with no other sizes; without this leg the card silently
+			// falls through to the title placeholder.
+			anime.poster_image?.medium ??
+				anime.poster_image?.large ??
+				anime.poster_image?.small ??
+				anime.poster_image?.original ??
+				null
 		)
 	);
 </script>
