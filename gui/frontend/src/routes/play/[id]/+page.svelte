@@ -1392,7 +1392,7 @@
 	}
 	.ep-section-header {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: var(--space-3);
 	}
 	.ep-section-heading {
