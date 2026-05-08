@@ -86,6 +86,7 @@
 	const UI_PAGE_SIZE = 12;
 	const KITSU_PAGE_SIZE = 20;
 	const kitsuPageCache = new SvelteMap<number, KitsuEpisode[]>();
+	let theaterMode = $state(false);
 	let similar = $state<KitsuAnimeRef[] | null>(null);
 	let config = $state<Config | null>(null);
 	let detailError = $state<string | null>(null);
@@ -122,9 +123,8 @@
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
 
-	// Find the metadata for the episode the user is actually
-	// watching. May not be in the visible page (the user can browse
-	// other pages while ep N plays), so scan all cached pages.
+	// Scan every cached page so the meta resolves even when the user
+	// has paginated away from the page that contains their current ep.
 	const currentEpisodeMeta = $derived.by(() => {
 		for (const eps of kitsuPageCache.values()) {
 			const found = eps.find((e) => (e.number ?? e.relative_number ?? -1) === episodeNum);
@@ -216,6 +216,11 @@
 
 	const showThumb = $derived(
 		imageProxyUrl(
+			// `original` last as defense — backend warms signed URLs
+			// at Kitsu cache-write time and stores bytes under a
+			// canonical hash, so the proxy serves cached bytes for
+			// stale signed URLs too. Placeholder still kicks in for
+			// shows with no posterImage at all.
 			detail?.poster_image?.small ??
 				detail?.poster_image?.medium ??
 				detail?.poster_image?.large ??
@@ -223,16 +228,6 @@
 				null
 		)
 	);
-
-	// Theater mode hides the episode sidebar and lets the player
-	// stretch edge-to-edge of the viewport (still windowed — not
-	// browser fullscreen). YouTube has the equivalent toggle next
-	// to its fullscreen button. Defaults off; per-session only.
-	let theaterMode = $state(false);
-
-	// Synopsis collapsed by default. Same pattern as /anime/[id]:
-	// 5-ish-line preview with a soft fade, expands on click.
-	let synopsisExpanded = $state(false);
 
 	function teardown() {
 		if (hls) {
@@ -382,10 +377,9 @@
 				detailError = describeError(e);
 			});
 
-		// Open the ep list at the page that contains the episode the
-		// user is watching so they don't land on page 1 of a long
-		// show. Pagination state is local — URL drives session/ep,
-		// not page.
+		// Open the ep grid at the page containing the current episode
+		// so the user lands on their session, not page 1 of a long
+		// show. Pagination is local — URL drives session/ep, not page.
 		const startPage = Math.max(1, Math.ceil(episodeNum / UI_PAGE_SIZE));
 		void fetchEpisodesPage(startPage, { initial: true });
 
@@ -647,10 +641,43 @@
 </svelte:head>
 
 <main class="page" class:theater={theaterMode} style:--accent={accent}>
-	<!-- Slim controls bar. Show context lives in the breadcrumb
-	     and the show-info section below the player; this row is
-	     just for episode nav + the external-player escape hatch. -->
-	<header class="player-controls">
+	<!-- Header strip: show context + prev/next + episode label. -->
+	<header class="player-header">
+		<a
+			class="show-link"
+			href={resolve('/anime/[id]', { id })}
+			onclick={(e) => {
+				// Treat poster → details as an "up" navigation:
+				// replace the player history entry rather than push,
+				// so back from /anime/[id] returns to whatever opened
+				// the player (typically home), not to the player
+				// itself. Keep the href so right-click / middle-click
+				// still work for power users.
+				e.preventDefault();
+				void goto(resolve('/anime/[id]', { id }), { replaceState: true });
+			}}
+		>
+			<span class="show-thumb" aria-hidden="true">
+				{#if showThumb}
+					<img src={showThumb} alt="" loading="lazy" decoding="async" />
+				{:else if detail?.canonical_title}
+					<!-- Kitsu has no posterImage at any size — render the
+					     show's first two letters as a placeholder so the
+					     thumb slot reads as branded, not dead-grey. Same
+					     pattern PosterCard uses on the home strips. -->
+					<span class="show-thumb-placeholder">
+						{detail.canonical_title.slice(0, 2).toUpperCase()}
+					</span>
+				{/if}
+			</span>
+			<span class="show-meta">
+				<span class="eyebrow">
+					<span class="eyebrow-key">Now playing</span>
+				</span>
+				<span class="show-title">{detail?.canonical_title ?? 'Loading…'}</span>
+			</span>
+		</a>
+
 		<div class="ep-nav" role="group" aria-label="Episode navigation">
 			<button
 				type="button"
@@ -680,42 +707,40 @@
 			</button>
 		</div>
 
-		<div class="player-actions">
-			<button
-				type="button"
-				class="ep-btn theater-toggle"
-				class:theater-on={theaterMode}
-				onclick={() => (theaterMode = !theaterMode)}
-				aria-pressed={theaterMode}
-				aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
-				title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
+		<button
+			type="button"
+			class="ep-btn theater-toggle"
+			class:theater-on={theaterMode}
+			onclick={() => (theaterMode = !theaterMode)}
+			aria-pressed={theaterMode}
+			aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
+			title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
+		>
+			<svg
+				viewBox="0 0 24 24"
+				width="14"
+				height="14"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				aria-hidden="true"
 			>
-				<svg
-					viewBox="0 0 24 24"
-					width="14"
-					height="14"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"
-				>
-					<rect x="3" y="6" width="18" height="12" rx="1" />
-				</svg>
-				<span>Theater</span>
-			</button>
+				<rect x="3" y="6" width="18" height="12" rx="1" />
+			</svg>
+			<span>Theater</span>
+		</button>
 
-			<button
-				type="button"
-				class="ep-btn external"
-				onclick={onOpenExternal}
-				disabled={switchBusy || externalBusy}
-				aria-label="Open this episode in your external player"
-				title="Open in external player"
-			>
-				<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-				<span aria-hidden="true">↗</span>
-			</button>
-		</div>
+		<button
+			type="button"
+			class="ep-btn external"
+			onclick={onOpenExternal}
+			disabled={switchBusy || externalBusy}
+			aria-label="Open this episode in your external player"
+			title="Open in external player"
+		>
+			<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+			<span aria-hidden="true">↗</span>
+		</button>
 	</header>
 
 	{#if externalNotice}
@@ -727,10 +752,6 @@
 	     selection lives in hls.js's auto behavior for now; an explicit
 	     selector lands when the player chrome polish (M1.8 / follow-ups)
 	     does. -->
-	<!-- Vertical stack: video first, show info beneath, then the ep
-	     section, then similar titles. No sidebar. Theater mode lifts
-	     the video size cap so the player can spread to the full
-	     content width when toggled. -->
 	<section class="player-frame" class:player-busy={switchBusy}>
 		{#if !sessionId}
 			<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
@@ -748,74 +769,11 @@
 		<p class="player-empty">{detailError}</p>
 	{/if}
 
-	{#if detail}
-		<section class="show-info">
-			<a
-				class="show-banner"
-				href={resolve('/anime/[id]', { id })}
-				onclick={(e) => {
-					e.preventDefault();
-					void goto(resolve('/anime/[id]', { id }), { replaceState: true });
-				}}
-			>
-				{#if showThumb}
-					<img
-						class="show-banner-cover"
-						src={showThumb}
-						alt={`Cover art for ${detail.canonical_title}`}
-						loading="lazy"
-					/>
-				{:else}
-					<span class="show-banner-cover show-banner-cover-placeholder" aria-hidden="true"></span>
-				{/if}
-				<span class="show-banner-text">
-					<span class="show-banner-eyebrow">Now watching</span>
-					<h1 class="show-banner-title">{detail.canonical_title}</h1>
-					<span class="show-banner-meta">
-						{#if detail.subtype}<span>{detail.subtype.toUpperCase()}</span>{/if}
-						{#if detail.start_date}
-							<span class="show-banner-meta-sep" aria-hidden="true">·</span>
-							<span>{detail.start_date.slice(0, 4)}</span>
-						{/if}
-						{#if detail.episode_count}
-							<span class="show-banner-meta-sep" aria-hidden="true">·</span>
-							<span><span class="num">{detail.episode_count}</span> episodes</span>
-						{/if}
-						{#if detail.average_rating}
-							<span class="show-banner-meta-sep" aria-hidden="true">·</span>
-							<span class="show-banner-rating">★ {(detail.average_rating / 10).toFixed(1)}</span>
-						{/if}
-					</span>
-				</span>
-			</a>
-
-			{#if currentEpisodeMeta?.canonical_title}
-				<p class="show-info-ep">
-					<span class="show-info-ep-key">Episode {episodeNum}</span>
-					<span class="show-info-ep-rule" aria-hidden="true"></span>
-					<span class="show-info-ep-title">{currentEpisodeMeta.canonical_title}</span>
-				</p>
-			{/if}
-
-			{#if detail.synopsis}
-				<div class="prose-wrap" class:expanded={synopsisExpanded}>
-					<p class="prose">{detail.synopsis}</p>
-					<div class="prose-fade" aria-hidden="true"></div>
-				</div>
-				{#if detail.synopsis.length > 360}
-					<button
-						type="button"
-						class="prose-toggle"
-						onclick={() => (synopsisExpanded = !synopsisExpanded)}
-						aria-expanded={synopsisExpanded}
-					>
-						{synopsisExpanded ? 'Read less' : 'Read more'}
-					</button>
-				{/if}
-			{/if}
-		</section>
-	{/if}
-
+	<!-- Episode section: display-face heading, pagination controls,
+	     and a wrapping grid of modern thumbnail cards. The thumb
+	     carries the ep number + title overlaid under a top fade
+	     gradient — same shape regardless of theater state (theater
+	     just enlarges the video above). -->
 	<section class="ep-section" aria-label="Episodes">
 		<header class="ep-section-header">
 			<h2 class="ep-section-heading">Episodes</h2>
@@ -969,46 +927,177 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
-		padding-block: var(--space-5) var(--space-9);
-		/* Inline padding bumped from space-5 to space-7 so the
-		   layout breathes against the rail on the left and against
-		   the window edge on the right. The video sits in a
-		   correspondingly narrower column — feels less "spread to
-		   fill" and more anchored. */
-		padding-inline: var(--space-7);
-		/* No max-inline-size cap and no margin-inline: auto — /play
-		   uses the full viewport width so the ep list sits flush to
-		   the right edge of the page area instead of being centered
-		   inside a 110rem container. */
-	}
-
-	/* Theater mode: lifts the default-mode inline-size cap on the
-	   player-frame so the video can spread to the full content
-	   width. Layout-side: the page is already a vertical stack
-	   (video → show-info → ep section), so theater is purely a
-	   sizing change — no element relocation, no list re-shape. */
-	.page.theater .player-frame {
-		max-inline-size: 100%;
-		max-block-size: calc(100dvh - 10rem);
+		gap: var(--space-7);
+		padding-block: var(--space-6) var(--space-9);
+		padding-inline: var(--space-8);
+		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
 	}
 
-	.player-controls {
+	.player-header {
 		display: flex;
 		align-items: center;
-		gap: var(--space-5);
+		gap: var(--space-7);
 		flex-wrap: wrap;
 	}
-	.player-actions {
+
+	.show-link {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		color: inherit;
+		text-decoration: none;
+		min-inline-size: 0;
+	}
+	.show-link:hover {
+		color: var(--bone-100);
+	}
+	.show-thumb {
+		flex: 0 0 auto;
+		inline-size: 4.5rem;
+		block-size: 6.3rem; /* 5:7 poster aspect */
+		border-radius: var(--radius-control);
+		overflow: hidden;
+		background: color-mix(in oklab, var(--accent) 18%, var(--ink-100));
+	}
+	.show-thumb img {
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+	}
+	.show-thumb-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 100%;
+		block-size: 100%;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-weight: 600;
+		font-size: 1.6rem;
+		letter-spacing: 0.01em;
+		color: var(--bone-200);
+		background: linear-gradient(
+			145deg,
+			color-mix(in oklab, var(--accent) 28%, var(--ink-100)) 0%,
+			color-mix(in oklab, var(--accent) 12%, var(--ink-100)) 100%
+		);
+	}
+	.show-meta {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		min-inline-size: 0;
+	}
+	.eyebrow {
 		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-300);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.eyebrow-key {
+		color: var(--accent);
+	}
+	.show-title {
+		font-size: var(--type-h2);
+		line-height: 1.1;
+		color: var(--bone-100);
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.ep-nav {
+		display: flex;
 		align-items: center;
 		gap: var(--space-3);
 		margin-inline-start: auto;
+		flex-wrap: wrap;
 	}
+	.ep-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-4);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		color: var(--bone-200);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		cursor: pointer;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-btn:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--bone-100);
+	}
+	.ep-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.ep-btn.external {
+		margin-inline-start: auto;
+	}
+	.external-notice {
+		margin: var(--space-3) 0 0;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--type-meta);
+		color: var(--bone-100);
+		background: rgba(0, 0, 0, 0.4);
+		border-radius: var(--radius-control);
+	}
+	.ep-current {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		padding-inline: var(--space-3);
+		min-inline-size: 0;
+	}
+	.ep-num {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--accent);
+	}
+	.ep-title {
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-inline-size: 32ch;
+	}
+
+	.player-frame {
+		position: relative;
+		inline-size: 100%;
+		/* Default mode caps the video at a focused preview width.
+		   Theater mode lifts this further down so the video can
+		   spread to the full content width. */
+		max-inline-size: clamp(28rem, 70%, 56rem);
+		max-block-size: calc(100dvh - 14rem);
+		margin-inline: auto;
+		aspect-ratio: 16 / 9;
+		background: #000;
+		border-radius: var(--radius-card);
+		overflow: hidden;
+		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
+	}
+	.page.theater .player-frame {
+		max-inline-size: 100%;
+		max-block-size: calc(100dvh - 10rem);
+	}
+
+	/* Theater toggle pill in the player-header. Filled-accent state
+	   when on, transparent when off. */
 	.theater-toggle {
 		gap: var(--space-2);
-		color: var(--bone-100);
 	}
 	.theater-toggle svg {
 		display: block;
@@ -1021,14 +1110,45 @@
 	.theater-toggle.theater-on svg {
 		stroke: var(--accent);
 	}
+	.player-frame video {
+		inline-size: 100%;
+		block-size: 100%;
+		display: block;
+		background: #000;
+	}
+	.player-empty {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		text-align: center;
+		padding: var(--space-6);
+		color: var(--bone-100);
+		font-family: var(--font-body);
+		font-size: var(--type-body-l);
+		font-weight: 500;
+		line-height: 1.5;
+	}
+	.player-busy video {
+		opacity: 0.5;
+		transition: opacity var(--dur-med) var(--ease-out-soft);
+	}
+	.player-spinner {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		color: var(--accent);
+		font-family: var(--font-mono);
+		font-size: var(--type-display-l);
+		pointer-events: none;
+	}
 
-	/* Episode section: heading + pagination + grid of cards, sits
-	   below the show-info as a sibling of the video. No sidebar /
-	   sticky positioning — the page is a single editorial column. */
+	/* — Episode section: heading, pagination, modern card grid — */
 	.ep-section {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
+		gap: var(--space-4);
 		min-inline-size: 0;
 	}
 	.ep-section-header {
@@ -1069,9 +1189,98 @@
 	.ep-section-counter-of {
 		color: var(--bone-300);
 	}
-	/* Episode list — wrapping grid that flows left-to-right and
-	   adds rows once cards fill the available width. Same shape
-	   /anime/[id]'s ep-grid uses, no horizontal scroll. */
+
+	/* Pagination controls — same widget pair /anime/[id] uses. */
+	.ep-controls {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+	.ep-jump {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.ep-jump-label {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 4px var(--space-3);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+	}
+	.ep-jump-key {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.ep-jump-label input {
+		inline-size: 4rem;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--bone-100);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.ep-jump-label input::placeholder {
+		color: var(--bone-400);
+	}
+	.ep-jump-label input:focus-visible {
+		outline: none;
+	}
+	.ep-jump-go,
+	.ep-pager-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		color: var(--bone-200);
+		font-family: var(--font-mono);
+		cursor: pointer;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-jump-go:hover:not(:disabled),
+	.ep-pager-btn:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--bone-100);
+	}
+	.ep-jump-go:disabled,
+	.ep-pager-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.ep-pager {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.ep-pager-state {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		font-variant-numeric: tabular-nums lining-nums;
+		color: var(--bone-100);
+		min-inline-size: 3.5rem;
+		text-align: center;
+	}
+	.ep-pager-of {
+		color: var(--bone-300);
+	}
+
+	/* Wrapping grid — cards flow left-to-right and add rows once
+	   they fill the available width. */
 	.ep-list {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
@@ -1096,309 +1305,11 @@
 		border-radius: var(--radius-card);
 	}
 
-	/* Show + episode metadata under the video. No max-inline-size
-	   cap — the synopsis flows to the player column's natural
-	   width, which IS the editorial measure (the wider grid
-	   already constrains the column to a comfortable reading
-	   width via the 2-col split). The previous 60ch cap created
-	   a narrow column glued to the left edge that read as awkward. */
-	.show-info {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-	.show-banner {
-		display: grid;
-		grid-template-columns: 5rem 1fr;
-		gap: var(--space-5);
-		align-items: center;
-		padding: var(--space-3);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-card);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		text-decoration: none;
-		color: inherit;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
-	}
-	.show-banner:hover {
-		border-color: var(--accent);
-		background: color-mix(in oklab, var(--accent) 8%, var(--ink-050));
-	}
-	.show-banner-cover {
-		display: block;
-		inline-size: 100%;
-		aspect-ratio: 5 / 7;
-		object-fit: cover;
-		border-radius: var(--radius-control);
-		background: var(--ink-100);
-	}
-	.show-banner-cover-placeholder {
-		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
-	}
-	.show-banner-text {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-		min-inline-size: 0;
-	}
-	.show-banner-eyebrow {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--accent);
-	}
-	.show-banner-title {
-		margin: 0;
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-l);
-		line-height: 1.05;
-		color: var(--bone-100);
-	}
-	.show-banner:hover .show-banner-title {
-		color: var(--accent);
-	}
-	.show-banner-meta {
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		color: var(--bone-300);
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-meta);
-	}
-	.show-banner-meta .num {
-		color: var(--bone-100);
-		font-variant-numeric: tabular-nums lining-nums;
-	}
-	.show-banner-meta-sep {
-		color: var(--bone-400);
-	}
-	.show-banner-rating {
-		color: var(--accent);
-	}
-	.show-info-ep {
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-3);
-		margin: 0;
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-200);
-		min-inline-size: 0;
-	}
-	.show-info-ep-key {
-		color: var(--accent);
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-meta);
-	}
-	.show-info-ep-rule {
-		flex: 0 0 1.5rem;
-		block-size: 1px;
-		background: var(--ink-300);
-		align-self: center;
-	}
-	.show-info-ep-title {
-		color: var(--bone-100);
-		min-inline-size: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	/* Synopsis collapse/expand. Same pattern + visual rhythm as
-	   /anime/[id]: 5-ish-line preview, soft fade at the bottom,
-	   editorial display face with a drop cap when expanded. The
-	   font ladder lifts to display-m so the prose below the video
-	   feels like a proper editorial column instead of a caption. */
-	.prose-wrap {
-		position: relative;
-		max-block-size: 9.5rem;
-		overflow: hidden;
-		transition: max-block-size var(--dur-slow) var(--ease-out-soft);
-	}
-	.prose-wrap.expanded {
-		max-block-size: 200rem;
-	}
-	.prose {
-		margin: 0;
-		font-family: var(--font-display);
-		font-size: var(--type-display-m);
-		line-height: 1.5;
-		color: var(--bone-100);
-	}
-	.prose::first-letter {
-		font-family: var(--font-display);
-		float: inline-start;
-		font-size: 3.4em;
-		line-height: 0.9;
-		padding-inline-end: 0.08em;
-		padding-block-start: 0.06em;
-		color: var(--bone-100);
-		font-style: italic;
-	}
-	.prose-fade {
-		position: absolute;
-		inset-block-end: 0;
-		inset-inline: 0;
-		block-size: 4rem;
-		background: linear-gradient(180deg, transparent 0%, var(--ink-000) 90%);
-		pointer-events: none;
-		transition: opacity var(--dur-fast) var(--ease-out-soft);
-	}
-	.prose-wrap.expanded .prose-fade {
-		opacity: 0;
-	}
-	.prose-toggle {
-		align-self: flex-start;
-		margin-block-start: var(--space-3);
-		padding: 4px 0;
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-200);
-		border-block-end: 1px solid var(--bone-300);
-		transition:
-			color var(--dur-fast) var(--ease-out-soft),
-			border-color var(--dur-fast) var(--ease-out-soft);
-	}
-	.prose-toggle:hover {
-		color: var(--bone-100);
-		border-block-end-color: var(--bone-100);
-	}
-
-	.ep-nav {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
-	}
-	.ep-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		color: var(--bone-200);
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		cursor: pointer;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
-	}
-	.ep-btn:hover:not(:disabled) {
-		border-color: var(--accent);
-		color: var(--bone-100);
-	}
-	.ep-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-	.external-notice {
-		margin: var(--space-3) 0 0;
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--type-meta);
-		color: var(--bone-100);
-		background: rgba(0, 0, 0, 0.4);
-		border-radius: var(--radius-control);
-	}
-	.ep-current {
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-2);
-		padding-inline: var(--space-3);
-		min-inline-size: 0;
-	}
-	.ep-num {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--accent);
-	}
-	.ep-title {
-		font-size: var(--type-meta);
-		color: var(--bone-200);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-inline-size: 32ch;
-	}
-
-	.player-frame {
-		position: relative;
-		inline-size: 100%;
-		/* Default mode: cap the video width so it reads as a focused
-		   preview rather than spreading to fill the whole player
-		   column. clamp(24rem floor, 62% preferred, 44rem max)
-		   keeps the frame compact on narrow viewports and still
-		   below the column's full width on wide ones. Theater
-		   mode overrides this cap further down so the video can
-		   take the full stage. */
-		max-inline-size: clamp(24rem, 62%, 44rem);
-		aspect-ratio: 16 / 9;
-		/* Height cap so the video never grows so tall it pushes the
-		   show-info / synopsis below the fold. */
-		max-block-size: calc(100dvh - 14rem);
-		margin-inline: auto;
-		background: #000;
-		border-radius: var(--radius-card);
-		overflow: hidden;
-		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
-	}
-	.player-frame video {
-		inline-size: 100%;
-		block-size: 100%;
-		display: block;
-		background: #000;
-		/* object-fit: contain mirrors YouTube/native HTML5 video
-		   behavior — videos that aren't 16:9 (the frame's
-		   aspect-ratio) get letterboxed inside the frame instead
-		   of being cropped or stretched. */
-		object-fit: contain;
-	}
-	.player-empty {
-		position: absolute;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		text-align: center;
-		padding: var(--space-6);
-		color: var(--bone-100);
-		font-family: var(--font-body);
-		font-size: var(--type-body-l);
-		font-weight: 500;
-		line-height: 1.5;
-	}
-	.player-busy video {
-		opacity: 0.5;
-		transition: opacity var(--dur-med) var(--ease-out-soft);
-	}
-	.player-spinner {
-		position: absolute;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		color: var(--accent);
-		font-family: var(--font-mono);
-		font-size: var(--type-display-l);
-		pointer-events: none;
-	}
-
-	/* Episode card — chunky 16:9 thumb with the ep number + title
-	   floated on top under a top→bottom fade gradient so the text
-	   stays legible on bright frames. Hover lifts the card and
-	   reveals an accent-tinted play glyph; the active card gets a
-	   "Now playing" pill and an accent ring on the thumb. Same
-	   shape regardless of theater state — theater only affects
-	   the video size, not the ep list. */
+	/* Modern episode card — chunky 16:9 thumb with the ep number +
+	   title floated on top under a top→bottom fade so they stay
+	   readable on bright frames. Hover lifts the card and reveals
+	   an accent-tinted play glyph; active card gets an accent ring
+	   and a "Now playing" pill. */
 	.ep-card {
 		position: relative;
 		display: block;
@@ -1420,9 +1331,6 @@
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-
-	/* Thumb — chunkier rounding (12px instead of card 8px) to
-	   give the card more visual weight. */
 	.ep-card-thumb {
 		position: relative;
 		display: block;
@@ -1479,8 +1387,7 @@
 		color: var(--bone-300);
 	}
 
-	/* Text overlay on thumb with top fade — keeps ep number + title
-	   readable on bright frames. */
+	/* Top-fade overlay carrying ep number + title */
 	.ep-card-overlay {
 		position: absolute;
 		inset-block-start: 0;
@@ -1522,9 +1429,7 @@
 		color: var(--accent);
 	}
 
-	/* Play glyph — fades in on hover. Sits in the bottom-right so
-	   it doesn't fight the title overlay (top) or the corner tag
-	   (top-left, theater mode). */
+	/* Play glyph — fades in on hover, bottom-right of thumb */
 	.ep-card-thumb-play {
 		position: absolute;
 		inset-block-end: var(--space-2);
@@ -1549,7 +1454,7 @@
 		transform: scale(1);
 	}
 
-	/* "Now playing" pill on the active episode (top-right) */
+	/* "Now playing" pill on the active episode (top-right corner) */
 	.ep-card-thumb-flag {
 		position: absolute;
 		inset-block-start: var(--space-2);
@@ -1563,116 +1468,5 @@
 		background: var(--accent);
 		border-radius: var(--radius-pill);
 		box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
-	}
-	/* Pagination controls — same widget pair as /anime/[id]:
-	   jump-to-episode form on one side, prev/state/next on the
-	   other. */
-	.ep-controls {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
-	}
-	.ep-jump {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.ep-jump-label {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: 4px var(--space-3);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-	}
-	.ep-jump-key {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
-	}
-	.ep-jump-label input {
-		inline-size: 4rem;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		color: var(--bone-100);
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		font-variant-numeric: tabular-nums lining-nums;
-	}
-	.ep-jump-label input::placeholder {
-		color: var(--bone-400);
-	}
-	.ep-jump-label input:focus-visible {
-		outline: none;
-	}
-	.ep-jump-go {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 2rem;
-		block-size: 2rem;
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		color: var(--bone-200);
-		font-family: var(--font-mono);
-		cursor: pointer;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			color var(--dur-fast) var(--ease-out-soft);
-	}
-	.ep-jump-go:hover:not(:disabled) {
-		border-color: var(--accent);
-		color: var(--bone-100);
-	}
-	.ep-jump-go:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-	.ep-pager {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.ep-pager-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 2rem;
-		block-size: 2rem;
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		color: var(--bone-200);
-		font-family: var(--font-mono);
-		cursor: pointer;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			color var(--dur-fast) var(--ease-out-soft);
-	}
-	.ep-pager-btn:hover:not(:disabled) {
-		border-color: var(--accent);
-		color: var(--bone-100);
-	}
-	.ep-pager-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-	.ep-pager-state {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		font-variant-numeric: tabular-nums lining-nums;
-		color: var(--bone-100);
-		min-inline-size: 3.5rem;
-		text-align: center;
-	}
-	.ep-pager-of {
-		color: var(--bone-300);
 	}
 </style>
