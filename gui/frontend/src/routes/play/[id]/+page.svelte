@@ -1101,18 +1101,19 @@
 		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
 	}
 	.page.theater .player-frame {
-		/* Drive sizing from the block axis so the 16:9 frame can
-		   never overflow the viewport vertically. block-size is
-		   capped at (viewport − chrome); aspect-ratio computes
-		   inline-size from that. max-inline-size further clamps
-		   on ultrawide windows (so the player tops out at the
-		   full available content row width minus the rail). The
-		   element is then centered horizontally with translateX
-		   so its midline sits over the (viewport − rail) midline,
-		   regardless of the parent's centered-and-padded shape. */
-		inline-size: auto;
-		block-size: calc(100dvh - 8rem);
-		max-inline-size: calc(100vw - var(--rail-width));
+		/* Sizes the 16:9 frame to fit the largest rectangle that
+		   simultaneously: (a) doesn't exceed the available width
+		   from the rail edge to the viewport's right edge, and
+		   (b) doesn't exceed the viewport height minus the chrome.
+		   inline-size is the explicit driver — min() picks the
+		   smaller of "what (100dvh − chrome) × 16/9 would need"
+		   and "what's actually available horizontally". Inherited
+		   aspect-ratio: 16/9 then computes block-size from that.
+		   Centered over the (viewport − rail) midline via
+		   translateX(-50%). */
+		inline-size: min(calc((100dvh - 8rem) * 16 / 9), calc(100vw - var(--rail-width)));
+		max-inline-size: none;
+		block-size: auto;
 		max-block-size: none;
 		margin-inline: 0;
 		position: relative;
