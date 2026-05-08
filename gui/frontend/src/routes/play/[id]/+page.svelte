@@ -1147,19 +1147,20 @@
 		pointer-events: none;
 	}
 
+	/* Similar Titles strip wrapper — caps at --player-max and zeroes
+	   Strip's internal --strip-pad so the strip's content extends
+	   flush with the video edges above. */
 	.similar-wrap {
 		inline-size: 100%;
 		max-inline-size: var(--player-max);
 		margin-inline: auto;
+		--strip-pad: 0;
 	}
 
-	/* — Episode section: heading, pagination, modern card grid.
-	     Capped at --player-max and centered so its block aligns
-	     with the player above. padding-inline: var(--space-8)
-	     mirrors Strip's internal --strip-pad so the ep grid's
-	     first card lines up vertically with the Similar Titles
-	     strip's first card below — same alignment the detail
-	     page gets between its body section and similar strip. — */
+	/* — Episode section: same width as the player frame above, no
+	     extra inner padding so the ep grid spans the full video
+	     width (left edge of first card = left edge of video, right
+	     edge of last column = right edge of video). — */
 	.ep-section {
 		display: flex;
 		flex-direction: column;
@@ -1168,7 +1169,6 @@
 		inline-size: 100%;
 		max-inline-size: var(--player-max);
 		margin-inline: auto;
-		padding-inline: var(--space-8);
 	}
 	.ep-section-header {
 		display: flex;
