@@ -18,6 +18,7 @@ use crate::cache::ttl::{
     ANIME_DETAIL_TTL, DISCOVERY_TTL, EPISODES_TTL, TITLE_MATCH_TTL, TRENDING_TTL,
 };
 use crate::cache::{meta_cache_get, meta_cache_put};
+use crate::commands::kitsu_warm::warm_signed_image_urls;
 use crate::error::Result;
 use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
 
@@ -52,6 +53,7 @@ pub async fn kitsu_search(state: &AppState, query: &str) -> Result<Vec<KitsuAnim
     if let Ok(body) = serde_json::to_string(&hits) {
         // TTL conversion can't fail in practice; clamp via try_from.
         let _ = meta_cache_put(&state.cache_pool, &key, &body, DISCOVERY_TTL.as_secs());
+        warm_signed_image_urls(state, &body);
     }
     Ok(hits)
 }
@@ -116,6 +118,7 @@ where
     let hits = fetch(DISCOVERY_PAGE_LIMIT).await?;
     if let Ok(body) = serde_json::to_string(&hits) {
         let _ = meta_cache_put(&state.cache_pool, cache_key, &body, ttl_seconds);
+        warm_signed_image_urls(state, &body);
     }
     Ok(hits)
 }
@@ -155,6 +158,7 @@ pub async fn kitsu_episodes(
         .await?;
     if let Ok(body) = serde_json::to_string(&eps) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, EPISODES_TTL.as_secs());
+        warm_signed_image_urls(state, &body);
     }
     Ok(eps)
 }
@@ -178,6 +182,7 @@ pub async fn kitsu_anime_by_slug(state: &AppState, slug: &str) -> Result<Option<
     let detail = state.kitsu.anime_by_slug(slug).await?;
     if let Ok(body) = serde_json::to_string(&detail) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
+        warm_signed_image_urls(state, &body);
     }
     Ok(detail)
 }
@@ -317,6 +322,7 @@ pub async fn kitsu_anime_detail(state: &AppState, id: &str) -> Result<KitsuAnime
     let detail = state.kitsu.anime_detail(id).await?;
     if let Ok(body) = serde_json::to_string(&detail) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
+        warm_signed_image_urls(state, &body);
     }
     Ok(detail)
 }

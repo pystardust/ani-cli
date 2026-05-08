@@ -17,6 +17,7 @@ import {
 	kitsuEpisodes,
 	kitsuSearch,
 	allmangaKitsuMapGet,
+	imageCacheClear,
 	kitsuTitleMatchGet,
 	watchedAtAll,
 	kitsuTitleMatchPut,
@@ -248,6 +249,27 @@ describe('play', () => {
 });
 
 describe('playExternal', () => {
+	it('tolerates an empty 2xx body without throwing a JSON parse error', async () => {
+		// /api/play/external returns 202 Accepted with no body. expect2xx
+		// previously called resp.json() unconditionally and surfaced
+		// "Unexpected end of JSON input" as a confusing toast even though
+		// mpv had already launched. Pinning the empty-body path here so a
+		// regression of that fix is loud.
+		const response = {
+			ok: true,
+			status: 202,
+			async json() {
+				throw new SyntaxError('Unexpected end of JSON input');
+			},
+			async text() {
+				return '';
+			}
+		} as unknown as Response;
+		const fetchMock = vi.fn(async () => response);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await expect(playExternal({ title: 'x', episode: '1', mode: 'sub' })).resolves.toBeUndefined();
+	});
+
 	it('POSTs the PlayArgs payload to /api/play/external', async () => {
 		const fetchMock = mockFetchOnce(null, 202);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -939,6 +961,17 @@ describe('metaCacheClear', () => {
 		await metaCacheClear();
 		const { url, init } = lastCall(fetchMock);
 		expect(url).toBe(`${BASE}/api/cache`);
+		expect(init?.method).toBe('DELETE');
+	});
+});
+
+describe('imageCacheClear', () => {
+	it('DELETEs /api/cache/images', async () => {
+		const fetchMock = mockFetchOnce(null, 204);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await imageCacheClear();
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/cache/images`);
 		expect(init?.method).toBe('DELETE');
 	});
 });

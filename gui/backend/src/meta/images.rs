@@ -130,6 +130,11 @@ pub async fn fetch_and_store(
 
 /// Cache hit → serve from disk. Cache miss → fetch + store + serve.
 ///
+/// On cache hit, bumps the file's mtime to "now" so LRU pruning
+/// treats recent reads as fresh. Without this the prune would be
+/// FIFO (oldest WRITTEN files first) rather than true LRU and
+/// frequently-viewed posters would be evicted ahead of stale ones.
+///
 /// # Errors
 /// Inherits from [`fetch_and_store`].
 pub async fn get_or_fetch(
@@ -138,9 +143,125 @@ pub async fn get_or_fetch(
     url: &str,
 ) -> Result<(Vec<u8>, &'static str)> {
     if let Some(cached) = read_cached(cache_dir, url) {
+        // Bump mtime to "now" so LRU prune treats this hit as fresh.
+        // std::fs::File::set_modified is in stable since 1.75 — we
+        // pin 1.88, so it's available without an extra crate.
+        let hash = hash_url(url);
+        let (_, ext) = sniff_extension(url);
+        let path = disk_path(cache_dir, &hash, ext);
+        if let Ok(file) = std::fs::OpenOptions::new().write(true).open(&path) {
+            let _ = file.set_modified(std::time::SystemTime::now());
+        }
         return Ok(cached);
     }
     fetch_and_store(client, cache_dir, url).await
+}
+
+/// Total bytes used by every regular file under `cache_dir`. Walks
+/// only the first-level bucket directories (the on-disk shape we
+/// produce in [`disk_path`]); arbitrary nesting isn't expected and
+/// would be skipped. Errors during the walk are non-fatal — files
+/// that can't be statted just don't count toward the total.
+#[must_use]
+pub fn cache_size_bytes(cache_dir: &Path) -> u64 {
+    let mut total: u64 = 0;
+    let Ok(buckets) = std::fs::read_dir(cache_dir) else {
+        return 0;
+    };
+    for bucket in buckets.flatten() {
+        let Ok(files) = std::fs::read_dir(bucket.path()) else {
+            continue;
+        };
+        for file in files.flatten() {
+            if let Ok(meta) = file.metadata() {
+                if meta.is_file() {
+                    total = total.saturating_add(meta.len());
+                }
+            }
+        }
+    }
+    total
+}
+
+/// Prune the on-disk cache down to `cap_bytes`. Walks every cached
+/// file, sorts by modification time ascending (with [`get_or_fetch`]
+/// touching mtime on hit, this serves as access time), deletes the
+/// oldest files until the running total is at-or-below the cap.
+///
+/// No-op when the cache is already at-or-below the cap or when the
+/// directory doesn't exist. Failures (a file disappeared mid-walk,
+/// permissions error) are logged at warn level and don't propagate
+/// — the prune is opportunistic.
+pub fn prune_to_cap(cache_dir: &Path, cap_bytes: u64) {
+    let mut entries: Vec<(std::path::PathBuf, std::time::SystemTime, u64)> = Vec::new();
+    let Ok(buckets) = std::fs::read_dir(cache_dir) else {
+        return;
+    };
+    for bucket in buckets.flatten() {
+        let Ok(files) = std::fs::read_dir(bucket.path()) else {
+            continue;
+        };
+        for file in files.flatten() {
+            let Ok(meta) = file.metadata() else { continue };
+            if !meta.is_file() {
+                continue;
+            }
+            let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            entries.push((file.path(), mtime, meta.len()));
+        }
+    }
+    let total: u64 = entries.iter().map(|(_, _, n)| *n).sum();
+    if total <= cap_bytes {
+        return;
+    }
+    // Oldest mtime first → evict in that order.
+    entries.sort_by_key(|(_, m, _)| *m);
+    let mut running = total;
+    for (path, _, size) in entries {
+        if running <= cap_bytes {
+            break;
+        }
+        match std::fs::remove_file(&path) {
+            Ok(()) => running = running.saturating_sub(size),
+            Err(e) => tracing::warn!(path = ?path, error = ?e, "image-cache prune: remove failed"),
+        }
+    }
+}
+
+/// Fire-and-forget prune. Spawns a `spawn_blocking` task so the
+/// directory walk doesn't stall an async caller. No-op when the
+/// cache is already under cap.
+pub fn schedule_prune(cache_dir: std::path::PathBuf, cap_bytes: u64) {
+    tokio::spawn(async move {
+        let _ = tokio::task::spawn_blocking(move || prune_to_cap(&cache_dir, cap_bytes)).await;
+    });
+}
+
+/// Wipe the entire on-disk image cache. Used by the diagnostics
+/// "Clear image cache" button. Walks bucket directories and removes
+/// all regular files; bucket dirs themselves stay so the next write
+/// doesn't have to recreate them. Errors are logged + propagated.
+///
+/// # Errors
+/// [`AniError::Io`] when the cache_dir can't be read.
+pub fn clear_all(cache_dir: &Path) -> Result<()> {
+    let Ok(buckets) = std::fs::read_dir(cache_dir) else {
+        // Missing dir means the cache is already empty; not an error.
+        return Ok(());
+    };
+    for bucket in buckets.flatten() {
+        let Ok(files) = std::fs::read_dir(bucket.path()) else {
+            continue;
+        };
+        for file in files.flatten() {
+            if file.metadata().is_ok_and(|m| m.is_file()) {
+                if let Err(e) = std::fs::remove_file(file.path()) {
+                    tracing::warn!(path = ?file.path(), error = ?e, "image-cache clear: remove failed");
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Resolve an `image://` request to bytes + mime, going through the cache
@@ -213,7 +334,8 @@ mod tests {
     fn hash_url_strips_aws_signature_params() {
         // Backblaze S3 signed URL — the signature changes per
         // request but the same image must keep one cache key.
-        let base = "https://kitsu-production-media.s3.us-west-002.backblazeb2.com/anime/48069/poster.jpg";
+        let base =
+            "https://kitsu-production-media.s3.us-west-002.backblazeb2.com/anime/48069/poster.jpg";
         let signed_a = format!("{base}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=cred1&X-Amz-Date=20260508T000000Z&X-Amz-Expires=900&X-Amz-Signature=sig-a");
         let signed_b = format!("{base}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=cred1&X-Amz-Date=20260508T010000Z&X-Amz-Expires=900&X-Amz-Signature=sig-b");
         let plain = base.to_string();
@@ -237,6 +359,76 @@ mod tests {
         let mixed = "https://example.com/img.jpg?w=200&X-Amz-Signature=abc";
         let plain = "https://example.com/img.jpg?w=200";
         assert_eq!(hash_url(mixed), hash_url(plain));
+    }
+
+    #[test]
+    fn cache_size_bytes_sums_files_under_buckets() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let bucket = td.path().join("ab");
+        std::fs::create_dir_all(&bucket).expect("mkdir");
+        std::fs::write(bucket.join("ab1.jpg"), b"hello").expect("write");
+        std::fs::write(bucket.join("ab2.jpg"), b"world!").expect("write");
+        // Top-level non-dir entries are skipped (not a bucket).
+        std::fs::write(td.path().join("loose"), b"ignore").expect("write");
+        assert_eq!(cache_size_bytes(td.path()), 5 + 6);
+    }
+
+    #[test]
+    fn cache_size_bytes_returns_zero_for_missing_dir() {
+        assert_eq!(cache_size_bytes(std::path::Path::new("/nope/nada")), 0);
+    }
+
+    #[test]
+    fn prune_to_cap_evicts_oldest_files_first() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let bucket = td.path().join("aa");
+        std::fs::create_dir_all(&bucket).expect("mkdir");
+        let old = bucket.join("aa-old.jpg");
+        let new = bucket.join("aa-new.jpg");
+        std::fs::write(&old, vec![0u8; 1000]).expect("write");
+        std::fs::write(&new, vec![0u8; 1000]).expect("write");
+        // Backdate the "old" file by an hour so it sorts oldest.
+        let an_hour_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        let f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&old)
+            .expect("open old");
+        f.set_modified(an_hour_ago).expect("set mtime");
+        // Cap at 1000 bytes — only one file fits. The old one should
+        // get evicted, the new one stays.
+        prune_to_cap(td.path(), 1000);
+        assert!(!old.exists(), "old file should have been pruned");
+        assert!(new.exists(), "new file should remain");
+    }
+
+    #[test]
+    fn prune_to_cap_is_noop_when_under_cap() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let bucket = td.path().join("aa");
+        std::fs::create_dir_all(&bucket).expect("mkdir");
+        let path = bucket.join("aa-small.jpg");
+        std::fs::write(&path, b"tiny").expect("write");
+        prune_to_cap(td.path(), 1_000_000);
+        assert!(path.exists(), "file under cap shouldn't be pruned");
+    }
+
+    #[test]
+    fn clear_all_removes_files_but_keeps_buckets() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let bucket = td.path().join("aa");
+        std::fs::create_dir_all(&bucket).expect("mkdir");
+        let f = bucket.join("aa-x.jpg");
+        std::fs::write(&f, b"x").expect("write");
+        clear_all(td.path()).expect("clear");
+        assert!(!f.exists(), "file should be gone");
+        assert!(bucket.exists(), "bucket dir should remain (cheap reuse)");
+    }
+
+    #[test]
+    fn clear_all_is_noop_for_missing_dir() {
+        // Defensive — first run has no cache dir yet, clear shouldn't
+        // fail just because there's nothing to remove.
+        clear_all(std::path::Path::new("/no/such/path")).expect("ok on missing");
     }
 
     #[test]

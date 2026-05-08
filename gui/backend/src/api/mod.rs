@@ -84,6 +84,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         )
         .route("/api/settings", get(get_settings).put(put_settings))
         .route("/api/cache", delete(delete_cache))
+        .route("/api/cache/images", delete(delete_image_cache))
         .route("/api/image", get(get_image))
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
@@ -262,20 +263,34 @@ async fn get_image(State(state): State<Arc<AppState>>, Query(q): Query<ImageQuer
     }
     match crate::meta::images::get_or_fetch(&state.proxy_http, &state.image_cache_dir, &q.url).await
     {
-        Ok((bytes, mime)) => (
-            StatusCode::OK,
-            [
-                (axum::http::header::CONTENT_TYPE, mime),
-                // 24h is enough — Kitsu/AniList CDN URLs are stable
-                // per anime, and the on-disk cache makes refetches
-                // cheap if a header eviction happens early.
-                (axum::http::header::CACHE_CONTROL, "public, max-age=86400"),
-            ],
-            bytes,
-        )
-            .into_response(),
+        Ok((bytes, mime)) => {
+            // Opportunistic LRU prune — fire-and-forget, only walks
+            // the dir when over cap (config.image_cache_cap_mb).
+            // Doesn't stall the response; spawn_blocking inside.
+            crate::meta::images::schedule_prune(
+                state.image_cache_dir.clone(),
+                state.image_cache_cap_bytes(),
+            );
+            (
+                StatusCode::OK,
+                [
+                    (axum::http::header::CONTENT_TYPE, mime),
+                    // 24h is enough — Kitsu/AniList CDN URLs are stable
+                    // per anime, and the on-disk cache makes refetches
+                    // cheap if a header eviction happens early.
+                    (axum::http::header::CACHE_CONTROL, "public, max-age=86400"),
+                ],
+                bytes,
+            )
+                .into_response()
+        }
         Err(e) => e.into_response(),
     }
+}
+
+async fn delete_image_cache(State(state): State<Arc<AppState>>) -> Result<StatusCode, AniError> {
+    crate::meta::images::clear_all(&state.image_cache_dir)?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Resolve a Kitsu-titled episode through ani-cli and wrap the

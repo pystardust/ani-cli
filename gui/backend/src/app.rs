@@ -108,6 +108,17 @@ impl AppState {
         opts
     }
 
+    /// Configured image-cache size cap, in bytes. Reads from the
+    /// user's settings TOML on each call (cheap; sub-millisecond)
+    /// so a settings change applies immediately without restarting.
+    /// Falls back to the documented default if the file is missing
+    /// or unreadable.
+    #[must_use]
+    pub fn image_cache_cap_bytes(&self) -> u64 {
+        let cfg = crate::config::read_config(&self.config_path).unwrap_or_default();
+        cfg.image_cache_cap_mb.saturating_mul(1024 * 1024)
+    }
+
     /// Convert into a [`ProxyState`] suitable for the axum router.
     #[must_use]
     pub fn proxy_state(&self) -> ProxyState {

@@ -590,6 +590,17 @@ export function metaCacheClear(): Promise<void> {
 }
 
 /**
+ * Wipe the on-disk image byte cache (`~/.cache/ani-gui/images/`).
+ * Does NOT touch the SQLite metadata cache. Useful when the byte
+ * cache has accumulated stale images from a Kitsu re-cataloguing
+ * or when the user wants to reclaim disk before the LRU prune
+ * gets a chance.
+ */
+export function imageCacheClear(): Promise<void> {
+	return deleteJson<void>('/api/cache/images');
+}
+
+/**
  * Convert an `https://…` upstream image URL into a URL the renderer
  * can drop into `<img src=>`.
  *

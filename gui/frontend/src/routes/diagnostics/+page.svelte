@@ -10,6 +10,7 @@
 		appInfo,
 		historyClear,
 		historyList,
+		imageCacheClear,
 		metaCacheClear,
 		type AppInfo,
 		type HistoryEntry
@@ -57,6 +58,20 @@
 		try {
 			await metaCacheClear();
 			cacheStatus = 'Metadata cache cleared.';
+		} catch (e) {
+			cacheError = describeError(e);
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function clearImageCache() {
+		busy = true;
+		cacheStatus = null;
+		cacheError = null;
+		try {
+			await imageCacheClear();
+			cacheStatus = 'Image cache cleared.';
 		} catch (e) {
 			cacheError = describeError(e);
 		} finally {
@@ -132,6 +147,19 @@
 		</p>
 		{#if cacheStatus}<p>{cacheStatus}</p>{/if}
 		{#if cacheError}<p>Error: {cacheError}</p>{/if}
+	</section>
+
+	<section>
+		<h2>Image cache</h2>
+		<p>
+			Wipes the on-disk byte cache (posters, covers, episode thumbnails) at
+			<code>~/.cache/ani-gui/images/</code>. The cache normally prunes itself to the
+			<code>image_cache_cap_mb</code> setting; clear manually to reclaim disk immediately or to drop a
+			stale image without waiting for LRU.
+		</p>
+		<p>
+			<button type="button" onclick={clearImageCache} disabled={busy}>Clear image cache</button>
+		</p>
 	</section>
 
 	<section>

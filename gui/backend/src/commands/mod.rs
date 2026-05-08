@@ -9,6 +9,7 @@ pub mod app_info;
 pub mod external_player;
 pub mod history;
 pub mod kitsu;
+pub mod kitsu_warm;
 pub mod play;
 pub mod play_resolution_cache;
 pub mod proxy_url;
