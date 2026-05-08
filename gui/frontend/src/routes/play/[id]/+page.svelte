@@ -675,6 +675,13 @@
 					<span class="eyebrow-key">Now playing</span>
 				</span>
 				<span class="show-title">{detail?.canonical_title ?? 'Loading…'}</span>
+				{#if currentEpisodeMeta?.canonical_title}
+					<span class="show-episode">
+						<span class="show-episode-num">Episode {episodeNum}</span>
+						<span class="show-episode-rule" aria-hidden="true"></span>
+						<span class="show-episode-title">{currentEpisodeMeta.canonical_title}</span>
+					</span>
+				{/if}
 			</span>
 		</a>
 
@@ -707,42 +714,17 @@
 			</button>
 		</div>
 
-		<div class="player-actions">
-			<button
-				type="button"
-				class="ep-btn theater-toggle"
-				class:theater-on={theaterMode}
-				onclick={() => (theaterMode = !theaterMode)}
-				aria-pressed={theaterMode}
-				aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
-				title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
-			>
-				<svg
-					viewBox="0 0 24 24"
-					width="14"
-					height="14"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"
-				>
-					<rect x="3" y="6" width="18" height="12" rx="1" />
-				</svg>
-				<span>Theater</span>
-			</button>
-
-			<button
-				type="button"
-				class="ep-btn external"
-				onclick={onOpenExternal}
-				disabled={switchBusy || externalBusy}
-				aria-label="Open this episode in your external player"
-				title="Open in external player"
-			>
-				<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-				<span aria-hidden="true">↗</span>
-			</button>
-		</div>
+		<button
+			type="button"
+			class="ep-btn external"
+			onclick={onOpenExternal}
+			disabled={switchBusy || externalBusy}
+			aria-label="Open this episode in your external player"
+			title="Open in external player"
+		>
+			<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+			<span aria-hidden="true">↗</span>
+		</button>
 	</header>
 
 	{#if externalNotice}
@@ -938,6 +920,15 @@
 		padding-inline: var(--space-8);
 		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
+		/* Subtle warm halo at the top of the page so the player has
+		   atmospheric depth instead of floating in pure black. Uses
+		   the per-anime accent so the glow always belongs to the
+		   show being watched. */
+		background: radial-gradient(
+			ellipse 70% 35% at 50% 0%,
+			color-mix(in oklab, var(--accent) 16%, transparent),
+			transparent 70%
+		);
 	}
 
 	.player-header {
@@ -948,12 +939,6 @@
 	}
 	.show-link {
 		margin-inline-end: auto;
-	}
-	.player-actions {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
 	}
 
 	.show-link {
@@ -1018,11 +1003,40 @@
 		color: var(--accent);
 	}
 	.show-title {
-		font-size: var(--type-display-m);
-		line-height: 1.1;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-l);
+		line-height: 1.05;
 		color: var(--bone-100);
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+	.show-episode {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-3);
+		margin-block-start: var(--space-1);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-200);
+		min-inline-size: 0;
+	}
+	.show-episode-num {
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-meta);
+	}
+	.show-episode-rule {
+		flex: 0 0 1.25rem;
+		block-size: 1px;
+		background: var(--ink-300);
+		align-self: center;
+	}
+	.show-episode-title {
+		color: var(--bone-100);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.ep-nav {
@@ -1088,17 +1102,20 @@
 	.player-frame {
 		position: relative;
 		inline-size: 100%;
-		/* Default mode caps at --player-max (88rem) — the same
-		   cinema-width the page used at commit 73a87d9. Theater
-		   override below lifts the cap so the video can spread to
-		   the full content width. */
 		max-inline-size: var(--player-max);
 		margin-inline: auto;
 		aspect-ratio: 16 / 9;
 		background: #000;
-		border-radius: var(--radius-card);
+		/* Larger rounding + a deeper layered shadow with an
+		   accent-tinted halo lifts the player off the page and
+		   reads as "premium streaming surface" rather than a flat
+		   embedded frame. */
+		border-radius: 16px;
 		overflow: hidden;
-		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
+		box-shadow:
+			0 30px 80px -20px rgb(0 0 0 / 0.65),
+			0 0 60px -12px color-mix(in oklab, var(--accent) 35%, transparent),
+			inset 0 0 0 1px color-mix(in oklab, var(--bone-100) 10%, transparent);
 	}
 	.page.theater .player-frame {
 		/* Sizes the 16:9 frame to fit the largest rectangle that
@@ -1123,22 +1140,6 @@
 		box-shadow: none;
 	}
 
-	/* Theater toggle pill in the player-header. Filled-accent state
-	   when on, transparent when off. */
-	.theater-toggle {
-		gap: var(--space-2);
-	}
-	.theater-toggle svg {
-		display: block;
-	}
-	.theater-toggle.theater-on {
-		border-color: var(--accent);
-		background: color-mix(in oklab, var(--accent) 18%, var(--ink-050));
-		color: var(--bone-100);
-	}
-	.theater-toggle.theater-on svg {
-		stroke: var(--accent);
-	}
 	.player-frame video {
 		inline-size: 100%;
 		block-size: 100%;
@@ -1332,7 +1333,7 @@
 	   they fill the available width. */
 	.ep-list {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
 		gap: var(--space-4);
 		list-style: none;
 		margin: 0;
@@ -1407,7 +1408,7 @@
 	.ep-card-current .ep-card-thumb {
 		box-shadow:
 			0 0 0 2px var(--accent),
-			0 8px 24px -4px color-mix(in oklab, var(--accent) 45%, transparent);
+			0 14px 36px -6px color-mix(in oklab, var(--accent) 55%, transparent);
 	}
 	.ep-card-thumb img {
 		position: absolute;
@@ -1508,14 +1509,21 @@
 		position: absolute;
 		inset-block-start: var(--space-2);
 		inset-inline-end: var(--space-2);
-		padding: 3px 10px;
+		padding: 4px 10px;
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
+		font-weight: 600;
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--ink-000);
-		background: var(--accent);
+		background: linear-gradient(
+			135deg,
+			var(--accent),
+			color-mix(in oklab, var(--accent) 70%, var(--ink-000))
+		);
 		border-radius: var(--radius-pill);
-		box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+		box-shadow:
+			0 4px 14px color-mix(in oklab, var(--accent) 50%, transparent),
+			0 1px 2px rgb(0 0 0 / 0.4);
 	}
 </style>
