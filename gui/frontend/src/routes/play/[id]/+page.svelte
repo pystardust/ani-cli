@@ -29,6 +29,7 @@
 -->
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -77,6 +78,13 @@
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let episodes = $state<KitsuEpisode[] | null>(null);
+	let episodesPage = $state(1);
+	let episodesLoading = $state(false);
+	let episodesError = $state<string | null>(null);
+	let jumpInput = $state('');
+	const UI_PAGE_SIZE = 12;
+	const KITSU_PAGE_SIZE = 20;
+	const kitsuPageCache = new SvelteMap<number, KitsuEpisode[]>();
 	let similar = $state<KitsuAnimeRef[] | null>(null);
 	let config = $state<Config | null>(null);
 	let detailError = $state<string | null>(null);
@@ -113,10 +121,97 @@
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
 
+	// Find the metadata for the episode the user is actually
+	// watching. May not be in the visible page (the user can browse
+	// other pages while ep N plays), so scan all cached pages.
 	const currentEpisodeMeta = $derived.by(() => {
-		if (!episodes) return null;
-		return episodes.find((e) => (e.number ?? e.relative_number ?? -1) === episodeNum) ?? null;
+		for (const eps of kitsuPageCache.values()) {
+			const found = eps.find((e) => (e.number ?? e.relative_number ?? -1) === episodeNum);
+			if (found) return found;
+		}
+		return null;
 	});
+
+	const totalEpisodePages = $derived.by(() => {
+		const total = detail?.episode_count;
+		if (!total) return null;
+		return Math.max(1, Math.ceil(total / UI_PAGE_SIZE));
+	});
+	const epStart = $derived((episodesPage - 1) * UI_PAGE_SIZE + 1);
+	const epEnd = $derived((episodesPage - 1) * UI_PAGE_SIZE + (episodes?.length ?? 0));
+
+	function kitsuPagesForUiPage(uiPage: number): number[] {
+		const start = (uiPage - 1) * UI_PAGE_SIZE + 1;
+		const end = uiPage * UI_PAGE_SIZE;
+		const first = Math.ceil(start / KITSU_PAGE_SIZE);
+		const last = Math.ceil(end / KITSU_PAGE_SIZE);
+		const out: number[] = [];
+		for (let k = first; k <= last; k++) out.push(k);
+		return out;
+	}
+
+	async function getKitsuPage(p: number): Promise<KitsuEpisode[]> {
+		if (!id) return [];
+		const cached = kitsuPageCache.get(p);
+		if (cached) return cached;
+		const eps = await kitsuEpisodes(id, p);
+		kitsuPageCache.set(p, eps);
+		return eps;
+	}
+
+	async function fetchEpisodesPage(p: number, opts: { initial?: boolean } = {}) {
+		if (!id) return;
+		const wantPage = Math.max(1, p);
+		episodesLoading = true;
+		try {
+			const start = (wantPage - 1) * UI_PAGE_SIZE + 1;
+			const end = wantPage * UI_PAGE_SIZE;
+			const merged = (await Promise.all(kitsuPagesForUiPage(wantPage).map(getKitsuPage))).flat();
+			const windowed = merged.filter((ep) => {
+				const n = ep.number ?? ep.relative_number ?? -1;
+				return n >= start && n <= end;
+			});
+			episodes = windowed;
+			episodesPage = wantPage;
+			episodesError = null;
+			void prefetchAdjacent(wantPage);
+		} catch (e) {
+			if (opts.initial) episodes = [];
+			episodesError = describeError(e);
+		} finally {
+			episodesLoading = false;
+		}
+	}
+
+	function prefetchAdjacent(uiPage: number) {
+		const cap = totalEpisodePages;
+		const targets: number[] = [];
+		if (cap === null || uiPage + 1 <= cap) targets.push(uiPage + 1);
+		if (uiPage - 1 >= 1) targets.push(uiPage - 1);
+		for (const t of targets) {
+			for (const k of kitsuPagesForUiPage(t)) {
+				if (!kitsuPageCache.has(k)) {
+					void getKitsuPage(k).catch(() => {});
+				}
+			}
+		}
+	}
+
+	function gotoPage(p: number) {
+		const cap = totalEpisodePages ?? p;
+		const next = Math.min(Math.max(1, p), cap);
+		if (next === episodesPage) return;
+		void fetchEpisodesPage(next);
+	}
+
+	function jumpToEpisode(event: SubmitEvent) {
+		event.preventDefault();
+		const n = parseInt(jumpInput, 10);
+		if (Number.isNaN(n) || n < 1) return;
+		const target = Math.ceil(n / UI_PAGE_SIZE);
+		gotoPage(target);
+		jumpInput = '';
+	}
 
 	const showThumb = $derived(
 		imageProxyUrl(
@@ -286,13 +381,12 @@
 				detailError = describeError(e);
 			});
 
-		// Pull episode page covering the current episode so the strip
-		// below the player has the right tiles ready.
-		const UI_PAGE_SIZE = 12;
-		const desiredPage = Math.max(1, Math.ceil(episodeNum / UI_PAGE_SIZE));
-		void kitsuEpisodes(id, desiredPage)
-			.then((eps) => (episodes = eps))
-			.catch(() => (episodes = []));
+		// Open the ep list at the page that contains the episode the
+		// user is watching so they don't land on page 1 of a long
+		// show. Pagination state is local — URL drives session/ep,
+		// not page.
+		const startPage = Math.max(1, Math.ceil(episodeNum / UI_PAGE_SIZE));
+		void fetchEpisodesPage(startPage, { initial: true });
 
 		void settingsGet()
 			.then((c) => (config = c))
@@ -657,22 +751,55 @@
 				<p class="player-empty">{detailError}</p>
 			{/if}
 
-			<!-- Show / episode metadata under the video. Title is the
-			     primary heading on the page (the topbar already shows
-			     the breadcrumb). Synopsis lives here so the user can
-			     read context next to what they're watching. -->
+			<!-- Show / episode metadata under the video. The banner
+			     card on top restores the cover + title from the
+			     previous layout (the user explicitly missed it).
+			     Synopsis flows full-width below — no narrow column
+			     cap, the player column itself is the editorial
+			     measure. -->
 			{#if detail}
 				<section class="show-info">
 					<a
-						class="show-info-title-link"
+						class="show-banner"
 						href={resolve('/anime/[id]', { id })}
 						onclick={(e) => {
 							e.preventDefault();
 							void goto(resolve('/anime/[id]', { id }), { replaceState: true });
 						}}
 					>
-						<h1 class="show-info-title">{detail.canonical_title}</h1>
+						{#if showThumb}
+							<img
+								class="show-banner-cover"
+								src={showThumb}
+								alt={`Cover art for ${detail.canonical_title}`}
+								loading="lazy"
+							/>
+						{:else}
+							<span class="show-banner-cover show-banner-cover-placeholder" aria-hidden="true"
+							></span>
+						{/if}
+						<span class="show-banner-text">
+							<span class="show-banner-eyebrow">Now watching</span>
+							<h1 class="show-banner-title">{detail.canonical_title}</h1>
+							<span class="show-banner-meta">
+								{#if detail.subtype}<span>{detail.subtype.toUpperCase()}</span>{/if}
+								{#if detail.start_date}
+									<span class="show-banner-meta-sep" aria-hidden="true">·</span>
+									<span>{detail.start_date.slice(0, 4)}</span>
+								{/if}
+								{#if detail.episode_count}
+									<span class="show-banner-meta-sep" aria-hidden="true">·</span>
+									<span><span class="num">{detail.episode_count}</span> episodes</span>
+								{/if}
+								{#if detail.average_rating}
+									<span class="show-banner-meta-sep" aria-hidden="true">·</span>
+									<span class="show-banner-rating">★ {(detail.average_rating / 10).toFixed(1)}</span
+									>
+								{/if}
+							</span>
+						</span>
 					</a>
+
 					{#if currentEpisodeMeta?.canonical_title}
 						<p class="show-info-ep">
 							<span class="show-info-ep-key">Episode {episodeNum}</span>
@@ -680,21 +807,7 @@
 							<span class="show-info-ep-title">{currentEpisodeMeta.canonical_title}</span>
 						</p>
 					{/if}
-					<p class="show-info-meta">
-						{#if detail.subtype}<span>{detail.subtype.toUpperCase()}</span>{/if}
-						{#if detail.start_date}
-							<span class="show-info-meta-sep" aria-hidden="true">·</span>
-							<span>{detail.start_date.slice(0, 4)}</span>
-						{/if}
-						{#if detail.episode_count}
-							<span class="show-info-meta-sep" aria-hidden="true">·</span>
-							<span><span class="num">{detail.episode_count}</span> episodes</span>
-						{/if}
-						{#if detail.average_rating}
-							<span class="show-info-meta-sep" aria-hidden="true">·</span>
-							<span class="show-info-rating">★ {(detail.average_rating / 10).toFixed(1)}</span>
-						{/if}
-					</p>
+
 					{#if detail.synopsis}
 						<div class="prose-wrap" class:expanded={synopsisExpanded}>
 							<p class="prose">{detail.synopsis}</p>
@@ -715,48 +828,78 @@
 			{/if}
 		</div>
 
-		{#if episodes && episodes.length > 0}
-			<aside class="ep-sidebar" aria-label="Episodes">
-				<!-- Show identity card. Restored from the previous layout
-				     so the cover + title still anchor the page; placed at
-				     the top of the sidebar instead of as a header band so
-				     the player is the first thing the eye lands on. -->
-				{#if detail}
-					<a
-						class="show-card"
-						href={resolve('/anime/[id]', { id })}
-						onclick={(e) => {
-							e.preventDefault();
-							void goto(resolve('/anime/[id]', { id }), { replaceState: true });
-						}}
-					>
-						{#if showThumb}
-							<img
-								class="show-card-cover"
-								src={showThumb}
-								alt={`Cover art for ${detail.canonical_title}`}
-								loading="lazy"
-							/>
-						{:else}
-							<span class="show-card-cover show-card-cover-placeholder" aria-hidden="true"></span>
-						{/if}
-						<span class="show-card-text">
-							<span class="show-card-eyebrow">Now watching</span>
-							<span class="show-card-title">{detail.canonical_title}</span>
-							{#if detail.episode_count}
-								<span class="show-card-meta">
-									<span class="num">{detail.episode_count}</span> episodes
-								</span>
-							{/if}
-						</span>
-					</a>
-				{/if}
+		<aside class="ep-sidebar" aria-label="Episodes">
+			<h2 class="ep-sidebar-title">
+				<span class="eyebrow-key">Episodes</span>
+				<span class="eyebrow-rule" aria-hidden="true"></span>
+				<span class="eyebrow-value">
+					{#if episodes && episodes.length > 0 && detail?.episode_count}
+						{epStart}–{epEnd} of {detail.episode_count}
+					{:else if episodes && episodes.length > 0}
+						page {episodesPage}
+					{:else if episodesError}
+						unavailable
+					{:else}
+						loading
+					{/if}
+				</span>
+			</h2>
 
-				<h2 class="ep-sidebar-title">
-					<span class="eyebrow-key">Episodes</span>
-					<span class="eyebrow-rule" aria-hidden="true"></span>
-					<span class="eyebrow-value">{episodes.length}</span>
-				</h2>
+			{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
+				<div class="ep-controls">
+					<form class="ep-jump" onsubmit={jumpToEpisode}>
+						<label class="ep-jump-label">
+							<span class="ep-jump-key">Jump</span>
+							<input
+								type="number"
+								min="1"
+								max={detail?.episode_count ?? 9999}
+								step="1"
+								placeholder="ep #"
+								aria-label="Jump to episode number"
+								bind:value={jumpInput}
+							/>
+						</label>
+						<button
+							type="submit"
+							class="ep-jump-go"
+							disabled={!jumpInput || episodesLoading}
+							aria-label="Go to episode"
+						>
+							↵
+						</button>
+					</form>
+					<div class="ep-pager" role="group" aria-label="Episode pagination">
+						<button
+							type="button"
+							class="ep-pager-btn"
+							onclick={() => gotoPage(episodesPage - 1)}
+							disabled={episodesPage <= 1 || episodesLoading}
+							aria-label="Previous page"
+						>
+							←
+						</button>
+						<span class="ep-pager-state">
+							{episodesPage}{#if totalEpisodePages}<span class="ep-pager-of">
+									/ {totalEpisodePages}</span
+								>{/if}
+						</span>
+						<button
+							type="button"
+							class="ep-pager-btn"
+							onclick={() => gotoPage(episodesPage + 1)}
+							disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
+								episodesLoading ||
+								(episodes !== null && episodes.length < UI_PAGE_SIZE)}
+							aria-label="Next page"
+						>
+							→
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if episodes && episodes.length > 0}
 				<ol class="ep-list">
 					{#each episodes as ep (ep.id)}
 						{@const n = ep.number ?? ep.relative_number ?? 0}
@@ -779,22 +922,17 @@
 								<span class="ep-card-text">
 									<span class="ep-card-num">Ep {n}</span>
 									<span class="ep-card-title">{ep.canonical_title ?? `Episode ${n}`}</span>
-									{#if ep.length || ep.airdate}
-										<span class="ep-card-meta">
-											{#if ep.length}<span>{ep.length}m</span>{/if}
-											{#if ep.length && ep.airdate}
-												<span class="ep-card-meta-sep" aria-hidden="true">·</span>
-											{/if}
-											{#if ep.airdate}<span>{ep.airdate}</span>{/if}
-										</span>
-									{/if}
 								</span>
 							</button>
 						</li>
 					{/each}
 				</ol>
-			</aside>
-		{/if}
+			{:else if episodesError}
+				<p class="ep-list-empty">Couldn't load episodes ({episodesError}).</p>
+			{:else}
+				<p class="ep-list-empty">Loading episodes…</p>
+			{/if}
+		</aside>
 	</section>
 
 	<!-- Similar titles — same component the detail page uses; gives
@@ -830,9 +968,14 @@
 	}
 
 	/* Theater mode: hide the sidebar, drop the page's max-width and
-	   inline padding so the player consumes the whole window. The
-	   show-info section stays at editorial width below the video so
-	   the prose doesn't run off the screen. */
+	   inline padding so the player consumes the whole window width.
+	   The frame is then capped by viewport height — YouTube-style:
+	   the video sits as a centered 16:9 box that grows up to the
+	   window's height (minus the slim controls bar + breadcrumb
+	   chrome) and centers horizontally with letterboxing on
+	   ultrawide displays. The show-info below stays inside the
+	   normal page padding so the synopsis has the same editorial
+	   width it does outside theater mode. */
 	.page.theater {
 		max-inline-size: none;
 		padding-inline: 0;
@@ -846,8 +989,22 @@
 	}
 	.page.theater .show-info {
 		padding-inline: var(--space-8);
+		max-inline-size: var(--content-max);
+		margin-inline: auto;
+	}
+	.page.theater .player-column {
+		/* Center the capped player horizontally. Frame gets a
+		   block-size derived from viewport height (less the
+		   breadcrumb + slim controls chrome); inline-size is then
+		   computed by aspect-ratio. On ultrawide displays this
+		   leaves vertical letterbox space on the sides — matching
+		   YouTube's theater behavior exactly. */
+		align-items: center;
 	}
 	.page.theater .player-frame {
+		inline-size: auto;
+		max-inline-size: 100vw;
+		block-size: calc(100dvh - 6rem);
 		border-radius: 0;
 		box-shadow: none;
 	}
@@ -866,11 +1023,18 @@
 	}
 	.theater-toggle {
 		gap: var(--space-2);
+		color: var(--bone-100);
+	}
+	.theater-toggle svg {
+		display: block;
 	}
 	.theater-toggle.theater-on {
 		border-color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 18%, var(--ink-050));
 		color: var(--bone-100);
-		background: color-mix(in oklab, var(--accent) 14%, var(--ink-050));
+	}
+	.theater-toggle.theater-on svg {
+		stroke: var(--accent);
 	}
 
 	/* Two-column stage on wide screens: video + show info on the
@@ -887,15 +1051,18 @@
 		gap: var(--space-6);
 		min-inline-size: 0;
 	}
-	@media (min-inline-size: 1280px) {
+	/* Two-col stage kicks in at 1100px instead of 1280px so the
+	   default Electron window (1280px outer ≈ 1264px inner) lands
+	   reliably in 2-col mode. Sidebar narrower than the previous
+	   pass — the user's note was that the previous 30vw forced
+	   width without earning it. clamp(18rem, 21vw, 23rem) gives a
+	   sidebar that's wide enough for vertical thumb cards and no
+	   wider. */
+	@media (min-inline-size: 1100px) {
 		.player-stage {
 			display: grid;
-			/* Wider sidebar — the page no longer caps at the player's
-			   right edge, so the sidebar can spread into real estate
-			   the previous layout left empty. clamp at 24rem floor /
-			   34rem ceiling keeps ep cards readable across screens. */
-			grid-template-columns: minmax(0, 1fr) clamp(24rem, 30vw, 34rem);
-			gap: var(--space-7);
+			grid-template-columns: minmax(0, 1fr) clamp(18rem, 21vw, 23rem);
+			gap: var(--space-6);
 			align-items: start;
 		}
 	}
@@ -918,7 +1085,7 @@
 		gap: var(--space-3);
 		min-inline-size: 0;
 	}
-	@media (min-inline-size: 1280px) {
+	@media (min-inline-size: 1100px) {
 		.ep-sidebar {
 			position: sticky;
 			inset-block-start: var(--space-7);
@@ -958,50 +1125,93 @@
 		padding: 0;
 		min-inline-size: 0;
 	}
-	@media (min-inline-size: 1280px) {
+	@media (min-inline-size: 1100px) {
 		.ep-list {
 			overflow-y: auto;
 			padding-inline-end: var(--space-2);
 		}
 	}
-	@media (max-inline-size: 1279px) {
+	@media (max-inline-size: 1099px) {
 		.ep-list {
-			flex-direction: row;
-			overflow-x: auto;
-			overflow-y: visible;
-			scroll-snap-type: x mandatory;
-			padding-block-end: var(--space-2);
-		}
-		.ep-list li {
-			scroll-snap-align: start;
-			flex: 0 0 auto;
+			/* Below the 2-col breakpoint, the ep list goes back to a
+			   responsive grid (vertical cards in a 2-3 col layout).
+			   Pagination keeps the row count contained — same idea
+			   as /anime/[id]'s ep-grid. */
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+			gap: var(--space-3);
 		}
 	}
 	.ep-list li {
 		display: block;
 		min-inline-size: 0;
 	}
-	@media (max-inline-size: 1279px) {
-		.ep-list li {
-			min-inline-size: 11rem;
-		}
+	.ep-list-empty {
+		margin: 0;
+		padding: var(--space-4);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		color: var(--bone-300);
+		text-align: center;
+		border: 1px dashed var(--ink-300);
+		border-radius: var(--radius-card);
 	}
 
-	/* Show + episode metadata under the video. The show title is
-	   the page's H1 — the topbar already renders the breadcrumb,
-	   so there's no second copy of the same text. */
+	/* Show + episode metadata under the video. No max-inline-size
+	   cap — the synopsis flows to the player column's natural
+	   width, which IS the editorial measure (the wider grid
+	   already constrains the column to a comfortable reading
+	   width via the 2-col split). The previous 60ch cap created
+	   a narrow column glued to the left edge that read as awkward. */
 	.show-info {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
-		max-inline-size: 60ch;
+		gap: var(--space-4);
 	}
-	.show-info-title-link {
+	.show-banner {
+		display: grid;
+		grid-template-columns: 5rem 1fr;
+		gap: var(--space-5);
+		align-items: center;
+		padding: var(--space-3);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-card);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 		text-decoration: none;
 		color: inherit;
-		display: inline-block;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
 	}
-	.show-info-title {
+	.show-banner:hover {
+		border-color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 8%, var(--ink-050));
+	}
+	.show-banner-cover {
+		display: block;
+		inline-size: 100%;
+		aspect-ratio: 5 / 7;
+		object-fit: cover;
+		border-radius: var(--radius-control);
+		background: var(--ink-100);
+	}
+	.show-banner-cover-placeholder {
+		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+	}
+	.show-banner-text {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		min-inline-size: 0;
+	}
+	.show-banner-eyebrow {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.show-banner-title {
 		margin: 0;
 		font-family: var(--font-display);
 		font-style: italic;
@@ -1009,7 +1219,28 @@
 		line-height: 1.05;
 		color: var(--bone-100);
 	}
-	.show-info-title-link:hover .show-info-title {
+	.show-banner:hover .show-banner-title {
+		color: var(--accent);
+	}
+	.show-banner-meta {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		color: var(--bone-300);
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-meta);
+	}
+	.show-banner-meta .num {
+		color: var(--bone-100);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.show-banner-meta-sep {
+		color: var(--bone-400);
+	}
+	.show-banner-rating {
 		color: var(--accent);
 	}
 	.show-info-ep {
@@ -1025,7 +1256,7 @@
 	.show-info-ep-key {
 		color: var(--accent);
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: var(--tracking-meta);
 	}
 	.show-info-ep-rule {
 		flex: 0 0 1.5rem;
@@ -1039,27 +1270,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-	.show-info-meta {
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-2);
-		margin: 0;
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		color: var(--bone-300);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-	.show-info-meta .num {
-		color: var(--bone-100);
-		font-variant-numeric: tabular-nums lining-nums;
-	}
-	.show-info-meta-sep {
-		color: var(--bone-400);
-	}
-	.show-info-rating {
-		color: var(--accent);
 	}
 	/* Synopsis collapse/expand. Same pattern + visual rhythm as
 	   /anime/[id]: 5-ish-line preview, soft fade at the bottom,
@@ -1231,93 +1441,19 @@
 		pointer-events: none;
 	}
 
-	/* Show identity card at the top of the sidebar — restored from
-	   the previous layout's player-header. Cover poster + title +
-	   ep count, the whole thing is a link to the detail page. */
-	.show-card {
-		display: grid;
-		grid-template-columns: 4.5rem 1fr;
-		gap: var(--space-4);
-		align-items: center;
-		padding: var(--space-3);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-card);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		text-decoration: none;
-		color: inherit;
-		transition:
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
-	}
-	.show-card:hover {
-		border-color: var(--accent);
-		background: color-mix(in oklab, var(--accent) 10%, var(--ink-050));
-	}
-	.show-card-cover {
-		display: block;
-		inline-size: 100%;
-		aspect-ratio: 5 / 7;
-		object-fit: cover;
-		border-radius: var(--radius-control);
-		background: var(--ink-100);
-	}
-	.show-card-cover-placeholder {
-		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
-	}
-	.show-card-text {
+	/* Vertical episode card: thumb on top, ep number + title below.
+	   Compact — sits flush in a 21vw sidebar (~14rem) without
+	   wasted horizontal space. Same shape as the detail page's
+	   ep-tile so the two pages feel related. */
+	.ep-card {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
-		min-inline-size: 0;
-	}
-	.show-card-eyebrow {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--accent);
-	}
-	.show-card-title {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-m);
-		line-height: 1.15;
-		color: var(--bone-100);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-	}
-	.show-card-meta {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-meta);
-		color: var(--bone-300);
-		text-transform: uppercase;
-	}
-	.show-card-meta .num {
-		color: var(--bone-100);
-		font-variant-numeric: tabular-nums lining-nums;
-	}
-
-	/* Horizontal episode card: thumbnail (16:9) on the left, ep
-	   number + title + meta on the right. Reads like the
-	   YouTube/Crunchyroll watch-next list — recognition by image
-	   first, scan by title second. The thumb shows the ep number
-	   in the corner so even the placeholder (no thumb) still
-	   identifies the row. */
-	.ep-card {
-		display: grid;
-		grid-template-columns: 7rem 1fr;
-		gap: var(--space-3);
-		align-items: stretch;
-		padding: var(--space-2);
+		gap: var(--space-2);
+		padding: 0;
 		inline-size: 100%;
-		border: 1px solid var(--ink-300);
+		border: 1px solid transparent;
 		border-radius: var(--radius-card);
-		background: color-mix(in oklab, var(--ink-050) 60%, transparent);
+		background: transparent;
 		color: inherit;
 		text-align: start;
 		cursor: pointer;
@@ -1325,32 +1461,31 @@
 			border-color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft);
 	}
-	@media (max-inline-size: 1279px) {
-		/* Under 1280px the sidebar reverts to a horizontal scroll
-		   strip; cap card width so each tile keeps its shape. */
-		.ep-card {
-			min-inline-size: 18rem;
-			max-inline-size: 22rem;
-		}
-	}
 	.ep-card:hover:not(:disabled) {
+		background: color-mix(in oklab, var(--accent) 10%, var(--ink-050));
+	}
+	.ep-card:hover:not(:disabled) .ep-card-thumb {
 		border-color: var(--accent);
 	}
 	.ep-card:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-	.ep-card-current {
+	.ep-card-current .ep-card-thumb {
 		border-color: var(--accent);
-		background: color-mix(in oklab, var(--accent) 14%, var(--ink-050));
+	}
+	.ep-card-current .ep-card-num {
+		color: var(--accent);
 	}
 	.ep-card-thumb {
 		position: relative;
 		display: block;
 		aspect-ratio: 16 / 9;
 		background: linear-gradient(135deg, var(--ink-100), var(--ink-200));
+		border: 1px solid var(--ink-300);
 		border-radius: var(--radius-control);
 		overflow: hidden;
+		transition: border-color var(--dur-fast) var(--ease-out-soft);
 	}
 	.ep-card-thumb img {
 		position: absolute;
@@ -1361,13 +1496,15 @@
 	}
 	.ep-card-thumb-num {
 		position: absolute;
-		inset-block-end: 0.25rem;
-		inset-inline-start: 0.4rem;
+		inset-block-end: 0.3rem;
+		inset-inline-start: 0.5rem;
+		padding: 1px 6px;
 		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		font-size: var(--type-micro);
 		font-variant-numeric: tabular-nums lining-nums;
 		color: var(--bone-100);
-		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		background: rgb(0 0 0 / 0.55);
+		border-radius: var(--radius-control);
 		letter-spacing: 0.04em;
 	}
 	.ep-card-text {
@@ -1375,19 +1512,19 @@
 		flex-direction: column;
 		gap: 2px;
 		min-inline-size: 0;
-		padding-block: var(--space-1);
+		padding-inline: var(--space-1);
 	}
 	.ep-card-num {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-meta);
 		text-transform: uppercase;
-		color: var(--accent);
+		color: var(--bone-300);
 	}
 	.ep-card-title {
-		font-size: var(--type-body);
+		font-size: var(--type-meta);
 		color: var(--bone-100);
-		line-height: 1.25;
+		line-height: 1.3;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		display: -webkit-box;
@@ -1395,16 +1532,117 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
-	.ep-card-meta {
+
+	/* Pagination controls — same widget pair as /anime/[id]:
+	   jump-to-episode form on one side, prev/state/next on the
+	   other. Compact enough to sit at the top of the sidebar
+	   without crowding the ep cards underneath. */
+	.ep-controls {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+	.ep-jump {
 		display: inline-flex;
-		align-items: baseline;
+		align-items: center;
 		gap: var(--space-2);
+	}
+	.ep-jump-label {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 4px var(--space-3);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+	}
+	.ep-jump-key {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
 		color: var(--bone-300);
-		margin-block-start: 2px;
 	}
-	.ep-card-meta-sep {
+	.ep-jump-label input {
+		inline-size: 4rem;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--bone-100);
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.ep-jump-label input::placeholder {
 		color: var(--bone-400);
+	}
+	.ep-jump-label input:focus-visible {
+		outline: none;
+	}
+	.ep-jump-go {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		color: var(--bone-200);
+		font-family: var(--font-mono);
+		cursor: pointer;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-jump-go:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--bone-100);
+	}
+	.ep-jump-go:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.ep-pager {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.ep-pager-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		color: var(--bone-200);
+		font-family: var(--font-mono);
+		cursor: pointer;
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-pager-btn:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--bone-100);
+	}
+	.ep-pager-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.ep-pager-state {
+		font-family: var(--font-mono);
+		font-size: var(--type-meta);
+		font-variant-numeric: tabular-nums lining-nums;
+		color: var(--bone-100);
+		min-inline-size: 3.5rem;
+		text-align: center;
+	}
+	.ep-pager-of {
+		color: var(--bone-300);
 	}
 </style>
