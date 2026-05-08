@@ -924,27 +924,31 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-7);
-		padding-block: var(--space-6) var(--space-9);
-		padding-inline: var(--space-8);
-		/* Cap pushed wide (130rem ≈ 2080px) so /play uses most of
-		   the screen at a 1920px window instead of leaving black
-		   margins. Only at 4K / ultrawide does the cap kick in.
-		   Other routes (editorial pages) keep --content-max-wide;
-		   /play is a watch surface and feels right when it spreads. */
-		max-inline-size: 130rem;
+		/* Vertical rhythm: bumped from space-7 (3rem) to space-8
+		   (4.5rem) — stronger separation between hero, player, ep
+		   section, and recommendations. */
+		gap: var(--space-8);
+		padding-block: var(--space-7) var(--space-9);
+		padding-inline: var(--space-6);
+		/* Width per the design directive: cap at ~1560px on
+		   desktop, otherwise (viewport − rail − breathing room).
+		   Centered. The smaller cap with denser content reads as
+		   "designed" — the previous 130rem was wide but the
+		   content within stayed conservative, so it felt sparse. */
+		inline-size: min(97.5rem, calc(100vw - var(--rail-width) - 4rem));
+		max-inline-size: 97.5rem;
 		margin-inline: auto;
-		/* Hero glow extends further down (60% block radius vs 35%)
-		   with a softer mid-stop, so the warmth bleeds into the
-		   page instead of looking like a clipped strip behind the
-		   header. The fade ends well before the ep section so the
-		   bottom of the page is still neutral. */
+		/* Stronger atmospheric glow: bigger ellipse, higher peak
+		   opacity, slower fall-off. The page now reads as a warm
+		   cinematic surface rather than a black slab with content
+		   on top. */
 		background: radial-gradient(
-			ellipse 95% 60% at 50% 0%,
-			color-mix(in oklab, var(--accent) 20%, transparent) 0%,
-			color-mix(in oklab, var(--accent) 10%, transparent) 25%,
-			color-mix(in oklab, var(--accent) 4%, transparent) 50%,
-			transparent 75%
+			ellipse 110% 70% at 50% 0%,
+			color-mix(in oklab, var(--accent) 28%, transparent) 0%,
+			color-mix(in oklab, var(--accent) 16%, transparent) 22%,
+			color-mix(in oklab, var(--accent) 8%, transparent) 45%,
+			color-mix(in oklab, var(--accent) 2%, transparent) 65%,
+			transparent 85%
 		);
 	}
 
@@ -971,11 +975,17 @@
 	}
 	.show-thumb {
 		flex: 0 0 auto;
-		inline-size: 4.5rem;
-		block-size: 6.3rem; /* 5:7 poster aspect */
-		border-radius: var(--radius-control);
+		/* Bumped from 4.5rem to 6rem (≈ 96px) so the poster anchors
+		   the hero properly next to the bigger show-title. 5:7
+		   aspect preserved. */
+		inline-size: 6rem;
+		block-size: 8.4rem;
+		border-radius: var(--radius-card);
 		overflow: hidden;
 		background: color-mix(in oklab, var(--accent) 18%, var(--ink-100));
+		box-shadow:
+			0 6px 18px -4px rgb(0 0 0 / 0.5),
+			inset 0 0 0 1px color-mix(in oklab, var(--accent) 40%, transparent);
 	}
 	.show-thumb img {
 		inline-size: 100%;
@@ -1022,8 +1032,12 @@
 	.show-title {
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: var(--type-display-l);
-		line-height: 1.05;
+		/* Use the display-XL token (3.5rem ≈ 56px) so the show
+		   title carries the hero with confidence. The previous
+		   display-l (40px) read as a secondary label. */
+		font-size: var(--type-display-xl);
+		line-height: 1.02;
+		letter-spacing: var(--tracking-display);
 		color: var(--bone-100);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1124,16 +1138,16 @@
 		margin-inline: auto;
 		aspect-ratio: 16 / 9;
 		background: #000;
-		/* Larger rounding + a deeper layered shadow with an
-		   accent-tinted halo lifts the player off the page and
-		   reads as "premium streaming surface" rather than a flat
-		   embedded frame. */
-		border-radius: 16px;
+		/* Premium frame: 22px rounding, deeper layered shadow with
+		   a much stronger accent-tinted ambient glow under the
+		   frame. Reads as a "lit" cinema surface anchored to the
+		   page rather than a flat embed. */
+		border-radius: 22px;
 		overflow: hidden;
 		box-shadow:
-			0 30px 80px -20px rgb(0 0 0 / 0.65),
-			0 0 60px -12px color-mix(in oklab, var(--accent) 35%, transparent),
-			inset 0 0 0 1px color-mix(in oklab, var(--bone-100) 10%, transparent);
+			0 40px 100px -20px rgb(0 0 0 / 0.7),
+			0 0 120px -10px color-mix(in oklab, var(--accent) 40%, transparent),
+			inset 0 0 0 1px color-mix(in oklab, var(--bone-100) 12%, transparent);
 	}
 	.page.theater .player-frame {
 		/* Sizes the 16:9 frame to fit the largest rectangle that
@@ -1208,7 +1222,7 @@
 		   poster are readable and the section feels intentional
 		   instead of "we placed a horizontal list". */
 		--strip-pad: 0;
-		--strip-card: 14rem;
+		--strip-card: 17rem;
 	}
 
 	/* — Episode section: same width as the player frame above, no
@@ -1236,7 +1250,7 @@
 		margin: 0;
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: var(--type-display-m);
+		font-size: var(--type-display-l);
 		font-weight: 500;
 		line-height: 1;
 		color: var(--bone-100);
@@ -1356,7 +1370,7 @@
 	   they fill the available width. */
 	.ep-list {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
 		gap: var(--space-4);
 		list-style: none;
 		margin: 0;
