@@ -485,20 +485,20 @@
 	}
 
 	function heroFor(d: KitsuAnimeRef): { url: string | null; isCover: boolean } {
-		// `original` skipped on purpose — Kitsu sometimes returns it as
-		// a Backblaze S3 signed URL with 15-min expiry; our anime-detail
-		// response is cached for 7d, so handing a stale signature to
-		// <img> renders a broken-image icon. The hero's accent gradient
-		// + title overlay is a better "no image" state.
-		const cover = d.cover_image?.large ?? d.cover_image?.small ?? null;
+		// `original` last as defense — backend's eager-warm caches
+		// signed-URL bytes under a canonical hash so the proxy serves
+		// them regardless of staleness. See PosterCard for full
+		// rationale.
+		const cover = d.cover_image?.large ?? d.cover_image?.small ?? d.cover_image?.original ?? null;
 		if (cover) return { url: imageProxyUrl(cover), isCover: true };
-		const poster = d.poster_image?.large ?? d.poster_image?.medium ?? null;
+		const poster =
+			d.poster_image?.large ?? d.poster_image?.medium ?? d.poster_image?.original ?? null;
 		return { url: imageProxyUrl(poster), isCover: false };
 	}
 	function posterFor(d: KitsuAnimeRef): string | null {
-		// Same reason as heroFor — skip `original`. Falls through to
-		// the poster-placeholder block in the markup.
-		return imageProxyUrl(d.poster_image?.large ?? d.poster_image?.medium ?? null);
+		return imageProxyUrl(
+			d.poster_image?.large ?? d.poster_image?.medium ?? d.poster_image?.original ?? null
+		);
 	}
 	function ratingDisplay(r: number | null): string | null {
 		if (r === null) return null;
