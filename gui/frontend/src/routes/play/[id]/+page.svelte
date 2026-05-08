@@ -707,40 +707,42 @@
 			</button>
 		</div>
 
-		<button
-			type="button"
-			class="ep-btn theater-toggle"
-			class:theater-on={theaterMode}
-			onclick={() => (theaterMode = !theaterMode)}
-			aria-pressed={theaterMode}
-			aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
-			title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
-		>
-			<svg
-				viewBox="0 0 24 24"
-				width="14"
-				height="14"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				aria-hidden="true"
+		<div class="player-actions">
+			<button
+				type="button"
+				class="ep-btn theater-toggle"
+				class:theater-on={theaterMode}
+				onclick={() => (theaterMode = !theaterMode)}
+				aria-pressed={theaterMode}
+				aria-label={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
+				title={theaterMode ? 'Exit theater mode' : 'Theater mode'}
 			>
-				<rect x="3" y="6" width="18" height="12" rx="1" />
-			</svg>
-			<span>Theater</span>
-		</button>
+				<svg
+					viewBox="0 0 24 24"
+					width="14"
+					height="14"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<rect x="3" y="6" width="18" height="12" rx="1" />
+				</svg>
+				<span>Theater</span>
+			</button>
 
-		<button
-			type="button"
-			class="ep-btn external"
-			onclick={onOpenExternal}
-			disabled={switchBusy || externalBusy}
-			aria-label="Open this episode in your external player"
-			title="Open in external player"
-		>
-			<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-			<span aria-hidden="true">↗</span>
-		</button>
+			<button
+				type="button"
+				class="ep-btn external"
+				onclick={onOpenExternal}
+				disabled={switchBusy || externalBusy}
+				aria-label="Open this episode in your external player"
+				title="Open in external player"
+			>
+				<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+				<span aria-hidden="true">↗</span>
+			</button>
+		</div>
 	</header>
 
 	{#if externalNotice}
@@ -941,7 +943,16 @@
 	.player-header {
 		display: flex;
 		align-items: center;
-		gap: var(--space-7);
+		gap: var(--space-5);
+		flex-wrap: wrap;
+	}
+	.show-link {
+		margin-inline-end: auto;
+	}
+	.player-actions {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
 		flex-wrap: wrap;
 	}
 
@@ -1007,7 +1018,7 @@
 		color: var(--accent);
 	}
 	.show-title {
-		font-size: var(--type-h2);
+		font-size: var(--type-display-m);
 		line-height: 1.1;
 		color: var(--bone-100);
 		overflow: hidden;
@@ -1018,7 +1029,6 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		margin-inline-start: auto;
 		flex-wrap: wrap;
 	}
 	.ep-btn {
@@ -1045,9 +1055,6 @@
 	.ep-btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
-	}
-	.ep-btn.external {
-		margin-inline-start: auto;
 	}
 	.external-notice {
 		margin: var(--space-3) 0 0;
