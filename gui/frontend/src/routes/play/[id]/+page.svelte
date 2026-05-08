@@ -1337,6 +1337,35 @@
 		--strip-pad: 0;
 		--strip-card: 17rem;
 	}
+	/* Match Episodes' section heading style on the Strip's eyebrow
+	   so both row labels read identically — display-l italic in
+	   the per-show accent. The Strip's default mono uppercase
+	   eyebrow is too small here. */
+	.similar-wrap :global(.strip-header) {
+		justify-content: flex-start;
+	}
+	.similar-wrap :global(.eyebrow) {
+		font-family: var(--font-display);
+		font-style: italic;
+		font-size: var(--type-display-l);
+		font-weight: 500;
+		line-height: 1;
+		letter-spacing: var(--tracking-display);
+		color: var(--accent);
+		text-transform: none;
+	}
+	.similar-wrap :global(.eyebrow-key),
+	.similar-wrap :global(.eyebrow-rule),
+	.similar-wrap :global(.eyebrow-value) {
+		color: inherit;
+		background: none;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+	}
+	.similar-wrap :global(.eyebrow-rule) {
+		display: none;
+	}
 
 	/* — Episode section: same width as the player frame above, no
 	     extra inner padding so the ep grid spans the full video
@@ -1356,8 +1385,6 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: var(--space-3);
-		padding-block-end: var(--space-3);
-		border-block-end: 1px solid color-mix(in oklab, var(--accent) 25%, var(--ink-300));
 	}
 	.ep-section-heading {
 		margin: 0;
@@ -1366,7 +1393,7 @@
 		font-size: var(--type-display-l);
 		font-weight: 500;
 		line-height: 1;
-		color: var(--bone-100);
+		color: var(--accent);
 		letter-spacing: var(--tracking-display);
 	}
 	.ep-section-counter {
