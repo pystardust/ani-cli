@@ -12,28 +12,34 @@
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
 	import {
+		altTitlesFromKitsu,
 		historyList,
 		imageProxyUrl,
 		kitsuEpisodes,
 		kitsuTopRated,
 		kitsuTrending,
+		markWatched,
+		playStream,
+		settingsGet,
 		watchedAtAll,
+		type Config,
 		type HistoryEntry,
 		type KitsuAnimeRef,
-		type KitsuEpisode
+		type KitsuEpisode,
+		type PlayProgress
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
-	import {
-		EPISODES_KITSU_PAGE_SIZE,
-		resolveHistoryEntry,
-		resumeQueryString
-	} from '$lib/history/resolve';
+	import { EPISODES_KITSU_PAGE_SIZE, resolveHistoryEntry } from '$lib/history/resolve';
 	import { resolveKitsuMatch } from '$lib/history/match';
 	import { sortByWatchedAt } from '$lib/history/sort';
 	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
+	import { getOrFire, makeKey } from '$lib/play/play-cache';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
+	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
+	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 
 	// Hero cycles through the top N trending titles. Rotation is slow
 	// (~9s) and pauses while the cursor is over the hero, so it never
@@ -62,6 +68,14 @@
 	let trendingError = $state<string | null>(null);
 	let topRatedError = $state<string | null>(null);
 	let scrollY = $state(0);
+	// Continue Watching click handler state. The card resolves the
+	// play directly (via getOrFire/playStream) and navigates to
+	// /play/[id] — bypassing the detail page so the back button
+	// returns to the home grid, not the detail view.
+	let config = $state<Config | null>(null);
+	let resumeBusy = $state<string | null>(null);
+	let resumeProgress = $state<string | null>(null);
+	let resumeFailure = $state<{ title: string; message: string } | null>(null);
 
 	const heroRotation = $derived<KitsuAnimeRef[]>(
 		trending && trending.length > 0 ? trending.slice(0, HERO_ROTATION_COUNT) : []
@@ -82,6 +96,12 @@
 		kitsuTopRated()
 			.then((t) => (topRated = t))
 			.catch((e) => (topRatedError = describeError(e)));
+		// Settings drive mode/quality for the Continue Watching click
+		// handler. Default {sub, best} when settings haven't loaded
+		// yet — same fallback the click handler uses on /anime/[id].
+		settingsGet()
+			.then((c) => (config = c))
+			.catch(() => {});
 		Promise.all([historyList(), watchedAtAll().catch(() => ({}) as Record<string, number>)])
 			.then(([h, watchedAt]) => {
 				// Continue Watching ordering: GUI-stamped rows on top,
@@ -182,6 +202,90 @@
 			if (typeof obj.kind === 'string') return obj.kind;
 		}
 		return String(e);
+	}
+
+	/** Surface ani-cli failure kinds as user-readable copy. Mirrors the
+	 *  same mapper on /anime/[id] and /play/[id]. */
+	function describePlayFailure(e: unknown): string {
+		const raw = describeError(e).toLowerCase();
+		if (raw.includes('no_results')) {
+			return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
+		}
+		if (raw.includes('scraper')) {
+			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
+		}
+		if (raw.includes('timeout')) {
+			return 'The streaming source took too long to respond. Try again in a few minutes.';
+		}
+		if (raw.includes('network') || raw.includes('upstream')) {
+			return 'Network trouble reaching the streaming source. Check your connection and try again.';
+		}
+		return "Couldn't start this episode right now. Try again in a few minutes.";
+	}
+
+	function progressLabel(p: PlayProgress): string {
+		if (p.kind === 'banner') return p.text;
+		if (p.kind === 'links_fetched') return `${p.provider} ✓`;
+		return p.text;
+	}
+
+	/** Click handler for a Continue Watching card. Resolves the play
+	 *  through the same getOrFire/playStream pipeline /anime/[id]
+	 *  uses, then navigates straight to /play/[id]?session=… —
+	 *  bypassing the detail page. Once running, back from /play/[id]
+	 *  returns home (where the user came from) instead of dropping
+	 *  them on the detail view with a stale highlight ring. */
+	async function startResume(match: KitsuAnimeRef, ep: number) {
+		if (resumeBusy) return;
+		const title = match.canonical_title;
+		if (!title) return;
+		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config?.quality ?? 'best';
+		resumeBusy = match.id;
+		resumeProgress = null;
+		try {
+			const session = await getOrFire(
+				makeKey(match.id, ep, mode, quality),
+				(emit, signal) =>
+					playStream(
+						{
+							title,
+							episode: String(ep),
+							mode,
+							quality,
+							episode_count: match.episode_count ?? null,
+							alt_titles: altTitlesFromKitsu(match),
+							kitsu_id: match.id
+						},
+						emit,
+						signal
+					),
+				(p) => {
+					resumeProgress = progressLabel(p);
+				}
+			);
+			void markWatched({
+				title,
+				episode: String(ep),
+				mode,
+				quality,
+				episode_count: match.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(match),
+				kitsu_id: match.id
+			}).catch(() => {});
+			/* eslint-disable svelte/no-navigation-without-resolve */
+			void goto(
+				resolve('/play/[id]', { id: match.id }) +
+					`?session=${encodeURIComponent(session.session_id)}` +
+					`&episode=${ep}&kind=${session.media_kind}` +
+					(session.cache_hit === true ? '&cache_hit=1' : '')
+			);
+			/* eslint-enable svelte/no-navigation-without-resolve */
+		} catch (e) {
+			resumeBusy = null;
+			resumeProgress = null;
+			resumeFailure = { title, message: describePlayFailure(e) };
+		}
 	}
 
 	function heroFor(d: KitsuAnimeRef): { url: string | null; isCover: boolean } {
@@ -335,47 +439,96 @@
 					null
 			)}
 			{@const image = epThumb ?? animePoster}
-			<!-- href IS resolve()-produced; the rule pattern-matches a literal
-			     `href={resolve(...)}` and trips on the ternary + concatenation,
-			     so the disable wraps the element. -->
+			{@const resumable = match && target.kitsuEpisode !== null}
+			{@const isResuming = resumeBusy === match?.id}
+			<!-- Card is a button when we can resume (Kitsu match + an
+			     episode to play); else falls through to /search as a
+			     plain link. The href on the search-fallback path is
+			     resolve()-produced; the lint rule's pattern matcher
+			     doesn't recognise the ternary, so disabled around it. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
-			<a
-				class="resume-card"
-				class:resume-card-loading={match === undefined}
-				style="--accent: {accent};"
-				href={target.kitsuId
-					? resolve('/anime/[id]', { id: target.kitsuId }) + resumeQueryString(target)
-					: resolve('/search')}
-			>
-				<span class="resume-poster">
-					{#if image}
-						<img src={image} alt="" loading="lazy" decoding="async" />
-					{:else}
-						<span class="resume-poster-placeholder" aria-hidden="true">
-							{target.displayTitle.slice(0, 2).toUpperCase()}
+			{#if resumable && match}
+				<button
+					type="button"
+					class="resume-card"
+					class:resume-card-loading={match === undefined}
+					class:resume-card-busy={isResuming}
+					style="--accent: {accent};"
+					disabled={!!resumeBusy && !isResuming}
+					onclick={() => startResume(match, target.kitsuEpisode!)}
+				>
+					<span class="resume-poster">
+						{#if image}
+							<img src={image} alt="" loading="lazy" decoding="async" />
+						{:else}
+							<span class="resume-poster-placeholder" aria-hidden="true">
+								{target.displayTitle.slice(0, 2).toUpperCase()}
+							</span>
+						{/if}
+						<span class="resume-ep-tag" aria-hidden="true">
+							<span class="resume-ep-key">EP</span>
+							<span class="resume-ep-num">{target.displayEpisode}</span>
 						</span>
-					{/if}
-					<span class="resume-ep-tag" aria-hidden="true">
-						<span class="resume-ep-key">EP</span>
-						<span class="resume-ep-num">{target.displayEpisode}</span>
 					</span>
-				</span>
-				<span class="resume-body">
-					<span class="resume-show">{target.displayTitle}</span>
-					{#if ep?.canonical_title}
-						<span class="resume-title">{ep.canonical_title}</span>
-					{:else}
-						<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
-					{/if}
-					<span class="resume-cta">
-						<span aria-hidden="true">↺</span>
-						<span>Resume</span>
+					<span class="resume-body">
+						<span class="resume-show">{target.displayTitle}</span>
+						{#if ep?.canonical_title}
+							<span class="resume-title">{ep.canonical_title}</span>
+						{:else}
+							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
+						{/if}
+						<span class="resume-cta">
+							<span aria-hidden="true">↺</span>
+							<span>Resume</span>
+						</span>
 					</span>
-				</span>
-			</a>
+				</button>
+			{:else}
+				<a
+					class="resume-card"
+					class:resume-card-loading={match === undefined}
+					style="--accent: {accent};"
+					href={resolve('/search')}
+				>
+					<span class="resume-poster">
+						{#if image}
+							<img src={image} alt="" loading="lazy" decoding="async" />
+						{:else}
+							<span class="resume-poster-placeholder" aria-hidden="true">
+								{target.displayTitle.slice(0, 2).toUpperCase()}
+							</span>
+						{/if}
+						<span class="resume-ep-tag" aria-hidden="true">
+							<span class="resume-ep-key">EP</span>
+							<span class="resume-ep-num">{target.displayEpisode}</span>
+						</span>
+					</span>
+					<span class="resume-body">
+						<span class="resume-show">{target.displayTitle}</span>
+						{#if ep?.canonical_title}
+							<span class="resume-title">{ep.canonical_title}</span>
+						{:else}
+							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
+						{/if}
+						<span class="resume-cta">
+							<span aria-hidden="true">↺</span>
+							<span>Resume</span>
+						</span>
+					</span>
+				</a>
+			{/if}
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{/each}
 	</Strip>
+{/if}
+
+<LoadingOverlay visible={resumeBusy !== null} progress={resumeProgress} />
+{#if resumeFailure}
+	<ErrorOverlay
+		headline="Couldn't resume {resumeFailure.title}"
+		body={resumeFailure.message}
+		onDismiss={() => (resumeFailure = null)}
+	/>
 {/if}
 
 <!-- Trending strip (the tail; the head is the hero) -->

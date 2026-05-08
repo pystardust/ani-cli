@@ -12,7 +12,7 @@
     Play / Download / External are wired to TODOs with inline notice.
 -->
 <script lang="ts">
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -38,12 +38,7 @@
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
-	import {
-		decideEpisodeFetchAction,
-		parseEpParam,
-		parsePageParam,
-		shouldHighlight
-	} from '$lib/history/url-deeplink';
+	import { decideEpisodeFetchAction, parsePageParam } from '$lib/history/url-deeplink';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -69,10 +64,6 @@
 	let episodesPage = $state(1);
 	let episodesLoading = $state(false);
 	let jumpInput = $state('');
-	// Episode number to highlight after a deep link from Continue
-	// Watching (?ep=…). Cleared on a timeout so the accent ring isn't
-	// sticky.
-	let highlightEp = $state<number | null>(null);
 	const UI_PAGE_SIZE = 12;
 	const KITSU_PAGE_SIZE = 20;
 	// SvelteMap (vs plain Map) keeps the eslint reactivity rule happy.
@@ -415,27 +406,6 @@
 		} else if (action === 'fetch') {
 			void fetchEpisodesPage(targetPage);
 		}
-	});
-
-	// Deep-link episode highlight. Fires once per ?ep= value (tracked
-	// via consumedEp) once the matching tile is in `episodes`. Scrolls
-	// the tile into view and auto-clears the accent ring after ~3.2s.
-	let consumedEp: number | null = null;
-	$effect(() => {
-		const target = parseEpParam(page.url.searchParams);
-		if (!shouldHighlight({ target, consumed: consumedEp, episodes })) return;
-		// shouldHighlight has already validated target is non-null + present.
-		const epParam = target as number;
-		consumedEp = epParam;
-		highlightEp = epParam;
-		void tick().then(() => {
-			document
-				.querySelector(`[data-ep-num="${epParam}"]`)
-				?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		});
-		window.setTimeout(() => {
-			if (highlightEp === epParam) highlightEp = null;
-		}, 3200);
 	});
 
 	$effect(() => {
@@ -973,7 +943,6 @@
 							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
 							{@const num = ep.number ?? ep.relative_number ?? null}
 							<li
-								class:ep-highlight={num !== null && num === highlightEp}
 								data-ep-num={num ?? ''}
 								in:settle={{ duration: 620, delay: i * 45 }}
 								out:settleOut={{ duration: 320, delay: i * 18 }}
@@ -1009,7 +978,6 @@
 						     so the user isn't blocked from poking the panel. -->
 						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
 							<li
-								class:ep-highlight={n === highlightEp}
 								data-ep-num={n}
 								in:settle={{ duration: 580, delay: i * 40 }}
 								out:settleOut={{ duration: 300, delay: i * 16 }}
@@ -1614,39 +1582,6 @@
 			0 4px 10px -4px rgb(0 0 0 / 0.45);
 	}
 
-	/* Deep-link highlight: when arriving from Continue Watching with
-	   ?ep=N, the matching tile pulses an accent ring twice and stays
-	   ringed for a beat so the user sees "this is the one you were
-	   on." Class is auto-removed after ~3.2s by the script. */
-	.ep-grid li.ep-highlight .ep-tile {
-		border-color: color-mix(in oklab, var(--accent) 90%, var(--bone-100));
-		box-shadow:
-			0 0 0 2px color-mix(in oklab, var(--accent) 80%, transparent),
-			0 16px 32px -8px color-mix(in oklab, var(--accent) 38%, transparent);
-		animation: ep-highlight-pulse 1.6s ease-out 2;
-	}
-	@keyframes ep-highlight-pulse {
-		0% {
-			box-shadow:
-				0 0 0 0 color-mix(in oklab, var(--accent) 70%, transparent),
-				0 0 0 0 color-mix(in oklab, var(--accent) 30%, transparent);
-		}
-		35% {
-			box-shadow:
-				0 0 0 4px color-mix(in oklab, var(--accent) 70%, transparent),
-				0 0 24px 4px color-mix(in oklab, var(--accent) 35%, transparent);
-		}
-		100% {
-			box-shadow:
-				0 0 0 2px color-mix(in oklab, var(--accent) 70%, transparent),
-				0 16px 32px -8px color-mix(in oklab, var(--accent) 30%, transparent);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.ep-grid li.ep-highlight .ep-tile {
-			animation: none;
-		}
-	}
 	.ep-tile:hover .ep-thumb img {
 		filter: brightness(1);
 	}
