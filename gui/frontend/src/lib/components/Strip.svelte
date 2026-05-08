@@ -346,8 +346,8 @@
 		place-items: center;
 		inline-size: 2.25rem;
 		block-size: 2.25rem;
-		font-family: var(--font-display);
-		font-size: 1.75rem;
+		font-family: var(--font-body);
+		font-size: 1.5rem;
 		line-height: 1;
 		color: var(--bone-100);
 		background: color-mix(in oklab, var(--ink-100) 80%, transparent);

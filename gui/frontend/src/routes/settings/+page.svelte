@@ -443,10 +443,10 @@
 	}
 	.page-title {
 		margin: 0;
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: clamp(2rem, 4vw, var(--type-display-l));
-		letter-spacing: var(--tracking-display);
+		letter-spacing: -0.02em;
 		color: var(--bone-100);
 	}
 
@@ -472,7 +472,6 @@
 		color: var(--bone-400);
 		text-transform: none;
 		letter-spacing: var(--tracking-meta);
-		font-style: italic;
 	}
 
 	.field {
@@ -498,7 +497,8 @@
 		gap: 2px;
 	}
 	.field-key {
-		font-family: var(--font-display);
+		font-family: var(--font-body);
+		font-weight: 500;
 		font-size: var(--type-body);
 		color: var(--bone-100);
 	}
@@ -718,7 +718,8 @@
 	}
 	.state-headline {
 		margin: 0 0 var(--space-2);
-		font-family: var(--font-display);
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-body-l);
 		color: var(--bone-100);
 	}

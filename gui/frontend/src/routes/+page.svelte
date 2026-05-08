@@ -695,7 +695,7 @@
 
 	.hero-snippet {
 		margin: 0 0 var(--space-6);
-		font-family: var(--font-display);
+		font-family: var(--font-body);
 		font-size: var(--type-body-l);
 		line-height: 1.55;
 		color: var(--bone-200);
@@ -892,8 +892,8 @@
 		place-items: center;
 		inline-size: 100%;
 		block-size: 100%;
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-display-s);
 		color: var(--bone-300);
 		background: linear-gradient(
@@ -951,10 +951,10 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-body-l);
-		line-height: var(--leading-tight);
+		font-family: var(--font-body);
+		font-weight: 500;
+		font-size: 1rem;
+		line-height: 1.3;
 		color: var(--bone-100);
 	}
 	.resume-title-faint {

@@ -1170,8 +1170,8 @@
 		background: linear-gradient(180deg, var(--ink-100), var(--ink-050));
 	}
 	.poster-placeholder-title {
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-display-m);
 		color: var(--bone-200);
 		text-align: center;
@@ -1361,10 +1361,10 @@
 		color: var(--bone-300);
 	}
 	.meta-val {
-		font-family: var(--font-display);
+		font-family: var(--font-body);
 		font-size: var(--type-body-l);
+		font-weight: 500;
 		color: var(--bone-100);
-		letter-spacing: var(--tracking-display);
 	}
 	.meta-val.num {
 		font-family: var(--font-mono);
@@ -1467,20 +1467,10 @@
 	}
 	.prose {
 		margin: 0;
-		font-family: var(--font-display);
-		font-size: var(--type-display-m);
-		line-height: 1.5;
-		color: var(--bone-100);
-	}
-	.prose::first-letter {
-		font-family: var(--font-display);
-		float: inline-start;
-		font-size: 3.4em;
-		line-height: 0.9;
-		padding-inline-end: 0.08em;
-		padding-block-start: 0.06em;
-		color: var(--bone-100);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-size: var(--type-body-l);
+		line-height: 1.55;
+		color: color-mix(in oklab, var(--bone-100) 85%, transparent);
 	}
 	.prose-fade {
 		position: absolute;
@@ -1513,8 +1503,7 @@
 	}
 	.prose-empty {
 		margin: 0;
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
 		color: var(--bone-300);
 	}
 
@@ -1635,9 +1624,10 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-		font-family: var(--font-display);
-		font-size: var(--type-body);
-		line-height: var(--leading-tight);
+		font-family: var(--font-body);
+		font-size: 0.9375rem; /* 15px */
+		font-weight: 500;
+		line-height: 1.3;
 		color: var(--bone-100);
 	}
 	.ep-meta {
@@ -1766,7 +1756,7 @@
 		place-items: center;
 		inline-size: 2rem;
 		block-size: 2rem;
-		font-family: var(--font-display);
+		font-family: var(--font-body);
 		font-size: var(--type-body-l);
 		color: var(--bone-200);
 		border: 1px solid var(--ink-300);
@@ -1851,10 +1841,11 @@
 	}
 	.state-headline {
 		margin: 0 0 var(--space-2);
-		font-family: var(--font-display);
+		font-family: var(--font-body);
 		font-size: var(--type-display-m);
+		font-weight: 600;
 		color: var(--bone-100);
-		letter-spacing: var(--tracking-display);
+		letter-spacing: -0.01em;
 	}
 	.state-detail {
 		margin: 0;

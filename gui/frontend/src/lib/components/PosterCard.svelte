@@ -104,8 +104,8 @@
 		background: linear-gradient(180deg, var(--ink-100) 0%, var(--ink-050) 100%);
 	}
 	.poster-placeholder-title {
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-body-l);
 		text-align: center;
 		color: var(--bone-200);
@@ -147,10 +147,10 @@
 	}
 	.card-title {
 		display: block;
-		font-family: var(--font-display);
-		font-size: var(--type-body);
-		line-height: var(--leading-tight);
-		letter-spacing: var(--tracking-display);
+		font-family: var(--font-body);
+		font-size: 0.9375rem; /* 15px */
+		font-weight: 500;
+		line-height: 1.3;
 		color: var(--bone-100);
 		overflow: hidden;
 		display: -webkit-box;

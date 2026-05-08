@@ -1051,10 +1051,9 @@
 		justify-content: center;
 		inline-size: 100%;
 		block-size: 100%;
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
 		font-weight: 600;
-		font-size: 1.6rem;
+		font-size: 1.4rem;
 		letter-spacing: 0.01em;
 		color: var(--bone-200);
 		background: linear-gradient(
@@ -1073,7 +1072,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		color: var(--bone-300);
 		text-transform: uppercase;
@@ -1099,10 +1098,10 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: var(--space-3);
-		margin-block-start: var(--space-2);
-		font-family: var(--font-mono);
-		font-size: var(--type-body);
-		color: var(--bone-100);
+		margin-block-start: var(--space-3);
+		font-family: var(--font-body);
+		font-size: 0.9375rem; /* 15px */
+		color: color-mix(in oklab, var(--bone-100) 72%, transparent);
 		min-inline-size: 0;
 	}
 	.show-episode-num {
@@ -1159,8 +1158,9 @@
 		border-radius: var(--radius-pill);
 		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 		color: var(--bone-200);
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		font-family: var(--font-body);
+		font-size: 0.8125rem; /* 13px */
+		font-weight: 500;
 		cursor: pointer;
 		transition:
 			border-color var(--dur-fast) var(--ease-out-soft),
@@ -1315,7 +1315,7 @@
 		display: grid;
 		place-items: center;
 		color: var(--accent);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-display-l);
 		pointer-events: none;
 	}
@@ -1347,12 +1347,11 @@
 		justify-content: flex-start;
 	}
 	.similar-wrap :global(.eyebrow) {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-l);
-		font-weight: 500;
-		line-height: 1;
-		letter-spacing: var(--tracking-display);
+		font-family: var(--font-body);
+		font-size: 1.75rem; /* 28px per type spec */
+		font-weight: 600;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
 		color: var(--bone-100);
 		text-transform: none;
 	}
@@ -1370,7 +1369,7 @@
 	}
 	.similar-wrap :global(.eyebrow-value) {
 		color: var(--bone-300);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-style: normal;
 		font-size: var(--type-meta);
 		letter-spacing: var(--tracking-meta);
@@ -1397,13 +1396,12 @@
 	}
 	.ep-section-heading {
 		margin: 0;
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-l);
-		font-weight: 500;
-		line-height: 1;
+		font-family: var(--font-body);
+		font-size: 2rem; /* 32px per type spec */
+		font-weight: 600;
+		line-height: 1.05;
 		color: var(--bone-100);
-		letter-spacing: var(--tracking-display);
+		letter-spacing: -0.02em;
 	}
 	.ep-section-rule {
 		flex: 0 0 auto;
@@ -1416,11 +1414,12 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: var(--space-2);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-meta);
+		font-family: var(--font-body);
+		font-size: 0.6875rem; /* 11px */
+		font-weight: 600;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--bone-300);
+		color: color-mix(in oklab, var(--bone-100) 55%, transparent);
 		font-variant-numeric: tabular-nums lining-nums;
 	}
 	.ep-section-counter .num {
@@ -1456,7 +1455,7 @@
 		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 	}
 	.ep-jump-key {
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
@@ -1468,7 +1467,7 @@
 		border: 0;
 		background: transparent;
 		color: var(--bone-100);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		font-variant-numeric: tabular-nums lining-nums;
 	}
@@ -1489,7 +1488,7 @@
 		border-radius: var(--radius-pill);
 		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 		color: var(--bone-200);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		cursor: pointer;
 		transition:
 			border-color var(--dur-fast) var(--ease-out-soft),
@@ -1511,7 +1510,7 @@
 		gap: var(--space-2);
 	}
 	.ep-pager-state {
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		font-variant-numeric: tabular-nums lining-nums;
 		color: var(--bone-100);
@@ -1547,7 +1546,7 @@
 	.ep-list-empty {
 		margin: 0;
 		padding: var(--space-4);
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		color: var(--bone-300);
 		text-align: center;
@@ -1630,9 +1629,9 @@
 		inset: 0;
 		display: grid;
 		place-items: center;
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-display-l);
+		font-family: var(--font-body);
+		font-size: var(--type-display-m);
+		font-weight: 600;
 		font-variant-numeric: tabular-nums lining-nums;
 		color: var(--bone-300);
 	}
@@ -1658,19 +1657,19 @@
 		pointer-events: none;
 	}
 	.ep-card-overlay-num {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		font-family: var(--font-body);
+		font-size: 0.6875rem; /* 11px */
 		font-weight: 600;
-		letter-spacing: var(--tracking-meta);
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
+		color: color-mix(in oklab, var(--bone-100) 65%, transparent);
 		text-shadow: 0 1px 4px rgb(0 0 0 / 0.8);
 	}
 	.ep-card-overlay-title {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-body-l);
-		line-height: 1.2;
+		font-family: var(--font-body);
+		font-size: 0.9375rem; /* 15px */
+		font-weight: 500;
+		line-height: 1.25;
 		color: var(--bone-100);
 		text-shadow: 0 1px 4px rgb(0 0 0 / 0.85);
 		overflow: hidden;
@@ -1714,7 +1713,7 @@
 		inset-block-start: var(--space-2);
 		inset-inline-end: var(--space-2);
 		padding: 4px 10px;
-		font-family: var(--font-mono);
+		font-family: var(--font-body);
 		font-size: var(--type-micro);
 		font-weight: 600;
 		letter-spacing: var(--tracking-micro);

@@ -898,9 +898,9 @@
 		min-inline-size: 0;
 	}
 	.topbar-hit-title {
-		font-family: var(--font-display);
-		font-style: italic;
-		font-size: var(--type-body);
+		font-family: var(--font-body);
+		font-weight: 500;
+		font-size: 0.9375rem;
 		line-height: 1.2;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -916,8 +916,8 @@
 	.topbar-dropdown-empty {
 		margin: 0;
 		padding: var(--space-3);
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-size: 0.875rem;
 		color: var(--bone-300);
 		text-align: center;
 	}

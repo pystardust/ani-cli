@@ -381,11 +381,10 @@
 		border-block-end: 1px solid var(--ink-200);
 	}
 	.poster-placeholder-title {
-		font-family: var(--font-display);
-		font-style: italic;
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-display-m);
 		line-height: var(--leading-tight);
-		letter-spacing: var(--tracking-display);
 		color: var(--bone-200);
 		text-align: center;
 		/* Keep long titles from blowing the card. */
@@ -416,10 +415,10 @@
 	}
 	.card-title {
 		display: block;
-		font-family: var(--font-display);
-		font-size: var(--type-body-l);
-		line-height: var(--leading-tight);
-		letter-spacing: var(--tracking-display);
+		font-family: var(--font-body);
+		font-weight: 500;
+		font-size: 1rem;
+		line-height: 1.3;
 		color: var(--bone-100);
 		/* clamp to 2 lines, keep grid rhythm */
 		overflow: hidden;
@@ -493,13 +492,15 @@
 	}
 	.state-headline {
 		margin: 0 0 var(--space-2);
-		font-family: var(--font-display);
+		font-family: var(--font-body);
+		font-weight: 600;
 		font-size: var(--type-display-m);
 		color: var(--bone-100);
-		letter-spacing: var(--tracking-display);
+		letter-spacing: -0.01em;
 	}
 	.state-headline em {
-		font-style: italic;
+		font-style: normal;
+		font-weight: 600;
 		color: var(--bone-200);
 	}
 	.state-detail {
