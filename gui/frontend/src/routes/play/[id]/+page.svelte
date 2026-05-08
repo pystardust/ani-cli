@@ -763,14 +763,24 @@
 			<h2 class="ep-section-heading">Episodes</h2>
 			<span class="ep-section-counter">
 				{#if episodes && episodes.length > 0 && detail?.episode_count}
-					<span class="ep-section-counter-range">
-						<span class="num">{epStart}</span><span aria-hidden="true">–</span><span class="num"
-							>{epEnd}</span
+					{#if totalEpisodePages !== null && totalEpisodePages > 1}
+						<!-- Multi-page show: surface the visible range so the
+						     user knows where they are in the season. -->
+						<span class="ep-section-counter-range">
+							<span class="num">{epStart}</span><span aria-hidden="true">–</span><span class="num"
+								>{epEnd}</span
+							>
+						</span>
+						<span class="ep-section-counter-of"
+							>of <span class="num">{detail.episode_count}</span></span
 						>
-					</span>
-					<span class="ep-section-counter-of"
-						>of <span class="num">{detail.episode_count}</span></span
-					>
+					{:else}
+						<!-- Single-page show: range info is redundant; just say
+						     how many episodes there are. -->
+						<span class="ep-section-counter-range">
+							<span class="num">{detail.episode_count}</span> episodes
+						</span>
+					{/if}
 				{:else if episodes && episodes.length > 0}
 					<span class="ep-section-counter-range">page <span class="num">{episodesPage}</span></span>
 				{:else if episodesError}
@@ -781,7 +791,7 @@
 			</span>
 		</header>
 
-		{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
+		{#if totalEpisodePages !== null ? totalEpisodePages > 1 : (episodes?.length ?? 0) >= UI_PAGE_SIZE}
 			<div class="ep-controls">
 				<form class="ep-jump" onsubmit={jumpToEpisode}>
 					<label class="ep-jump-label">
@@ -886,13 +896,12 @@
 		{/if}
 	</section>
 
-	<!-- Similar titles — same component the detail page uses. Wrapped
-	     in a similar-wrap div so the strip's outer block aligns with
-	     the player and ep section above (max-inline-size: --player-max,
-	     centered). -->
+	<!-- "More like this" strip — recommendations seeded from the
+	     show's first 1-2 title words via Kitsu search. Wrapped to
+	     align with the player + ep section above. -->
 	{#if similar && similar.length > 0}
 		<div class="similar-wrap">
-			<Strip eyebrow="Similar titles" caption="via Kitsu search">
+			<Strip eyebrow="More like this">
 				{#each similar as hit (hit.id)}
 					<PosterCard anime={hit} />
 				{/each}
@@ -925,10 +934,17 @@
 		   /play is a watch surface and feels right when it spreads. */
 		max-inline-size: 130rem;
 		margin-inline: auto;
+		/* Hero glow extends further down (60% block radius vs 35%)
+		   with a softer mid-stop, so the warmth bleeds into the
+		   page instead of looking like a clipped strip behind the
+		   header. The fade ends well before the ep section so the
+		   bottom of the page is still neutral. */
 		background: radial-gradient(
-			ellipse 70% 35% at 50% 0%,
-			color-mix(in oklab, var(--accent) 16%, transparent),
-			transparent 70%
+			ellipse 95% 60% at 50% 0%,
+			color-mix(in oklab, var(--accent) 20%, transparent) 0%,
+			color-mix(in oklab, var(--accent) 10%, transparent) 25%,
+			color-mix(in oklab, var(--accent) 4%, transparent) 50%,
+			transparent 75%
 		);
 	}
 
@@ -1016,21 +1032,22 @@
 		display: inline-flex;
 		align-items: baseline;
 		gap: var(--space-3);
-		margin-block-start: var(--space-1);
+		margin-block-start: var(--space-2);
 		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-200);
+		font-size: var(--type-body);
+		color: var(--bone-100);
 		min-inline-size: 0;
 	}
 	.show-episode-num {
 		color: var(--accent);
+		font-weight: 500;
 		text-transform: uppercase;
 		letter-spacing: var(--tracking-meta);
 	}
 	.show-episode-rule {
-		flex: 0 0 1.25rem;
+		flex: 0 0 1.5rem;
 		block-size: 1px;
-		background: var(--ink-300);
+		background: color-mix(in oklab, var(--accent) 50%, var(--ink-300));
 		align-self: center;
 	}
 	.show-episode-title {
@@ -1438,38 +1455,42 @@
 		color: var(--bone-300);
 	}
 
-	/* Top-fade overlay carrying ep number + title */
+	/* Top-fade overlay carrying ep number + title — stronger gradient
+	   and a slight extra ink-stop in the middle so the title stays
+	   readable on bright frames (sky / sand / sea backgrounds). */
 	.ep-card-overlay {
 		position: absolute;
 		inset-block-start: 0;
 		inset-inline: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		padding: var(--space-3) var(--space-3) var(--space-7);
+		gap: 4px;
+		padding: var(--space-3) var(--space-4) var(--space-8);
 		background: linear-gradient(
 			180deg,
-			rgb(0 0 0 / 0.78) 0%,
-			rgb(0 0 0 / 0.45) 60%,
+			rgb(0 0 0 / 0.92) 0%,
+			rgb(0 0 0 / 0.7) 40%,
+			rgb(0 0 0 / 0.35) 70%,
 			transparent 100%
 		);
 		pointer-events: none;
 	}
 	.ep-card-overlay-num {
 		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-size: var(--type-meta);
+		font-weight: 600;
+		letter-spacing: var(--tracking-meta);
 		text-transform: uppercase;
-		color: color-mix(in oklab, var(--accent) 70%, var(--bone-100));
-		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		color: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
+		text-shadow: 0 1px 4px rgb(0 0 0 / 0.8);
 	}
 	.ep-card-overlay-title {
 		font-family: var(--font-display);
 		font-style: italic;
-		font-size: var(--type-body);
+		font-size: var(--type-body-l);
 		line-height: 1.2;
 		color: var(--bone-100);
-		text-shadow: 0 1px 3px rgb(0 0 0 / 0.7);
+		text-shadow: 0 1px 4px rgb(0 0 0 / 0.85);
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
