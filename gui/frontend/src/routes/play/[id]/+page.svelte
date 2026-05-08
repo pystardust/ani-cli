@@ -1077,11 +1077,11 @@
 	.player-frame {
 		position: relative;
 		inline-size: 100%;
-		/* Default mode caps the video at a focused preview width.
-		   Theater mode lifts this further down so the video can
-		   spread to the full content width. */
-		max-inline-size: clamp(28rem, 70%, 56rem);
-		max-block-size: calc(100dvh - 14rem);
+		/* Default mode caps at --player-max (88rem) — the same
+		   cinema-width the page used at commit 73a87d9. Theater
+		   override below lifts the cap so the video can spread to
+		   the full content width. */
+		max-inline-size: var(--player-max);
 		margin-inline: auto;
 		aspect-ratio: 16 / 9;
 		background: #000;
@@ -1091,7 +1091,6 @@
 	}
 	.page.theater .player-frame {
 		max-inline-size: 100%;
-		max-block-size: calc(100dvh - 10rem);
 	}
 
 	/* Theater toggle pill in the player-header. Filled-accent state
