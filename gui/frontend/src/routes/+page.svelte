@@ -574,7 +574,9 @@
 	/* — Hero. The marquee. */
 	.hero {
 		position: relative;
-		min-block-size: clamp(28rem, 70dvh, 44rem);
+		/* Trimmed ~15%: was clamp(28rem, 70dvh, 44rem). The hero
+		   was eating too much vertical space above the strips. */
+		min-block-size: clamp(24rem, 60dvh, 37rem);
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
