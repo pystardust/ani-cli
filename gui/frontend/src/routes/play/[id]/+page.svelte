@@ -1042,11 +1042,10 @@
 	   visual side-effects so changes to one don't drift from the
 	   other. */
 	.page.theater .player-frame {
-		/* Cap by viewport height so the video doesn't push the ep
-		   grid below the fold on shallow windows. aspect-ratio
-		   continues to drive the 16:9 shape; max-block-size kicks
-		   in only when the natural inline-size would compute a
-		   block-size taller than (100dvh − chrome). */
+		/* Theater drops the default-mode inline cap so the video
+		   spreads to the full stage width. Only viewport-height
+		   keeps it bounded; aspect-ratio still drives 16:9. */
+		max-inline-size: 100%;
 		max-block-size: calc(100dvh - 10rem);
 		margin-inline: auto;
 	}
@@ -1457,12 +1456,17 @@
 	.player-frame {
 		position: relative;
 		inline-size: 100%;
+		/* Default mode: cap the video width so it reads as a focused
+		   preview rather than spreading to fill the whole player
+		   column. clamp(24rem floor, 62% preferred, 44rem max)
+		   keeps the frame compact on narrow viewports and still
+		   below the column's full width on wide ones. Theater
+		   mode overrides this cap further down so the video can
+		   take the full stage. */
+		max-inline-size: clamp(24rem, 62%, 44rem);
 		aspect-ratio: 16 / 9;
 		/* Height cap so the video never grows so tall it pushes the
-		   show-info / synopsis below the fold, even when the player
-		   column is very wide. The aspect-ratio still drives shape;
-		   when max-block-size kicks in, inline-size is reduced to
-		   match (and the frame centers via margin-inline auto). */
+		   show-info / synopsis below the fold. */
 		max-block-size: calc(100dvh - 14rem);
 		margin-inline: auto;
 		background: #000;
