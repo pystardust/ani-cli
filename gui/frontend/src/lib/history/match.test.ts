@@ -258,6 +258,38 @@ describe('resolveKitsuMatch', () => {
 		expect(mockedGetMatch).toHaveBeenCalled();
 	});
 
+	it('falls through when the reverse-mapping endpoint itself rejects', async () => {
+		// Backend transient error (network blip, 5xx). Resolver must
+		// degrade gracefully — same behaviour as the title-match
+		// outer-catch.
+		const preliminary = resolveHistoryEntry(entry('Demon Slayer (26 episodes)', '5'), null);
+		mockedAllmangaMap.mockRejectedValueOnce(new Error('boom'));
+		mockedGetMatch.mockResolvedValue('cached-id');
+		mockedDetail.mockResolvedValue(stubKitsu('cached-id', 'Demon Slayer'));
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('cached-id');
+		expect(mockedGetMatch).toHaveBeenCalled();
+	});
+
+	it('skips the reverse-mapping path when allmangaShowId is empty', async () => {
+		// Defensive: ResumeTarget's allmangaShowId is always set from
+		// entry.id, but if a future caller hands us a blank id we
+		// shouldn't make a useless round-trip.
+		const preliminary = resolveHistoryEntry(
+			{ id: '', ep_no: '1', title: 'Demon Slayer (26 episodes)' },
+			null
+		);
+		mockedGetMatch.mockResolvedValue('cached-id');
+		mockedDetail.mockResolvedValue(stubKitsu('cached-id', 'Demon Slayer'));
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('cached-id');
+		expect(mockedAllmangaMap).not.toHaveBeenCalled();
+	});
+
 	it('falls through to title-match when reverse-mapped detail fetch fails', async () => {
 		// Stale id (Kitsu removed the entry that was mapped). The
 		// resolver should not fail — it falls through to the live

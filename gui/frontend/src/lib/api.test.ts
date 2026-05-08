@@ -16,6 +16,7 @@ import {
 	kitsuAnimeDetail,
 	kitsuEpisodes,
 	kitsuSearch,
+	allmangaKitsuMapGet,
 	kitsuTitleMatchGet,
 	kitsuTitleMatchPut,
 	kitsuTopRated,
@@ -821,6 +822,34 @@ describe('kitsuTitleMatchPut', () => {
 			cour: 1,
 			kitsu_id: 'kitsu-x'
 		});
+	});
+});
+
+describe('allmangaKitsuMapGet', () => {
+	it('GETs /api/allmanga-kitsu-map/:show_id with the id URL-encoded', async () => {
+		const fetchMock = mockFetchOnce('11061');
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await allmangaKitsuMapGet('vDTSJHSpYnrkZnAvG');
+		const { url } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/allmanga-kitsu-map/vDTSJHSpYnrkZnAvG`);
+		expect(got).toBe('11061');
+	});
+
+	it('returns null when the backend has no mapping for the show_id', async () => {
+		globalThis.fetch = mockFetchOnce(null) as unknown as typeof fetch;
+		const got = await allmangaKitsuMapGet('never-played');
+		expect(got).toBeNull();
+	});
+
+	it('encodes show_ids that contain URL-special characters', async () => {
+		// Defensive — allmanga's ids are alphanum today, but the
+		// endpoint shape commits to encodeURIComponent so future
+		// id-format changes don't crash with double-slash splits.
+		const fetchMock = mockFetchOnce(null);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await allmangaKitsuMapGet('weird/id with spaces');
+		const { url } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/allmanga-kitsu-map/weird%2Fid%20with%20spaces`);
 	});
 });
 
