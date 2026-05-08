@@ -471,16 +471,7 @@
 		if (cover) return { url: imageProxyUrl(cover), isCover: true };
 		const poster =
 			d.poster_image?.large ?? d.poster_image?.original ?? d.poster_image?.medium ?? null;
-		if (poster) return { url: imageProxyUrl(poster), isCover: false };
-		// Both null — fall back to the first episode's thumbnail. Kitsu
-		// is sometimes missing show-level art for newly-aired sequels
-		// (e.g. Otonari no Tenshi-sama … 2nd Season) but ships per-
-		// episode thumbnails which read close enough as a hero. Treated
-		// as a "fallback" (blur+darken) so it doesn't claim to be the
-		// canonical cover. `episodes` may not be loaded yet on first
-		// paint; the markup re-renders when it lands.
-		const epThumb = episodes?.find((e) => e.thumbnail?.original)?.thumbnail?.original ?? null;
-		return { url: imageProxyUrl(epThumb), isCover: false };
+		return { url: imageProxyUrl(poster), isCover: false };
 	}
 	function posterFor(d: KitsuAnimeRef): string | null {
 		return imageProxyUrl(

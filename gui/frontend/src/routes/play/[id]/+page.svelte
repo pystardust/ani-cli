@@ -120,15 +120,15 @@
 
 	const showThumb = $derived(
 		imageProxyUrl(
+			// Kitsu's /anime/:id sometimes returns posterImage.original
+			// only (no small/medium/large) — recently-aired sequels
+			// like Otonari no Tenshi-sama … 2nd Season are like this.
+			// `original` keeps the chain honest before we conclude
+			// "no image available."
 			detail?.poster_image?.small ??
 				detail?.poster_image?.medium ??
 				detail?.poster_image?.large ??
-				// Some Kitsu entries (e.g. recently-aired sequels) have
-				// no posterImage at all; fall back to whichever
-				// episode in the loaded page has a thumbnail. Matches
-				// the detail-page hero fallback so the surface stays
-				// branded for these shows.
-				episodes?.find((e) => e.thumbnail?.original)?.thumbnail?.original ??
+				detail?.poster_image?.original ??
 				null
 		)
 	);
@@ -566,6 +566,14 @@
 			<span class="show-thumb" aria-hidden="true">
 				{#if showThumb}
 					<img src={showThumb} alt="" loading="lazy" decoding="async" />
+				{:else if detail?.canonical_title}
+					<!-- Kitsu has no posterImage at any size — render the
+					     show's first two letters as a placeholder so the
+					     thumb slot reads as branded, not dead-grey. Same
+					     pattern PosterCard uses on the home strips. -->
+					<span class="show-thumb-placeholder">
+						{detail.canonical_title.slice(0, 2).toUpperCase()}
+					</span>
 				{/if}
 			</span>
 			<span class="show-meta">
@@ -728,6 +736,24 @@
 		inline-size: 100%;
 		block-size: 100%;
 		object-fit: cover;
+	}
+	.show-thumb-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 100%;
+		block-size: 100%;
+		font-family: var(--font-display);
+		font-style: italic;
+		font-weight: 600;
+		font-size: 1.6rem;
+		letter-spacing: 0.01em;
+		color: var(--bone-200);
+		background: linear-gradient(
+			145deg,
+			color-mix(in oklab, var(--accent) 28%, var(--ink-100)) 0%,
+			color-mix(in oklab, var(--accent) 12%, var(--ink-100)) 100%
+		);
 	}
 	.show-meta {
 		display: flex;
