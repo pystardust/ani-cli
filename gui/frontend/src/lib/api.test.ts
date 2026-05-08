@@ -18,6 +18,7 @@ import {
 	kitsuSearch,
 	allmangaKitsuMapGet,
 	kitsuTitleMatchGet,
+	watchedAtAll,
 	kitsuTitleMatchPut,
 	kitsuTopRated,
 	kitsuTrending,
@@ -822,6 +823,23 @@ describe('kitsuTitleMatchPut', () => {
 			cour: 1,
 			kitsu_id: 'kitsu-x'
 		});
+	});
+});
+
+describe('watchedAtAll', () => {
+	it('GETs /api/watched-at and returns the parsed map', async () => {
+		const fetchMock = mockFetchOnce({ 'show-a': 1_800_000_000_000 });
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await watchedAtAll();
+		const { url } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/watched-at`);
+		expect(got).toEqual({ 'show-a': 1_800_000_000_000 });
+	});
+
+	it('returns an empty object when nothing is stamped', async () => {
+		globalThis.fetch = mockFetchOnce({}) as unknown as typeof fetch;
+		const got = await watchedAtAll();
+		expect(got).toEqual({});
 	});
 });
 

@@ -554,6 +554,17 @@ export function allmangaKitsuMapGet(showId: string): Promise<string | null> {
 	return getJson<string | null>(`/api/allmanga-kitsu-map/${encodeURIComponent(showId)}`);
 }
 
+/**
+ * Per-show last-watched millis-since-epoch map. Populated by the
+ * backend's `mark-watched` handler whenever the user clicks an
+ * episode through the GUI; CLI plays bypass it. Drives the home
+ * page Continue Watching sort: stamped rows on top (most recent
+ * first), unstamped rows at the bottom in original file order.
+ */
+export function watchedAtAll(): Promise<Record<string, number>> {
+	return getJson<Record<string, number>>('/api/watched-at');
+}
+
 export function settingsGet(): Promise<Config> {
 	return getJson<Config>('/api/settings');
 }

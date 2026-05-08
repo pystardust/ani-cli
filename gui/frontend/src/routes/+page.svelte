@@ -18,6 +18,7 @@
 		kitsuEpisodes,
 		kitsuTopRated,
 		kitsuTrending,
+		watchedAtAll,
 		type HistoryEntry,
 		type KitsuAnimeRef,
 		type KitsuEpisode
@@ -29,6 +30,7 @@
 		resumeQueryString
 	} from '$lib/history/resolve';
 	import { resolveKitsuMatch } from '$lib/history/match';
+	import { sortByWatchedAt } from '$lib/history/sort';
 	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -80,9 +82,15 @@
 		kitsuTopRated()
 			.then((t) => (topRated = t))
 			.catch((e) => (topRatedError = describeError(e)));
-		historyList()
-			.then((h) => {
-				history = h;
+		Promise.all([historyList(), watchedAtAll().catch(() => ({}) as Record<string, number>)])
+			.then(([h, watchedAt]) => {
+				// Continue Watching ordering: GUI-stamped rows on top,
+				// most recently watched first. Unstamped (CLI-only)
+				// rows fall to the bottom in original file order. The
+				// watched-at endpoint never throws — its catch above
+				// degrades to "treat everything as unstamped," which
+				// just preserves file order for everyone.
+				history = sortByWatchedAt(h, watchedAt);
 				// Two-stage lookup per entry, all routed through the
 				// resolver in lib/history/resolve.ts so cour-split shows
 				// (Stone Ocean Part 2 etc.) hit the right Kitsu episode
@@ -97,7 +105,7 @@
 				//      thumbnail + title.
 				// Fire-and-forget per entry; on failure the card
 				// degrades gracefully (anime poster + entry's own title).
-				h.forEach((entry: HistoryEntry) => {
+				history.forEach((entry: HistoryEntry) => {
 					const preliminary = resolveHistoryEntry(entry, null);
 					// resolveKitsuMatch checks the title-match cache first
 					// (TITLE_MATCH_TTL = 30d), short-circuiting the
