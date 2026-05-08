@@ -584,11 +584,14 @@
 		isolation: isolate;
 		display: grid;
 		justify-items: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		padding-block: var(--space-3);
 		padding-inline: var(--space-2);
 		color: var(--bone-300);
-		transition: color var(--dur-fast) var(--ease-out-soft);
+		border-radius: var(--radius-control);
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
 	}
 	@media (max-inline-size: 720px) {
 		.nav-link {
@@ -599,18 +602,23 @@
 	}
 	.nav-link:hover {
 		color: var(--bone-100);
+		background: color-mix(in oklab, var(--bone-100) 4%, transparent);
 	}
 	.nav-link.active {
 		color: var(--bone-100);
+		background: color-mix(in oklab, var(--brand) 10%, transparent);
 	}
 	.nav-link.active::before {
-		/* 2px accent rule on the inline-start edge marks the active item */
+		/* Stronger 3px accent rule on the inline-start edge marks the
+		   active item — was 2px and read as a hairline; bumped so the
+		   "you are here" cue is unmistakable at a glance. */
 		content: '';
 		position: absolute;
 		inset-block: var(--space-2);
 		inset-inline-start: 0;
-		inline-size: 2px;
-		background: var(--accent);
+		inline-size: 3px;
+		background: var(--brand);
+		border-radius: 0 2px 2px 0;
 		z-index: 1;
 	}
 	@media (max-inline-size: 720px) {

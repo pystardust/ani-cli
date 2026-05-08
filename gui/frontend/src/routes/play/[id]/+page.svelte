@@ -1203,7 +1203,12 @@
 		margin-inline: auto;
 	}
 	.similar-wrap :global(.strip) {
+		/* Bigger poster cards in the recommendation strip — token
+		   default is 11.25rem; bump to 14rem so titles below the
+		   poster are readable and the section feels intentional
+		   instead of "we placed a horizontal list". */
 		--strip-pad: 0;
+		--strip-card: 14rem;
 	}
 
 	/* — Episode section: same width as the player frame above, no
