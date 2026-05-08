@@ -662,4 +662,53 @@ mod tests {
             Some("kitsu-b".to_string())
         );
     }
+
+    // — Watched-at timestamps for Continue Watching ordering ——————————
+    //
+    // ani-hsts is keyed by show_id and only stores ep_no/title — no
+    // timestamps. The file's row order reflects "first time played"
+    // (in-place updates don't move rows). To render Continue Watching
+    // most-recently-watched-first we record a per-show_id wall-clock
+    // millis timestamp on every GUI play. CLI plays bypass this; their
+    // entries fall to the bottom of the strip ordered by file position.
+
+    #[test]
+    fn watched_at_round_trips_for_a_given_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        watched_at_put(&state, "vDTSJHSpYnrkZnAvG", 1_700_000_000_000)
+            .expect("put");
+        let got = watched_at_get(&state, "vDTSJHSpYnrkZnAvG").expect("get");
+        assert_eq!(got, Some(1_700_000_000_000));
+    }
+
+    #[test]
+    fn watched_at_returns_none_for_unstamped_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        assert_eq!(
+            watched_at_get(&state, "never-played-in-gui").expect("get"),
+            None
+        );
+    }
+
+    #[test]
+    fn watched_at_overwrites_on_re_put() {
+        // Each new play stamps the latest time, replacing the prior.
+        let state = state_with_kitsu_at("http://unused");
+        watched_at_put(&state, "abc", 1_700_000_000_000).expect("put 1");
+        watched_at_put(&state, "abc", 1_800_000_000_000).expect("put 2");
+        assert_eq!(
+            watched_at_get(&state, "abc").expect("get"),
+            Some(1_800_000_000_000)
+        );
+    }
+
+    #[test]
+    fn watched_at_all_returns_every_stamped_show_id() {
+        let state = state_with_kitsu_at("http://unused");
+        watched_at_put(&state, "show-a", 1_700_000_000_000).expect("put a");
+        watched_at_put(&state, "show-b", 1_800_000_000_000).expect("put b");
+        let map = watched_at_all(&state).expect("all");
+        assert_eq!(map.get("show-a"), Some(&1_700_000_000_000));
+        assert_eq!(map.get("show-b"), Some(&1_800_000_000_000));
+    }
 }

@@ -1129,6 +1129,110 @@ mod tests {
         assert_eq!(body, Some("11061".to_string()));
     }
 
+    /// Watched-at endpoint: returns the SQLite-stamped per-show_id
+    /// last-watched-millis map (GUI-only; CLI plays don't update this).
+    /// Home-page Continue Watching strip uses it to sort the strip
+    /// most-recent-first; untimestamped rows stay in file order at the
+    /// bottom.
+    #[tokio::test]
+    async fn watched_at_endpoint_returns_empty_object_when_nothing_stamped() {
+        let td = TempDir::new().expect("tempdir");
+        let router = build_api_router(Arc::new(test_app_state(&td)));
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/watched-at")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_string(response).await;
+        assert_eq!(body.trim(), "{}");
+    }
+
+    #[tokio::test]
+    async fn watched_at_endpoint_returns_stamps_keyed_by_show_id() {
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        crate::commands::kitsu::watched_at_put(&state, "show-a", 1_700_000_000_000)
+            .expect("put a");
+        crate::commands::kitsu::watched_at_put(&state, "show-b", 1_800_000_000_000)
+            .expect("put b");
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/watched-at")
+                    .body(Body::empty())
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_string(response).await;
+        assert!(body.contains("\"show-a\":1700000000000"), "body: {body}");
+        assert!(body.contains("\"show-b\":1800000000000"), "body: {body}");
+    }
+
+    #[tokio::test]
+    async fn mark_watched_stamps_show_id_in_watched_at_map() {
+        use crate::commands::play_resolution_cache::{cache_key, put, CachedResolution};
+        use crate::proxy::MediaKind;
+
+        let td = TempDir::new().expect("tempdir");
+        let state = test_app_state(&td);
+        let key = cache_key("Naruto: Shippuuden", "sub", "best", "150");
+        put(
+            &state.cache_pool,
+            &key,
+            &CachedResolution {
+                upstream_url: "https://video.example/720p.mp4".into(),
+                referer: String::new(),
+                subtitle_url: None,
+                media_kind: MediaKind::Mp4,
+                show_id: "vDTSJHSpYnrkZnAvG".into(),
+                show_title: "Nato: Shippuuden (500 episodes)".into(),
+            },
+        );
+        let pool = state.cache_pool.clone();
+        let before_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_millis() as i64;
+        let router = build_api_router(Arc::new(state));
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/play/mark-watched")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"title":"Naruto: Shippuuden","episode":"150","mode":"sub","kitsu_id":"1555"}"#,
+                    ))
+                    .expect("req"),
+            )
+            .await
+            .expect("oneshot");
+
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        let stamp_body = crate::cache::meta_cache_get(&pool, "watched-at:v1:vDTSJHSpYnrkZnAvG")
+            .expect("get")
+            .expect("stamped");
+        let stamp: i64 = stamp_body.parse().expect("ms parses as i64");
+        assert!(
+            stamp >= before_ms,
+            "stamp {stamp} should be >= before_ms {before_ms}"
+        );
+    }
+
     /// Reverse-mapping endpoint: given an allmanga show_id (the id
     /// in column 2 of `ani-hsts`), return the kitsu_id that the user
     /// played it as — when we've recorded it. The home-page Continue
