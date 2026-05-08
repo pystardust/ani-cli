@@ -388,11 +388,17 @@
 				kitsu_id: id
 			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
+			// replaceState: true so prev/next don't accumulate history
+			// entries — back from /play/[id] always returns to
+			// /anime/[id], not to the previously-watched episode.
+			// Episode navigation already lives in the player's prev/
+			// next controls; the back button is for leaving the show.
 			void goto(
 				resolve('/play/[id]', { id }) +
 					`?session=${encodeURIComponent(session.session_id)}` +
 					`&episode=${targetEp}&kind=${session.media_kind}` +
-					(cacheHit ? '&cache_hit=1' : '')
+					(cacheHit ? '&cache_hit=1' : ''),
+				{ replaceState: true }
 			);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
