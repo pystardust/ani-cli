@@ -70,9 +70,16 @@ protocol.registerSchemesAsPrivileged([
 function resolveBackendBinary() {
 	if (IS_DEV) {
 		const repoRoot = path.resolve(__dirname, '..', '..');
+		// Debug first in dev: cargo's debug profile is what `cargo
+		// build` and `cargo test` produce by default, so it stays fresh
+		// as the user iterates. The release binary at
+		// `target/release/` only updates when something explicitly
+		// runs `cargo build --release` and was a recurring footgun:
+		// `pnpm dev` would silently pick up a stale release binary
+		// from a packaging run hours earlier.
 		const candidates = [
-			path.join(repoRoot, 'gui', 'backend', 'target', 'release', 'ani-gui-backend'),
-			path.join(repoRoot, 'gui', 'backend', 'target', 'debug', 'ani-gui-backend')
+			path.join(repoRoot, 'gui', 'backend', 'target', 'debug', 'ani-gui-backend'),
+			path.join(repoRoot, 'gui', 'backend', 'target', 'release', 'ani-gui-backend')
 		];
 		for (const p of candidates) {
 			if (fs.existsSync(p)) return p;
