@@ -301,15 +301,26 @@
 		if (id) clearForShow(id);
 	});
 
-	onMount(() => {
-		if (!id) {
+	// Re-fetch detail + similar when the URL `id` changes. SvelteKit
+	// reuses this component for /anime/[a] → /anime/[b] navigations
+	// without remounting, so onMount alone wouldn't refire — the
+	// "Similar titles" cards used to refresh the page silently with
+	// stale data. Reset render state at the top so we don't briefly
+	// show the prior show's hero before the new fetch lands.
+	$effect(() => {
+		const currentId = id;
+		if (!currentId) {
 			error = { headline: 'No anime selected.', detail: 'URL is missing the id segment.' };
 			return;
 		}
-		// Fire detail + settings in parallel; episodes are driven by
-		// the URL-param effect below, not from here.
-		void kitsuAnimeDetail(id)
+		detail = null;
+		episodes = null;
+		episodesError = null;
+		similar = null;
+		error = null;
+		void kitsuAnimeDetail(currentId)
 			.then((d) => {
+				if (id !== currentId) return; // navigation raced ahead
 				detail = d;
 				// Override the layout's URL-only default with the
 				// loaded title so the breadcrumb reads the show
@@ -319,6 +330,7 @@
 				if (seed.length >= 2) {
 					void kitsuSearch(seed)
 						.then((hits) => {
+							if (id !== currentId) return;
 							similar = hits.filter((h) => h.id !== d.id).slice(0, 12);
 						})
 						.catch(() => {
@@ -328,7 +340,13 @@
 					similar = [];
 				}
 			})
-			.catch((e) => (error = describeError(e)));
+			.catch((e) => {
+				if (id !== currentId) return;
+				error = describeError(e);
+			});
+	});
+
+	onMount(() => {
 		void settingsGet()
 			.then((c) => (config = c))
 			.catch((e) => (configError = describeErrorString(e)));
