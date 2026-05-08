@@ -108,6 +108,15 @@
 	let videoEl: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
 
+	// Feature flag — toggles between Chromium's native <video>
+	// controls and our custom controls bar. The custom bar lets
+	// the timeline take the per-show accent color (Chromium's
+	// shadow-DOM slider can't be themed); the native controls
+	// are more battle-tested for edge cases (PIP, captions menu,
+	// keyboard shortcuts). Off by default until the custom bar
+	// proves out under real usage. Flip to true to preview.
+	const USE_CUSTOM_PLAYER_CONTROLS = false;
+
 	// Custom controls — Chromium's native media controls don't
 	// honor accent-color on the timeline shadow DOM, so we render
 	// our own progress bar / play / volume / fullscreen UI on top
@@ -830,102 +839,106 @@
 					bind:volume={videoVolume}
 					bind:muted={isMuted}
 					autoplay
-					onclick={togglePlay}
+					controls={!USE_CUSTOM_PLAYER_CONTROLS}
+					onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
 				></video>
 
-				<!-- Custom controls overlay. Built on top of the native
-				     <video> so we can theme the progress bar with the
-				     per-show accent — Chromium's shadow-DOM controls
-				     don't honor accent-color on the timeline. -->
-				<div class="player-controls" class:scrubber-hover={scrubberHover}>
-					<button
-						type="button"
-						class="pc-btn"
-						onclick={togglePlay}
-						aria-label={isPaused ? 'Play' : 'Pause'}
-					>
-						{#if isPaused}
-							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-								<path d="M8 5v14l11-7z" fill="currentColor" />
-							</svg>
-						{:else}
-							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-								<rect x="6" y="5" width="4" height="14" fill="currentColor" />
-								<rect x="14" y="5" width="4" height="14" fill="currentColor" />
-							</svg>
-						{/if}
-					</button>
+				<!-- Custom controls overlay — toggled by the
+				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
+				     default). When on, replaces Chromium's native
+				     timeline so the progress bar can take the
+				     per-show accent color. -->
+				{#if USE_CUSTOM_PLAYER_CONTROLS}
+					<div class="player-controls" class:scrubber-hover={scrubberHover}>
+						<button
+							type="button"
+							class="pc-btn"
+							onclick={togglePlay}
+							aria-label={isPaused ? 'Play' : 'Pause'}
+						>
+							{#if isPaused}
+								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+									<path d="M8 5v14l11-7z" fill="currentColor" />
+								</svg>
+							{:else}
+								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+									<rect x="6" y="5" width="4" height="14" fill="currentColor" />
+									<rect x="14" y="5" width="4" height="14" fill="currentColor" />
+								</svg>
+							{/if}
+						</button>
 
-					<span class="pc-time" aria-label="Current time">
-						{formatTime(currentTime)} <span class="pc-time-sep">/</span>
-						{formatTime(duration)}
-					</span>
+						<span class="pc-time" aria-label="Current time">
+							{formatTime(currentTime)} <span class="pc-time-sep">/</span>
+							{formatTime(duration)}
+						</span>
 
-					<div
-						class="pc-scrubber"
-						role="slider"
-						tabindex="0"
-						aria-label="Seek"
-						aria-valuemin="0"
-						aria-valuemax={Math.max(1, Math.floor(duration))}
-						aria-valuenow={Math.floor(currentTime)}
-						onclick={onScrubberClick}
-						onmouseenter={() => (scrubberHover = true)}
-						onmouseleave={() => (scrubberHover = false)}
-						onkeydown={(e) => {
-							if (e.key === 'ArrowRight') seekToFraction((currentTime + 5) / duration);
-							else if (e.key === 'ArrowLeft') seekToFraction((currentTime - 5) / duration);
-						}}
-					>
-						<div class="pc-scrubber-track">
-							<div
-								class="pc-scrubber-fill"
-								style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
-							></div>
-							<div
-								class="pc-scrubber-thumb"
-								style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
-							></div>
+						<div
+							class="pc-scrubber"
+							role="slider"
+							tabindex="0"
+							aria-label="Seek"
+							aria-valuemin="0"
+							aria-valuemax={Math.max(1, Math.floor(duration))}
+							aria-valuenow={Math.floor(currentTime)}
+							onclick={onScrubberClick}
+							onmouseenter={() => (scrubberHover = true)}
+							onmouseleave={() => (scrubberHover = false)}
+							onkeydown={(e) => {
+								if (e.key === 'ArrowRight') seekToFraction((currentTime + 5) / duration);
+								else if (e.key === 'ArrowLeft') seekToFraction((currentTime - 5) / duration);
+							}}
+						>
+							<div class="pc-scrubber-track">
+								<div
+									class="pc-scrubber-fill"
+									style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
+								></div>
+								<div
+									class="pc-scrubber-thumb"
+									style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
+								></div>
+							</div>
 						</div>
+
+						<button
+							type="button"
+							class="pc-btn"
+							onclick={toggleMute}
+							aria-label={isMuted ? 'Unmute' : 'Mute'}
+						>
+							{#if isMuted || videoVolume === 0}
+								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+									<path
+										d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
+										fill="currentColor"
+									/>
+								</svg>
+							{:else}
+								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+									<path
+										d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
+										fill="currentColor"
+									/>
+								</svg>
+							{/if}
+						</button>
+
+						<button
+							type="button"
+							class="pc-btn"
+							onclick={toggleFullscreen}
+							aria-label="Toggle fullscreen"
+						>
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path
+									d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
+									fill="currentColor"
+								/>
+							</svg>
+						</button>
 					</div>
-
-					<button
-						type="button"
-						class="pc-btn"
-						onclick={toggleMute}
-						aria-label={isMuted ? 'Unmute' : 'Mute'}
-					>
-						{#if isMuted || videoVolume === 0}
-							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-								<path
-									d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
-									fill="currentColor"
-								/>
-							</svg>
-						{:else}
-							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-								<path
-									d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
-									fill="currentColor"
-								/>
-							</svg>
-						{/if}
-					</button>
-
-					<button
-						type="button"
-						class="pc-btn"
-						onclick={toggleFullscreen}
-						aria-label="Toggle fullscreen"
-					>
-						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-							<path
-								d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
-								fill="currentColor"
-							/>
-						</svg>
-					</button>
-				</div>
+				{/if}
 			{/if}
 			{#if switchBusy}
 				<span class="player-spinner" aria-hidden="true">…</span>
