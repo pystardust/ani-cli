@@ -1101,19 +1101,23 @@
 		box-shadow: 0 4px 24px color-mix(in oklab, var(--accent) 18%, transparent);
 	}
 	.page.theater .player-frame {
-		/* Break out of .page's centered/padded box and spread the
-		   player from the rail edge to the right edge of the
-		   window. inline-size reaches the full viewport minus the
-		   rail; the calc on margin-inline-start back-computes the
-		   negative shift needed to align the element's left edge
-		   with the rail (parent half-width − element half-width).
-		   max-block-size keeps very tall windows from making the
-		   16:9 frame push the show-info / strip off-screen. */
-		inline-size: calc(100vw - var(--rail-width));
-		max-inline-size: none;
-		max-block-size: calc(100dvh - 8rem);
-		margin-inline-start: calc(50% - (100vw - var(--rail-width)) / 2);
-		margin-inline-end: 0;
+		/* Drive sizing from the block axis so the 16:9 frame can
+		   never overflow the viewport vertically. block-size is
+		   capped at (viewport − chrome); aspect-ratio computes
+		   inline-size from that. max-inline-size further clamps
+		   on ultrawide windows (so the player tops out at the
+		   full available content row width minus the rail). The
+		   element is then centered horizontally with translateX
+		   so its midline sits over the (viewport − rail) midline,
+		   regardless of the parent's centered-and-padded shape. */
+		inline-size: auto;
+		block-size: calc(100dvh - 8rem);
+		max-inline-size: calc(100vw - var(--rail-width));
+		max-block-size: none;
+		margin-inline: 0;
+		position: relative;
+		left: 50%;
+		transform: translateX(-50%);
 		border-radius: 0;
 		box-shadow: none;
 	}
