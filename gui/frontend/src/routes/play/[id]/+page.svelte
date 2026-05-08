@@ -785,6 +785,7 @@
 		<section class="ep-section" aria-label="Episodes">
 			<header class="ep-section-header">
 				<h2 class="ep-section-heading">Episodes</h2>
+				<span class="ep-section-rule" aria-hidden="true"></span>
 				<span class="ep-section-counter">
 					{#if episodes && episodes.length > 0 && detail?.episode_count}
 						{#if totalEpisodePages !== null && totalEpisodePages > 1}
@@ -1338,9 +1339,10 @@
 		--strip-card: 17rem;
 	}
 	/* Match Episodes' section heading style on the Strip's eyebrow
-	   so both row labels read identically — display-l italic in
-	   the per-show accent. The Strip's default mono uppercase
-	   eyebrow is too small here. */
+	   — display-l italic, white text, with the eyebrow-rule
+	   (Strip's built-in 2.5rem hairline) recolored to accent so
+	   both row labels read identically: bone-100 text + accent
+	   rule. */
 	.similar-wrap :global(.strip-header) {
 		justify-content: flex-start;
 	}
@@ -1351,20 +1353,28 @@
 		font-weight: 500;
 		line-height: 1;
 		letter-spacing: var(--tracking-display);
-		color: var(--accent);
+		color: var(--bone-100);
 		text-transform: none;
 	}
-	.similar-wrap :global(.eyebrow-key),
-	.similar-wrap :global(.eyebrow-rule),
-	.similar-wrap :global(.eyebrow-value) {
-		color: inherit;
-		background: none;
+	.similar-wrap :global(.eyebrow-key) {
+		color: var(--bone-100);
 		font: inherit;
 		letter-spacing: inherit;
 		text-transform: inherit;
 	}
 	.similar-wrap :global(.eyebrow-rule) {
-		display: none;
+		background: var(--accent);
+		inline-size: 2.5rem;
+		block-size: 1px;
+		align-self: center;
+	}
+	.similar-wrap :global(.eyebrow-value) {
+		color: var(--bone-300);
+		font-family: var(--font-mono);
+		font-style: normal;
+		font-size: var(--type-meta);
+		letter-spacing: var(--tracking-meta);
+		text-transform: uppercase;
 	}
 
 	/* — Episode section: same width as the player frame above, no
@@ -1383,7 +1393,6 @@
 	.ep-section-header {
 		display: flex;
 		align-items: baseline;
-		justify-content: space-between;
 		gap: var(--space-3);
 	}
 	.ep-section-heading {
@@ -1393,8 +1402,15 @@
 		font-size: var(--type-display-l);
 		font-weight: 500;
 		line-height: 1;
-		color: var(--accent);
+		color: var(--bone-100);
 		letter-spacing: var(--tracking-display);
+	}
+	.ep-section-rule {
+		flex: 0 0 auto;
+		inline-size: 2.5rem;
+		block-size: 1px;
+		background: var(--accent);
+		align-self: center;
 	}
 	.ep-section-counter {
 		display: inline-flex;
