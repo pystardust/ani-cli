@@ -1033,16 +1033,11 @@
 		position: static;
 		max-block-size: none;
 	}
-	.page.theater .ep-list {
-		/* Below the player, the list spreads as a responsive grid
-		   to use the horizontal real estate the ep cards lost when
-		   the sidebar disappeared. */
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-		gap: var(--space-3);
-		overflow-y: visible;
-		max-block-size: none;
-	}
+	/* Theater ep-list overrides live further down in the file, in
+	   the section that styles .ep-card to match the /anime/[id]
+	   tile shape. Keeping the layout-side rules grouped with their
+	   visual side-effects so changes to one don't drift from the
+	   other. */
 	.page.theater .player-frame {
 		/* Cap by viewport height so the video doesn't push the ep
 		   grid below the fold on shallow windows. aspect-ratio
@@ -1710,10 +1705,29 @@
 	   detail page byte-for-byte so the two routes feel like one
 	   surface. */
 	.page.theater .ep-list {
-		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		/* Horizontal scrolling strip — single row of detail-page-
+		   shaped tiles that scrolls sideways. Drops the grid in
+		   favour of a flex row so cards keep a fixed width and
+		   the row never wraps. Snap-stop on each card so a quick
+		   flick lands on a tile boundary. Mirrors the home-page
+		   strips, but with the /anime/[id] tile shape (border +
+		   foot under thumb, brightness filter, lift on hover —
+		   styled in the .ep-card / .ep-card-foot rules below). */
+		display: flex;
+		flex-direction: row;
+		grid-template-columns: none;
 		gap: var(--space-4);
-		overflow: visible;
+		overflow-x: auto;
+		overflow-y: visible;
+		scroll-snap-type: x mandatory;
 		max-block-size: none;
+		padding-block-end: var(--space-4);
+		padding-inline-end: var(--space-4);
+	}
+	.page.theater .ep-list li {
+		flex: 0 0 18rem;
+		min-inline-size: 0;
+		scroll-snap-align: start;
 	}
 	.page.theater .ep-card {
 		display: grid;
