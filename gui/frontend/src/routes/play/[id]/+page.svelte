@@ -529,7 +529,20 @@
 <main class="page" style:--accent={accent}>
 	<!-- Header strip: show context + prev/next + episode label. -->
 	<header class="player-header">
-		<a class="show-link" href={resolve('/anime/[id]', { id })}>
+		<a
+			class="show-link"
+			href={resolve('/anime/[id]', { id })}
+			onclick={(e) => {
+				// Treat poster → details as an "up" navigation:
+				// replace the player history entry rather than push,
+				// so back from /anime/[id] returns to whatever opened
+				// the player (typically home), not to the player
+				// itself. Keep the href so right-click / middle-click
+				// still work for power users.
+				e.preventDefault();
+				void goto(resolve('/anime/[id]', { id }), { replaceState: true });
+			}}
+		>
 			<span class="show-thumb" aria-hidden="true">
 				{#if showThumb}
 					<img src={showThumb} alt="" loading="lazy" decoding="async" />
