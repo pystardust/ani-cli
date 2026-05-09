@@ -1225,6 +1225,14 @@
 		/* Compensate for the negative margin-block-start above so the
 		   masthead beneath the hero stays at its original y. */
 		margin-block-end: calc(var(--space-7) + var(--topbar-h));
+		/* Bleed the banner image down into the masthead area: mask
+		   the bottom 30% of the hero to transparent so the image
+		   fades over the page background. The masthead then pulls
+		   up further (margin-block-start below) so its content
+		   overlaps the faded zone — banner appears to continue
+		   behind the metadata, blurring out as it goes. */
+		mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
+		-webkit-mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
 		/* Hero scales up subtly on entry — feels like the cover comes
 		   forward to the screen, per user's M3.7-era request. */
 		animation: detail-hero-enter var(--dur-slow) var(--ease-out-soft) both;
@@ -1294,14 +1302,18 @@
 		grid-template-columns: minmax(12rem, 16rem) 1fr;
 		gap: var(--space-7);
 		padding-inline: var(--space-6);
-		margin-block-start: calc(-1 * var(--space-8));
+		/* Pull further up — the hero's mask-image fades its bottom
+		   30% to transparent, and the masthead sits inside that
+		   faded zone so the banner appears to bleed behind the
+		   metadata. */
+		margin-block-start: calc(-1 * var(--space-10, 6rem));
 		align-items: end;
 		position: relative;
 	}
 	@media (max-inline-size: 720px) {
 		.masthead {
 			grid-template-columns: 1fr;
-			margin-block-start: calc(-1 * var(--space-7));
+			margin-block-start: calc(-1 * var(--space-8));
 		}
 	}
 	.poster-frame {
