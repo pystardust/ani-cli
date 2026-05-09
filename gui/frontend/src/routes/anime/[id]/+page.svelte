@@ -1206,7 +1206,9 @@
 		inline-size: calc(100% + 2 * var(--space-7) + var(--rail-width));
 		/* Bleed under the glassy topbar: pull the banner up by the
 		   topbar's block size so it spreads behind the chrome and
-		   the topbar's backdrop-blur frosts the visible portion. */
+		   the topbar's backdrop-blur frosts the visible portion.
+		   margin-block-end below compensates so the masthead under
+		   the hero stays at its original y. */
 		margin-block-start: calc(-1 * var(--topbar-h));
 		/* Per-anime accent gradient shows through when Kitsu has no
 		   cover, no poster, and no episode thumbnail — the show
@@ -1220,7 +1222,9 @@
 				var(--ink-050) 100%
 			),
 			var(--ink-050);
-		margin-block-end: var(--space-7);
+		/* Compensate for the negative margin-block-start above so the
+		   masthead beneath the hero stays at its original y. */
+		margin-block-end: calc(var(--space-7) + var(--topbar-h));
 		/* Hero scales up subtly on entry — feels like the cover comes
 		   forward to the screen, per user's M3.7-era request. */
 		animation: detail-hero-enter var(--dur-slow) var(--ease-out-soft) both;

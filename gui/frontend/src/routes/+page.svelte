@@ -567,7 +567,11 @@
 		min-block-size: clamp(24rem, 60dvh, 37rem);
 		overflow: hidden;
 		background: var(--ink-050);
-		margin-block-end: var(--space-7);
+		/* Bottom margin compensates for the negative margin-block-start
+		   below: the hero pulls up by topbar-h, so the next sibling
+		   (the strips) would also rise by topbar-h. Add topbar-h here
+		   to keep the strips at their original y. */
+		margin-block-end: calc(var(--space-7) + var(--topbar-h));
 		/* Escape the layout's inline gutters AND the rail column on
 		   the left — the banner extends behind the glassy rail too
 		   so its backdrop-blur frosts the hero like the topbar's
