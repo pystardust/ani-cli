@@ -362,7 +362,7 @@
 					<p class="eyebrow">
 						<span class="eyebrow-key">Tonight's marquee</span>
 						<span class="eyebrow-rule" aria-hidden="true"></span>
-						<span class="eyebrow-value">via Kitsu · trending</span>
+						<span class="eyebrow-value">via AniList · trending</span>
 					</p>
 					<h1 class="hero-title">{featured.canonical_title}</h1>
 					{#if synopsis}
@@ -540,7 +540,7 @@
 		{/each}
 	</Strip>
 {:else if trendingTail.length > 0}
-	<Strip eyebrow="Trending now" caption="currently airing · top 20">
+	<Strip eyebrow="Trending now" caption="this week · via AniList">
 		{#each trendingTail as anime (anime.id)}
 			<PosterCard {anime} />
 		{/each}
