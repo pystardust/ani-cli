@@ -336,26 +336,35 @@ pub fn parse_mappings_response(body: &[u8]) -> Result<Option<KitsuAnimeRef>> {
     Ok(anime.map(into_ref))
 }
 
-/// Pull the first `myanimelist/anime` external id out of a
-/// `/mappings` response (the response shape used by
-/// [`KitsuClient::mal_id_for_kitsu_id`]). Returns `None` when there's
-/// no MAL entry in the response, or the externalId can't be parsed
-/// as an integer.
+/// Pull the `myanimelist/anime` external id out of a Kitsu anime
+/// response that was fetched with `?include=mappings`. Walks the
+/// `included` array (mappings live there as side-loaded resources
+/// per JSON:API), finds the one whose `externalSite` is
+/// `"myanimelist/anime"`, and parses its `externalId` as an
+/// integer. Returns `None` when:
+///   - The response has no `included` array, or
+///   - No included resource is a MAL mapping, or
+///   - The external id isn't a valid integer.
 ///
 /// # Errors
-/// Returns [`AniError::ParseFailed`] when the body isn't the expected
-/// `{ "data": [...] }` envelope.
+/// Returns [`AniError::ParseFailed`] when the body isn't valid
+/// JSON:API for an anime resource.
 pub fn parse_mal_id_from_mappings(body: &[u8]) -> Result<Option<u32>> {
     #[derive(Deserialize)]
     struct Wrap {
-        data: Vec<Mapping>,
+        #[serde(default)]
+        included: Vec<Resource>,
     }
     #[derive(Deserialize)]
-    struct Mapping {
+    struct Resource {
+        #[serde(rename = "type")]
+        type_: String,
         attributes: Option<Attrs>,
     }
     #[derive(Deserialize)]
     struct Attrs {
+        #[serde(rename = "externalSite")]
+        external_site: Option<String>,
         #[serde(rename = "externalId")]
         external_id: Option<String>,
     }
@@ -363,9 +372,17 @@ pub fn parse_mal_id_from_mappings(body: &[u8]) -> Result<Option<u32>> {
         detail: format!("kitsu mal-id mappings parse: {e}"),
     })?;
     Ok(parsed
-        .data
+        .included
         .into_iter()
-        .find_map(|m| m.attributes?.external_id)
+        .filter(|r| r.type_ == "mappings")
+        .find_map(|r| {
+            let attrs = r.attributes?;
+            if attrs.external_site.as_deref() == Some("myanimelist/anime") {
+                attrs.external_id
+            } else {
+                None
+            }
+        })
         .and_then(|s| s.parse::<u32>().ok()))
 }
 
@@ -491,14 +508,18 @@ impl KitsuClient {
     /// - [`AniError::Network`] on transport failure.
     /// - [`AniError::ParseFailed`] on malformed JSON:API.
     pub async fn mal_id_for_kitsu_id(&self, kitsu_id: &str) -> Result<Option<u32>> {
+        // Kitsu's /mappings endpoint rejects filter[itemType] /
+        // filter[itemId] (returns "Filter not allowed"). Walk the
+        // anime resource's included mappings array instead — one
+        // round-trip, the field projection keeps the payload tiny.
         let resp = self
             .http
-            .get(format!("{}/mappings", self.base))
+            .get(format!("{}/anime/{kitsu_id}", self.base))
             .header(reqwest::header::ACCEPT, "application/vnd.api+json")
             .query(&[
-                ("filter[itemType]", "Anime".to_string()),
-                ("filter[itemId]", kitsu_id.to_string()),
-                ("filter[externalSite]", "myanimelist/anime".to_string()),
+                ("include", "mappings".to_string()),
+                ("fields[anime]", "canonicalTitle".to_string()),
+                ("fields[mappings]", "externalSite,externalId".to_string()),
             ])
             .send()
             .await
