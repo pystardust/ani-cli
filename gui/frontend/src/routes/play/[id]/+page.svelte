@@ -317,6 +317,69 @@
 		videoEl.muted = clamped === 0;
 	}
 
+	// Hamburger / kebab overflow menu inside the custom controls
+	// bar. Mirrors Chromium's native pattern: Download, Playback
+	// speed, Picture in picture. Open state is component-local;
+	// closes on outside click or Escape.
+	let pcMenuOpen = $state(false);
+	let pcMenuAnchor = $state<HTMLButtonElement | null>(null);
+	let pcSpeedExpanded = $state(false);
+	let playbackRate = $state(1);
+	const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+	function togglePcMenu() {
+		pcMenuOpen = !pcMenuOpen;
+		if (!pcMenuOpen) pcSpeedExpanded = false;
+	}
+	function closePcMenu() {
+		pcMenuOpen = false;
+		pcSpeedExpanded = false;
+	}
+	$effect(() => {
+		if (!pcMenuOpen) return;
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Node | null;
+			if (!target) return;
+			if (pcMenuAnchor?.contains(target)) return;
+			const menu = document.getElementById('pc-overflow-menu');
+			if (menu?.contains(target)) return;
+			closePcMenu();
+		};
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				closePcMenu();
+				pcMenuAnchor?.focus();
+			}
+		};
+		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('keydown', onKey);
+		};
+	});
+	function setPlaybackRate(rate: number) {
+		if (!videoEl) return;
+		videoEl.playbackRate = rate;
+		playbackRate = rate;
+		closePcMenu();
+	}
+	async function onPip() {
+		closePcMenu();
+		if (!videoEl) return;
+		try {
+			if (document.pictureInPictureElement) {
+				await document.exitPictureInPicture();
+			} else {
+				await videoEl.requestPictureInPicture();
+			}
+		} catch {
+			// PiP can fail if the video isn't ready yet or the
+			// user denied permission — silently swallow; the menu
+			// already closed so the click feels handled.
+		}
+	}
+
 	function seekToFraction(fraction: number) {
 		if (!videoEl || !duration) return;
 		videoEl.currentTime = Math.max(0, Math.min(duration, fraction * duration));
@@ -1203,11 +1266,11 @@
 							aria-label={isPaused ? 'Play' : 'Pause'}
 						>
 							{#if isPaused}
-								<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+								<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 									<path d="M8 5v14l11-7z" fill="currentColor" />
 								</svg>
 							{:else}
-								<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+								<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 									<rect x="6" y="5" width="4" height="14" fill="currentColor" />
 									<rect x="14" y="5" width="4" height="14" fill="currentColor" />
 								</svg>
@@ -1257,14 +1320,14 @@
 								aria-label={isMuted ? 'Unmute' : 'Mute'}
 							>
 								{#if isMuted || videoVolume === 0}
-									<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+									<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 										<path
 											d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
 											fill="currentColor"
 										/>
 									</svg>
 								{:else}
-									<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+									<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 										<path
 											d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
 											fill="currentColor"
@@ -1280,13 +1343,156 @@
 							onclick={toggleFullscreen}
 							aria-label="Toggle fullscreen"
 						>
-							<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+							<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 								<path
 									d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
 									fill="currentColor"
 								/>
 							</svg>
 						</button>
+
+						<!-- Hamburger / kebab menu — Download, Playback
+						     speed, Picture in picture. Mirrors
+						     Chromium's native overflow menu. -->
+						<div class="pc-menu-wrap">
+							<button
+								type="button"
+								class="pc-btn"
+								bind:this={pcMenuAnchor}
+								onclick={togglePcMenu}
+								aria-haspopup="menu"
+								aria-expanded={pcMenuOpen}
+								aria-label="More"
+							>
+								<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+									<circle cx="12" cy="5.5" r="1.7" fill="currentColor" />
+									<circle cx="12" cy="12" r="1.7" fill="currentColor" />
+									<circle cx="12" cy="18.5" r="1.7" fill="currentColor" />
+								</svg>
+							</button>
+							{#if pcMenuOpen}
+								<div id="pc-overflow-menu" class="pc-menu" role="menu" tabindex="-1">
+									{#if pcSpeedExpanded}
+										<button
+											type="button"
+											class="pc-menu-item pc-menu-back"
+											role="menuitem"
+											onclick={() => (pcSpeedExpanded = false)}
+										>
+											<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+												<path
+													d="M15 6l-6 6 6 6"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+											<span>Playback speed</span>
+										</button>
+										{#each PLAYBACK_SPEEDS as rate (rate)}
+											<button
+												type="button"
+												class="pc-menu-item pc-menu-speed-row"
+												class:pc-menu-active={playbackRate === rate}
+												role="menuitemradio"
+												aria-checked={playbackRate === rate}
+												onclick={() => setPlaybackRate(rate)}
+											>
+												<span class="pc-menu-check" aria-hidden="true">
+													{#if playbackRate === rate}✓{/if}
+												</span>
+												<span>{rate === 1 ? 'Normal' : `${rate}×`}</span>
+											</button>
+										{/each}
+									{:else}
+										<button
+											type="button"
+											class="pc-menu-item"
+											role="menuitem"
+											onclick={() => {
+												closePcMenu();
+												onDownload();
+											}}
+										>
+											<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+												<path
+													d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+											<span>Download</span>
+										</button>
+										<button
+											type="button"
+											class="pc-menu-item pc-menu-row-arrow"
+											role="menuitem"
+											aria-haspopup="menu"
+											onclick={() => (pcSpeedExpanded = true)}
+										>
+											<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+												<circle
+													cx="12"
+													cy="12"
+													r="9"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												/>
+												<path
+													d="M11 8v4.5l3 1.8"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+												/>
+											</svg>
+											<span>Playback speed</span>
+											<span class="pc-menu-current">
+												{playbackRate === 1 ? 'Normal' : `${playbackRate}×`}
+											</span>
+											<svg
+												class="pc-menu-arrow"
+												viewBox="0 0 24 24"
+												width="18"
+												height="18"
+												aria-hidden="true"
+											>
+												<path
+													d="M9 6l6 6-6 6"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+										</button>
+										<button type="button" class="pc-menu-item" role="menuitem" onclick={onPip}>
+											<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+												<rect
+													x="3"
+													y="5"
+													width="18"
+													height="14"
+													rx="2"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												/>
+												<rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" />
+											</svg>
+											<span>Picture in picture</span>
+										</button>
+									{/if}
+								</div>
+							{/if}
+						</div>
 					</div>
 
 					<!-- Bottom row: full-width seek bar. Same anchored-to-
@@ -1694,7 +1900,7 @@
 										</span>
 									{/if}
 									<span class="ep-card-thumb-play" aria-hidden="true">
-										<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+										<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 											<path d="M8 5v14l11-7z" fill="currentColor" />
 										</svg>
 									</span>
@@ -2266,8 +2472,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		inline-size: 2.75rem;
-		block-size: 2.75rem;
+		inline-size: 3rem;
+		block-size: 3rem;
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
@@ -2380,6 +2586,85 @@
 		inline-size: 14px;
 		block-size: 14px;
 		border: 0;
+	}
+
+	/* Hamburger / kebab overflow menu — anchored to its trigger
+	   button via .pc-menu-wrap (relative). The menu pops above
+	   the button (inset-block-end positions it up from the
+	   bottom). Mirrors Chromium's native overflow popup. */
+	.pc-menu-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.pc-menu {
+		position: absolute;
+		inset-inline-end: 0;
+		inset-block-end: calc(100% + 0.5rem);
+		min-inline-size: 14rem;
+		padding: 0.4rem;
+		background: rgba(28, 28, 32, 0.96);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 12px;
+		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		z-index: 5;
+	}
+	.pc-menu-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.85rem;
+		padding: 0.55rem 0.75rem;
+		background: transparent;
+		border: 0;
+		border-radius: 8px;
+		font: 500 0.875rem/1.2 var(--font-body);
+		color: #fff;
+		text-align: start;
+		cursor: pointer;
+		transition: background var(--dur-fast) var(--ease-out-soft);
+	}
+	.pc-menu-item:hover,
+	.pc-menu-item:focus-visible {
+		background: rgba(255, 255, 255, 0.1);
+		outline: none;
+	}
+	.pc-menu-item svg {
+		flex-shrink: 0;
+		opacity: 0.92;
+	}
+	.pc-menu-row-arrow {
+		justify-content: flex-start;
+	}
+	.pc-menu-current {
+		margin-inline-start: auto;
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.65);
+	}
+	.pc-menu-arrow {
+		opacity: 0.6;
+	}
+	.pc-menu-back {
+		font-weight: 600;
+		border-block-end: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 8px 8px 0 0;
+		margin-block-end: 0.15rem;
+	}
+	.pc-menu-speed-row {
+		gap: 0.6rem;
+		padding-inline-start: 0.5rem;
+	}
+	.pc-menu-check {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 1.25rem;
+		font-weight: 700;
+		color: #fff;
+	}
+	.pc-menu-active {
+		background: rgba(255, 255, 255, 0.06);
 	}
 	.pc-time-sep {
 		color: rgba(255, 255, 255, 0.55);
