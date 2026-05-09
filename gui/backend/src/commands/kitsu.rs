@@ -115,6 +115,9 @@ pub async fn kitsu_trending_anilist(state: &AppState) -> Result<Vec<KitsuAnimeRe
     // AniList → MAL ids → bridge to Kitsu refs.
     let anilist =
         crate::meta::anilist::trending(&state.proxy_http, ANILIST_TRENDING_LIMIT, None).await;
+    if let Err(ref e) = anilist {
+        tracing::warn!(error = ?e, "anilist trending failed; falling back to kitsu_trending");
+    }
     let bridged = match anilist {
         Ok(v) if !v.is_empty() => bridge_anilist_to_kitsu(state, v).await,
         _ => Vec::new(),

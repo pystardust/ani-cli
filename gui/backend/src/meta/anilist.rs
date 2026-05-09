@@ -122,8 +122,16 @@ pub async fn trending(
         "query": TRENDING_GQL,
         "variables": { "perPage": limit },
     });
+    // Override the proxy client's Firefox-mimic UA with an app-style
+    // identifier — AniList's Cloudflare layer blocks browser UAs
+    // that lack a full browser fingerprint and returns 403. Curl
+    // and any UA that doesn't claim to be a browser pass through.
     let resp = client
         .post(url)
+        .header(
+            "user-agent",
+            "ani-gui/0.1 (https://github.com/pucci/ani-gui)",
+        )
         .header("content-type", "application/json")
         .header("accept", "application/json")
         .json(&body)
