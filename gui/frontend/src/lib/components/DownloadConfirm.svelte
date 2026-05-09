@@ -114,12 +114,12 @@
 		if (s > rangeMax) {
 			return maxEpisode
 				? `Only ${maxEpisode} episode${maxEpisode === 1 ? '' : 's'} available — From can't exceed ${maxEpisode}.`
-				: `Capped at ${rangeMax} — episode count unknown for this show.`;
+				: `You can't download more than ${rangeMax} episodes for this show.`;
 		}
 		if (e > rangeMax) {
 			return maxEpisode
 				? `Only ${maxEpisode} episode${maxEpisode === 1 ? '' : 's'} available — To can't exceed ${maxEpisode}.`
-				: `Capped at ${rangeMax} — episode count unknown for this show.`;
+				: `You can't download more than ${rangeMax} episodes for this show.`;
 		}
 		if (e < s) return 'To must be greater than or equal to From.';
 		return null;
@@ -243,6 +243,9 @@
 							class:active={mode === 'all'}
 							aria-pressed={mode === 'all'}
 							disabled={!maxEpisode}
+							title={!maxEpisode
+								? 'Downloading all episodes is disabled for this show.'
+								: undefined}
 							onclick={() => (mode = 'all')}
 						>
 							All
@@ -257,6 +260,9 @@
 							class:active={mode === 'all'}
 							aria-pressed={mode === 'all'}
 							disabled={!maxEpisode}
+							title={!maxEpisode
+								? 'Downloading all episodes is disabled for this show.'
+								: undefined}
 							onclick={() => (mode = 'all')}
 						>
 							All
