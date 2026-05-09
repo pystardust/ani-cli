@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, net, protocol, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -269,6 +269,11 @@ ipcMain.handle('ani-gui:reveal-in-folder', async (_event, dirPath) => {
 
 app.whenReady().then(async () => {
 	try {
+		// Drop Electron's default app menu (File / Edit / View / Window /
+		// Help) — the in-window topbar + rail are the navigation surface;
+		// the platform menu was just adding a strip of system chrome the
+		// app doesn't use.
+		Menu.setApplicationMenu(null);
 		if (!IS_DEV) registerAppProtocol();
 		const { child, apiBase } = await spawnBackend();
 		backendChild = child;
