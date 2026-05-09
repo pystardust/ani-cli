@@ -2264,14 +2264,14 @@
 	.pc-scrubber-track {
 		position: relative;
 		inline-size: 100%;
-		block-size: 4px;
+		block-size: 5px;
 		border-radius: 999px;
 		background: color-mix(in oklab, var(--bone-100) 18%, transparent);
 		transition: block-size var(--dur-fast) var(--ease-out-soft);
 	}
 	.pc-scrubber:hover .pc-scrubber-track,
 	.pc-scrubber:focus-visible .pc-scrubber-track {
-		block-size: 6px;
+		block-size: 7px;
 	}
 	/* Dimmer fill showing how much of the video has been
 	   preloaded ahead of the playhead. Same role as the lighter
