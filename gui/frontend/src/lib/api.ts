@@ -718,6 +718,31 @@ export function kitsuTrendingAnilist(): Promise<KitsuAnimeRef[]> {
 	return getJson<KitsuAnimeRef[]>('/api/kitsu/trending-anilist');
 }
 
+/** One skip interval for the embedded player's Skip OP / Skip
+ *  Outro button. Times are seconds (sub-second precision). */
+export interface SkipInterval {
+	/** `"op"` | `"ed"` | `"mixed-op"` | `"mixed-ed"` | `"recap"`. */
+	skip_type: string;
+	start_time: number;
+	end_time: number;
+}
+
+/** Aniskip skip-times lookup. Player calls this on
+ *  `loadedmetadata`, passing the video's duration in seconds.
+ *  Returns an empty array when Kitsu has no MAL mapping for the
+ *  show or aniskip has no skip times catalogued — both are
+ *  normal, the player just doesn't render the button. */
+export function aniskipGet(
+	kitsuId: string,
+	episode: string,
+	episodeLength: number
+): Promise<SkipInterval[]> {
+	const qs = new URLSearchParams({ episode_length: String(episodeLength) });
+	return getJson<SkipInterval[]>(
+		`/api/aniskip/${encodeURIComponent(kitsuId)}/${encodeURIComponent(episode)}?${qs.toString()}`
+	);
+}
+
 export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
 	return getJson<KitsuAnimeRef[]>('/api/kitsu/top-rated');
 }

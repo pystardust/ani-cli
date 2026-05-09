@@ -26,9 +26,9 @@ use tower_http::cors::CorsLayer;
 
 use crate::app::AppState;
 use crate::commands::{
-    app_info, availability as availability_inner, download as download_inner, external_player,
-    history as h_inner, kitsu as kitsu_inner, play as play_inner, proxy_url,
-    session as session_inner, settings as settings_inner,
+    aniskip as aniskip_inner, app_info, availability as availability_inner,
+    download as download_inner, external_player, history as h_inner, kitsu as kitsu_inner,
+    play as play_inner, proxy_url, session as session_inner, settings as settings_inner,
 };
 use crate::config::Config;
 use crate::error::AniError;
@@ -82,6 +82,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/api/kitsu/trending-anilist",
             get(get_kitsu_trending_anilist),
         )
+        .route("/api/aniskip/:kitsu_id/:episode", get(get_aniskip))
         .route("/api/kitsu/top-rated", get(get_kitsu_top_rated))
         .route("/api/kitsu/episodes/:anime_id", get(get_kitsu_episodes))
         .route(
@@ -201,6 +202,24 @@ async fn get_kitsu_trending_anilist(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<KitsuAnimeRef>>, AniError> {
     Ok(Json(kitsu_inner::kitsu_trending_anilist(&state).await?))
+}
+
+#[derive(serde::Deserialize)]
+struct AniskipQuery {
+    /// Episode duration in seconds — feeds aniskip's per-episode
+    /// disambiguation. The frontend reads it off the HTML5 video
+    /// element after `loadedmetadata`.
+    episode_length: f32,
+}
+
+async fn get_aniskip(
+    State(state): State<Arc<AppState>>,
+    Path((kitsu_id, episode)): Path<(String, String)>,
+    Query(q): Query<AniskipQuery>,
+) -> Result<Json<Vec<crate::meta::aniskip::SkipInterval>>, AniError> {
+    Ok(Json(
+        aniskip_inner::aniskip_get(&state, &kitsu_id, &episode, q.episode_length).await?,
+    ))
 }
 
 async fn get_kitsu_top_rated(
