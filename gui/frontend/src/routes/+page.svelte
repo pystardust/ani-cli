@@ -1,11 +1,11 @@
 <!--
   Home — the front door. Editorial repertory cinema, programmed by a
   librarian. Composition:
-    1. Hero: kitsuTrending()[0], full-bleed cover with parallax + scrim,
+    1. Hero: kitsuTrendingAnilist()[0], full-bleed cover with parallax + scrim,
        "View" call. NO autoplay, NO carousel.
     2. Continue Watching: hidden when historyList() is empty; otherwise a
        horizontal strip whose cards lean on an oversized mono episode number.
-    3. Trending strip: rest of kitsuTrending() (1..n).
+    3. Trending strip: rest of kitsuTrendingAnilist() (1..n).
     4. Top Rated: kitsuTopRated().
 -->
 <script lang="ts">
@@ -19,7 +19,7 @@
 		imageProxyUrl,
 		kitsuEpisodes,
 		kitsuTopRated,
-		kitsuTrending,
+		kitsuTrendingAnilist,
 		markWatched,
 		playStream,
 		settingsGet,
@@ -97,7 +97,7 @@
 		// rendered AND queued for a background warm. The next visit
 		// reads a fuller cache and filters more aggressively.
 		const filterMode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
-		kitsuTrending()
+		kitsuTrendingAnilist()
 			.then((t) => filterAvailable(t, filterMode))
 			.then((t) => (trending = t))
 			.catch((e) => (trendingError = describeError(e)));
