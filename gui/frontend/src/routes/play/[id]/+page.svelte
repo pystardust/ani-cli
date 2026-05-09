@@ -2018,36 +2018,59 @@
 
 	/* aniskip Skip OP / Skip Outro button. Anchored bottom-right
 	   over the player frame, sits above Chromium's native controls
-	   bar by ~5rem so it doesn't overlap the timeline. Glassy fill
-	   so the underlying frame stays readable. */
+	   by ~5rem so it doesn't overlap the timeline. Heavy enough
+	   to read against busy backgrounds — most anime OPs cut between
+	   white-on-bright frames so a low-contrast pill disappears.
+	   The two-tone background + drop shadow give it Crunchyroll-
+	   style affordance: clearly tappable, not "subtle UI". */
 	.player-skip-btn {
 		position: absolute;
 		inset-inline-end: 1.5rem;
 		inset-block-end: 5rem;
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
-		padding: 0.6rem 1.1rem;
-		font: 500 0.875rem/1 var(--font-body);
-		color: var(--ink-000);
-		background: color-mix(in oklab, var(--ink-500) 70%, transparent);
-		border: 1px solid color-mix(in oklab, var(--ink-000) 35%, transparent);
+		gap: 0.5rem;
+		padding: 0.85rem 1.4rem;
+		font: 600 0.95rem/1 var(--font-body);
+		letter-spacing: 0.01em;
+		color: #fff;
+		background: rgba(15, 15, 17, 0.92);
+		border: 1px solid color-mix(in oklab, var(--accent) 70%, #fff 0%);
 		border-radius: var(--radius-pill);
-		backdrop-filter: blur(12px) saturate(1.2);
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.08) inset,
+			0 8px 24px rgba(0, 0, 0, 0.45),
+			0 2px 8px rgba(0, 0, 0, 0.3);
 		cursor: pointer;
 		z-index: 3;
 		transition:
 			background 160ms ease,
 			border-color 160ms ease,
-			transform 160ms ease;
+			transform 160ms ease,
+			box-shadow 160ms ease;
 	}
 	.player-skip-btn:hover {
-		background: color-mix(in oklab, var(--accent) 70%, transparent);
-		border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+		background: color-mix(in oklab, var(--accent) 92%, #000);
+		border-color: color-mix(in oklab, var(--accent) 100%, #fff 10%);
 		transform: translateY(-1px);
+		box-shadow:
+			0 1px 0 rgba(255, 255, 255, 0.12) inset,
+			0 12px 28px rgba(0, 0, 0, 0.5),
+			0 0 0 4px color-mix(in oklab, var(--accent) 25%, transparent);
+	}
+	.player-skip-btn:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 3px;
+	}
+	.player-skip-btn:active {
+		transform: translateY(0);
 	}
 	.player-skip-arrow {
-		font-size: 1rem;
+		font-size: 1.05rem;
+		transition: transform 160ms ease;
+	}
+	.player-skip-btn:hover .player-skip-arrow {
+		transform: translateX(2px);
 	}
 
 	/* Custom controls overlay — Chromium's native media controls
