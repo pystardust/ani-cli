@@ -18,6 +18,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
+	import { filterAvailable } from '$lib/availability/filter';
 
 	let submitted = $state(''); // the query whose results are on screen.
 	let results = $state<KitsuAnimeRef[] | null>(null);
@@ -77,9 +78,11 @@
 
 	onMount(() => {
 		kitsuTrending()
+			.then((t) => filterAvailable(t, 'sub'))
 			.then((t) => (trending = t))
 			.catch(() => (trending = []));
 		kitsuTopRated()
+			.then((t) => filterAvailable(t, 'sub'))
 			.then((t) => (topRated = t))
 			.catch(() => (topRated = []));
 	});
@@ -100,7 +103,10 @@
 		busy = true;
 		submitted = q;
 		try {
-			results = await kitsuSearch(q);
+			const raw = await kitsuSearch(q);
+			// Drop cards we already know aren't on allmanga; warm
+			// uncached entries in the background for the next run.
+			results = await filterAvailable(raw, 'sub');
 		} catch (e) {
 			error = describeError(e);
 			results = null;

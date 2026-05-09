@@ -88,6 +88,8 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/cache/images", delete(delete_image_cache))
         .route("/api/image", get(get_image))
         .route("/api/availability", post(post_availability))
+        .route("/api/availability/batch", post(post_availability_batch))
+        .route("/api/availability/warm", post(post_availability_warm))
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
         .route("/api/download/stream", get(get_download_stream))
@@ -402,6 +404,32 @@ async fn post_availability(
     Ok(Json(
         availability_inner::check_availability(&state, &args).await?,
     ))
+}
+
+/// Cached-only batch lookup. No fresh allmanga queries are issued —
+/// the caller (home / search) just reads what's already in the cache
+/// to filter known-unavailable cards out of list views.
+async fn post_availability_batch(
+    State(state): State<Arc<AppState>>,
+    Json(args): Json<availability_inner::AvailabilityBatchArgs>,
+) -> Json<availability_inner::AvailabilityBatchResponse> {
+    Json(availability_inner::batch_cached(&state, &args))
+}
+
+/// Fire-and-forget cache warmer. Spawns a background task that
+/// walks `items`, runs availability checks for ones not already
+/// cached (with a 500ms throttle), and writes results. Returns 202
+/// immediately so list views never wait for the warm to finish —
+/// the populated cache is read by the next visit's batch call.
+async fn post_availability_warm(
+    State(state): State<Arc<AppState>>,
+    Json(args): Json<availability_inner::AvailabilityWarmArgs>,
+) -> StatusCode {
+    let s = state.clone();
+    tokio::spawn(async move {
+        availability_inner::warm(s, args.items).await;
+    });
+    StatusCode::ACCEPTED
 }
 
 /// Returns the default download directory the modal should open at —

@@ -619,11 +619,14 @@ export function downloadDefaultDir(): Promise<string | null> {
 
 /** Wire payload for {@link checkAvailability}. Same title/mode/alt
  *  shape PlayArgs uses so the detail page can pass through what it
- *  already gathered. */
+ *  already gathered. `kitsu_id` keys the cache; `episode_count`
+ *  feeds the picker's disambiguation. */
 export interface AvailabilityArgs {
 	title: string;
 	mode: string;
 	alt_titles?: string[];
+	episode_count?: number;
+	kitsu_id?: string;
 }
 
 /** "Is this title in allmanga's catalog?" probe. The detail page hits
@@ -631,6 +634,27 @@ export interface AvailabilityArgs {
  *  click instead of letting the user discover the gap by clicking. */
 export function checkAvailability(args: AvailabilityArgs): Promise<{ available: boolean }> {
 	return postJson<{ available: boolean }>('/api/availability', args);
+}
+
+/** Cached-only batch lookup. List views (home / search) call this
+ *  before render to filter out cards whose availability is already
+ *  cached as `false`. Missing entries in the response are titles
+ *  whose availability is unknown — the caller renders them as-is. */
+export function availabilityBatch(
+	kitsu_ids: string[],
+	mode: string
+): Promise<{ cached: Record<string, boolean> }> {
+	return postJson<{ cached: Record<string, boolean> }>('/api/availability/batch', {
+		kitsu_ids,
+		mode
+	});
+}
+
+/** Fire-and-forget cache warmer. Hands the backend a list of titles
+ *  to probe in the background; the cache is populated for the next
+ *  list-view visit. List views never wait for the warm to finish. */
+export function availabilityWarm(items: AvailabilityArgs[]): Promise<void> {
+	return postJson<unknown>('/api/availability/warm', { items }).then(() => undefined);
 }
 
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {

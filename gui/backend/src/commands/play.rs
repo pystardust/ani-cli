@@ -436,7 +436,20 @@ where
             error = ?e,
             "play: ani-cli step failed",
         );
+        // Persist the negative outcome for the availability cache so
+        // home/search list filters learn from this click without an
+        // extra round-trip. NoResults = not in catalogue, period.
+        if matches!(e, AniError::NoResults) {
+            if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
+                crate::commands::availability::write_cache(state, id, &args.mode, false);
+            }
+        }
     })?;
+    // Successful resolve = available. Persist for the cache so home /
+    // search filters skip the extra check on next visit.
+    if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
+        crate::commands::availability::write_cache(state, id, &args.mode, true);
+    }
 
     // Decide media kind: cheap path-extension first, HEAD fallback
     // when the URL is opaque (fast4speed.rsvp/<id>/sub/1, etc).

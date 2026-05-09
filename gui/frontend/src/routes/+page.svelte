@@ -37,6 +37,7 @@
 	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
 	import { getOrFire, makeKey } from '$lib/play/play-cache';
 	import { buildPlayQuery } from '$lib/play/play-url';
+	import { filterAvailable } from '$lib/availability/filter';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
@@ -91,10 +92,17 @@
 
 	onMount(() => {
 		// Fire all three in parallel; render whichever lands first.
+		// Each list runs through filterAvailable: cards we KNOW are
+		// unavailable get dropped, cards we don't know about get
+		// rendered AND queued for a background warm. The next visit
+		// reads a fuller cache and filters more aggressively.
+		const filterMode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		kitsuTrending()
+			.then((t) => filterAvailable(t, filterMode))
 			.then((t) => (trending = t))
 			.catch((e) => (trendingError = describeError(e)));
 		kitsuTopRated()
+			.then((t) => filterAvailable(t, filterMode))
 			.then((t) => (topRated = t))
 			.catch((e) => (topRatedError = describeError(e)));
 		// Settings drive mode/quality for the Continue Watching click

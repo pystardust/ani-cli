@@ -349,7 +349,9 @@
 				void checkAvailability({
 					title: d.canonical_title,
 					mode,
-					alt_titles: altTitlesFromKitsu(d)
+					alt_titles: altTitlesFromKitsu(d),
+					episode_count: d.episode_count ?? undefined,
+					kitsu_id: d.id
 				})
 					.then((r) => {
 						if (id !== currentId) return;
