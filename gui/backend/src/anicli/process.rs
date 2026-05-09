@@ -12,7 +12,7 @@
 //! The function signatures here are stubs — the bodies are filled in as
 //! M1.2 progresses with TDD coverage.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::anicli::parser::{DebugOutput, SearchResult};
@@ -391,6 +391,39 @@ pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> 
     Ok(Vec::new())
 }
 
+/// Spawn `ani-cli -d` to download an episode. The `-d` flag flips the
+/// script's player-function to `download`, which delegates to yt-dlp /
+/// ffmpeg / aria2c depending on the source kind. We point `ani-cli` at
+/// the user-chosen output directory via `ANI_CLI_DOWNLOAD_DIR` (which
+/// the script reads at line 468 of the upstream).
+///
+/// Like [`run_debug_streaming`], stderr lines are forwarded to the
+/// caller as they arrive — that's where aria2c / yt-dlp / ffmpeg write
+/// progress, and the SSE download endpoint relays them to the renderer.
+///
+/// # Errors
+/// - [`AniError::MissingBinary`] if the script can't be spawned.
+/// - [`AniError::Scraper`] / [`AniError::NoResults`] /
+///   [`AniError::Timeout`] mirror the [`run_debug`] error mapping.
+///
+/// STUB (red commit). Implementation lands in the green commit; tests
+/// at the bottom of the module assert argv + env contract.
+pub async fn spawn_download<F>(
+    _opts: &DebugOptions,
+    _query: &str,
+    _ep: &str,
+    _quality: &str,
+    _mode: &str,
+    _select_index: usize,
+    _download_dir: &Path,
+    _on_stderr_line: F,
+) -> Result<()>
+where
+    F: FnMut(&str) + Send,
+{
+    Err(AniError::MissingBinary)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -511,5 +544,138 @@ mod tests {
     fn sanitize_anicli_query_passes_quote_free_titles_through() {
         assert_eq!(sanitize_anicli_query("One Piece"), "One Piece");
         assert_eq!(sanitize_anicli_query(""), "");
+    }
+
+    /// Stub `ani-cli` that echoes each argv token + selected env vars to
+    /// stderr (so the streaming line callback captures them) and exits
+    /// 0. Lets `spawn_download_*` tests assert the spawn contract
+    /// without actually downloading anything.
+    #[cfg(unix)]
+    fn stub_ani_cli_echo() -> (tempfile::TempDir, PathBuf) {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+        let td = tempfile::tempdir().expect("tempdir");
+        let path = td.path().join("ani-cli");
+        let mut f = std::fs::File::create(&path).expect("create stub");
+        // POSIX sh: walk $@ emitting one `argv:<token>` line per arg,
+        // then echo the env var the download path relies on.
+        f.write_all(
+            b"#!/bin/sh\nfor a in \"$@\"; do printf 'argv:%s\\n' \"$a\" 1>&2; done\nprintf 'env:ANI_CLI_DOWNLOAD_DIR=%s\\n' \"${ANI_CLI_DOWNLOAD_DIR:-NOTSET}\" 1>&2\nexit 0\n",
+        )
+        .expect("write stub");
+        let mut perm = f.metadata().expect("perm").permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&path, perm).expect("chmod");
+        (td, path)
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn spawn_download_passes_d_flag_and_episode_query_quality() {
+        let _guard = ENV_LOCK.lock().await;
+        let (_td, stub) = stub_ani_cli_echo();
+        let dl_dir = tempfile::tempdir().expect("dl tempdir");
+        let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
+        let cap = captured.clone();
+
+        let r = spawn_download(
+            &debug_opts(stub),
+            "Naruto Shippuuden",
+            "5",
+            "1080",
+            "sub",
+            1,
+            dl_dir.path(),
+            move |line| cap.lock().expect("lock").push(line.to_string()),
+        )
+        .await;
+        assert!(r.is_ok(), "spawn_download failed: {r:?}");
+
+        let lines = captured.lock().expect("lock").clone();
+        let argv: Vec<&str> = lines
+            .iter()
+            .filter_map(|l| l.strip_prefix("argv:"))
+            .collect();
+        assert!(argv.iter().any(|a| *a == "-d"), "argv: {argv:?}");
+        assert!(
+            argv.windows(2).any(|w| w == ["-e", "5"]),
+            "argv missing -e 5: {argv:?}"
+        );
+        assert!(
+            argv.windows(2).any(|w| w == ["-q", "1080"]),
+            "argv missing -q 1080: {argv:?}"
+        );
+        // The query is positional, after the `--` separator.
+        assert!(
+            argv.iter().any(|a| *a == "Naruto Shippuuden"),
+            "argv missing query token: {argv:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn spawn_download_includes_dub_flag_when_mode_dub() {
+        let _guard = ENV_LOCK.lock().await;
+        let (_td, stub) = stub_ani_cli_echo();
+        let dl_dir = tempfile::tempdir().expect("dl tempdir");
+        let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
+        let cap = captured.clone();
+        spawn_download(
+            &debug_opts(stub),
+            "any",
+            "1",
+            "best",
+            "dub",
+            1,
+            dl_dir.path(),
+            move |line| cap.lock().expect("lock").push(line.to_string()),
+        )
+        .await
+        .expect("ok");
+        let lines = captured.lock().expect("lock").clone();
+        let argv: Vec<&str> = lines
+            .iter()
+            .filter_map(|l| l.strip_prefix("argv:"))
+            .collect();
+        assert!(
+            argv.iter().any(|a| *a == "--dub"),
+            "argv missing --dub: {argv:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn spawn_download_sets_ani_cli_download_dir_env() {
+        let _guard = ENV_LOCK.lock().await;
+        let (_td, stub) = stub_ani_cli_echo();
+        let dl_dir = tempfile::tempdir().expect("dl tempdir");
+        let dl_path = dl_dir.path().to_path_buf();
+        let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
+        let cap = captured.clone();
+        spawn_download(
+            &debug_opts(stub),
+            "any",
+            "1",
+            "best",
+            "sub",
+            1,
+            &dl_path,
+            move |line| cap.lock().expect("lock").push(line.to_string()),
+        )
+        .await
+        .expect("ok");
+        let lines = captured.lock().expect("lock").clone();
+        let env_line = lines
+            .iter()
+            .find(|l| l.starts_with("env:ANI_CLI_DOWNLOAD_DIR="))
+            .expect("env line emitted");
+        let value = env_line
+            .trim_start_matches("env:ANI_CLI_DOWNLOAD_DIR=")
+            .to_string();
+        assert_eq!(
+            value,
+            dl_path.to_str().expect("utf-8 path"),
+            "expected ANI_CLI_DOWNLOAD_DIR to point at the chosen dir"
+        );
     }
 }
