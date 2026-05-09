@@ -2308,7 +2308,7 @@
 	.pc-volume:hover,
 	.pc-volume:focus-within {
 		background: rgba(40, 40, 44, 0.85);
-		padding-inline-start: 0.65rem;
+		padding-inline-start: 1rem;
 	}
 	.pc-volume-slider {
 		position: relative;
@@ -2326,7 +2326,7 @@
 	.pc-volume:hover .pc-volume-slider,
 	.pc-volume:focus-within .pc-volume-slider {
 		inline-size: 4.5rem;
-		margin-inline-end: 0.4rem;
+		margin-inline-end: 0.75rem;
 		opacity: 1;
 	}
 	.pc-volume-track {
