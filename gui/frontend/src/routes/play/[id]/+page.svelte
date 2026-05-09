@@ -299,13 +299,43 @@
 
 	function toggleFullscreen() {
 		if (!videoEl) return;
-		const frame = videoEl.closest('.player-frame');
+		const frame = videoEl.closest('.player-frame') as HTMLElement | null;
 		if (!document.fullscreenElement) {
 			void (frame ?? videoEl).requestFullscreen?.();
 		} else {
 			void document.exitFullscreen?.();
 		}
 	}
+
+	// Chromium's native video-controls "fullscreen" button targets
+	// the <video> element directly — that's a problem because:
+	//   1. The Skip OP/Outro overlay is a sibling of the video,
+	//      so video-only fullscreen hides it.
+	//   2. The native exit button only knows about the video's
+	//      fullscreen state, so if we entered via F (frame
+	//      fullscreen), the native icon does nothing.
+	// Fix: detect when the video became the fullscreen element and
+	// transparently promote to frame fullscreen instead. Both entry
+	// points (F-key + native icon) land on the same element, so
+	// native exit works either way.
+	$effect(() => {
+		const onChange = () => {
+			if (!videoEl) return;
+			if (document.fullscreenElement === videoEl) {
+				const frame = videoEl.closest('.player-frame') as HTMLElement | null;
+				if (frame) {
+					document
+						.exitFullscreen?.()
+						.then(() => frame.requestFullscreen?.())
+						.catch(() => {
+							/* fall through — leave as-is */
+						});
+				}
+			}
+		};
+		document.addEventListener('fullscreenchange', onChange);
+		return () => document.removeEventListener('fullscreenchange', onChange);
+	});
 
 	/** Reconstruct the proxy URL from the session id + kind. The proxy
 	 *  mounts each session at /s/<id>/master.m3u8 (HLS) or /s/<id>/file.mp4
@@ -1887,13 +1917,12 @@
 		min-inline-size: 2.25rem;
 		justify-content: center;
 	}
-	/* Auto-play "off" state: same contrast as the rest of the
-	   episode controls (Prev / Next / Current). The on/off
-	   distinction is carried by the outlined-vs-filled icon
-	   alone — fading the label too made it read as disabled
-	   even though the button is fully clickable. */
+	/* Auto-play "off" state: pure white so the label reads at
+	   max contrast against the dark episode-controls strip.
+	   The on/off distinction is carried by the icon
+	   (outlined-vs-filled) and the accent fill on the on-state. */
 	.ep-toggle[aria-pressed='false'] {
-		color: var(--bone-100);
+		color: #fff;
 	}
 	/* aria-pressed=true paints the toggle button accent so the on
 	   state reads at a glance — accent fill + filled icon (rendered
