@@ -532,7 +532,8 @@
 		flex-direction: column;
 		align-items: stretch;
 		padding-block: var(--space-5) var(--space-4);
-		border-inline-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
+		/* No right-edge rule — the banner bleeds across this seam,
+		   and the rule visually capped the bleed at the rail edge. */
 		/* Glassy translucent like the topbar — banners escape behind
 		   the rail (hero margin-inline-start: calc(-1 * (rail+gutter)))
 		   and the backdrop-filter frosts whatever shows through. */
@@ -561,7 +562,9 @@
 		gap: var(--space-2);
 		padding-block-end: var(--space-5);
 		margin-block-end: var(--space-5);
-		border-block-end: 1px solid var(--ink-200);
+		/* No divider line — the gap below already separates the
+		   brand mark from the home icon, and a hard rule fought
+		   the hero/banner bleed-through. */
 	}
 	@media (max-inline-size: 720px) {
 		.brand {
