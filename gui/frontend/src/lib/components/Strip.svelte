@@ -10,10 +10,26 @@
 	interface Props {
 		eyebrow: string;
 		caption?: string | null;
+		/** When true, omit the visual `.strip-header` (the page already
+		 *  provides its own section header). The eyebrow text still
+		 *  serves as the scroll region's accessible name. */
+		headless?: boolean;
+		/** Override the per-card track width (default 11.25rem). */
+		cardWidth?: string;
+		/** Override the rail's inline padding (default var(--space-8)).
+		 *  Set to '0' for a strip flush with its parent. */
+		pad?: string;
 		children: Snippet;
 	}
 
-	let { eyebrow, caption = null, children }: Props = $props();
+	let {
+		eyebrow,
+		caption = null,
+		headless = false,
+		cardWidth = '11.25rem',
+		pad = 'var(--space-8)',
+		children
+	}: Props = $props();
 
 	let scrollerEl: HTMLDivElement | undefined = $state();
 	let canScrollLeft = $state(false);
@@ -128,14 +144,20 @@
 	}
 </script>
 
-<section class="strip">
-	<header class="strip-header">
-		<h2 class="eyebrow">
-			<span class="eyebrow-key">{eyebrow}</span>
-			<span class="eyebrow-rule" aria-hidden="true"></span>
-			{#if caption}<span class="eyebrow-value">{caption}</span>{/if}
-		</h2>
-	</header>
+<section
+	class="strip"
+	class:strip-headless={headless}
+	style="--strip-card: {cardWidth}; --strip-pad: {pad};"
+>
+	{#if !headless}
+		<header class="strip-header">
+			<h2 class="eyebrow">
+				<span class="eyebrow-key">{eyebrow}</span>
+				<span class="eyebrow-rule" aria-hidden="true"></span>
+				{#if caption}<span class="eyebrow-value">{caption}</span>{/if}
+			</h2>
+		</header>
+	{/if}
 
 	<div class="strip-frame">
 		<!--
@@ -242,34 +264,6 @@
 		margin-block-end: var(--space-4);
 	}
 
-	.eyebrow {
-		margin: 0;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-family: var(--font-body);
-		/* Keep the tight uppercase eyebrow shape, just lift contrast
-		   on the active part (key) and let the caption drop into
-		   muted territory so the hierarchy reads at a glance. */
-		font-size: 0.8125rem; /* 13px */
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		font-weight: 600;
-		color: color-mix(in oklab, var(--bone-100) 82%, transparent);
-	}
-	.eyebrow-key {
-		color: color-mix(in oklab, var(--bone-100) 82%, transparent);
-	}
-	.eyebrow-rule {
-		inline-size: 2.5rem;
-		block-size: 1px;
-		background: color-mix(in oklab, var(--bone-100) 22%, transparent);
-	}
-	.eyebrow-value {
-		font-weight: 500;
-		color: color-mix(in oklab, var(--bone-100) 38%, transparent);
-	}
-
 	.strip-frame {
 		position: relative;
 	}
@@ -301,7 +295,10 @@
 		/* Padding lives on the rail, not the scroll container — keeps
 		   first-card alignment matching the eyebrow on initial render. */
 		padding-inline: var(--strip-pad);
-		padding-block-end: var(--space-3);
+		/* Block-start padding gives cards room to translateY(-3..-4px)
+		   on hover without the parent's auto overflow shaving the top
+		   border. */
+		padding-block: var(--space-2) var(--space-3);
 	}
 	/* Suppress native HTML5 image drag inside cards — without this, mousing
 	   on a poster triggers the browser's image-drag ghost, which fights

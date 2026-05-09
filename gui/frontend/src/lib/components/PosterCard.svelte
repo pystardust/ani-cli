@@ -151,10 +151,11 @@
 		font-weight: 500;
 		line-height: 1.3;
 		color: color-mix(in oklab, var(--bone-100) 90%, transparent);
-		/* Fixed two-line block so adjacent cards' metadata lines up
-		   on the same baseline regardless of title length. 2 lines
-		   × 1.3 line-height ≈ 2.6em. */
-		min-block-size: 2.6em;
+		/* No min-height: 1-line titles let the meta sit directly
+		   under them. The previous 2.6em reserve aligned meta-rows
+		   across cards but left a 1.3em gap on short titles, which
+		   read as "broken" rather than "uniform". Variable card
+		   heights are fine in a horizontal strip. */
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;

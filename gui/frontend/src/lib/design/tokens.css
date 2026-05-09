@@ -7,11 +7,17 @@
  */
 
 /* TODO(design): self-host display + body faces as .woff2 once we settle on
- * the bundle. Candidates under consideration: Söhne / GT America for body,
- * Tiempos Headline or IBM Plex Serif for display. Until then, ui-serif /
- * ui-sans-serif / ui-monospace resolve to honest system book faces (New York
- * on macOS, DejaVu / Liberation on Linux, Cambria / Segoe on Windows). No
- * fake CDN @import here — Tauri CSP defaults font-src to 'self' only. */
+ * the bundle. Current candidates per role:
+ *   - Display (hero titles, brand wordmark): Fraunces, Libre Baskerville,
+ *     Cormorant Garamond. Fraunces is the front-runner — variable-weight,
+ *     soft optical-size, reads cinematic at 56px without going novelty.
+ *   - Body (UI text, card titles, prose): Inter (default candidate),
+ *     Geist, IBM Plex Sans. All open-source, readable at 14–18px.
+ *   - Mono (numerals, eyebrows, code): IBM Plex Mono or JetBrains Mono.
+ *     Cleaner at small sizes than DejaVu / Liberation Mono.
+ * Until self-hosted, the chains below try those by name (used if locally
+ * installed) before falling through to ui-* and platform defaults. No
+ * @import here — Tauri/Electron CSP defaults font-src to 'self' only. */
 
 :root {
 	color-scheme: dark;
@@ -22,11 +28,23 @@
 	--ink-050: #14110f; /* card background, hero scrim base. */
 	--ink-100: #1c1815; /* elevated surface. */
 	--ink-200: #2a2521; /* hairline-on-dark, divider. */
-	--ink-300: #3d3631; /* subdued borders, disabled fg. */
+	/* Subdued borders / disabled fg. Bumped from #3d3631 (~20% L,
+	   1.4:1 on the page bg — basically invisible) to a brighter
+	   warm grey so outline buttons and segmented controls actually
+	   read as bordered. */
+	--ink-300: #524a44;
 	--bone-100: #f4ece1; /* primary text. NOT #fff. Warmth carries. */
 	--bone-200: #d8cfc2; /* secondary text. */
-	--bone-300: #9b9388; /* tertiary, captions, metadata. */
-	--bone-400: #6b6359; /* placeholder, deep mute. */
+	/* Tertiary text — captions, metadata, eyebrow rules. Bumped from
+	   #9b9388 (~57% L) to #b6ad9f (~70% L). The previous value cleared
+	   WCAG AA but felt muddy against ink-000; the bump aligns with the
+	   eyebrow value voice (color-mix bone-100 70%) so the secondary
+	   tier reads consistently across labels and metadata. */
+	--bone-300: #b6ad9f;
+	/* Placeholder + deep mute. Bumped from #6b6359 (~40% L, 2.5:1 —
+	   below WCAG AA) to #877f73 (~52% L, ~4.1:1) so placeholder text
+	   in inputs and separator dots stop disappearing. */
+	--bone-400: #877f73;
 
 	/* Per-anime accents (8). Deterministic pick by id hash on detail page.
 	   Tones lifted from film-poster ink: oxblood, ink, persimmon, jade,
@@ -51,14 +69,27 @@
 	--brand: #d77a3b;
 	--brand-ink: #1c1815;
 
-	/* — Typography: real system fallback chain, no webfont LARP. */
-	--font-display: ui-serif, 'New York', 'DejaVu Serif', 'Liberation Serif', Cambria, Georgia, serif;
+	/* — Typography: real system fallback chain, no webfont LARP.
+	 * Display chain prioritises cinematic / editorial serifs that
+	 * look like real displays at hero scale (Fraunces, Libre
+	 * Baskerville if locally installed, then the best-of system
+	 * serifs by platform: Iowan Old Style on macOS, Cambria on
+	 * Windows, Noto Serif on Linux). System-default ui-serif is
+	 * the last bone-china fallback before generic serif. The
+	 * old chain led with `ui-serif` then DejaVu Serif on Linux,
+	 * which at italic-display scale read as fan-site / novelty. */
+	--font-display:
+		'Fraunces', 'Libre Baskerville', 'Cormorant Garamond', 'Iowan Old Style', 'Hoefler Text',
+		Charter, Cambria, 'Noto Serif', Georgia, ui-serif, serif;
 	--font-body:
-		ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable', 'Segoe UI', Cantarell,
-		'Noto Sans', sans-serif;
+		'Inter', 'Geist', 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI Variable',
+		'Segoe UI', Cantarell, 'Noto Sans', sans-serif;
+	/* Mono chain: prefer modern programmer fonts that read cleanly
+	 * at small sizes without the "Linux terminal" feel of DejaVu
+	 * Sans Mono / Liberation Mono. Falls through to system mono. */
 	--font-mono:
-		ui-monospace, 'SF Mono', 'Cascadia Mono', 'DejaVu Sans Mono', 'JetBrains Mono',
-		'Liberation Mono', Consolas, monospace;
+		'IBM Plex Mono', 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Menlo, Monaco, Consolas,
+		ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
 
 	/* Bumped one notch from the M3.1 baseline — the original scale started
 	   at 11px micro / 13px meta which read as too small on widescreens.
@@ -79,7 +110,12 @@
 	--tracking-meta: 0.04em; /* small caps voice. */
 	--tracking-micro: 0.12em; /* uppercase eyebrows. */
 
-	/* — Spacing on a 4px base. */
+	/* — Spacing on a 4px base. Strict scale: 4 / 8 / 12 / 16 / 24 / 32
+	   / 48 / 64. No tokens beyond 64px — the few places that used
+	   96px-ish gaps (page padding, hero overlap) are now collapsed to
+	   64px so the scale is enforceable. Use var(--space-N) consistently
+	   for section margin-bottom (48), card gap (12), row gap (16),
+	   page padding (48). */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
 	--space-3: 0.75rem;
@@ -87,8 +123,7 @@
 	--space-5: 1.5rem;
 	--space-6: 2rem;
 	--space-7: 3rem;
-	--space-8: 4.5rem;
-	--space-9: 6rem;
+	--space-8: 4rem;
 
 	/* — Radii: editorial rather than aggressive. Cards + tiles + buttons
 	   round selectively (the registration frame motif stays sharp because
@@ -112,21 +147,20 @@
 
 	/* — Layout. */
 	--content-max: 76rem;
-	/* Wider cap for routes that want the strips/grids to spread on
-	   ultrawide monitors (home, search, /anime/[id], /play/[id]).
-	   Three other routes already reference this; previously it was
-	   undefined and `max-inline-size: var(--content-max-wide)` fell
-	   back to "no max", which is fine but inconsistent. Pinning it
-	   here so the four wide-layout routes share a single ceiling. */
-	--content-max-wide: 110rem;
-	/* Comfortable viewing width for video. Caps the player frame on
-	   true ultrawide monitors so the video doesn't blow out past
-	   the readable size; on a typical 1920 monitor the .page
-	   padding is the actual binding constraint and the video
-	   spreads to fill most of the screen. Bumped from 88rem so
-	   /play feels less like an island floating in black on
-	   widescreen. */
-	--player-max: 120rem;
+	/* Wide cap for catalogue / browse routes (search, /anime/[id]
+	   .body). 90rem = 1440px — the editorial sweet spot identified
+	   in design feedback. Anything wider feels stretched on
+	   ultrawides; anything narrower wastes real estate on standard
+	   1080p. Was 110rem (1760px); reduced to 90rem so the catalogue
+	   stops sprawling on ultrawide. */
+	--content-max-wide: 90rem;
+	/* /play normal-mode reserves this much height for app bar +
+	   now-playing row + episodes carousel + breathing room. The
+	   player's width formula uses (100dvh − this) × 16/9 to keep
+	   episodes visible on shorter viewports. Tokenised so future
+	   chrome additions (e.g. a quality picker) can update one
+	   number instead of five formulas. */
+	--player-reserved-height: 300px;
 	--hero-aspect: 21 / 5;
 	--poster-aspect: 5 / 7;
 	--rail-width: 5.5rem; /* 88px — narrow enough to feel like a margin, not a panel. */
@@ -265,4 +299,36 @@ img {
 	.btn-glass:hover::before {
 		transform: none;
 	}
+}
+
+/* — Eyebrow: canonical app-wide section/page label.
+   Sans body, 13px, 600 weight, 0.14em tracking, uppercase. Three-tier
+   contrast: key (82%) leads, rule (22%) divides, value (70%) trails.
+   Pages may override `.eyebrow { margin: ... }` or `.eyebrow-rule`
+   (e.g. accent-tinted rule on the home hero / detail masthead) but
+   should leave the colour scale alone so the hierarchy is consistent
+   across the app. */
+.eyebrow {
+	margin: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-3);
+	font-family: var(--font-body);
+	font-size: 0.8125rem; /* 13px */
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: color-mix(in oklab, var(--bone-100) 82%, transparent);
+}
+.eyebrow-key {
+	color: color-mix(in oklab, var(--bone-100) 82%, transparent);
+}
+.eyebrow-rule {
+	inline-size: 2.5rem;
+	block-size: 1px;
+	background: color-mix(in oklab, var(--bone-100) 22%, transparent);
+}
+.eyebrow-value {
+	font-weight: 500;
+	color: color-mix(in oklab, var(--bone-100) 70%, transparent);
 }
