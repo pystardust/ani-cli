@@ -68,6 +68,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/app-info", get(get_app_info))
         .route("/api/proxy-base-url", get(get_proxy_base_url))
         .route("/api/history", get(get_history).delete(delete_history))
+        .route("/api/history/by-kitsu/:kitsu_id", get(get_history_by_kitsu))
         .route("/api/external-player", post(post_external_player))
         .route("/api/sessions", post(post_session))
         .route("/api/kitsu/search", post(post_kitsu_search))
@@ -137,6 +138,13 @@ async fn get_history(
 async fn delete_history(State(state): State<Arc<AppState>>) -> Result<StatusCode, AniError> {
     h_inner::history_clear(&state)?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_history_by_kitsu(
+    State(state): State<Arc<AppState>>,
+    Path(kitsu_id): Path<String>,
+) -> Result<Json<Option<HistoryEntry>>, AniError> {
+    Ok(Json(h_inner::history_by_kitsu(&state, &kitsu_id)?))
 }
 
 async fn post_external_player(

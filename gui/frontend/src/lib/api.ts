@@ -310,6 +310,17 @@ export function historyClear(): Promise<void> {
 	return deleteJson<void>('/api/history');
 }
 
+/** Find the most-recent history entry whose allmanga show_id maps to
+ *  this Kitsu id, via the (allmanga show_id → kitsu_id) reverse cache
+ *  the play path stamps on each successful resolve. Used by the detail
+ *  page to swap "Play episode 1" for "Continue · Episode N+1" when
+ *  the user has watched this show before. Returns `null` when there's
+ *  no such mapped entry — including the case where the mapping cache
+ *  is cold (CLI-only history rows the GUI hasn't played yet). */
+export function historyByKitsu(kitsuId: string): Promise<HistoryEntry | null> {
+	return getJson<HistoryEntry | null>(`/api/history/by-kitsu/${encodeURIComponent(kitsuId)}`);
+}
+
 export function createSession(args: CreateSessionArgs): Promise<CreateSessionResponse> {
 	return postJson<CreateSessionResponse>('/api/sessions', args);
 }

@@ -19,6 +19,44 @@ pub fn history_list(state: &crate::app::AppState) -> Result<Vec<HistoryEntry>> {
     read_all(&state.history_path)
 }
 
+/// Find the history entry (if any) whose allmanga show_id maps to
+/// the supplied `kitsu_id`. Walks the on-disk TSV, resolving each
+/// entry's `id` through the `(allmanga show_id → kitsu_id)` reverse
+/// cache stamped by every successful play. Returns the first match
+/// or `None` when:
+///   - The history file is missing or empty.
+///   - No entry's allmanga id has a cached mapping.
+///   - None of the cached mappings equal `kitsu_id`.
+///
+/// The reverse cache is the same surface Continue Watching uses; if
+/// it has no entry for a given allmanga id (the user hasn't played
+/// that show through the GUI yet), that history row is skipped here.
+/// CLI-only history rows therefore won't surface a Resume affordance
+/// until the user plays the show once via the GUI — by design, since
+/// otherwise we'd need to round-trip Kitsu search per row.
+///
+/// # Errors
+/// Returns [`crate::error::AniError::Io`] when the history file
+/// exists but cannot be read; SQLite errors propagate from the
+/// reverse-cache lookup.
+pub fn history_by_kitsu(
+    state: &crate::app::AppState,
+    kitsu_id: &str,
+) -> Result<Option<HistoryEntry>> {
+    if kitsu_id.is_empty() {
+        return Ok(None);
+    }
+    let entries = read_all(&state.history_path)?;
+    for entry in entries {
+        if let Ok(Some(mapped)) = crate::commands::kitsu::allmanga_kitsu_get(state, &entry.id) {
+            if mapped == kitsu_id {
+                return Ok(Some(entry));
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// Truncate the history file to zero length. Mirrors `ani-cli -D`.
 ///
 /// # Errors

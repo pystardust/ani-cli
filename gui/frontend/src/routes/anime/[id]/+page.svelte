@@ -19,6 +19,7 @@
 	import {
 		altTitlesFromKitsu,
 		checkAvailability,
+		historyByKitsu,
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
@@ -28,6 +29,7 @@
 		settingsGet,
 		settingsPut,
 		type Config,
+		type HistoryEntry,
 		type KitsuAnimeRef,
 		type KitsuEpisode
 	} from '$lib/api';
@@ -56,6 +58,14 @@
 	// isn't in allmanga's catalog (Kitsu indexes Western animation
 	// like "Arcane Season 2" too — the play CTA there is a dead end).
 	let availability = $state<boolean | null>(null);
+
+	// Most-recent history entry (if any) whose allmanga show_id maps
+	// to this Kitsu id, via the reverse cache stamped by every
+	// successful play. When set, the primary CTA flips from "Play
+	// episode 1" to "Continue · Episode N+1" — N taken from
+	// resumeEntry.ep_no, capped at the show's known episode count so
+	// we don't propose an episode that doesn't exist yet.
+	let resumeEntry = $state<HistoryEntry | null>(null);
 
 	// Episode list — fetched in parallel with the detail. Holds the
 	// CURRENT page only (not concatenated) so a 500-episode show doesn't
@@ -335,6 +345,15 @@
 		similar = null;
 		error = null;
 		availability = null;
+		resumeEntry = null;
+		void historyByKitsu(currentId)
+			.then((h) => {
+				if (id !== currentId) return;
+				resumeEntry = h;
+			})
+			.catch(() => {
+				// Resume is a hint, not load-bearing — drop silently.
+			});
 		void kitsuAnimeDetail(currentId)
 			.then((d) => {
 				if (id !== currentId) return; // navigation raced ahead
@@ -614,10 +633,31 @@
 		return detail?.canonical_title ?? '';
 	}
 
-	/** Default to the show's first episode for the hero "Play" button. */
+	/** Hero CTA target. When the user has watched this show before
+	 *  (resumeEntry populated from the reverse cache), point at the
+	 *  episode AFTER the one they last watched, capped at the show's
+	 *  known episode_count so we don't propose a non-existent ep.
+	 *  Falls back to episode 1. */
 	function defaultEpisode(): number {
-		return 1;
+		if (!resumeEntry) return 1;
+		const last = parseInt(resumeEntry.ep_no, 10);
+		if (!Number.isFinite(last) || last < 1) return 1;
+		const cap = detail?.episode_count ?? null;
+		const next = last + 1;
+		if (cap !== null && next > cap) return last;
+		return next;
 	}
+
+	/** Label for the primary action button. Reads "Continue · Episode N"
+	 *  when defaultEpisode() points past episode 1, "Replay · Episode N"
+	 *  when we capped at the last episode, otherwise "Play episode 1". */
+	const playLabel = $derived.by(() => {
+		const ep = defaultEpisode();
+		if (!resumeEntry) return 'Play episode 1';
+		const last = parseInt(resumeEntry.ep_no, 10);
+		if (Number.isFinite(last) && ep === last) return `Replay · Episode ${ep}`;
+		return `Continue · Episode ${ep}`;
+	});
 
 	async function startPlay(ep: number) {
 		const title = playTitle();
@@ -825,7 +865,7 @@
 								disabled={actionBusy}
 							>
 								<span aria-hidden="true">▸</span>
-								<span>Play episode 1</span>
+								<span>{playLabel}</span>
 							</button>
 							<button type="button" class="btn btn-outline" onclick={onDownload}>
 								<span aria-hidden="true">↓</span>
