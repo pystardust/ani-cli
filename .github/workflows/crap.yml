@@ -12,6 +12,8 @@ on:
       - 'gui/frontend/**'
       - 'tools/**'
       - 'coverage-baseline.json'
+      - '.github/workflows/crap.yml'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'gui/backend/**'
