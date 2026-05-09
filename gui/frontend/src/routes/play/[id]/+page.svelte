@@ -71,6 +71,8 @@
 		setSubtitleTrack
 	} from '$lib/play/global-video';
 	import { decideNavigateAction } from '$lib/play/navigate-decision';
+	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
+	import { describeError, describePlayFailure } from '$lib/play/error-copy';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
@@ -121,17 +123,6 @@
 	let playerError = $state<string | null>(null);
 	let switchBusy = $state(false);
 	let switchProgress = $state<string | null>(null);
-
-	function progressLabel(p: import('$lib/api').PlayProgress): string {
-		switch (p.kind) {
-			case 'banner':
-				return p.text;
-			case 'links_fetched':
-				return `${p.provider} ✓`;
-			case 'other':
-				return p.text;
-		}
-	}
 
 	// Singleton-backed video element, owned by lib/play/global-video.
 	// Survives /play/[id] route destroys so PiP keeps showing.
@@ -291,24 +282,6 @@
 			ro.disconnect();
 		};
 	});
-
-	function skipLabel(skipType: string): string {
-		if (skipType === 'op') return 'Skip Opening';
-		if (skipType === 'ed') return 'Skip Ending';
-		if (skipType === 'recap') return 'Skip Recap';
-		return 'Skip';
-	}
-
-	function formatTime(seconds: number): string {
-		if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-		const total = Math.floor(seconds);
-		const h = Math.floor(total / 3600);
-		const m = Math.floor((total % 3600) / 60);
-		const s = total % 60;
-		const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-		const ss = String(s).padStart(2, '0');
-		return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-	}
 
 	function togglePlay() {
 		if (!videoEl) return;
@@ -916,36 +889,8 @@
 		});
 	});
 
-	function describeError(e: unknown): string {
-		if (typeof e === 'object' && e !== null) {
-			const obj = e as Record<string, unknown>;
-			const kind = typeof obj.kind === 'string' ? obj.kind : null;
-			const detail = typeof obj.detail === 'string' ? obj.detail : null;
-			if (kind && detail) return `${kind}: ${detail}`;
-			if (kind) return kind;
-		}
-		return String(e);
-	}
-
-	/** Human-readable copy for a play-call failure. Mirrors the detail
-	 *  page helper of the same name — kept duplicated so the two routes
-	 *  can diverge messaging without coupling. */
-	function describePlayFailure(e: unknown): string {
-		const raw = describeError(e).toLowerCase();
-		if (raw.includes('no_results')) {
-			return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
-		}
-		if (raw.includes('scraper')) {
-			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
-		}
-		if (raw.includes('timeout')) {
-			return 'The streaming source took too long to respond. Try again in a few minutes.';
-		}
-		if (raw.includes('network') || raw.includes('upstream')) {
-			return 'Network trouble reaching the streaming source. Check your connection and try again.';
-		}
-		return "Couldn't start this episode right now. Try again in a few minutes.";
-	}
+	// describeError / describePlayFailure live in $lib/play/error-copy
+	// so the four message branches can be unit-tested directly.
 
 	/** Hard-failure overlay state — distinct from `playerError` (which
 	 *  shows in the player area when the video element / hls.js errors
