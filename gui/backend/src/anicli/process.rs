@@ -22,13 +22,22 @@ use crate::error::{AniError, Result};
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Strip characters that break ani-cli's `search_anime()` shell-string
-/// JSON interpolation. Currently a no-op stub — the implementation
-/// lands in the green commit. See the test module for the upstream
-/// root cause and the contract this function must honour.
+/// JSON interpolation. Today that's just `"`: the script builds its
+/// allanime curl POST via `--data "{...\"query\":\"$1\"...}"`, so a
+/// literal `"` in `$1` closes the JSON string mid-way and the server
+/// returns nothing (manifesting as "No results found"). Kitsu's
+/// canonical title for the Naruto Shippuuden `"Konoha Gakuen"` special
+/// is the repro case.
+///
+/// Stripping the quote is safe — allanime's fuzzy search matches
+/// `Konoha Gakuen` and `"Konoha Gakuen"` to the same `_id` with the
+/// same ranking, so `-S 1` lands on the right candidate either way.
+///
+/// Tracked upstream as a follow-up: the right fix is to JSON-escape
+/// `$1` inside ani-cli's `search_anime()` (e.g. via `jq -Rs`). Once
+/// that lands and we sync, this sanitiser becomes redundant.
 pub(crate) fn sanitize_anicli_query(q: &str) -> String {
-    // STUB (red). The green commit replaces this with the actual
-    // sanitiser; the test in this module asserts the contract.
-    q.to_string()
+    q.replace('"', "")
 }
 
 /// Locate the `ani-cli` binary. Looks at `$PATH`, then falls back to a
@@ -144,7 +153,10 @@ pub async fn run_debug(
     if mode == "dub" {
         cmd.arg("--dub");
     }
-    cmd.arg("--").arg(query);
+    // Strip embedded `"` to dodge ani-cli's search_anime JSON-injection
+    // bug — see `sanitize_anicli_query` for the full story.
+    let safe_query = sanitize_anicli_query(query);
+    cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
     // PATH is required so ani-cli can find curl/openssl/fzf/mpv. Tests
@@ -264,7 +276,10 @@ where
     if mode == "dub" {
         cmd.arg("--dub");
     }
-    cmd.arg("--").arg(query);
+    // Strip embedded `"` to dodge ani-cli's search_anime JSON-injection
+    // bug — see `sanitize_anicli_query` for the full story.
+    let safe_query = sanitize_anicli_query(query);
+    cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
     let path_value = opts
