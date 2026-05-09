@@ -30,10 +30,7 @@ describe('buildPlayQuery', () => {
 		// itself isn't shuttled through the query string — the proxy
 		// hosts it at /s/<session>/sub.vtt — only the boolean hint
 		// that the backend resolution produced one.
-		const q = buildPlayQuery(
-			baseSession({ subtitle_url: 'https://upstream/sub.vtt' }),
-			1
-		);
+		const q = buildPlayQuery(baseSession({ subtitle_url: 'https://upstream/sub.vtt' }), 1);
 		expect(q).toContain('sub=1');
 	});
 
