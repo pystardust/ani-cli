@@ -104,21 +104,72 @@ pub async fn kitsu_trending(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
 /// Bubbles AniList / Kitsu transport failures only when the fallback
 /// also fails. Cache write failures are silently ignored.
 pub async fn kitsu_trending_anilist(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
-    let _ = state;
-    Err(crate::error::AniError::ParseFailed {
-        detail: "kitsu_trending_anilist not implemented yet".into(),
-    })
+    const KEY: &str = "kitsu:v3:trending_anilist";
+    if let Some(body) = meta_cache_get(&state.cache_pool, KEY)? {
+        if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
+            warm_signed_image_urls(state, &body);
+            return Ok(hits);
+        }
+    }
+
+    // AniList → MAL ids → bridge to Kitsu refs.
+    let anilist =
+        crate::meta::anilist::trending(&state.proxy_http, ANILIST_TRENDING_LIMIT, None).await;
+    let bridged = match anilist {
+        Ok(v) if !v.is_empty() => bridge_anilist_to_kitsu(state, v).await,
+        _ => Vec::new(),
+    };
+
+    // AniList errored or every entry failed to bridge — fall back
+    // so home still has SOMETHING to render.
+    let hits = if bridged.is_empty() {
+        kitsu_trending(state).await?
+    } else {
+        bridged
+    };
+
+    if let Ok(body) = serde_json::to_string(&hits) {
+        let _ = meta_cache_put(&state.cache_pool, KEY, &body, TRENDING_TTL.as_secs());
+        warm_signed_image_urls(state, &body);
+    }
+    Ok(hits)
 }
+
+/// AniList trending page size — N entries fetched, then bridged to
+/// Kitsu. We render the hero from items 0..5 and the Trending strip
+/// from the rest, so 25 leaves comfortable headroom for shows that
+/// fail to bridge (rare; a couple per page at most).
+const ANILIST_TRENDING_LIMIT: u8 = 25;
 
 /// Concurrent MAL → Kitsu lookups for a list of AniList refs,
 /// dropping entries with no MAL id and entries Kitsu can't bridge.
 /// Preserves the AniList ranking — order matters because the home
-/// hero takes the first 5–6 entries.
+/// hero takes the first 5–6 entries. `FuturesOrdered` runs the
+/// lookups concurrently and yields results in the input order; the
+/// resulting Kitsu /mappings calls fan out at once. 25 lookups
+/// against a single endpoint is fine and the cache layer absorbs
+/// the cost on subsequent visits.
 pub(super) async fn bridge_anilist_to_kitsu(
-    _state: &AppState,
-    _anilist: Vec<crate::meta::anilist::AniListAnimeRef>,
+    state: &AppState,
+    anilist: Vec<crate::meta::anilist::AniListAnimeRef>,
 ) -> Vec<KitsuAnimeRef> {
-    Vec::new()
+    use futures_util::stream::{FuturesOrdered, StreamExt};
+
+    let mut futures = FuturesOrdered::new();
+    for entry in anilist {
+        let kitsu = state.kitsu.clone();
+        futures.push_back(async move {
+            let mal_id = entry.id_mal?;
+            kitsu.lookup_by_mal_id(mal_id).await.ok().flatten()
+        });
+    }
+    let mut out = Vec::new();
+    while let Some(maybe_ref) = futures.next().await {
+        if let Some(r) = maybe_ref {
+            out.push(r);
+        }
+    }
+    out
 }
 
 /// Top-rated anime (averageRating ≥ 70/100). Cache key:
