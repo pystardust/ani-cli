@@ -890,13 +890,11 @@
 	//     page's load effect will swap its src in place.
 	//
 	//   • Anything else (different show, /, /anime/[id], /search,
-	//     …) → either request PiP (if the user opted into
-	//     auto_pip_on_leave) or pause the singleton so its audio
-	//     doesn't keep streaming from the off-screen hidden host.
-	//     Without the explicit pause the element survives in the
-	//     1×1 hidden host and continues playing audio, which is
-	//     what users heard as "I exit the page and hear audio with
-	//     no video".
+	//     …) → request PiP by default so the user keeps watching
+	//     while they browse. If they opted out via
+	//     disable_auto_pip_on_leave, pause instead — without the
+	//     explicit pause the singleton survives in the 1×1 hidden
+	//     host and keeps streaming audio off-screen.
 	beforeNavigate(({ to }) => {
 		if (!videoEl) return;
 		const targetRoute = to?.route?.id ?? '';
@@ -905,12 +903,12 @@
 		if (sameShowSwap) return;
 		if (videoEl.paused) return;
 		if (document.pictureInPictureElement) return;
-		if (config?.auto_pip_on_leave) {
+		if (config?.disable_auto_pip_on_leave) {
+			videoEl.pause();
+		} else {
 			void videoEl.requestPictureInPicture().catch(() => {
 				if (videoEl) videoEl.pause();
 			});
-		} else {
-			videoEl.pause();
 		}
 	});
 

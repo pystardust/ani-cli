@@ -121,9 +121,9 @@
 		if (!cfg) return;
 		void persist({ ...cfg, use_custom_player_controls: value });
 	}
-	function setAutoPipOnLeave(value: boolean) {
+	function setDisableAutoPipOnLeave(value: boolean) {
 		if (!cfg) return;
-		void persist({ ...cfg, auto_pip_on_leave: value });
+		void persist({ ...cfg, disable_auto_pip_on_leave: value });
 	}
 
 	async function clearHistory() {
@@ -375,24 +375,26 @@
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Auto Picture-in-Picture on leave</span>
+					<span class="field-key">Disable auto Picture-in-Picture</span>
 					<span class="field-hint">
-						When you navigate away from the player while a video is playing, automatically pop it
-						into a Picture-in-Picture window so you can keep watching while browsing. Off by
-						default; episode-to-episode navigation never triggers PiP regardless.
+						By default, navigating away from the player while a video is playing pops it into a
+						Picture-in-Picture window so you can keep watching while browsing. Turn this on to pause
+						playback on navigation instead. Episode-to-episode navigation never triggers PiP
+						regardless.
 					</span>
 				</div>
 				<label class="switch">
 					<input
 						type="checkbox"
-						checked={cfg.auto_pip_on_leave}
-						onchange={(e) => setAutoPipOnLeave((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Auto Picture-in-Picture on leave"
+						checked={cfg.disable_auto_pip_on_leave}
+						onchange={(e) =>
+							setDisableAutoPipOnLeave((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Disable auto Picture-in-Picture"
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.auto_pip_on_leave ? 'On' : 'Off'}</span>
+					<span class="switch-state">{cfg.disable_auto_pip_on_leave ? 'On' : 'Off'}</span>
 				</label>
 			</div>
 		</section>
