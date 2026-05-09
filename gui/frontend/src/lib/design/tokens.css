@@ -161,7 +161,9 @@
 	   chrome additions (e.g. a quality picker) can update one
 	   number instead of five formulas. */
 	--player-reserved-height: 300px;
-	--hero-aspect: 21 / 5;
+	/* Bumped from 21/5 (4.2:1) to 24/5 (4.8:1) — ~14% shorter; lines
+	   the detail banner up against the home hero's reduced height. */
+	--hero-aspect: 24 / 5;
 	--poster-aspect: 5 / 7;
 	--rail-width: 5.5rem; /* 88px — narrow enough to feel like a margin, not a panel. */
 	--strip-card: 11.25rem; /* horizontal-strip card inline-size. */
