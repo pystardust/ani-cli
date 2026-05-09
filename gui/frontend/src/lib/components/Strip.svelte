@@ -247,23 +247,27 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-family: var(--font-body);
+		/* Keep the tight uppercase eyebrow shape, just lift contrast
+		   on the active part (key) and let the caption drop into
+		   muted territory so the hierarchy reads at a glance. */
+		font-size: 0.8125rem; /* 13px */
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--bone-300);
-		font-weight: 500;
+		font-weight: 600;
+		color: color-mix(in oklab, var(--bone-100) 82%, transparent);
 	}
 	.eyebrow-key {
-		color: var(--bone-200);
+		color: color-mix(in oklab, var(--bone-100) 82%, transparent);
 	}
 	.eyebrow-rule {
 		inline-size: 2.5rem;
 		block-size: 1px;
-		background: var(--bone-400);
+		background: color-mix(in oklab, var(--bone-100) 22%, transparent);
 	}
 	.eyebrow-value {
-		color: var(--bone-300);
+		font-weight: 500;
+		color: color-mix(in oklab, var(--bone-100) 38%, transparent);
 	}
 
 	.strip-frame {
