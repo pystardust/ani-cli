@@ -1887,10 +1887,13 @@
 		min-inline-size: 2.25rem;
 		justify-content: center;
 	}
-	/* Auto-play in the off state reads as a low-contrast outlined
-	   icon — no accent, slightly faded. */
+	/* Auto-play "off" state: same contrast as the rest of the
+	   episode controls (Prev / Next / Current). The on/off
+	   distinction is carried by the outlined-vs-filled icon
+	   alone — fading the label too made it read as disabled
+	   even though the button is fully clickable. */
 	.ep-toggle[aria-pressed='false'] {
-		color: color-mix(in oklab, var(--bone-100) 60%, transparent);
+		color: var(--bone-100);
 	}
 	/* aria-pressed=true paints the toggle button accent so the on
 	   state reads at a glance — accent fill + filled icon (rendered
