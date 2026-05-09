@@ -200,3 +200,35 @@ pub struct AvailabilityWarmArgs {
     /// Per-title args — same shape as the single-item check.
     pub items: Vec<AvailabilityArgs>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The cache body is the AvailabilityResponse JSON. Adding the new
+    /// episode_count field must round-trip — the detail page reads it
+    /// to size the episode list and gate the Download All / range cap.
+    #[test]
+    fn response_round_trips_with_episode_count() {
+        let r = AvailabilityResponse {
+            available: true,
+            episode_count: Some(1161),
+        };
+        let json = serde_json::to_string(&r).expect("serialize");
+        let back: AvailabilityResponse = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.available, true);
+        assert_eq!(back.episode_count, Some(1161));
+    }
+
+    /// Old cache rows (written before episode_count was added) must
+    /// still parse — TTL hasn't expired them yet, so during the
+    /// rollout window we'll see them. They yield episode_count=None,
+    /// which the frontend treats as "fall back to Kitsu's count".
+    #[test]
+    fn legacy_response_without_episode_count_parses_as_none() {
+        let legacy = r#"{"available":true}"#;
+        let r: AvailabilityResponse = serde_json::from_str(legacy).expect("legacy parses");
+        assert_eq!(r.available, true);
+        assert_eq!(r.episode_count, None);
+    }
+}
