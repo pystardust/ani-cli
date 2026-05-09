@@ -640,11 +640,21 @@ export interface AvailabilityArgs {
 	kitsu_id?: string;
 }
 
+/** Response from {@link checkAvailability}. `episode_count` is allmanga's
+ *  authoritative `availableEpisodes.<mode>` for the chosen candidate —
+ *  null means either the show isn't available or the picker matched a
+ *  candidate with zero episodes for this mode. The detail page uses it
+ *  to size the episode list and gate Download All. */
+export interface AvailabilityResponse {
+	available: boolean;
+	episode_count: number | null;
+}
+
 /** "Is this title in allmanga's catalog?" probe. The detail page hits
  *  this on mount so it can gate the Play + Download CTAs ahead of a
  *  click instead of letting the user discover the gap by clicking. */
-export function checkAvailability(args: AvailabilityArgs): Promise<{ available: boolean }> {
-	return postJson<{ available: boolean }>('/api/availability', args);
+export function checkAvailability(args: AvailabilityArgs): Promise<AvailabilityResponse> {
+	return postJson<AvailabilityResponse>('/api/availability', args);
 }
 
 /** Cached-only batch lookup. List views (home / search) call this

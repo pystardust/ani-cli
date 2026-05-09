@@ -59,6 +59,19 @@
 	// like "Arcane Season 2" too — the play CTA there is a dead end).
 	let availability = $state<boolean | null>(null);
 
+	// allmanga's availableEpisodes for the chosen candidate, populated
+	// alongside availability. This is the authoritative "what's
+	// streamable RIGHT NOW" number — Kitsu's episode_count lags real
+	// airing for ongoing shows (One Piece: Kitsu 1106, allmanga 1161).
+	let playableEpisodeCount = $state<number | null>(null);
+
+	// The cap used for: resume button (defaultEpisode), Download All
+	// total, Download range max, episode-list tile count. Prefers
+	// allmanga's count; falls back to Kitsu's announced total when
+	// allmanga isn't known yet (cold cache); null when neither is
+	// known and the surface should treat the cap as unbounded.
+	const episodeCap = $derived(playableEpisodeCount ?? detail?.episode_count ?? null);
+
 	// Most-recent history entry (if any) whose allmanga show_id maps
 	// to this Kitsu id, via the reverse cache stamped by every
 	// successful play. When set, the primary CTA flips from "Play
@@ -112,11 +125,12 @@
 		return null;
 	});
 	const totalEpisodePages = $derived.by(() => {
-		const total = detail?.episode_count;
-		// If we already know Kitsu only has K (< UI_PAGE_SIZE) episodes
-		// despite episode_count claiming more, there's nothing on page 2
-		// — clamp to a single page so prev/next controls don't take the
-		// user to an empty grid.
+		// Prefer allmanga's count (`episodeCap` once availability lands)
+		// over Kitsu's announced number — for ongoing shows Kitsu can
+		// pre-allocate placeholder rows past anything streamable. If we
+		// already know Kitsu only has K (< UI_PAGE_SIZE) episodes,
+		// there's nothing on page 2.
+		const total = episodeCap;
 		if (knownAvailableEpisodes !== null) return 1;
 		if (!total) return null;
 		return Math.max(1, Math.ceil(total / UI_PAGE_SIZE));
@@ -155,6 +169,25 @@
 				const n = ep.number ?? ep.relative_number ?? -1;
 				return n >= start && n <= end;
 			});
+			// Pad with placeholder tiles for episode numbers in the page
+			// range that allmanga has but Kitsu doesn't (ongoing shows
+			// where Kitsu's cataloguers lag the streaming source — One
+			// Piece: Kitsu stops at 1106, allmanga has 1161). Without
+			// padding, the last few pages would render short and the
+			// user couldn't click 1107+. The cap (`episodeCap`) prefers
+			// allmanga's count when known.
+			const cap = episodeCap;
+			if (cap !== null) {
+				const have = new Set(windowed.map((ep) => ep.number ?? ep.relative_number ?? -1));
+				const padTo = Math.min(end, cap);
+				for (let n = start; n <= padTo; n++) {
+					if (have.has(n)) continue;
+					windowed.push(placeholderEpisode(n));
+				}
+				windowed.sort(
+					(a, b) => (a.number ?? a.relative_number ?? 0) - (b.number ?? b.relative_number ?? 0)
+				);
+			}
 			episodes = windowed;
 			episodesPage = wantPage;
 			episodesError = null;
@@ -165,6 +198,24 @@
 		} finally {
 			episodesLoading = false;
 		}
+	}
+
+	/** Synthetic episode record used to fill the gap between Kitsu's
+	 *  catalogued range and allmanga's playable count. The renderer's
+	 *  null-title / null-thumbnail branches already handle missing
+	 *  metadata — this just gives the each block a keyed id. */
+	function placeholderEpisode(n: number): KitsuEpisode {
+		return {
+			id: `__placeholder__${n}`,
+			number: n,
+			relative_number: null,
+			season_number: null,
+			canonical_title: null,
+			synopsis: null,
+			airdate: null,
+			length: null,
+			thumbnail: null
+		};
 	}
 
 	// Warm the cache for ±1 UI pages so prev/next feels instant. Quietly
@@ -345,6 +396,7 @@
 		similar = null;
 		error = null;
 		availability = null;
+		playableEpisodeCount = null;
 		resumeEntry = null;
 		void historyByKitsu(currentId)
 			.then((h) => {
@@ -375,6 +427,7 @@
 					.then((r) => {
 						if (id !== currentId) return;
 						availability = r.available;
+						playableEpisodeCount = r.episode_count;
 					})
 					.catch(() => {
 						// Leave null; lazy fallback in the click handler
@@ -642,9 +695,8 @@
 		if (!resumeEntry) return 1;
 		const last = parseInt(resumeEntry.ep_no, 10);
 		if (!Number.isFinite(last) || last < 1) return 1;
-		const cap = detail?.episode_count ?? null;
 		const next = last + 1;
-		if (cap !== null && next > cap) return last;
+		if (episodeCap !== null && next > episodeCap) return last;
 		return next;
 	}
 
@@ -761,7 +813,11 @@
 			episode: String(defaultEpisode()),
 			mode,
 			quality,
-			episode_count: detail.episode_count ?? undefined,
+			// Hand the modal allmanga's authoritative count when we have
+			// it, so Download All / range cap reflect what's actually
+			// streamable. Falls through to Kitsu's announced number for
+			// the cold-cache window before availability resolves.
+			episode_count: episodeCap ?? undefined,
 			alt_titles: altTitlesFromKitsu(detail),
 			kitsu_id: id
 		};
@@ -846,11 +902,17 @@
 					<h1 class="title">{detail.canonical_title}</h1>
 
 					<!-- Action row: primary play, secondary download. Gated
-					     by the availability probe — when allmanga has no
-					     candidate for this title, replace the CTAs with a
-					     calm notice so the user doesn't bounce off a
-					     dead-end click. -->
-					{#if availability === false}
+					     by the availability probe — until it lands, render
+					     a placeholder so we never flash CTAs labeled with
+					     stale Kitsu counts. False → "Not in catalogue"
+					     notice. True → real Play/Download with the
+					     allmanga-truth count threaded through. -->
+					{#if availability === null}
+						<div class="actions actions-loading" aria-label="Title actions" aria-busy="true">
+							<span class="action-skel"></span>
+							<span class="action-skel action-skel-narrow"></span>
+						</div>
+					{:else if availability === false}
 						<p class="unavailable" role="status">
 							<span aria-hidden="true">⏵</span>
 							Not in allmanga's catalogue — playback &amp; download unavailable for this title.
@@ -1508,6 +1570,34 @@
 		flex-wrap: wrap;
 		gap: var(--space-3);
 		margin-block-end: var(--space-5);
+	}
+	.actions-loading {
+		min-block-size: 2.75rem;
+	}
+	.action-skel {
+		display: inline-block;
+		inline-size: 11rem;
+		block-size: 2.5rem;
+		border-radius: var(--radius-pill);
+		background: linear-gradient(
+			90deg,
+			color-mix(in oklab, var(--ink-200) 40%, transparent),
+			color-mix(in oklab, var(--ink-300) 50%, transparent),
+			color-mix(in oklab, var(--ink-200) 40%, transparent)
+		);
+		background-size: 200% 100%;
+		animation: action-skel-pulse 1.4s ease-in-out infinite;
+	}
+	.action-skel-narrow {
+		inline-size: 7rem;
+	}
+	@keyframes action-skel-pulse {
+		0% {
+			background-position: 0% 50%;
+		}
+		100% {
+			background-position: -200% 50%;
+		}
 	}
 	.unavailable {
 		display: inline-flex;

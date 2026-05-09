@@ -40,6 +40,7 @@
 		downloadDefaultDir as downloadDefaultDirApi,
 		evictPlayCache,
 		imageProxyUrl,
+		checkAvailability,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
 		kitsuSearch,
@@ -222,7 +223,13 @@
 		)
 	);
 
-	const totalEpisodes = $derived(detail?.episode_count ?? null);
+	// allmanga's `availableEpisodes.<mode>` for this show; populated
+	// alongside detail. Same role as on /anime/[id] — authoritative
+	// "what's streamable now" cap, ahead of Kitsu's announced number
+	// for ongoing shows. Falls back to Kitsu's count when null.
+	let playableEpisodeCount = $state<number | null>(null);
+	const episodeCap = $derived(playableEpisodeCount ?? detail?.episode_count ?? null);
+	const totalEpisodes = $derived(episodeCap);
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
 
@@ -245,7 +252,10 @@
 	});
 
 	const totalEpisodePages = $derived.by(() => {
-		const total = detail?.episode_count;
+		// Prefer allmanga's count over Kitsu's — same logic as on the
+		// detail page; ongoing shows (One Piece) have far more
+		// streamable episodes than Kitsu has catalogued.
+		const total = episodeCap;
 		if (!total) return null;
 		return Math.max(1, Math.ceil(total / UI_PAGE_SIZE));
 	});
@@ -283,6 +293,33 @@
 				const n = ep.number ?? ep.relative_number ?? -1;
 				return n >= start && n <= end;
 			});
+			// Pad placeholder tiles for the gap between Kitsu's
+			// catalogued episodes and allmanga's count (ongoing
+			// shows). Mirrors the detail-page logic so the player's
+			// episode strip can navigate to playable-but-uncatalogued
+			// episodes (One Piece 1107+).
+			const cap = episodeCap;
+			if (cap !== null) {
+				const have = new Set(windowed.map((ep) => ep.number ?? ep.relative_number ?? -1));
+				const padTo = Math.min(end, cap);
+				for (let n = start; n <= padTo; n++) {
+					if (have.has(n)) continue;
+					windowed.push({
+						id: `__placeholder__${n}`,
+						number: n,
+						relative_number: null,
+						season_number: null,
+						canonical_title: null,
+						synopsis: null,
+						airdate: null,
+						length: null,
+						thumbnail: null
+					});
+				}
+				windowed.sort(
+					(a, b) => (a.number ?? a.relative_number ?? 0) - (b.number ?? b.relative_number ?? 0)
+				);
+			}
 			episodes = windowed;
 			episodesPage = wantPage;
 			episodesError = null;
@@ -498,6 +535,23 @@
 		void kitsuAnimeDetail(id)
 			.then((d) => {
 				detail = d;
+				// Probe allmanga in the background to learn the playable
+				// episode count. Same surface the detail page uses; the
+				// cache stamp from the play handler that brought us here
+				// is usually already in place, so this is sub-ms.
+				void checkAvailability({
+					title: d.canonical_title,
+					mode: 'sub',
+					alt_titles: altTitlesFromKitsu(d),
+					episode_count: d.episode_count ?? undefined,
+					kitsu_id: d.id
+				})
+					.then((r) => {
+						playableEpisodeCount = r.episode_count;
+					})
+					.catch(() => {
+						// Cap falls back to Kitsu's count; nothing else to do.
+					});
 				const seed = (d.canonical_title ?? '').split(/\s+/).slice(0, 2).join(' ').trim();
 				if (seed.length >= 2) {
 					void kitsuSearch(seed)

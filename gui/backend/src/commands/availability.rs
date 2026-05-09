@@ -54,6 +54,16 @@ pub struct AvailabilityResponse {
     /// the queried titles. False = the show is not in allmanga's
     /// catalog (e.g. Western animation Kitsu happens to index).
     pub available: bool,
+    /// allmanga's `availableEpisodes.<mode>` for the chosen candidate.
+    /// Authoritative count of what's actually streamable RIGHT NOW —
+    /// detail page uses it to size the episode list and gate the
+    /// Download All affordance. None when:
+    ///   - available=false (no candidate to read).
+    ///   - The candidate has 0 episodes for this mode.
+    ///   - Legacy cache rows written before this field existed.
+    /// Frontend falls back to Kitsu's `episode_count` in those cases.
+    #[serde(default)]
+    pub episode_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -120,19 +130,42 @@ pub async fn check_availability(
     };
     let (_chosen_title, _select, chosen_candidate) = pick_title_and_index(state, &play_view).await;
     let available = chosen_candidate.is_some();
+    let episode_count = chosen_candidate
+        .as_ref()
+        .map(|c| c.available_episodes.for_mode(mode))
+        .filter(|&n| n > 0);
 
     if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
-        write_cache(state, id, mode, available);
+        write_cache_full(state, id, mode, available, episode_count);
     }
 
-    Ok(AvailabilityResponse { available })
+    Ok(AvailabilityResponse {
+        available,
+        episode_count,
+    })
 }
 
 /// Persist a known availability result. Public so the play and
 /// download paths can update the cache from their own success /
 /// NoResults outcomes — clicks from any tile end up populating the
-/// cache without an extra network round-trip.
+/// cache without an extra network round-trip. Episode count is
+/// unknown from these call sites (they don't read availableEpisodes
+/// off the candidate), so the cache row stores None there; the next
+/// detail-page probe will fill it in.
 pub fn write_cache(state: &AppState, kitsu_id: &str, mode: &str, available: bool) {
+    write_cache_full(state, kitsu_id, mode, available, None);
+}
+
+/// Same as [`write_cache`] but lets the caller supply the episode
+/// count when it knows. Used by `check_availability` after running
+/// the play picker; everything else stays on the simpler entry point.
+pub fn write_cache_full(
+    state: &AppState,
+    kitsu_id: &str,
+    mode: &str,
+    available: bool,
+    episode_count: Option<u32>,
+) {
     if kitsu_id.is_empty() {
         return;
     }
@@ -142,7 +175,11 @@ pub fn write_cache(state: &AppState, kitsu_id: &str, mode: &str, available: bool
     } else {
         AVAILABILITY_TTL_NEGATIVE_SECS
     };
-    if let Ok(body) = serde_json::to_string(&AvailabilityResponse { available }) {
+    let body = AvailabilityResponse {
+        available,
+        episode_count,
+    };
+    if let Ok(body) = serde_json::to_string(&body) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ttl);
     }
 }
