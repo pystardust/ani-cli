@@ -237,49 +237,57 @@
 						>
 							Range
 						</button>
-						<!-- aria-disabled (vs disabled) keeps the button hoverable
-						     so the native title tooltip fires when "All" is
-						     unavailable. The click handler short-circuits when
-						     not allowed. -->
-						<button
-							type="button"
-							class="dl-mode-btn"
-							class:active={mode === 'all'}
-							class:dl-mode-btn-disabled={!maxEpisode}
-							aria-pressed={mode === 'all'}
-							aria-disabled={!maxEpisode}
-							title={!maxEpisode
-								? 'Downloading all episodes is disabled for this show.'
-								: undefined}
-							onclick={() => maxEpisode && (mode = 'all')}
-						>
-							All
-							{#if maxEpisode}
-								<span class="dl-mode-num">{maxEpisode}</span>
+						<!-- aria-disabled keeps the button hoverable so the
+						     custom tooltip fires immediately on hover. The
+						     wrapper carries the tooltip; native title is
+						     dropped because Chromium delays it ~600ms. -->
+						<span class="dl-mode-tip-wrap">
+							<button
+								type="button"
+								class="dl-mode-btn"
+								class:active={mode === 'all'}
+								class:dl-mode-btn-disabled={!maxEpisode}
+								aria-pressed={mode === 'all'}
+								aria-disabled={!maxEpisode}
+								onclick={() => maxEpisode && (mode = 'all')}
+							>
+								All
+								{#if maxEpisode}
+									<span class="dl-mode-num">{maxEpisode}</span>
+								{/if}
+							</button>
+							{#if !maxEpisode}
+								<span class="dl-tip" role="tooltip">
+									Downloading all episodes is disabled for this show.
+								</span>
 							{/if}
-						</button>
+						</span>
 					{:else}
-						<!-- aria-disabled (vs disabled) keeps the button hoverable
-						     so the native title tooltip fires when "All" is
-						     unavailable. The click handler short-circuits when
-						     not allowed. -->
-						<button
-							type="button"
-							class="dl-mode-btn"
-							class:active={mode === 'all'}
-							class:dl-mode-btn-disabled={!maxEpisode}
-							aria-pressed={mode === 'all'}
-							aria-disabled={!maxEpisode}
-							title={!maxEpisode
-								? 'Downloading all episodes is disabled for this show.'
-								: undefined}
-							onclick={() => maxEpisode && (mode = 'all')}
-						>
-							All
-							{#if maxEpisode}
-								<span class="dl-mode-num">{maxEpisode}</span>
+						<!-- aria-disabled keeps the button hoverable so the
+						     custom tooltip fires immediately on hover. The
+						     wrapper carries the tooltip; native title is
+						     dropped because Chromium delays it ~600ms. -->
+						<span class="dl-mode-tip-wrap">
+							<button
+								type="button"
+								class="dl-mode-btn"
+								class:active={mode === 'all'}
+								class:dl-mode-btn-disabled={!maxEpisode}
+								aria-pressed={mode === 'all'}
+								aria-disabled={!maxEpisode}
+								onclick={() => maxEpisode && (mode = 'all')}
+							>
+								All
+								{#if maxEpisode}
+									<span class="dl-mode-num">{maxEpisode}</span>
+								{/if}
+							</button>
+							{#if !maxEpisode}
+								<span class="dl-tip" role="tooltip">
+									Downloading all episodes is disabled for this show.
+								</span>
 							{/if}
-						</button>
+						</span>
 						<button
 							type="button"
 							class="dl-mode-btn"
@@ -530,11 +538,60 @@
 		opacity: 0.4;
 		cursor: not-allowed;
 	}
-	/* aria-disabled buttons stay hover-target so their title fires; the
-	   visual disabled state and hover suppression match :disabled. */
+	/* aria-disabled buttons stay hover-target so the custom tooltip
+	   fires; visual disabled and hover suppression match :disabled. */
 	.dl-mode-btn-disabled:hover:not(.active) {
 		background: transparent;
 		color: var(--bone-200);
+	}
+	/* Wrapper around an aria-disabled button so the tooltip can sit
+	   above the segmented row without affecting flex layout. */
+	.dl-mode-tip-wrap {
+		position: relative;
+		flex: 1 1 0;
+		display: flex;
+	}
+	.dl-mode-tip-wrap > .dl-mode-btn {
+		flex: 1 1 auto;
+		inline-size: 100%;
+	}
+	/* Custom tooltip — fires immediately on hover (no native delay).
+	   Anchored above the button with a small triangle pointer. */
+	.dl-tip {
+		position: absolute;
+		inset-block-end: calc(100% + 6px);
+		inset-inline: 50% auto auto auto;
+		transform: translateX(-50%);
+		left: 50%;
+		min-inline-size: 12rem;
+		max-inline-size: 16rem;
+		padding: var(--space-2) var(--space-3);
+		background: var(--ink-000);
+		color: var(--bone-100);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-sm);
+		box-shadow: 0 8px 18px -6px rgb(0 0 0 / 0.55);
+		font-family: var(--font-body);
+		font-size: var(--type-meta);
+		line-height: 1.35;
+		text-align: center;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 80ms var(--ease-out-soft);
+		z-index: 50;
+	}
+	.dl-tip::after {
+		content: '';
+		position: absolute;
+		inset-block-start: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		border: 5px solid transparent;
+		border-block-start-color: var(--ink-200);
+	}
+	.dl-mode-tip-wrap:hover > .dl-tip,
+	.dl-mode-tip-wrap:focus-within > .dl-tip {
+		opacity: 1;
 	}
 	.dl-mode-num {
 		font-family: var(--font-mono);
