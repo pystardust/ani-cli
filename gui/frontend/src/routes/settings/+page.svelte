@@ -409,7 +409,7 @@
 	.page {
 		max-inline-size: 56rem;
 		margin-inline: auto;
-		padding: var(--space-7) var(--space-6) var(--space-9);
+		padding: var(--space-7) var(--space-6) var(--space-8);
 	}
 
 	.page-head {
@@ -420,22 +420,6 @@
 	}
 	.eyebrow {
 		margin: 0 0 var(--space-3);
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
-	}
-	.eyebrow-key {
-		color: var(--bone-200);
-	}
-	.eyebrow-rule {
-		inline-size: 2.5rem;
-		block-size: 1px;
-		background: var(--bone-400);
 	}
 	.eyebrow-value code {
 		font-size: inherit;

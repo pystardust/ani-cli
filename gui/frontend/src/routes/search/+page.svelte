@@ -110,20 +110,27 @@
 </svelte:head>
 
 <div class="page">
+	<header class="page-header">
+		<h1 class="page-title">Search</h1>
+		{#if !submitted}
+			<p class="page-sub">Refine your search above. Results are grouped by source.</p>
+		{/if}
+	</header>
+
 	<section class="results-meta" aria-live="polite">
 		{#if submitted}
 			<p class="eyebrow">
 				<span class="eyebrow-key">Query</span>
 				<span class="eyebrow-rule" aria-hidden="true"></span>
 				<span class="eyebrow-value">{submitted}</span>
-			</p>
-			<p class="count">
+				<span class="eyebrow-sep" aria-hidden="true">·</span>
 				{#if busy}
-					<span class="count-num">·</span>
-					<span class="count-word">searching</span>
+					<span class="eyebrow-count">searching…</span>
 				{:else}
-					<span class="count-num">{count.toString().padStart(2, '0')}</span>
-					<span class="count-word">{count === 1 ? 'result' : 'results'}</span>
+					<span class="eyebrow-count">
+						<span class="num">{count}</span>
+						<span class="word">{count === 1 ? 'result' : 'results'}</span>
+					</span>
 				{/if}
 			</p>
 		{:else}
@@ -132,9 +139,7 @@
 				<span class="eyebrow-rule" aria-hidden="true"></span>
 				<span class="eyebrow-value">via Kitsu</span>
 			</p>
-			<p class="hint">
-				Type a title, or press <kbd>/</kbd> to focus.
-			</p>
+			<p class="eyebrow-caption">Trending now · Currently airing · Top&nbsp;20</p>
 		{/if}
 	</section>
 
@@ -206,15 +211,18 @@
 									<span class="poster-placeholder-title">{hit.canonical_title}</span>
 								</span>
 							{/if}
-							<span class="rank-tag" aria-hidden="true">{subtypeOf(hit)}</span>
 						</span>
 						<span class="card-body">
 							<span class="card-title">{hit.canonical_title}</span>
 							<span class="card-meta">
-								{#if year}<span>{year}</span>{/if}
+								<span>{subtypeOf(hit)}</span>
+								{#if year}
+									<span class="card-meta-sep" aria-hidden="true">·</span>
+									<span>{year}</span>
+								{/if}
 								{#if hit.episode_count}
 									<span class="card-meta-sep" aria-hidden="true">·</span>
-									<span><span class="num">{hit.episode_count}</span> ep</span>
+									<span>{hit.episode_count} eps</span>
 								{/if}
 								{#if rating}
 									<span class="card-meta-sep" aria-hidden="true">·</span>
@@ -233,64 +241,58 @@
 	.page {
 		max-inline-size: var(--content-max-wide);
 		margin-inline: auto;
-		padding: var(--space-7) var(--space-8) var(--space-9);
+		padding: var(--space-7) var(--space-8) var(--space-8);
+	}
+
+	.page-header {
+		margin-block-end: var(--space-6);
+	}
+	.page-title {
+		margin: 0;
+		font-family: var(--font-body);
+		font-weight: 600;
+		font-size: var(--type-display-l);
+		line-height: var(--leading-tight);
+		letter-spacing: var(--tracking-display);
+		color: var(--bone-100);
+	}
+	.page-sub {
+		margin: var(--space-3) 0 0;
+		font-family: var(--font-body);
+		font-size: var(--type-body);
+		line-height: var(--leading-prose);
+		color: var(--bone-300);
+		max-inline-size: 60ch;
 	}
 
 	.results-meta {
 		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-5);
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-2);
 		margin-block-end: var(--space-6);
 		padding-block-end: var(--space-4);
 		/* manga-page divider: 1px solid + 1px hairline 4px below */
 		border-block-end: 1px solid var(--ink-200);
 		box-shadow: 0 5px 0 -4px var(--ink-200);
 	}
-	.eyebrow {
-		margin: 0;
+	.eyebrow-sep {
+		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
+	}
+	.eyebrow-count {
 		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
-	}
-	.eyebrow-rule {
-		inline-size: 2.5rem;
-		block-size: 1px;
-		background: var(--bone-400);
-	}
-	.eyebrow-value {
-		color: var(--bone-200);
-		font-style: normal;
-	}
-	.count {
-		margin: 0;
-		font-family: var(--font-mono);
+		align-items: baseline;
+		gap: var(--space-2);
 		font-variant-numeric: tabular-nums lining-nums;
-		color: var(--bone-300);
-		font-size: var(--type-meta);
-		letter-spacing: var(--tracking-meta);
 	}
-	.count-num {
+	.eyebrow-count .num {
 		color: var(--bone-100);
-		font-size: var(--type-body-l);
-		margin-inline-end: var(--space-2);
 	}
-	.hint {
+	.eyebrow-caption {
 		margin: 0;
-		color: var(--bone-300);
+		font-family: var(--font-body);
 		font-size: var(--type-meta);
-	}
-	.hint kbd {
-		font-family: var(--font-mono);
-		border: 1px solid var(--ink-300);
-		padding: 0 var(--space-2);
-		border-radius: 2px;
-		color: var(--bone-200);
+		color: var(--bone-300);
 	}
 
 	/* — Grid: dense, never centered, never gappy. */
@@ -395,20 +397,6 @@
 		-webkit-box-orient: vertical;
 	}
 
-	.rank-tag {
-		position: absolute;
-		inset-block-start: var(--space-2);
-		inset-inline-start: var(--space-2);
-		padding: 2px var(--space-2);
-		background: color-mix(in oklab, var(--ink-000) 70%, transparent);
-		color: var(--bone-100);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		border-radius: 2px;
-	}
-
 	.card-body {
 		display: block;
 		padding-block-start: var(--space-3);
@@ -429,18 +417,25 @@
 	}
 	.card-meta {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: baseline;
-		gap: var(--space-2);
+		/* row-gap then column-gap — values keep tight horizontal rhythm
+		   while wrapped lines get a smaller vertical gap. */
+		gap: var(--space-1) var(--space-2);
 		margin-block-start: var(--space-2);
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-meta);
-		color: var(--bone-300);
+		font-size: var(--type-micro);
+		font-weight: 500;
+		color: var(--bone-200);
 		letter-spacing: var(--tracking-meta);
 	}
-	.card-meta .num {
-		color: var(--bone-100);
-		font-size: var(--type-body);
+	/* Each value (and separator) stays as one unit when the row wraps.
+	   Without nowrap, "366 eps" splits between "366" and "eps", so the
+	   rating slides up next to "366" while "eps" drops to a new line —
+	   which is the misalignment the user flagged. */
+	.card-meta > span {
+		white-space: nowrap;
 	}
 	.card-meta-sep {
 		color: var(--bone-400);
