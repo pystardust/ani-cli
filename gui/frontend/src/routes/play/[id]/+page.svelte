@@ -1976,13 +1976,12 @@
 		min-inline-size: 2.25rem;
 		justify-content: center;
 	}
-	/* Auto-play "off" state: matches the neighbouring Prev /
-	   Next pills (default .ep-btn color, var(--bone-200)). The
-	   on/off distinction is carried by the icon
-	   (outlined-vs-filled) and the accent fill on the on state,
-	   not by changing the label color. */
+	/* Auto-play "off" state: pure white so the label reads at
+	   max contrast against the dark episode-controls strip.
+	   The on/off distinction is carried by the icon
+	   (outlined-vs-filled) and the accent fill on the on state. */
 	.ep-toggle[aria-pressed='false'] {
-		color: var(--bone-200);
+		color: #fff;
 	}
 	/* aria-pressed=true paints the toggle button accent so the on
 	   state reads at a glance — accent fill + filled icon
