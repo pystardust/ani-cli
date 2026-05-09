@@ -929,7 +929,8 @@ describe('settingsGet', () => {
 			auto_play_next: false,
 			download_bottom_bar_enabled: true,
 			auto_skip_op: false,
-			auto_skip_ed: false
+			auto_skip_ed: false,
+			use_custom_player_controls: false
 		};
 		const fetchMock = mockFetchOnce(cfg);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -950,7 +951,8 @@ describe('settingsPut', () => {
 			auto_play_next: true,
 			download_bottom_bar_enabled: false,
 			auto_skip_op: true,
-			auto_skip_ed: true
+			auto_skip_ed: true,
+			use_custom_player_controls: true
 		};
 		const fetchMock = mockFetchOnce(null, 204);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;

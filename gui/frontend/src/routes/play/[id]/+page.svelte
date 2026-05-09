@@ -128,14 +128,13 @@
 	let videoEl: HTMLVideoElement | undefined = $state();
 	let hls: Hls | null = null;
 
-	// Feature flag — toggles between Chromium's native <video>
-	// controls and our custom controls bar. The custom bar lets
-	// the timeline take the per-show accent color (Chromium's
-	// shadow-DOM slider can't be themed); the native controls
-	// are more battle-tested for edge cases (PIP, captions menu,
-	// keyboard shortcuts). Off by default until the custom bar
-	// proves out under real usage. Flip to true to preview.
-	const USE_CUSTOM_PLAYER_CONTROLS = false;
+	// Settings-driven: whether to use our custom controls bar in
+	// place of Chromium's native one. Custom gives the timeline
+	// the per-show accent color and lets fullscreen target
+	// .player-frame (so the Skip OP/Outro overlay stays visible
+	// in fullscreen). Native is more battle-tested for PiP,
+	// caption picker, and the like. Default is native.
+	const USE_CUSTOM_PLAYER_CONTROLS = $derived(config?.use_custom_player_controls === true);
 
 	// Custom controls — Chromium's native media controls don't
 	// honor accent-color on the timeline shadow DOM, so we render
@@ -299,9 +298,19 @@
 
 	function toggleFullscreen() {
 		if (!videoEl) return;
-		const frame = videoEl.closest('.player-frame') as HTMLElement | null;
+		// Target the wrapper or the video depending on which
+		// controls bar is in use:
+		//   - Custom: target .player-frame so the Skip overlay is
+		//     inside the fullscreen layer and stays visible.
+		//   - Native: target the video element directly to match
+		//     Chromium's native fullscreen-icon target — both entry
+		//     points are equivalent and exit-fullscreen via the
+		//     native control works.
 		if (!document.fullscreenElement) {
-			void (frame ?? videoEl).requestFullscreen?.();
+			const target = USE_CUSTOM_PLAYER_CONTROLS
+				? ((videoEl.closest('.player-frame') as HTMLElement | null) ?? videoEl)
+				: videoEl;
+			void target.requestFullscreen?.();
 		} else {
 			void document.exitFullscreen?.();
 		}
@@ -1115,7 +1124,6 @@
 				bind:muted={isMuted}
 				autoplay
 				controls={!USE_CUSTOM_PLAYER_CONTROLS}
-				controlslist="nofullscreen"
 				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
 				onended={onVideoEnded}
 			>
@@ -1141,28 +1149,6 @@
 					{skipLabel(activeSkip.skip_type)}
 				</button>
 			{/if}
-
-			<!-- Fullscreen toggle that targets .player-frame (not the
-			     <video>) so the Skip overlay + future overlays stay
-			     visible inside the fullscreen layer. The native video
-			     controls have their fullscreen button hidden via
-			     controlslist="nofullscreen" so all entry routes
-			     (F key, this button) land on the frame. Esc still
-			     exits via the browser default. -->
-			<button
-				type="button"
-				class="player-fs-btn"
-				onclick={toggleFullscreen}
-				aria-label="Toggle fullscreen"
-				title="Fullscreen (F)"
-			>
-				<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-					<path
-						d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
-						fill="currentColor"
-					/>
-				</svg>
-			</button>
 
 			<!-- Custom controls overlay — toggled by the
 				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
@@ -2149,47 +2135,6 @@
 		line-height: 1;
 		display: inline-flex;
 		opacity: 0.95;
-	}
-
-	/* Fullscreen toggle — icon-only square button in the
-	   bottom-right of the visible video area (letterbox-aware,
-	   same vars as the skip button). Native fullscreen is hidden
-	   via controlslist=nofullscreen so the only entries are this
-	   button + F key, both routing through .player-frame so the
-	   skip overlay stays visible while fullscreen. */
-	.player-fs-btn {
-		position: absolute;
-		inset-inline-end: calc(0.75rem + var(--player-letterbox-x, 0px));
-		inset-block-end: calc(0.75rem + var(--player-letterbox-y, 0px));
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 2.25rem;
-		block-size: 2.25rem;
-		padding: 0;
-		color: #fff;
-		background: rgba(15, 15, 17, 0.55);
-		border: 1px solid rgba(255, 255, 255, 0.18);
-		border-radius: 50%;
-		cursor: pointer;
-		opacity: 0.6;
-		z-index: 3;
-		transition:
-			opacity 160ms ease,
-			background 160ms ease,
-			border-color 160ms ease,
-			transform 160ms ease;
-	}
-	.player-fs-btn:hover {
-		opacity: 1;
-		background: rgba(15, 15, 17, 0.85);
-		border-color: color-mix(in oklab, var(--accent) 70%, #fff 0%);
-		transform: translateY(-1px);
-	}
-	.player-fs-btn:focus-visible {
-		opacity: 1;
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
 	}
 
 	/* Custom controls overlay — Chromium's native media controls

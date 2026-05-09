@@ -44,6 +44,13 @@ pub struct Config {
     /// When `true`, the player auto-skips ending sequences. Same
     /// rationale as `auto_skip_op`. Default `false`.
     pub auto_skip_ed: bool,
+    /// Toggles between Chromium's native `<video>` controls bar and
+    /// our custom controls overlay. Custom gives the timeline the
+    /// per-show accent color + lets the fullscreen button target
+    /// `.player-frame` so the Skip OP/Outro overlay stays visible
+    /// during fullscreen — at the cost of losing the native PiP
+    /// menu and caption picker. Default `false` (native).
+    pub use_custom_player_controls: bool,
 }
 
 impl Default for Config {
@@ -58,6 +65,7 @@ impl Default for Config {
             download_bottom_bar_enabled: true,
             auto_skip_op: false,
             auto_skip_ed: false,
+            use_custom_player_controls: false,
         }
     }
 }

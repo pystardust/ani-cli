@@ -117,6 +117,10 @@
 		if (!cfg) return;
 		void persist({ ...cfg, auto_skip_ed: value });
 	}
+	function setUseCustomPlayerControls(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, use_custom_player_controls: value });
+	}
 
 	async function clearHistory() {
 		clearing = true;
@@ -338,6 +342,30 @@
 						<span class="switch-thumb"></span>
 					</span>
 					<span class="switch-state">{cfg.auto_skip_ed ? 'On' : 'Off'}</span>
+				</label>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">Custom player controls</span>
+					<span class="field-hint">
+						Replace Chromium's native bar with our themed one. The accent-coloured timeline matches
+						each show and the Skip OP/Outro button stays visible during fullscreen. Off uses
+						Chromium's bar (better for PiP and the native captions menu).
+					</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.use_custom_player_controls}
+						onchange={(e) =>
+							setUseCustomPlayerControls((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Custom player controls"
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state">{cfg.use_custom_player_controls ? 'On' : 'Off'}</span>
 				</label>
 			</div>
 		</section>
