@@ -37,6 +37,7 @@
 	import { settle } from '$lib/transitions/settle';
 	import {
 		altTitlesFromKitsu,
+		aniskipGet,
 		downloadDefaultDir as downloadDefaultDirApi,
 		evictPlayCache,
 		imageProxyUrl,
@@ -53,12 +54,14 @@
 		type DownloadArgs,
 		type KitsuAnimeRef,
 		type KitsuEpisode,
-		type MediaKind
+		type MediaKind,
+		type SkipInterval
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
 	import { buildPlayQuery } from '$lib/play/play-url';
 	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
+	import { pickActiveSkip } from '$lib/play/aniskip-active';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
@@ -145,6 +148,52 @@
 	let videoVolume = $state(1);
 	let isMuted = $state(false);
 	let scrubberHover = $state(false);
+
+	// aniskip skip-times for the current (kitsu_id, episode). Fetched
+	// once `duration` becomes finite (we need the value to disambig
+	// movie-cut vs TV-broadcast runtimes against aniskip's catalog).
+	// `activeSkip` is the interval the playhead is currently inside;
+	// the Skip OP / Skip Outro overlay binds to it.
+	let skipIntervals = $state<SkipInterval[]>([]);
+	const activeSkip = $derived(pickActiveSkip(skipIntervals, currentTime));
+
+	$effect(() => {
+		if (!id || !episodeNum || !Number.isFinite(duration) || duration <= 0) {
+			skipIntervals = [];
+			return;
+		}
+		const showId = id;
+		const ep = String(episodeNum);
+		const len = duration;
+		void aniskipGet(showId, ep, len)
+			.then((v) => {
+				// Guard against the user navigating to a different
+				// episode mid-fetch — ignore stale results.
+				if (showId === id && ep === String(episodeNum)) {
+					skipIntervals = v;
+				}
+			})
+			.catch(() => {
+				// Soft fail — no skip button just means no overlay
+				// renders. The player still plays normally.
+				skipIntervals = [];
+			});
+	});
+
+	function onSkipClick() {
+		if (!videoEl || !activeSkip) return;
+		// Tiny offset past `end_time` so the playhead is unambiguously
+		// out of the interval — otherwise the same `timeupdate` could
+		// re-evaluate `pickActiveSkip` and the button blinks back.
+		videoEl.currentTime = activeSkip.end_time + 0.05;
+	}
+
+	function skipLabel(skipType: string): string {
+		if (skipType === 'op') return 'Skip Opening';
+		if (skipType === 'ed') return 'Skip Ending';
+		if (skipType === 'recap') return 'Skip Recap';
+		return 'Skip';
+	}
 
 	function formatTime(seconds: number): string {
 		if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -1000,6 +1049,24 @@
 					<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
 				{/if}
 			</video>
+
+			<!-- Skip OP / Skip Outro overlay — driven by aniskip's
+			     crowd-sourced timestamps. Renders only when the
+			     current playhead is inside an OP/ED interval; click
+			     seeks just past `end_time`. Positioned bottom-right
+			     above native + custom controls so it never overlaps
+			     the timeline. -->
+			{#if activeSkip}
+				<button
+					type="button"
+					class="player-skip-btn"
+					onclick={onSkipClick}
+					transition:settle={{ duration: 200 }}
+				>
+					{skipLabel(activeSkip.skip_type)}
+					<span class="player-skip-arrow" aria-hidden="true">→</span>
+				</button>
+			{/if}
 
 			<!-- Custom controls overlay — toggled by the
 				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
@@ -1923,6 +1990,40 @@
 		   is wider than 16:9 of its height on most desktop windows,
 		   so the bars sit on the left + right. */
 		object-fit: contain;
+	}
+
+	/* aniskip Skip OP / Skip Outro button. Anchored bottom-right
+	   over the player frame, sits above Chromium's native controls
+	   bar by ~5rem so it doesn't overlap the timeline. Glassy fill
+	   so the underlying frame stays readable. */
+	.player-skip-btn {
+		position: absolute;
+		inset-inline-end: 1.5rem;
+		inset-block-end: 5rem;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 0.6rem 1.1rem;
+		font: 500 0.875rem/1 var(--font-body);
+		color: var(--ink-000);
+		background: color-mix(in oklab, var(--ink-500) 70%, transparent);
+		border: 1px solid color-mix(in oklab, var(--ink-000) 35%, transparent);
+		border-radius: var(--radius-pill);
+		backdrop-filter: blur(12px) saturate(1.2);
+		cursor: pointer;
+		z-index: 3;
+		transition:
+			background 160ms ease,
+			border-color 160ms ease,
+			transform 160ms ease;
+	}
+	.player-skip-btn:hover {
+		background: color-mix(in oklab, var(--accent) 70%, transparent);
+		border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+		transform: translateY(-1px);
+	}
+	.player-skip-arrow {
+		font-size: 1rem;
 	}
 
 	/* Custom controls overlay — Chromium's native media controls
