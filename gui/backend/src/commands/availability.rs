@@ -400,6 +400,156 @@ mod tests {
         assert_eq!(positive_ttl_for(Some("current")), 24 * 60 * 60);
     }
 
+    /// Build a minimal AppState backed by an in-memory SQLite pool —
+    /// enough for the cache-write / cache-read tests below. Anything
+    /// that touches Kitsu / allmanga / fs would error out (the
+    /// `kitsu_base` is unreachable on purpose), but those paths
+    /// aren't exercised here.
+    fn cache_only_state(td: &tempfile::TempDir) -> AppState {
+        use crate::meta::kitsu::KitsuClient;
+        use crate::proxy::{AppSecret, ProxyOrigin, SessionTable};
+        use std::path::PathBuf;
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+        AppState {
+            secret: AppSecret::random(),
+            sessions: SessionTable::new(),
+            proxy_http: reqwest::Client::new(),
+            proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
+            ani_cli_path: PathBuf::from("/tmp/ani-cli"),
+            history_path: td.path().join("ani-hsts"),
+            scraper_slots: Arc::new(Semaphore::new(1)),
+            image_cache_dir: td.path().join("images"),
+            cache_pool: crate::cache::open_in_memory().expect("in-mem cache pool"),
+            kitsu: KitsuClient::with_base(reqwest::Client::new(), "http://127.0.0.1:1"),
+            config_path: td.path().join("config.toml"),
+        }
+    }
+
+    /// `write_cache_full` is the load-bearing serializer for every
+    /// availability decision. A round-trip via `batch_cached` proves
+    /// the JSON shape parses back without losing the fields the
+    /// frontend depends on.
+    #[test]
+    fn write_cache_full_round_trips_via_batch_cached() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let state = cache_only_state(&td);
+        write_cache_full(
+            &state,
+            "kid-1",
+            "sub",
+            true,
+            Some(1160),
+            vec!["1061.5".into()],
+            Some("current"),
+        );
+        let resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["kid-1".into()],
+                mode: "sub".into(),
+            },
+        );
+        assert_eq!(resp.cached.get("kid-1"), Some(&true));
+    }
+
+    /// Empty kitsu_id is the legacy-caller signal "I don't know who
+    /// this is yet" — it must NOT write a row. Otherwise we'd pollute
+    /// the cache under the empty-string key.
+    #[test]
+    fn write_cache_full_skips_empty_kitsu_id() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let state = cache_only_state(&td);
+        write_cache_full(&state, "", "sub", true, Some(12), Vec::new(), None);
+        // No row in the cache → batch_cached returns an empty map
+        // for any id we ask about.
+        let resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["".into(), "kid-1".into()],
+                mode: "sub".into(),
+            },
+        );
+        assert!(resp.cached.is_empty());
+    }
+
+    /// The simpler `write_cache` entry point delegates to
+    /// `write_cache_full` with `episode_count = None` and unknown
+    /// status. Two assertions matter: the row is written, and the
+    /// status path defaults to ongoing TTL (which means the row
+    /// shows up in batch_cached for at least 24h — what the home
+    /// page filter relies on).
+    #[test]
+    fn write_cache_round_trips_for_negative_results() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let state = cache_only_state(&td);
+        write_cache(&state, "kid-2", "dub", false);
+        let resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["kid-2".into()],
+                mode: "dub".into(),
+            },
+        );
+        assert_eq!(resp.cached.get("kid-2"), Some(&false));
+    }
+
+    /// Cross-mode cache isolation: writing a sub row must not
+    /// surface under dub lookup, since allmanga can have a show
+    /// in one mode but not the other.
+    #[test]
+    fn batch_cached_keys_by_mode() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let state = cache_only_state(&td);
+        write_cache(&state, "kid-3", "sub", true);
+        let dub_resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["kid-3".into()],
+                mode: "dub".into(),
+            },
+        );
+        assert!(dub_resp.cached.is_empty());
+        let sub_resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["kid-3".into()],
+                mode: "sub".into(),
+            },
+        );
+        assert_eq!(sub_resp.cached.get("kid-3"), Some(&true));
+    }
+
+    /// Empty-string ids in the batch input must be skipped — the
+    /// frontend can pass them when a card hasn't been resolved yet,
+    /// and the backend mustn't return a "false" for the empty key
+    /// (which would short-circuit the caller's render decision).
+    #[test]
+    fn batch_cached_skips_empty_ids_in_input() {
+        let td = tempfile::tempdir().expect("tempdir");
+        let state = cache_only_state(&td);
+        write_cache(&state, "kid-4", "sub", true);
+        let resp = batch_cached(
+            &state,
+            &AvailabilityBatchArgs {
+                kitsu_ids: vec!["".into(), "kid-4".into(), "".into()],
+                mode: "sub".into(),
+            },
+        );
+        assert_eq!(resp.cached.len(), 1);
+        assert_eq!(resp.cached.get("kid-4"), Some(&true));
+    }
+
+    /// `cache_key` is what makes the v2-rollout self-heal possible —
+    /// the v3 prefix supersedes any v1/v2 row with the same
+    /// (kitsu_id, mode). Pin both shapes (sub/dub) so a typo in the
+    /// key generator gets caught immediately.
+    #[test]
+    fn cache_key_is_versioned_per_mode() {
+        assert_eq!(cache_key("kid-1", "sub"), "availability:v3:kid-1:sub");
+        assert_eq!(cache_key("kid-1", "dub"), "availability:v3:kid-1:dub");
+    }
+
     #[test]
     fn positive_ttl_for_unknown_or_missing_falls_back_to_ongoing() {
         // The "unknown status" branch has to favour ongoing — a

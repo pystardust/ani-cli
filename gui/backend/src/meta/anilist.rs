@@ -426,4 +426,92 @@ mod tests {
         let err = trending(&client, 5, Some(&server.uri())).await.unwrap_err();
         assert!(matches!(err, AniError::Upstream { status: 429 }));
     }
+
+    /// `parse_banner_response` is the pure half of the banner-
+    /// backfill flow. Three branches matter: media present + banner
+    /// present, media present + banner null, and media itself null
+    /// (AniList didn't index this MAL id at all).
+    #[test]
+    fn parse_banner_response_returns_url_when_present() {
+        let body = br#"{"data":{"Media":{"bannerImage":"https://example.com/b.jpg"}}}"#;
+        let got = parse_banner_response(body).expect("ok");
+        assert_eq!(got.as_deref(), Some("https://example.com/b.jpg"));
+    }
+
+    #[test]
+    fn parse_banner_response_returns_none_when_banner_is_null() {
+        let body = br#"{"data":{"Media":{"bannerImage":null}}}"#;
+        let got = parse_banner_response(body).expect("ok");
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn parse_banner_response_returns_none_when_media_is_null() {
+        // AniList answers with `Media: null` when the MAL id isn't
+        // in their catalogue. Treating that as a hard error would
+        // break the detail page for any show AniList missed.
+        let body = br#"{"data":{"Media":null}}"#;
+        let got = parse_banner_response(body).expect("ok");
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn parse_banner_response_rejects_non_envelope_payload() {
+        let body = br#"<html>error</html>"#;
+        let err = parse_banner_response(body).unwrap_err();
+        assert!(matches!(err, AniError::ParseFailed { .. }));
+    }
+
+    #[tokio::test]
+    async fn banner_for_mal_id_posts_correct_query() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::body_json(serde_json::json!({
+                "query": BANNER_BY_MAL_GQL,
+                "variables": { "idMal": 21 },
+            })))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_string(
+                r#"{"data":{"Media":{"bannerImage":"https://example.com/op.jpg"}}}"#,
+            ))
+            .mount(&server)
+            .await;
+        let client = reqwest::Client::new();
+        let got = banner_for_mal_id(&client, 21, Some(&server.uri()))
+            .await
+            .expect("ok");
+        assert_eq!(got.as_deref(), Some("https://example.com/op.jpg"));
+    }
+
+    #[tokio::test]
+    async fn banner_for_mal_id_propagates_upstream_5xx() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(502))
+            .mount(&server)
+            .await;
+        let client = reqwest::Client::new();
+        let err = banner_for_mal_id(&client, 21, Some(&server.uri()))
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AniError::Upstream { status: 502 }));
+    }
+
+    #[tokio::test]
+    async fn banner_for_mal_id_returns_none_when_media_unmapped() {
+        // End-to-end through the network layer for the "AniList
+        // doesn't have this MAL id" case — the most common failure
+        // mode in production for niche shows.
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_string(r#"{"data":{"Media":null}}"#),
+            )
+            .mount(&server)
+            .await;
+        let client = reqwest::Client::new();
+        let got = banner_for_mal_id(&client, 99_999_999, Some(&server.uri()))
+            .await
+            .expect("ok");
+        assert!(got.is_none());
+    }
 }

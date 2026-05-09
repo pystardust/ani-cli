@@ -150,6 +150,108 @@ mod tests {
         assert_eq!(p, PathBuf::from("/tmp/test-fake-home/Downloads/ani-gui"));
     }
 
+    /// `config_file` / `cache_dir` / `image_cache_dir` / `metadata_db`
+    /// / `logs_dir` all derive from `project_dirs()`. We don't pin
+    /// the exact host path (it depends on the platform + the dev
+    /// machine's HOME); we only assert the suffix the rest of the
+    /// codebase relies on.
+    #[test]
+    fn project_dir_derived_paths_have_expected_filenames() {
+        if let Some(p) = config_file() {
+            assert!(p.ends_with("config.toml"), "got {p:?}");
+        }
+        if let Some(p) = cache_dir() {
+            assert!(p.is_absolute(), "cache_dir must be absolute: {p:?}");
+        }
+        if let Some(p) = image_cache_dir() {
+            assert!(p.ends_with("images"), "got {p:?}");
+        }
+        if let Some(p) = metadata_db() {
+            assert!(p.ends_with("metadata.sqlite"), "got {p:?}");
+        }
+        if let Some(p) = logs_dir() {
+            assert!(p.ends_with("logs"), "got {p:?}");
+        }
+    }
+
+    /// `ani_cli_history` honours `XDG_STATE_HOME` when no override is
+    /// set — it composes `<state>/ani-cli/ani-hsts`.
+    #[test]
+    fn ani_cli_history_honors_xdg_state_home() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved_override = std::env::var_os("ANI_CLI_HIST_DIR");
+        let saved_state = std::env::var_os("XDG_STATE_HOME");
+        std::env::remove_var("ANI_CLI_HIST_DIR");
+        std::env::set_var("XDG_STATE_HOME", "/tmp/test-state");
+        let p = ani_cli_history().expect("history path resolves");
+        if let Some(s) = saved_override {
+            std::env::set_var("ANI_CLI_HIST_DIR", s);
+        }
+        if let Some(s) = saved_state {
+            std::env::set_var("XDG_STATE_HOME", s);
+        } else {
+            std::env::remove_var("XDG_STATE_HOME");
+        }
+        assert_eq!(
+            p,
+            PathBuf::from("/tmp/test-state")
+                .join("ani-cli")
+                .join("ani-hsts")
+        );
+    }
+
+    /// `ani_cli_history` falls back to `$HOME/.local/state/ani-cli/`
+    /// when neither env var is set. Pin the layout because the CLI
+    /// reads from the same path — drift would silently split history.
+    #[test]
+    fn ani_cli_history_falls_back_to_home_local_state() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved_override = std::env::var_os("ANI_CLI_HIST_DIR");
+        let saved_state = std::env::var_os("XDG_STATE_HOME");
+        let saved_home = std::env::var_os("HOME");
+        std::env::remove_var("ANI_CLI_HIST_DIR");
+        std::env::remove_var("XDG_STATE_HOME");
+        std::env::set_var("HOME", "/tmp/test-fake-home");
+        let p = ani_cli_history().expect("history path resolves");
+        if let Some(s) = saved_override {
+            std::env::set_var("ANI_CLI_HIST_DIR", s);
+        }
+        if let Some(s) = saved_state {
+            std::env::set_var("XDG_STATE_HOME", s);
+        }
+        if let Some(s) = saved_home {
+            std::env::set_var("HOME", s);
+        } else {
+            std::env::remove_var("HOME");
+        }
+        assert_eq!(
+            p,
+            PathBuf::from("/tmp/test-fake-home/.local/state/ani-cli/ani-hsts")
+        );
+    }
+
+    /// Empty XDG_DOWNLOAD_DIR is treated as unset — without this
+    /// guard, a misconfigured env (some Linux distros export
+    /// `XDG_DOWNLOAD_DIR=`) would resolve to `/ani-gui`.
+    #[test]
+    fn download_dir_treats_empty_xdg_as_unset() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved_xdg = std::env::var_os("XDG_DOWNLOAD_DIR");
+        let saved_home = std::env::var_os("HOME");
+        std::env::set_var("XDG_DOWNLOAD_DIR", "");
+        std::env::set_var("HOME", "/tmp/test-fake-home");
+        let p = download_dir().expect("download path resolves");
+        if let Some(s) = saved_xdg {
+            std::env::set_var("XDG_DOWNLOAD_DIR", s);
+        } else {
+            std::env::remove_var("XDG_DOWNLOAD_DIR");
+        }
+        if let Some(s) = saved_home {
+            std::env::set_var("HOME", s);
+        }
+        assert_eq!(p, PathBuf::from("/tmp/test-fake-home/Downloads/ani-gui"));
+    }
+
     #[test]
     fn download_dir_returns_none_when_no_home_no_xdg() {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());

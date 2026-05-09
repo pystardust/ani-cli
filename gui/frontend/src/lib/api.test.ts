@@ -1,35 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	__resetApiBaseForTests,
+	allmangaKitsuMapGet,
 	altTitlesFromKitsu,
+	aniskipGet,
 	appInfo,
+	availabilityBatch,
+	availabilityWarm,
+	checkAvailability,
 	createSession,
+	downloadDefaultDir,
+	downloadStream,
 	evictPlayCache,
-	markWatched,
-	play,
-	playExternal,
-	playStream,
+	historyByKitsu,
 	historyClear,
 	historyList,
+	imageCacheClear,
 	imageProxyUrl,
 	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
 	kitsuEpisodes,
+	kitsuResolveAllmangaShowId,
 	kitsuSearch,
-	allmangaKitsuMapGet,
-	imageCacheClear,
 	kitsuTitleMatchGet,
-	watchedAtAll,
 	kitsuTitleMatchPut,
 	kitsuTopRated,
 	kitsuTrending,
+	kitsuTrendingAnilist,
+	markWatched,
 	metaCacheClear,
 	openExternalPlayer,
+	play,
+	playExternal,
+	playStream,
 	proxyBaseUrl,
 	settingsGet,
 	settingsPut,
+	watchedAtAll,
 	type Config,
 	type CreateSessionResponse,
+	type DownloadProgress,
+	type DownloadResponse,
 	type KitsuAnimeRef,
 	type PlayProgress
 } from './api';
@@ -1020,5 +1031,436 @@ describe('imageProxyUrl', () => {
 		expect(imageProxyUrl('')).toBeNull();
 		expect(imageProxyUrl('http://insecure.example/x.jpg')).toBeNull();
 		expect(imageProxyUrl('data:image/png;base64,…')).toBeNull();
+	});
+});
+
+describe('apiBase resolution', () => {
+	// `apiBase()` doesn't have its own export, but every wrapper
+	// goes through it. Drive the three branches by clearing the
+	// cache, swapping in a `window.aniGui.apiBase` shim, and
+	// asserting the resolved URL. The error path is covered by
+	// pointing at no source of truth.
+	type WinHolder = { window?: { aniGui?: { apiBase?: string } } };
+	const g = globalThis as unknown as WinHolder;
+
+	afterEach(() => {
+		delete g.window;
+		__resetApiBaseForTests(BASE);
+	});
+
+	it('uses window.aniGui.apiBase when available (Electron preload path)', async () => {
+		__resetApiBaseForTests(null as unknown as string);
+		g.window = { aniGui: { apiBase: 'http://127.0.0.1:99999' } };
+		const fetchMock = mockFetchOnce({ ok: true });
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await proxyBaseUrl();
+		expect(lastCall(fetchMock).url).toBe('http://127.0.0.1:99999/api/proxy-base-url');
+	});
+
+	it('falls back to VITE_ANI_GUI_API_BASE when neither window nor cache has it', async () => {
+		// Drop the cache and window stubs so apiBase() walks past
+		// both branches and lands on the import.meta.env arm. Vite
+		// exposes the env at runtime; vitest's stubEnv lets us pin
+		// the value for one test.
+		__resetApiBaseForTests(null as unknown as string);
+		delete g.window;
+		vi.stubEnv('VITE_ANI_GUI_API_BASE', 'http://127.0.0.1:55555');
+		try {
+			const fetchMock = mockFetchOnce({ ok: true });
+			globalThis.fetch = fetchMock as unknown as typeof fetch;
+			await proxyBaseUrl();
+			expect(lastCall(fetchMock).url).toBe('http://127.0.0.1:55555/api/proxy-base-url');
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('throws an explanatory error when no apiBase source is configured', async () => {
+		// Both window AND env missing → the wrapper throws so the
+		// failure surfaces explicitly instead of silently doing
+		// nothing.
+		__resetApiBaseForTests(null as unknown as string);
+		delete g.window;
+		vi.unstubAllEnvs();
+		// Defensive: ensure neither dev server nor harness has a
+		// VITE_ANI_GUI_API_BASE injected.
+		vi.stubEnv('VITE_ANI_GUI_API_BASE', '');
+		try {
+			await expect(proxyBaseUrl()).rejects.toThrow(/apiBase is not configured/);
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
+});
+
+// — Coverage backfill for the discovery / availability / download
+// wrappers. Each is a thin fetch shim, but the URL shape is the
+// load-bearing contract — a stray `?episode_count=undefined` or a
+// missing `kitsu_id` segment surfaces as a 4xx the user never gets a
+// good error for. Pinning the URL prevents that drift.
+
+describe('historyByKitsu', () => {
+	it('GETs /api/history/by-kitsu/<id> and returns the parsed entry', async () => {
+		const entry = {
+			showId: 'allmanga-1',
+			title: 'One Piece',
+			lastEpisode: 1100,
+			lastWatchedAt: 12345
+		};
+		const fetchMock = mockFetchOnce(entry);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await historyByKitsu('kid-7442');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/history/by-kitsu/kid-7442`);
+		expect(got).toEqual(entry);
+	});
+
+	it('returns null when the backend has no row for the id', async () => {
+		const fetchMock = mockFetchOnce(null);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		expect(await historyByKitsu('kid-unknown')).toBeNull();
+	});
+});
+
+describe('checkAvailability / availabilityBatch / availabilityWarm', () => {
+	it('checkAvailability POSTs the args to /api/availability', async () => {
+		const fetchMock = mockFetchOnce({ available: true, episode_count: 12, extra_episodes: [] });
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await checkAvailability({
+			title: 'Demon Slayer',
+			mode: 'sub',
+			alt_titles: ['Kimetsu no Yaiba'],
+			episode_count: 26,
+			kitsu_id: 'kid-1',
+			status: 'finished'
+		});
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/availability`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			title: 'Demon Slayer',
+			mode: 'sub',
+			alt_titles: ['Kimetsu no Yaiba'],
+			episode_count: 26,
+			kitsu_id: 'kid-1',
+			status: 'finished'
+		});
+		expect(got.available).toBe(true);
+		expect(got.episode_count).toBe(12);
+	});
+
+	it('availabilityBatch POSTs ids + mode to /api/availability/batch', async () => {
+		const fetchMock = mockFetchOnce({ cached: { 'kid-1': true, 'kid-2': false } });
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await availabilityBatch(['kid-1', 'kid-2'], 'dub');
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/availability/batch`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toEqual({
+			kitsu_ids: ['kid-1', 'kid-2'],
+			mode: 'dub'
+		});
+		expect(got.cached['kid-1']).toBe(true);
+	});
+
+	it('availabilityWarm POSTs the items list and resolves to undefined', async () => {
+		// The backend can return any body it likes (the warm endpoint
+		// is fire-and-forget); the wrapper discards it.
+		const fetchMock = mockFetchOnce({ ignored: 'whatever' });
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const items = [{ title: 'A', mode: 'sub' }];
+		const got = await availabilityWarm(items);
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/availability/warm`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toEqual({ items });
+		expect(got).toBeUndefined();
+	});
+});
+
+describe('kitsuTrendingAnilist', () => {
+	it('GETs /api/kitsu/trending-anilist and returns the parsed list', async () => {
+		const list: KitsuAnimeRef[] = [];
+		const fetchMock = mockFetchOnce(list);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await kitsuTrendingAnilist();
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/trending-anilist`);
+		expect(got).toEqual(list);
+	});
+});
+
+describe('aniskipGet', () => {
+	it('encodes both the kitsu id and the episode in the path', async () => {
+		// Both segments need encodeURIComponent because allmanga's
+		// half-episode tags ("1061.5") contain a dot that path
+		// matchers would otherwise treat as a separator.
+		const intervals = [{ skip_type: 'op', start_time: 0, end_time: 88 }];
+		const fetchMock = mockFetchOnce(intervals);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await aniskipGet('kid 7442', '1061.5', 1417.7);
+		const { url } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/aniskip/kid%207442/1061.5?episode_length=1417.7`);
+		expect(got).toEqual(intervals);
+	});
+
+	it('returns an empty list when aniskip has no skip times', async () => {
+		// Backend collapses 404 / found:false / unmapped MAL into
+		// `[]` — the wrapper just trusts the body shape.
+		const fetchMock = mockFetchOnce([]);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		expect(await aniskipGet('kid-1', '1', 1200)).toEqual([]);
+	});
+});
+
+describe('kitsuResolveAllmangaShowId', () => {
+	it('GETs /api/kitsu/resolve-allmanga/<showId> and returns the Kitsu ref', async () => {
+		const ref = { id: 'kid-1', canonical_title: 'One Piece' } as unknown as KitsuAnimeRef;
+		const fetchMock = mockFetchOnce(ref);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await kitsuResolveAllmangaShowId('1P');
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/kitsu/resolve-allmanga/1P`);
+		expect(got).toEqual(ref);
+	});
+
+	it('returns null when no Kitsu match exists', async () => {
+		const fetchMock = mockFetchOnce(null);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		expect(await kitsuResolveAllmangaShowId('garbage')).toBeNull();
+	});
+});
+
+describe('downloadDefaultDir', () => {
+	it('GETs /api/download/default-dir and returns the path string', async () => {
+		const fetchMock = mockFetchOnce('/home/user/Videos/Anime');
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await downloadDefaultDir();
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/download/default-dir`);
+		expect(got).toBe('/home/user/Videos/Anime');
+	});
+
+	it('returns null when neither $XDG_DOWNLOAD_DIR nor $HOME is available', async () => {
+		// Backend emits literal `null` JSON; the modal then prompts
+		// the user to pick a path explicitly.
+		const fetchMock = mockFetchOnce(null);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		expect(await downloadDefaultDir()).toBeNull();
+	});
+});
+
+describe('downloadStream', () => {
+	// Same fake-EventSource pattern as the playStream block above —
+	// duplicated rather than extracted because vitest doesn't share
+	// describe-block locals across files cleanly.
+	type EsHandler = (ev: MessageEvent) => void;
+	class FakeEventSource {
+		static instances: FakeEventSource[] = [];
+		url: string;
+		listeners: Record<string, EsHandler[]> = {};
+		closed = false;
+		constructor(url: string) {
+			this.url = url;
+			FakeEventSource.instances.push(this);
+		}
+		addEventListener(name: string, handler: EsHandler) {
+			(this.listeners[name] ??= []).push(handler);
+		}
+		close() {
+			this.closed = true;
+		}
+		dispatch(name: string, data?: string) {
+			const ev = { data: data ?? '', type: name } as unknown as MessageEvent;
+			for (const h of this.listeners[name] ?? []) h(ev);
+		}
+	}
+	type GlobalLike = { EventSource?: typeof FakeEventSource };
+	const g = globalThis as unknown as GlobalLike;
+	beforeEach(() => {
+		FakeEventSource.instances.length = 0;
+		g.EventSource = FakeEventSource;
+	});
+	afterEach(() => {
+		delete g.EventSource;
+	});
+
+	function donePayload(): DownloadResponse {
+		return { dest_dir: '/var/anime' };
+	}
+
+	it('opens the SSE URL with title / episode / mode / quality / kitsu_id / download_dir', async () => {
+		const onProgress = vi.fn();
+		const promise = downloadStream(
+			{
+				title: 'Demon Slayer',
+				episode: '5',
+				mode: 'sub',
+				quality: '1080',
+				kitsu_id: 'kid-9',
+				download_dir: '/tmp/dl'
+			},
+			onProgress
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es).toBeTruthy();
+		expect(es.url).toContain('/api/download/stream?');
+		expect(es.url).toContain('title=Demon+Slayer');
+		expect(es.url).toContain('episode=5');
+		expect(es.url).toContain('mode=sub');
+		expect(es.url).toContain('quality=1080');
+		expect(es.url).toContain('kitsu_id=kid-9');
+		expect(es.url).toContain('download_dir=%2Ftmp%2Fdl');
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('forwards SSE progress events to onProgress, parsing the JSON payload', async () => {
+		const onProgress = vi.fn<(p: DownloadProgress) => void>();
+		const promise = downloadStream({ title: 'X', episode: '1', mode: 'sub' }, onProgress);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('progress', JSON.stringify({ line: '[download] 50%' }));
+		es.dispatch('progress', JSON.stringify({ line: '[download] 100%' }));
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+		expect(onProgress).toHaveBeenCalledTimes(2);
+		expect(onProgress.mock.calls[0][0]).toEqual({ line: '[download] 50%' });
+	});
+
+	it('swallows malformed progress JSON (the dock keeps going)', async () => {
+		const onProgress = vi.fn<(p: DownloadProgress) => void>();
+		const promise = downloadStream({ title: 'X', episode: '1', mode: 'sub' }, onProgress);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		// Garbage payload — the stream stays open, the call still
+		// resolves on the eventual `done`.
+		es.dispatch('progress', 'not-json');
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+		expect(onProgress).not.toHaveBeenCalled();
+	});
+
+	it('rejects with the parsed error payload on a JSON error event', async () => {
+		const promise = downloadStream({ title: 'X', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('error', JSON.stringify({ kind: 'scraper', detail: 'no_results' }));
+		await expect(promise).rejects.toEqual({ kind: 'scraper', detail: 'no_results' });
+		expect(es.closed).toBe(true);
+	});
+
+	it('rejects with a generic Error on a non-JSON error event', async () => {
+		// Bare error events (connection drop) come through with empty
+		// `data`; the wrapper falls back to a single canonical
+		// message so the dock can still tell the user what happened.
+		const promise = downloadStream({ title: 'X', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('error');
+		await expect(promise).rejects.toThrow(/closed before completion/);
+	});
+
+	it('rejects when the abort signal fires and closes the SSE', async () => {
+		const ctrl = new AbortController();
+		const promise = downloadStream(
+			{ title: 'X', episode: '1', mode: 'sub' },
+			() => {},
+			ctrl.signal
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		ctrl.abort();
+		await expect(promise).rejects.toThrow(/aborted/);
+		expect(es.closed).toBe(true);
+	});
+
+	it('rejects immediately when a pre-aborted signal is passed', async () => {
+		// User clicked Cancel on the dock before the SSE opened.
+		// The synchronous-abort branch must still close the
+		// EventSource cleanly.
+		const ctrl = new AbortController();
+		ctrl.abort();
+		const promise = downloadStream(
+			{ title: 'X', episode: '1', mode: 'sub' },
+			() => {},
+			ctrl.signal
+		);
+		await expect(promise).rejects.toThrow(/aborted/);
+		// Give the apiBase().then callback one tick — by the time
+		// it resolved, finish() must have flipped `closed`.
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.closed).toBe(true);
+	});
+
+	it('ignores a `done` event that arrives after the signal already aborted (settled guard)', async () => {
+		// Re-entrant finish() — we want only the first reason to
+		// stick; the second event must short-circuit on `settled`.
+		const ctrl = new AbortController();
+		const promise = downloadStream(
+			{ title: 'X', episode: '1', mode: 'sub' },
+			() => {},
+			ctrl.signal
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		ctrl.abort();
+		await expect(promise).rejects.toThrow(/aborted/);
+		// Late `done` event — must not crash, must not flip the
+		// already-rejected promise's state.
+		expect(() => es.dispatch('done', JSON.stringify(donePayload()))).not.toThrow();
+	});
+
+	it('rejects synchronously when EventSource is unavailable', async () => {
+		delete g.EventSource;
+		await expect(
+			downloadStream({ title: 'X', episode: '1', mode: 'sub' }, () => {})
+		).rejects.toThrow(/EventSource unavailable/);
+	});
+
+	it('joins alt_titles with newlines and includes episode_count when provided', async () => {
+		// The corresponding `playStream` test pins this for play; the
+		// download path should match (backend uses the same
+		// deserialize_alt_titles helper for both endpoints).
+		const promise = downloadStream(
+			{
+				title: 'Stone Ocean',
+				episode: '1',
+				mode: 'sub',
+				alt_titles: ['Jojo Part 6', 'ストーンオーシャン'],
+				episode_count: 12
+			},
+			() => {}
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		expect(es.url).toContain('episode_count=12');
+		const expectedAlt = new URLSearchParams({
+			alt_titles: 'Jojo Part 6\nストーンオーシャン'
+		}).toString();
+		expect(es.url).toContain(expectedAlt);
+		es.dispatch('done', JSON.stringify(donePayload()));
+		await promise;
+	});
+
+	it('rejects when the `done` event payload fails to parse', async () => {
+		// Should never happen on a healthy backend, but a partial /
+		// truncated SSE chunk would surface here. Make sure the
+		// rejection still closes the stream rather than hanging the
+		// dock on an open EventSource.
+		const promise = downloadStream({ title: 'X', episode: '1', mode: 'sub' }, () => {});
+		await Promise.resolve();
+		await Promise.resolve();
+		const es = FakeEventSource.instances[0];
+		es.dispatch('done', 'not-json');
+		await expect(promise).rejects.toBeDefined();
+		expect(es.closed).toBe(true);
 	});
 });

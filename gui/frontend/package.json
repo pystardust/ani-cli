@@ -33,6 +33,7 @@
 		"eslint-plugin-svelte": "3.17.1",
 		"fast-check": "^4.7.0",
 		"globals": "17.6.0",
+		"happy-dom": "^20.9.0",
 		"lefthook": "2.1.6",
 		"prettier": "3.8.3",
 		"prettier-plugin-svelte": "3.5.1",

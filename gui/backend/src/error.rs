@@ -172,4 +172,68 @@ mod tests {
         assert!(s.contains("\"kind\""), "serialized form has kind tag: {s}");
         assert!(s.contains("no_results"), "snake_case discriminant: {s}");
     }
+
+    /// Display impl drives `tracing::error!("{err}")` lines and the
+    /// fallback message text in tests. Pin a representative subset
+    /// so a stray `#[error("…")]` rewrite gets caught.
+    #[test]
+    fn display_messages_match_thiserror_attributes() {
+        assert_eq!(format!("{}", AniError::Timeout), "scraper timed out");
+        assert_eq!(format!("{}", AniError::NoResults), "no results");
+        assert_eq!(format!("{}", AniError::Network), "network error");
+        assert_eq!(
+            format!("{}", AniError::Upstream { status: 503 }),
+            "upstream 503"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                AniError::ParseFailed {
+                    detail: "stdout shape".into()
+                }
+            ),
+            "parse failed: stdout shape"
+        );
+    }
+
+    /// Each From impl collapses an upstream error into a single
+    /// `AniError` variant — the frontend never sees the underlying
+    /// reqwest / rusqlite / serde / toml type. A bug in one of these
+    /// would surface as the wrong i18n key for the user.
+    #[test]
+    fn rusqlite_error_maps_to_cache_variant() {
+        let sqlite_err = rusqlite::Error::ExecuteReturnedResults;
+        let mapped: AniError = sqlite_err.into();
+        assert!(matches!(mapped, AniError::Cache));
+        assert_eq!(mapped.key(), "error.cache.generic");
+    }
+
+    #[test]
+    fn io_error_maps_to_io_variant() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "x");
+        let mapped: AniError = io_err.into();
+        assert!(matches!(mapped, AniError::Io));
+        assert_eq!(mapped.key(), "error.io.generic");
+    }
+
+    #[test]
+    fn serde_error_carries_its_detail_into_parse_failed() {
+        // The detail field is for logs, not user-facing copy. Pin
+        // that the conversion preserves it so debugging stays sane.
+        let serde_err = serde_json::from_str::<u32>("not a number").unwrap_err();
+        let mapped: AniError = serde_err.into();
+        match mapped {
+            AniError::ParseFailed { detail } => assert!(!detail.is_empty()),
+            other => panic!("expected ParseFailed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn toml_error_maps_to_config_variant() {
+        let toml_err: toml::de::Error =
+            toml::from_str::<toml::Value>("not = valid = toml").unwrap_err();
+        let mapped: AniError = toml_err.into();
+        assert!(matches!(mapped, AniError::Config));
+        assert_eq!(mapped.key(), "error.config.parse");
+    }
 }
