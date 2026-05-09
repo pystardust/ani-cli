@@ -38,6 +38,7 @@
 	import Strip from '$lib/components/Strip.svelte';
 	import { accentFor } from '$lib/design/accent';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
+	import { buildPlayQuery } from '$lib/play/play-url';
 	import { decideEpisodeFetchAction, parsePageParam } from '$lib/history/url-deeplink';
 	import { breadcrumb } from '$lib/breadcrumb';
 
@@ -583,12 +584,7 @@
 				kitsu_id: id
 			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
-			void goto(
-				resolve('/play/[id]', { id }) +
-					`?session=${encodeURIComponent(session.session_id)}` +
-					`&episode=${ep}&kind=${session.media_kind}` +
-					(session.cache_hit === true ? '&cache_hit=1' : '')
-			);
+			void goto(resolve('/play/[id]', { id }) + buildPlayQuery(session, ep));
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			actionBusy = false;

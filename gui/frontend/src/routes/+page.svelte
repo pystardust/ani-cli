@@ -36,6 +36,7 @@
 	import { sortByWatchedAt } from '$lib/history/sort';
 	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
 	import { getOrFire, makeKey } from '$lib/play/play-cache';
+	import { buildPlayQuery } from '$lib/play/play-url';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
@@ -274,12 +275,7 @@
 				kitsu_id: match.id
 			}).catch(() => {});
 			/* eslint-disable svelte/no-navigation-without-resolve */
-			void goto(
-				resolve('/play/[id]', { id: match.id }) +
-					`?session=${encodeURIComponent(session.session_id)}` +
-					`&episode=${ep}&kind=${session.media_kind}` +
-					(session.cache_hit === true ? '&cache_hit=1' : '')
-			);
+			void goto(resolve('/play/[id]', { id: match.id }) + buildPlayQuery(session, ep));
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			resumeBusy = null;

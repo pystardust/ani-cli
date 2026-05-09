@@ -16,13 +16,18 @@ import type { CreateSessionResponse } from '$lib/api';
  * Compose the `?…` portion of a `/play/[id]` URL from a session
  * resolution + episode number. Always includes `session`, `episode`,
  * `kind`. Conditionally includes `cache_hit=1` and `sub=1`.
- *
- * STUB (red commit). Implementation lands in the green commit; tests
- * in this module's `.test.ts` file assert the contract.
  */
 export function buildPlayQuery(session: CreateSessionResponse, episode: number): string {
-	return (
-		`?session=${encodeURIComponent(session.session_id)}` +
-		`&episode=${episode}&kind=${session.media_kind}`
-	);
+	const parts: string[] = [
+		`session=${encodeURIComponent(session.session_id)}`,
+		`episode=${episode}`,
+		`kind=${session.media_kind}`
+	];
+	if (session.cache_hit === true) {
+		parts.push('cache_hit=1');
+	}
+	if (session.subtitle_url) {
+		parts.push('sub=1');
+	}
+	return `?${parts.join('&')}`;
 }

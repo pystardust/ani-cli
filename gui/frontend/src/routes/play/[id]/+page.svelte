@@ -53,6 +53,7 @@
 	} from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
+	import { buildPlayQuery } from '$lib/play/play-url';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
@@ -182,6 +183,21 @@
 		if (!sessionId) return null;
 		const base = (typeof window !== 'undefined' && window.aniGui?.apiBase) || '';
 		return base ? buildMediaUrl(base, sessionId, mediaKind) : null;
+	});
+
+	/** Subtitle plumbing (F1.11). The play navigation appends `?sub=1`
+	 *  when the backend resolution returned a subtitle URL — see
+	 *  buildPlayQuery. The proxy mounts the .vtt at /s/<session>/sub.vtt
+	 *  with the upstream Referer injected, so the renderer never
+	 *  fetches the upstream URL directly. Most allmanga sources embed
+	 *  subs in the HLS manifest as a TextTrack and don't ship a
+	 *  separate file; ?sub=1 is absent for those, and the <track>
+	 *  isn't rendered. */
+	const hasSubtitles = $derived(page.url.searchParams.get('sub') === '1');
+	const subtitleUrl = $derived.by(() => {
+		if (!sessionId || !hasSubtitles) return null;
+		const base = (typeof window !== 'undefined' && window.aniGui?.apiBase) || '';
+		return base ? `${base.replace(/\/+$/, '')}/s/${sessionId}/sub.vtt` : null;
 	});
 
 	const totalEpisodes = $derived(detail?.episode_count ?? null);
@@ -572,13 +588,9 @@
 			// /anime/[id], not to the previously-watched episode.
 			// Episode navigation already lives in the player's prev/
 			// next controls; the back button is for leaving the show.
-			void goto(
-				resolve('/play/[id]', { id }) +
-					`?session=${encodeURIComponent(session.session_id)}` +
-					`&episode=${targetEp}&kind=${session.media_kind}` +
-					(cacheHit ? '&cache_hit=1' : ''),
-				{ replaceState: true }
-			);
+			void goto(resolve('/play/[id]', { id }) + buildPlayQuery(session, targetEp), {
+				replaceState: true
+			});
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		} catch (e) {
 			// switchToEpisode is the play *call* failing — the user
@@ -831,6 +843,7 @@
 			{:else if playerError}
 				<p class="player-empty">{playerError}</p>
 			{:else}
+				<!-- svelte-ignore a11y_media_has_caption -->
 				<video
 					bind:this={videoEl}
 					bind:currentTime
@@ -841,7 +854,11 @@
 					autoplay
 					controls={!USE_CUSTOM_PLAYER_CONTROLS}
 					onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
-				></video>
+				>
+					{#if subtitleUrl}
+						<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
+					{/if}
+				</video>
 
 				<!-- Custom controls overlay — toggled by the
 				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
