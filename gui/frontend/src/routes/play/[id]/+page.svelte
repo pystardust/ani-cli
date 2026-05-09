@@ -307,36 +307,6 @@
 		}
 	}
 
-	// Chromium's native video-controls "fullscreen" button targets
-	// the <video> element directly — that's a problem because:
-	//   1. The Skip OP/Outro overlay is a sibling of the video,
-	//      so video-only fullscreen hides it.
-	//   2. The native exit button only knows about the video's
-	//      fullscreen state, so if we entered via F (frame
-	//      fullscreen), the native icon does nothing.
-	// Fix: detect when the video became the fullscreen element and
-	// transparently promote to frame fullscreen instead. Both entry
-	// points (F-key + native icon) land on the same element, so
-	// native exit works either way.
-	$effect(() => {
-		const onChange = () => {
-			if (!videoEl) return;
-			if (document.fullscreenElement === videoEl) {
-				const frame = videoEl.closest('.player-frame') as HTMLElement | null;
-				if (frame) {
-					document
-						.exitFullscreen?.()
-						.then(() => frame.requestFullscreen?.())
-						.catch(() => {
-							/* fall through — leave as-is */
-						});
-				}
-			}
-		};
-		document.addEventListener('fullscreenchange', onChange);
-		return () => document.removeEventListener('fullscreenchange', onChange);
-	});
-
 	/** Reconstruct the proxy URL from the session id + kind. The proxy
 	 *  mounts each session at /s/<id>/master.m3u8 (HLS) or /s/<id>/file.mp4
 	 *  (MP4) — the pattern is stable, so we don't round-trip the backend
@@ -1145,6 +1115,7 @@
 				bind:muted={isMuted}
 				autoplay
 				controls={!USE_CUSTOM_PLAYER_CONTROLS}
+				controlslist="nofullscreen"
 				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
 				onended={onVideoEnded}
 			>
@@ -1170,6 +1141,28 @@
 					{skipLabel(activeSkip.skip_type)}
 				</button>
 			{/if}
+
+			<!-- Fullscreen toggle that targets .player-frame (not the
+			     <video>) so the Skip overlay + future overlays stay
+			     visible inside the fullscreen layer. The native video
+			     controls have their fullscreen button hidden via
+			     controlslist="nofullscreen" so all entry routes
+			     (F key, this button) land on the frame. Esc still
+			     exits via the browser default. -->
+			<button
+				type="button"
+				class="player-fs-btn"
+				onclick={toggleFullscreen}
+				aria-label="Toggle fullscreen"
+				title="Fullscreen (F)"
+			>
+				<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+					<path
+						d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
+						fill="currentColor"
+					/>
+				</svg>
+			</button>
 
 			<!-- Custom controls overlay — toggled by the
 				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
@@ -2156,6 +2149,47 @@
 		line-height: 1;
 		display: inline-flex;
 		opacity: 0.95;
+	}
+
+	/* Fullscreen toggle — icon-only square button in the
+	   bottom-right of the visible video area (letterbox-aware,
+	   same vars as the skip button). Native fullscreen is hidden
+	   via controlslist=nofullscreen so the only entries are this
+	   button + F key, both routing through .player-frame so the
+	   skip overlay stays visible while fullscreen. */
+	.player-fs-btn {
+		position: absolute;
+		inset-inline-end: calc(0.75rem + var(--player-letterbox-x, 0px));
+		inset-block-end: calc(0.75rem + var(--player-letterbox-y, 0px));
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2.25rem;
+		block-size: 2.25rem;
+		padding: 0;
+		color: #fff;
+		background: rgba(15, 15, 17, 0.55);
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		border-radius: 50%;
+		cursor: pointer;
+		opacity: 0.6;
+		z-index: 3;
+		transition:
+			opacity 160ms ease,
+			background 160ms ease,
+			border-color 160ms ease,
+			transform 160ms ease;
+	}
+	.player-fs-btn:hover {
+		opacity: 1;
+		background: rgba(15, 15, 17, 0.85);
+		border-color: color-mix(in oklab, var(--accent) 70%, #fff 0%);
+		transform: translateY(-1px);
+	}
+	.player-fs-btn:focus-visible {
+		opacity: 1;
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
 	}
 
 	/* Custom controls overlay — Chromium's native media controls
