@@ -5,14 +5,12 @@
 //! when to render the Skip OP / Skip Outro overlay buttons.
 
 use crate::app::AppState;
-#[allow(unused_imports)]
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::error::Result;
 use crate::meta::aniskip::SkipInterval;
 
 /// 7 days. Skip times stabilize quickly — a few days of crowd
 /// edits per episode then they hold steady.
-#[allow(dead_code)]
 const ANISKIP_TTL_SECS: u64 = 7 * 24 * 60 * 60;
 
 /// Fetch the aniskip skip-time list for a given Kitsu id +
@@ -30,18 +28,43 @@ const ANISKIP_TTL_SECS: u64 = 7 * 24 * 60 * 60;
 /// # Errors
 /// Network / Upstream / ParseFailed from the underlying clients.
 pub async fn aniskip_get(
-    _state: &AppState,
-    _kitsu_id: &str,
-    _episode: &str,
-    _episode_length: f32,
+    state: &AppState,
+    kitsu_id: &str,
+    episode: &str,
+    episode_length: f32,
 ) -> Result<Vec<SkipInterval>> {
-    Err(crate::error::AniError::ParseFailed {
-        detail: "aniskip_get not implemented yet".into(),
-    })
+    // Bridge kitsu_id → mal_id. No mapping = aniskip can't index
+    // it; return empty so the player skips rendering the button.
+    let mal_id = match state.kitsu.mal_id_for_kitsu_id(kitsu_id).await {
+        Ok(Some(id)) => id,
+        Ok(None) => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+
+    let key = cache_key(mal_id, episode);
+    if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
+        if let Ok(intervals) = serde_json::from_str::<Vec<SkipInterval>>(&body) {
+            return Ok(intervals);
+        }
+        // Corrupt cache row — fall through to refetch.
+    }
+
+    let intervals = crate::meta::aniskip::fetch_skip_times(
+        &state.proxy_http,
+        mal_id,
+        episode,
+        episode_length,
+        None,
+    )
+    .await?;
+
+    if let Ok(body) = serde_json::to_string(&intervals) {
+        let _ = meta_cache_put(&state.cache_pool, &key, &body, ANISKIP_TTL_SECS);
+    }
+    Ok(intervals)
 }
 
 /// Cache key for `(mal_id, episode)` lookups. Schema v1.
-#[allow(dead_code)]
 fn cache_key(mal_id: u32, episode: &str) -> String {
     format!("aniskip:v1:{mal_id}:{episode}")
 }
