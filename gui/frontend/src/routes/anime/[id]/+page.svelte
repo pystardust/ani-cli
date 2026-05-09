@@ -66,6 +66,11 @@
 	let episodesPage = $state(1);
 	let episodesLoading = $state(false);
 	let jumpInput = $state('');
+	// Episode tile to scroll-to + briefly highlight after a Jump-to-ep
+	// submit. Mirrors the prior Continue Watching deep-link behaviour.
+	// Cleared on a 3.2s timeout once the tile is on screen so the
+	// accent ring isn't permanent.
+	let highlightEp = $state<number | null>(null);
 	const UI_PAGE_SIZE = 12;
 	const KITSU_PAGE_SIZE = 20;
 	// SvelteMap (vs plain Map) keeps the eslint reactivity rule happy.
@@ -177,9 +182,44 @@
 		const n = parseInt(jumpInput, 10);
 		if (Number.isNaN(n) || n < 1) return;
 		const target = Math.ceil(n / UI_PAGE_SIZE);
+		// Set highlightEp first so the effect that watches it picks up the
+		// target. If the page changes, the effect re-runs once the new
+		// `episodes` array lands; if we're already on the right page, the
+		// effect runs on the next microtask.
+		highlightEp = n;
 		gotoPage(target);
 		jumpInput = '';
 	}
+
+	// Scroll-to + highlight pulse for the target episode tile. Watches
+	// `highlightEp` AND `episodes` so the effect re-runs after the page's
+	// fetch completes — that's when the matching <li data-ep-num=…> tile
+	// is actually in the DOM. The 3.2s clear timer only starts on the
+	// run that successfully finds the tile.
+	$effect(() => {
+		const target = highlightEp;
+		if (target === null) return;
+		// Track `episodes` reactively so we re-run after the right page
+		// loads. Without this, jumping to an episode on a different
+		// page would scroll once before the data lands.
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		episodes;
+
+		let timerId: number | undefined;
+		const rafId = requestAnimationFrame(() => {
+			const el = document.querySelector(`[data-ep-num="${target}"]`);
+			if (!el) return; // not rendered yet; effect re-runs when episodes changes
+			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			timerId = window.setTimeout(() => {
+				if (highlightEp === target) highlightEp = null;
+			}, 3200);
+		});
+
+		return () => {
+			cancelAnimationFrame(rafId);
+			if (timerId !== undefined) clearTimeout(timerId);
+		};
+	});
 
 	let config = $state<Config | null>(null);
 	let configError = $state<string | null>(null);
@@ -628,16 +668,18 @@
 		<section class="hero hero-skeleton" aria-busy="true">
 			<div class="hero-img hero-skeleton-img"></div>
 		</section>
-		<section class="masthead">
-			<div class="poster-frame poster-skeleton"></div>
-			<div class="masthead-text">
-				<div class="line line-skeleton" style="inline-size: 70%; block-size: 2.5rem;"></div>
-				<div class="line line-skeleton" style="inline-size: 40%; block-size: 1rem;"></div>
-				<div class="line line-skeleton" style="inline-size: 90%; block-size: 0.8rem;"></div>
-				<div class="line line-skeleton" style="inline-size: 80%; block-size: 0.8rem;"></div>
-				<div class="line line-skeleton" style="inline-size: 60%; block-size: 0.8rem;"></div>
-			</div>
-		</section>
+		<div class="content">
+			<section class="masthead">
+				<div class="poster-frame poster-skeleton"></div>
+				<div class="masthead-text">
+					<div class="line line-skeleton" style="inline-size: 70%; block-size: 2.5rem;"></div>
+					<div class="line line-skeleton" style="inline-size: 40%; block-size: 1rem;"></div>
+					<div class="line line-skeleton" style="inline-size: 90%; block-size: 0.8rem;"></div>
+					<div class="line line-skeleton" style="inline-size: 80%; block-size: 0.8rem;"></div>
+					<div class="line line-skeleton" style="inline-size: 60%; block-size: 0.8rem;"></div>
+				</div>
+			</section>
+		</div>
 	{:else}
 		{@const hero = heroFor(detail)}
 		{@const poster = posterFor(detail)}
@@ -659,232 +701,268 @@
 			{/if}
 		</section>
 
-		<section class="masthead">
-			<div class="poster-frame">
-				{#if poster}
-					<img class="poster-img" src={poster} alt="" />
-				{:else}
-					<span class="poster-placeholder" aria-hidden="true">
-						<span class="poster-placeholder-title">{detail.canonical_title}</span>
-					</span>
-				{/if}
-			</div>
-
-			<div class="masthead-text">
-				<p class="eyebrow">
-					<span class="eyebrow-key">{subtypeLabel(detail.subtype)}</span>
-					<span class="eyebrow-rule" aria-hidden="true"></span>
-					<span class="eyebrow-value">{statusLabel(detail.status)}</span>
-				</p>
-
-				<h1 class="title">{detail.canonical_title}</h1>
-
-				<!-- Action row: primary play, secondary download, ghost external -->
-				<div class="actions" aria-label="Title actions">
-					<button
-						type="button"
-						class="btn btn-glass"
-						style:--btn-glow="var(--accent)"
-						onclick={onPlay}
-						disabled={actionBusy}
-					>
-						<span aria-hidden="true">▸</span>
-						<span>Play episode 1</span>
-					</button>
-					<button type="button" class="btn btn-outline" onclick={onDownload}>
-						<span aria-hidden="true">↓</span>
-						<span>Download</span>
-					</button>
-				</div>
-
-				<!-- Sub/Dub + Quality controls. Reads/writes ani-gui config. -->
-				<div class="controls">
-					<div class="seg-group" role="group" aria-label="Audio mode">
-						<span class="seg-label">Audio</span>
-						<div class="seg">
-							{#each ['sub', 'dub'] as mode (mode)}
-								<button
-									type="button"
-									class="seg-btn"
-									class:active={config?.mode === mode}
-									aria-pressed={config?.mode === mode}
-									disabled={!config}
-									onclick={() => setMode(mode as 'sub' | 'dub')}
-								>
-									{mode.toUpperCase()}
-								</button>
-							{/each}
-						</div>
-					</div>
-
-					<div class="seg-group" role="group" aria-label="Quality">
-						<span class="seg-label">Quality</span>
-						<div class="seg seg-narrow">
-							{#each QUALITIES as q (q.key)}
-								<button
-									type="button"
-									class="seg-btn"
-									class:active={config?.quality === q.key}
-									aria-pressed={config?.quality === q.key}
-									disabled={!config}
-									onclick={() => setQuality(q.key)}
-								>
-									{q.label}
-								</button>
-							{/each}
-						</div>
-					</div>
-
-					{#if configError}
-						<span class="seg-error" role="alert">Settings: {configError}</span>
+		<div class="content">
+			<section class="masthead">
+				<div class="poster-frame">
+					{#if poster}
+						<img class="poster-img" src={poster} alt="" />
+					{:else}
+						<span class="poster-placeholder" aria-hidden="true">
+							<span class="poster-placeholder-title">{detail.canonical_title}</span>
+						</span>
 					{/if}
 				</div>
 
-				<ul class="meta-row" aria-label="Title metadata">
-					{#if year}
-						<li class="meta-pill">
-							<span class="meta-key">Year</span>
-							<span class="meta-val num">{year}</span>
-						</li>
-					{/if}
-					{#if detail.episode_count}
-						<li class="meta-pill meta-pill-feature">
-							<span class="meta-key">Episodes</span>
-							<span class="meta-val num num-xl">{detail.episode_count}</span>
-						</li>
-					{/if}
-					{#if rating}
-						<li class="meta-pill">
-							<span class="meta-key">Rating</span>
-							<span class="meta-val num">
-								<span class="star" aria-hidden="true">★</span>{rating}<span class="meta-faint"
-									>/10</span
-								>
-							</span>
-						</li>
-					{/if}
-					{#if detail.age_rating}
-						<li class="meta-pill">
-							<span class="meta-key">Age</span>
-							<span class="meta-val">{detail.age_rating}</span>
-						</li>
-					{/if}
-					{#if detail.popularity_rank}
-						<li class="meta-pill">
-							<span class="meta-key">Rank</span>
-							<span class="meta-val num">#{detail.popularity_rank}</span>
-						</li>
-					{/if}
-				</ul>
-			</div>
-		</section>
+				<div class="masthead-text">
+					<p class="eyebrow">
+						<span class="eyebrow-key">{subtypeLabel(detail.subtype)}</span>
+						<span class="eyebrow-rule" aria-hidden="true"></span>
+						<span class="eyebrow-value">{statusLabel(detail.status)}</span>
+					</p>
 
-		{#if actionNotice}
-			<div class="action-notice" role="status">
-				<span class="action-notice-key">Note</span>
-				<span class="action-notice-rule" aria-hidden="true"></span>
-				<span>{actionNotice}</span>
-			</div>
-		{/if}
+					<h1 class="title">{detail.canonical_title}</h1>
 
-		<!-- Body: synopsis + episodes stacked vertically. The previous
+					<!-- Action row: primary play, secondary download, ghost external -->
+					<div class="actions" aria-label="Title actions">
+						<button
+							type="button"
+							class="btn btn-glass"
+							style:--btn-glow="var(--accent)"
+							onclick={onPlay}
+							disabled={actionBusy}
+						>
+							<span aria-hidden="true">▸</span>
+							<span>Play episode 1</span>
+						</button>
+						<button type="button" class="btn btn-outline" onclick={onDownload}>
+							<span aria-hidden="true">↓</span>
+							<span>Download</span>
+						</button>
+					</div>
+
+					<!-- Sub/Dub + Quality controls. Reads/writes ani-gui config. -->
+					<div class="controls">
+						<div class="seg-group" role="group" aria-label="Audio mode">
+							<span class="seg-label">Audio</span>
+							<div class="seg">
+								{#each ['sub', 'dub'] as mode (mode)}
+									<button
+										type="button"
+										class="seg-btn"
+										class:active={config?.mode === mode}
+										aria-pressed={config?.mode === mode}
+										disabled={!config}
+										onclick={() => setMode(mode as 'sub' | 'dub')}
+									>
+										{mode.toUpperCase()}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						<div class="seg-group" role="group" aria-label="Quality">
+							<span class="seg-label">Quality</span>
+							<div class="seg seg-narrow">
+								{#each QUALITIES as q (q.key)}
+									<button
+										type="button"
+										class="seg-btn"
+										class:active={config?.quality === q.key}
+										aria-pressed={config?.quality === q.key}
+										disabled={!config}
+										onclick={() => setQuality(q.key)}
+									>
+										{q.label}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						{#if configError}
+							<span class="seg-error" role="alert">Settings: {configError}</span>
+						{/if}
+					</div>
+
+					<ul class="meta-row" aria-label="Title metadata">
+						{#if year}
+							<li class="meta-pill">
+								<span class="meta-key">Year</span>
+								<span class="meta-val num">{year}</span>
+							</li>
+						{/if}
+						{#if detail.episode_count}
+							<li class="meta-pill">
+								<span class="meta-key">Episodes</span>
+								<span class="meta-val num">{detail.episode_count}</span>
+							</li>
+						{/if}
+						{#if rating}
+							<li class="meta-pill">
+								<span class="meta-key">Rating</span>
+								<span class="meta-val num">
+									<span class="star" aria-hidden="true">★</span>{rating}<span class="meta-faint"
+										>/10</span
+									>
+								</span>
+							</li>
+						{/if}
+						{#if detail.age_rating}
+							<li class="meta-pill">
+								<span class="meta-key">Age</span>
+								<span class="meta-val">{detail.age_rating}</span>
+							</li>
+						{/if}
+						{#if detail.popularity_rank}
+							<li class="meta-pill">
+								<span class="meta-key">Rank</span>
+								<span class="meta-val num">#{detail.popularity_rank}</span>
+							</li>
+						{/if}
+					</ul>
+				</div>
+			</section>
+
+			{#if actionNotice}
+				<div class="action-notice" role="status">
+					<span class="action-notice-key">Note</span>
+					<span class="action-notice-rule" aria-hidden="true"></span>
+					<span>{actionNotice}</span>
+				</div>
+			{/if}
+
+			<!-- Body: synopsis + episodes stacked vertically. The previous
 		     side-by-side layout looked unbalanced when one was much taller
 		     than the other (long synopsis + 12-ep show, or short synopsis
 		     + 1100-ep show). Stacked, both panels use the full editorial
 		     column width and visually breathe. -->
-		<section class="body">
-			<div class="body-col body-col-prose">
-				<h2 class="section-eyebrow">Synopsis</h2>
-				{#if detail.synopsis}
-					<div class="prose-wrap" class:expanded={synopsisExpanded}>
-						<p class="prose">{detail.synopsis}</p>
-						<div class="prose-fade" aria-hidden="true"></div>
-					</div>
-					{#if detail.synopsis.length > 360}
-						<button
-							type="button"
-							class="prose-toggle"
-							onclick={() => (synopsisExpanded = !synopsisExpanded)}
-							aria-expanded={synopsisExpanded}
-						>
-							{synopsisExpanded ? 'Read less' : 'Read more'}
-						</button>
-					{/if}
-				{:else}
-					<p class="prose-empty">No synopsis on file at Kitsu.</p>
-				{/if}
-			</div>
-
-			<div class="body-col body-col-episodes">
-				<h2 class="section-eyebrow">
-					<span>Episodes</span>
-					<span class="section-eyebrow-faint">
-						{#if episodes && episodes.length > 0 && detail.episode_count}
-							{epStart}–{epEnd} of {detail.episode_count}
-						{:else if episodes && episodes.length > 0}
-							page {episodesPage}
-						{:else if episodesError}
-							unavailable
-						{:else}
-							loading
-						{/if}
-					</span>
-				</h2>
-
-				{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
-					<div class="ep-controls">
-						<form class="ep-jump" onsubmit={jumpToEpisode}>
-							<label class="ep-jump-label">
-								<span class="ep-jump-key">Jump</span>
-								<input
-									type="number"
-									min="1"
-									max={detail.episode_count ?? 9999}
-									step="1"
-									placeholder="ep #"
-									aria-label="Jump to episode number"
-									bind:value={jumpInput}
-								/>
-							</label>
-							<button
-								type="submit"
-								class="ep-jump-go"
-								disabled={!jumpInput || episodesLoading}
-								aria-label="Go to episode"
-							>
-								↵
-							</button>
-						</form>
-						<div class="ep-pager" role="group" aria-label="Episode pagination">
-							<button
-								type="button"
-								class="ep-pager-btn"
-								onclick={() => gotoPage(episodesPage - 1)}
-								disabled={episodesPage <= 1 || episodesLoading}
-								aria-label="Previous page"
-							>
-								←
-							</button>
-							<span class="ep-pager-state">
-								{episodesPage}{#if totalEpisodePages}<span class="ep-pager-of">
-										/ {totalEpisodePages}</span
-									>{/if}
-							</span>
-							<button
-								type="button"
-								class="ep-pager-btn"
-								onclick={() => gotoPage(episodesPage + 1)}
-								disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
-									episodesLoading ||
-									(episodes !== null && episodes.length < UI_PAGE_SIZE)}
-								aria-label="Next page"
-							>
-								→
-							</button>
+			<section class="body">
+				<div class="body-col body-col-prose">
+					<h2 class="section-eyebrow">Synopsis</h2>
+					{#if detail.synopsis}
+						<div class="prose-wrap" class:expanded={synopsisExpanded}>
+							<p class="prose">{detail.synopsis}</p>
+							<div class="prose-fade" aria-hidden="true"></div>
 						</div>
+						{#if detail.synopsis.length > 360}
+							<button
+								type="button"
+								class="prose-toggle"
+								onclick={() => (synopsisExpanded = !synopsisExpanded)}
+								aria-expanded={synopsisExpanded}
+							>
+								{synopsisExpanded ? 'Read less' : 'Read more'}
+							</button>
+						{/if}
+					{:else}
+						<p class="prose-empty">No synopsis on file at Kitsu.</p>
+					{/if}
+				</div>
+
+				<div class="body-col body-col-episodes">
+					<!-- Episodes toolbar — same layout as /play/[id] for cross-
+					     page consistency: heading + range on the left, jump
+					     pill + prev/next chevrons on the right. The
+					     editorial scrubber experiment was removed in favour
+					     of this simpler shape; both pages now read the
+					     same. -->
+					<div class="ep-toolbar">
+						<div class="ep-toolbar-left">
+							<h2 class="ep-section-heading">Episodes</h2>
+							<span class="ep-range">
+								{#if episodes && episodes.length > 0 && detail.episode_count}
+									{#if totalEpisodePages !== null && totalEpisodePages > 1}
+										{epStart}–{epEnd} of {detail.episode_count}
+									{:else}
+										{detail.episode_count} episodes
+									{/if}
+								{:else if episodes && episodes.length > 0}
+									page {episodesPage}
+								{:else if episodesError}
+									unavailable
+								{:else}
+									loading…
+								{/if}
+							</span>
+						</div>
+
+						{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
+							<div class="ep-toolbar-right">
+								<form class="ep-jump" onsubmit={jumpToEpisode}>
+									<span class="ep-jump-key" aria-hidden="true">jump</span>
+									<span class="ep-jump-pill">
+										<input
+											class="jump-input"
+											type="number"
+											min="1"
+											max={detail.episode_count ?? 9999}
+											step="1"
+											placeholder="ep #"
+											aria-label="Jump to episode number"
+											bind:value={jumpInput}
+										/>
+										<button
+											type="submit"
+											class="ep-jump-go"
+											disabled={!jumpInput || episodesLoading}
+											aria-label="Go to episode"
+										>
+											<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+												<path
+													d="M9 5l7 7-7 7"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2.5"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+										</button>
+									</span>
+								</form>
+								<div class="ep-pager-mini" role="group" aria-label="Episode pagination">
+									<button
+										type="button"
+										class="ep-pager-mini-btn"
+										onclick={() => gotoPage(episodesPage - 1)}
+										disabled={episodesPage <= 1 || episodesLoading}
+										aria-label="Previous page"
+									>
+										<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+											<path
+												d="M15 5l-7 7 7 7"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
+										</svg>
+									</button>
+									<button
+										type="button"
+										class="ep-pager-mini-btn"
+										onclick={() => gotoPage(episodesPage + 1)}
+										disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
+											episodesLoading ||
+											(episodes !== null && episodes.length < UI_PAGE_SIZE)}
+										aria-label="Next page"
+									>
+										<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+											<path
+												d="M9 5l7 7-7 7"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						{/if}
 					</div>
-				{/if}
-				<!--
+					<!--
 				  No {#key episodesPage} wrapping the <ul>: that destroyed
 				  the parent on every page change, taking the children with
 				  it before their out: transitions could run, which is why
@@ -894,108 +972,107 @@
 				  in:settle, with a stagger via per-index delay so episodes
 				  land left-to-right, top-to-bottom.
 				-->
-				<ul class="ep-grid">
-					{#if episodes === null}
-						<!-- Skeleton while fetch is in flight -->
-						{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
-							<li>
-								<div class="ep-tile ep-tile-skel" aria-hidden="true">
-									<div class="ep-thumb ep-thumb-skel"></div>
-									<div class="ep-foot-skel"></div>
-								</div>
-							</li>
-						{/each}
-					{:else if episodes.length > 0}
-						<!-- Real Kitsu data path; per-tile staggered enter for a
+					<ul class="ep-grid">
+						{#if episodes === null}
+							<!-- Skeleton while fetch is in flight -->
+							{#each Array.from({ length: 6 }, (_, k) => k) as i (i)}
+								<li>
+									<div class="ep-tile ep-tile-skel" aria-hidden="true">
+										<div class="ep-thumb ep-thumb-skel"></div>
+										<div class="ep-foot-skel"></div>
+									</div>
+								</li>
+							{/each}
+						{:else if episodes.length > 0}
+							<!-- Real Kitsu data path; per-tile staggered enter for a
 						     premium feel — tiles flow in left-to-right, top-to-bottom. -->
-						{#each episodes as ep, i (ep.id)}
-							{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
-							{@const num = ep.number ?? ep.relative_number ?? null}
-							<li
-								data-ep-num={num ?? ''}
-								in:settle={{ duration: 620, delay: i * 45 }}
-								out:settleOut={{ duration: 320, delay: i * 18 }}
-							>
-								<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
-									<span class="ep-thumb">
-										{#if thumb}
-											<img src={thumb} alt="" loading="lazy" decoding="async" />
-										{:else}
-											<span class="ep-thumb-placeholder" aria-hidden="true">
-												{num ? num.toString().padStart(2, '0') : '·'}
+							{#each episodes as ep, i (ep.id)}
+								{@const thumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
+								{@const num = ep.number ?? ep.relative_number ?? null}
+								<li
+									class:ep-highlight={num !== null && num === highlightEp}
+									data-ep-num={num ?? ''}
+									in:settle={{ duration: 620, delay: i * 45 }}
+									out:settleOut={{ duration: 320, delay: i * 18 }}
+								>
+									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
+										<span class="ep-thumb">
+											{#if thumb}
+												<img src={thumb} alt="" loading="lazy" decoding="async" />
+											{:else}
+												<span class="ep-thumb-placeholder" aria-hidden="true">
+													{num ? num.toString().padStart(2, '0') : '·'}
+												</span>
+											{/if}
+											<span class="ep-frame-num" aria-hidden="true">
+												<span class="ep-frame-num-key">ep</span>
+												<span class="ep-frame-num-val">{num ?? '?'}</span>
 											</span>
-										{/if}
-										<span class="ep-tag" aria-hidden="true">
-											<span class="ep-tag-key">Ep</span>
-											<span class="ep-tag-num">{num ?? '?'}</span>
 										</span>
-									</span>
-									<span class="ep-foot">
-										<span class="ep-title">
-											{ep.canonical_title ?? `Episode ${num ?? ''}`}
+										<span class="ep-foot">
+											<span class="ep-title">
+												{ep.canonical_title ?? `Episode ${num ?? ''}`}
+											</span>
+											<span class="ep-meta">
+												{#if ep.length}<span>{ep.length}m</span>{/if}
+											</span>
 										</span>
-										<span class="ep-meta">
-											{#if ep.length}<span>{ep.length}m</span>{/if}
-										</span>
-									</span>
-								</button>
-							</li>
-						{/each}
-					{:else if showEpPlaceholders}
-						<!-- Fallback: Kitsu didn't have episode data, but episode_count
+									</button>
+								</li>
+							{/each}
+						{:else if showEpPlaceholders}
+							<!-- Fallback: Kitsu didn't have episode data, but episode_count
 						     gives us a usable count. Render numbered placeholder tiles
 						     so the user isn't blocked from poking the panel. -->
-						{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
-							<li
-								data-ep-num={n}
-								in:settle={{ duration: 580, delay: i * 40 }}
-								out:settleOut={{ duration: 300, delay: i * 16 }}
-							>
-								<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
-									<span class="ep-thumb">
-										<span class="ep-thumb-placeholder" aria-hidden="true">
-											{n.toString().padStart(2, '0')}
+							{#each Array.from({ length: epPlaceholderCount }, (_, k) => k + 1) as n, i (n)}
+								<li
+									class:ep-highlight={n === highlightEp}
+									data-ep-num={n}
+									in:settle={{ duration: 580, delay: i * 40 }}
+									out:settleOut={{ duration: 300, delay: i * 16 }}
+								>
+									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+										<span class="ep-thumb">
+											<span class="ep-thumb-placeholder" aria-hidden="true">
+												{n.toString().padStart(2, '0')}
+											</span>
+											<span class="ep-tag" aria-hidden="true">
+												<span class="ep-tag-key">Ep</span>
+												<span class="ep-tag-num">{n}</span>
+											</span>
 										</span>
-										<span class="ep-tag" aria-hidden="true">
-											<span class="ep-tag-key">Ep</span>
-											<span class="ep-tag-num">{n}</span>
+										<span class="ep-foot">
+											<span class="ep-title">Episode {n}</span>
+											<span class="ep-meta">—</span>
 										</span>
-									</span>
-									<span class="ep-foot">
-										<span class="ep-title">Episode {n}</span>
-										<span class="ep-meta">—</span>
-									</span>
-								</button>
-							</li>
-						{/each}
+									</button>
+								</li>
+							{/each}
+						{/if}
+					</ul>
+					{#if episodesError}
+						<p class="ep-grid-foot ep-grid-foot-warn">
+							Episode metadata unavailable from Kitsu — playable list above is a fallback.
+						</p>
+					{:else if episodes && episodes.length > 0}
+						<p class="ep-grid-foot">Thumbnails and titles via Kitsu.</p>
 					{/if}
-				</ul>
-				{#if episodesError}
-					<p class="ep-grid-foot ep-grid-foot-warn">
-						Episode metadata unavailable from Kitsu — playable list above is a fallback.
-					</p>
-				{:else if episodes && episodes.length > 0}
-					<p class="ep-grid-foot">
-						Thumbnails + titles via Kitsu. Tap to play once the allanime bridge lands.
-					</p>
-				{:else}
-					<p class="ep-grid-foot">Tap to play once the allanime bridge lands.</p>
-				{/if}
-			</div>
-		</section>
+				</div>
+			</section>
 
-		<!-- Similar titles strip — placeholder for AniList recommendations.
+			<!-- Similar titles strip — placeholder for AniList recommendations.
 		     Today: re-uses kitsuSearch with the canonical title's first
 		     1-2 words to surface franchise neighbours / look-alikes. -->
-		{#if similar && similar.length > 0}
-			<section class="similar">
-				<Strip eyebrow="Similar titles" caption="via Kitsu search">
-					{#each similar as hit (hit.id)}
-						<PosterCard anime={hit} />
-					{/each}
-				</Strip>
-			</section>
-		{/if}
+			{#if similar && similar.length > 0}
+				<section class="similar">
+					<Strip eyebrow="Similar titles" caption="via Kitsu search">
+						{#each similar as hit (hit.id)}
+							<PosterCard anime={hit} />
+						{/each}
+					</Strip>
+				</section>
+			{/if}
+		</div>
 	{/if}
 </main>
 
@@ -1011,14 +1088,24 @@
 
 <style>
 	.page {
-		max-inline-size: var(--content-max-wide);
-		margin-inline: auto;
-		padding-block-end: var(--space-9);
+		/* Route root spans the full main-area so the hero can paint
+		   edge-to-edge on ultrawides. The capped reading column lives
+		   on `.content` below. */
+		padding-block-end: var(--space-8);
 		/* Page-enter animation — a soft fade + lift so navigating into a
 		   detail page doesn't feel like a hard cut. The reduced-motion
 		   token already zeroes --dur-slow so this is inert when the user
 		   opts out. */
 		animation: detail-page-enter var(--dur-slow) var(--ease-out-soft) both;
+	}
+
+	/* Capped reading column for everything below the hero. The banner
+	   stays cinematic (full main-area), while the content stays
+	   deliberate at 90rem so titles, synopsis and episode tiles don't
+	   sprawl across an ultrawide. */
+	.content {
+		max-inline-size: 90rem;
+		margin-inline: auto;
 	}
 	@keyframes detail-page-enter {
 		from {
@@ -1124,7 +1211,7 @@
 		grid-template-columns: minmax(12rem, 16rem) 1fr;
 		gap: var(--space-7);
 		padding-inline: var(--space-6);
-		margin-block-start: calc(-1 * var(--space-9));
+		margin-block-start: calc(-1 * var(--space-8));
 		align-items: end;
 		position: relative;
 	}
@@ -1185,22 +1272,10 @@
 
 	.eyebrow {
 		margin: 0 0 var(--space-3);
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
 	}
 	.eyebrow-rule {
-		inline-size: 2.5rem;
-		block-size: 1px;
+		/* masthead eyebrow rides the per-show accent for theming punch. */
 		background: var(--accent);
-	}
-	.eyebrow-value {
-		color: var(--bone-200);
 	}
 
 	.title {
@@ -1329,36 +1404,45 @@
 		color: var(--accent-oxblood);
 	}
 
-	/* — Meta row. */
+	/* — Meta row: stat strip with fixed min-width per pill so
+	   "Year / Episodes / Rating / Age / Rank" lay out as a tabular
+	   row, not a stretchy flex line. Separators are 1px accent-
+	   tinted rules — more intentional than the previous near-
+	   invisible ink-200 hairline. */
 	.meta-row {
 		margin: 0;
-		padding: var(--space-3) 0 0;
+		padding: var(--space-4) 0 0;
 		list-style: none;
 		display: flex;
 		flex-wrap: wrap;
-		/* Larger horizontal gap so the per-pill hairline divider has air. */
-		gap: var(--space-5) var(--space-7);
+		gap: var(--space-4) 0; /* row gap only — column spacing comes from per-pill padding */
 		border-block-start: 1px solid var(--accent);
 	}
 	.meta-pill {
 		display: inline-flex;
 		flex-direction: column;
-		gap: 2px;
-		/* Vertical hairline between pills — subtle but enough that year /
-		   rating / episodes don't feel cramped together. The last pill in
-		   each visual row drops the rule via the :last-child selector
-		   (acceptable trade-off when items wrap). */
-		padding-inline-end: var(--space-7);
-		border-inline-end: 1px solid var(--ink-200);
+		align-items: center;
+		gap: var(--space-1);
+		flex: 0 0 auto;
+		min-inline-size: 7rem;
+		padding-inline: var(--space-5);
+		text-align: center;
+		/* Each pill carries a leading separator. The first pill in the
+		   strip drops it (selector below). When the strip wraps, the
+		   first pill of subsequent rows keeps its leading rule, which
+		   acts as a row-start anchor — visually fine for an editorial
+		   stat strip. */
+		border-inline-start: 1px solid color-mix(in oklab, var(--accent) 35%, var(--ink-200));
 	}
-	.meta-pill:last-child {
-		padding-inline-end: 0;
-		border-inline-end: 0;
+	.meta-pill:first-child {
+		padding-inline-start: 0;
+		border-inline-start: 0;
 	}
 	.meta-key {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-family: var(--font-body);
+		font-size: 0.75rem; /* 12px */
+		font-weight: 600;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--bone-300);
 	}
@@ -1373,13 +1457,8 @@
 		font-variant-numeric: tabular-nums lining-nums;
 		letter-spacing: 0;
 	}
-	.meta-val.num-xl {
-		font-size: var(--type-numeral-xl);
-		line-height: 1;
-		color: var(--bone-100);
-	}
 	.meta-faint {
-		color: var(--bone-400);
+		color: var(--bone-300);
 		font-size: var(--type-meta);
 		margin-inline-start: 2px;
 	}
@@ -1395,22 +1474,26 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-200);
+		font-family: var(--font-body);
+		font-size: var(--type-meta);
+		color: var(--bone-100);
 		background: color-mix(in oklab, var(--accent) 6%, var(--ink-050));
 		border-inline-start: 2px solid var(--accent);
 		animation: text-in var(--dur-med) var(--ease-out-soft) both;
 	}
+	/* "NOTE" stays a small uppercase badge — that's a label, not a sentence. */
 	.action-notice-key {
+		font-family: var(--font-body);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 		color: var(--bone-300);
 	}
 	.action-notice-rule {
 		inline-size: 1.5rem;
 		block-size: 1px;
-		background: var(--bone-400);
+		background: color-mix(in oklab, var(--bone-100) 30%, transparent);
 	}
 
 	/* — Body: vertical stack of synopsis → episodes. The earlier 2-col
@@ -1446,13 +1529,8 @@
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
-		color: var(--bone-300);
-		font-weight: 500;
-	}
-	.section-eyebrow-faint {
-		color: var(--bone-400);
-		font-variant-numeric: tabular-nums lining-nums;
-		letter-spacing: var(--tracking-meta);
+		color: var(--bone-200);
+		font-weight: 600;
 	}
 	/* Synopsis — collapsed by default to a 5-line preview with a soft
 	   gradient fade at the bottom; expands on user click. The font is
@@ -1541,11 +1619,18 @@
 		/* Origin sits low so scale-up on hover lifts upward toward the
 		   poster + thumbnail rather than pushing into the next row. */
 		transform-origin: 50% 80%;
+		opacity: 1;
+		/* Default opacity transition is the SLOW return — when the
+		   highlight class is removed from the parent grid, sibling
+		   tiles fade back to full over 1.4s, so the spotlight ends
+		   with a graceful unwind, not a hard cut. The fast dim-in
+		   timing is set on the active rule below. */
 		transition:
 			transform var(--dur-med) var(--ease-out-elastic),
 			border-color var(--dur-fast) var(--ease-out-soft),
 			background var(--dur-fast) var(--ease-out-soft),
-			box-shadow var(--dur-med) var(--ease-out-soft);
+			box-shadow var(--dur-med) var(--ease-out-soft),
+			opacity 1.4s var(--ease-out-soft);
 	}
 	.ep-tile:hover {
 		/* More expressed pop: lift, scale, accent-tinted shadow halo. */
@@ -1560,12 +1645,83 @@
 	.ep-tile:hover .ep-thumb img {
 		filter: brightness(1);
 	}
+
+	/* Spotlight: while the grid contains a highlighted tile, every
+	   non-highlighted tile dims to 0.35. Dim-in is fast (0.4s) so the
+	   spotlight engages decisively; the dim-out is the longer 1.4s
+	   transition on `.ep-tile` itself, so when the highlight class
+	   clears the surrounding tiles fade back up gradually instead of
+	   snapping. */
+	.ep-grid:has(li.ep-highlight) li:not(.ep-highlight) .ep-tile {
+		opacity: 0.35;
+		transition: opacity 0.4s var(--ease-out-soft);
+	}
+
+	/* Jump highlight: when the user submits the Jump field, the matching
+	   tile pulses an accent ring twice and stays ringed for ~3.2s so the
+	   user sees "this is the one you asked for." Class is auto-removed
+	   by the script. Mirrors the prior Continue Watching deep-link cue. */
+	.ep-grid li.ep-highlight .ep-tile {
+		border-color: color-mix(in oklab, var(--accent) 90%, var(--bone-100));
+		box-shadow:
+			0 0 0 2px color-mix(in oklab, var(--accent) 80%, transparent),
+			0 16px 32px -8px color-mix(in oklab, var(--accent) 38%, transparent);
+		animation: ep-highlight-pulse 1.6s ease-out 2;
+	}
+	@keyframes ep-highlight-pulse {
+		0% {
+			box-shadow:
+				0 0 0 0 color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 0 0 color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+		35% {
+			box-shadow:
+				0 0 0 4px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 24px 4px color-mix(in oklab, var(--accent) 35%, transparent);
+		}
+		100% {
+			box-shadow:
+				0 0 0 2px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 16px 32px -8px color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ep-grid li.ep-highlight .ep-tile {
+			animation: none;
+		}
+		.ep-grid:has(li.ep-highlight) li:not(.ep-highlight) .ep-tile {
+			opacity: 1;
+		}
+	}
+
 	.ep-thumb {
 		position: relative;
 		display: block;
 		aspect-ratio: 16 / 9;
 		overflow: hidden;
 		background: var(--ink-100);
+	}
+	/* Bottom scrim under the frame-number — keeps the oversized "EP 24"
+	   readable on bright thumbnails without painting a chip. Pseudo-
+	   element sits between the img and the frame-num via the .ep-thumb
+	   layering. */
+	.ep-thumb::after {
+		content: '';
+		position: absolute;
+		inset-block-end: 0;
+		inset-inline: 0;
+		block-size: 55%;
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			color-mix(in oklab, var(--ink-000) 75%, transparent) 100%
+		);
+		pointer-events: none;
+		opacity: 0.85;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-tile:hover .ep-thumb::after {
+		opacity: 1;
 	}
 	.ep-thumb img {
 		inline-size: 100%;
@@ -1589,29 +1745,52 @@
 			color-mix(in oklab, var(--accent) 18%, var(--ink-100))
 		);
 	}
-	.ep-tag {
+	/* Episode frame-number — film-print style. The number lives in the
+	   bottom-left of the thumb, oversized mono numeral, no chip
+	   background. A subtle gradient scrim on the thumb keeps it legible
+	   against any image. On hover the numeral lifts + tints accent —
+	   reads as part of the card composition, not a tag glued on. */
+	.ep-frame-num {
 		position: absolute;
-		inset-block-start: var(--space-2);
-		inset-inline-start: var(--space-2);
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-1);
-		padding: 2px var(--space-2);
-		background: color-mix(in oklab, var(--ink-000) 78%, transparent);
-		backdrop-filter: blur(4px);
-		border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--bone-400));
+		inset-block-end: var(--space-3);
+		inset-inline-start: var(--space-3);
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		line-height: 1;
+		pointer-events: none;
+		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.65));
+		transition:
+			transform var(--dur-med) var(--ease-out-elastic),
+			filter var(--dur-fast) var(--ease-out-soft);
+		z-index: 1;
 	}
-	.ep-tag-key {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+	.ep-frame-num-key {
+		font-family: var(--font-body);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: var(--bone-300);
+		color: color-mix(in oklab, var(--bone-100) 75%, transparent);
+		margin-block-end: 2px;
+		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
-	.ep-tag-num {
+	.ep-frame-num-val {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-meta);
+		font-size: 2.25rem; /* 36px */
+		font-weight: 700;
+		color: var(--bone-100);
+		transition: color var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-tile:hover .ep-frame-num {
+		transform: translateY(-4px);
+		filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent) 50%, transparent));
+	}
+	.ep-tile:hover .ep-frame-num-val {
+		color: var(--accent);
+	}
+	.ep-tile:hover .ep-frame-num-key {
 		color: var(--bone-100);
 	}
 	.ep-foot {
@@ -1658,134 +1837,232 @@
 		}
 	}
 
-	/* Caption beneath the grid — informational on the Kitsu-real path,
-	   warning when we're rendering numbered fallbacks. */
+	/* Caption beneath the grid — sentence chrome (body sans, normal case)
+	   so it reads as a footnote, not a tiny mono uppercase eyebrow. The
+	   earlier styling buried the warning state in particular. */
 	.ep-grid-foot {
 		margin-block-start: var(--space-4);
 		margin-block-end: 0;
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-meta);
-		text-transform: uppercase;
-		color: var(--bone-400);
+		font-family: var(--font-body);
+		font-size: var(--type-meta);
+		font-weight: 500;
+		color: var(--bone-300);
 	}
 	.ep-grid-foot-warn {
-		color: color-mix(in oklab, var(--accent-oxblood) 60%, var(--bone-400));
+		color: var(--accent-oxblood);
+		font-weight: 500;
 	}
 
 	/* Episode panel controls: jump-to-N input + prev/next pager. Sits
 	   between the section header and the grid. Replaces the additive
 	   load-more pattern (which made 500-episode shows render a vertical
 	   wall on the page). */
-	.ep-controls {
+	/* Single horizontal toolbar — jump on the left, range + pager on the
+	   right. Avoids the previous "debug UI" feel of three rows of
+	   scattered controls. Below 600px it stacks so nothing crushes. */
+	.ep-toolbar {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--space-4);
-		margin-block-end: var(--space-3);
-		padding-block-end: var(--space-3);
-		border-block-end: 1px solid var(--ink-200);
+		margin-block-end: var(--space-5);
 	}
 	@media (max-inline-size: 600px) {
-		.ep-controls {
+		.ep-toolbar {
 			flex-direction: column;
 			align-items: stretch;
 		}
 	}
-	.ep-jump {
+	.ep-toolbar-left,
+	.ep-toolbar-right {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-3);
 	}
-	.ep-jump-label {
+	.ep-toolbar-right {
+		gap: var(--space-4);
+	}
+
+	/* Jump control — same vocabulary as the page-state display:
+	   uppercase eyebrow label outside, marquee-style numerals inside
+	   the pill, accent halo on focus, embedded chevron submit. */
+	.ep-jump {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-3);
 	}
 	.ep-jump-key {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-family: var(--font-body);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--bone-300);
+		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
-	.ep-jump input {
-		inline-size: 4.5rem;
-		padding: 4px var(--space-2);
-		font-family: var(--font-mono);
-		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-meta);
-		color: var(--bone-100);
-		background: transparent;
-		border: 0;
-		border-block-end: 1px solid var(--bone-300);
-		outline: 0;
-		transition: border-color var(--dur-fast) var(--ease-out-soft);
+	.ep-jump:focus-within .ep-jump-key {
+		color: var(--bone-200);
 	}
-	.ep-jump input:focus {
-		border-block-end-color: var(--bone-100);
-	}
-	.ep-jump input::-webkit-inner-spin-button,
-	.ep-jump input::-webkit-outer-spin-button {
-		appearance: none;
-	}
-	.ep-jump-go {
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
-		color: var(--bone-300);
-		padding: 2px var(--space-3);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-control);
-		transition:
-			color var(--dur-fast) var(--ease-out-soft),
-			border-color var(--dur-fast) var(--ease-out-soft);
-	}
-	.ep-jump-go:hover:not(:disabled) {
-		color: var(--bone-100);
-		border-color: var(--bone-300);
-	}
-	.ep-jump-go:disabled {
-		color: var(--bone-400);
-		cursor: not-allowed;
-	}
-	.ep-pager {
+	.ep-jump-pill {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
-	}
-	.ep-pager-btn {
-		display: grid;
-		place-items: center;
-		inline-size: 2rem;
+		inline-size: 8.5rem;
 		block-size: 2rem;
-		font-family: var(--font-body);
-		font-size: var(--type-body-l);
-		color: var(--bone-200);
-		border: 1px solid var(--ink-300);
+		padding-inline-start: var(--space-3);
+		padding-inline-end: 4px;
 		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--bone-100) 7%, transparent);
+		border: 1px solid color-mix(in oklab, var(--bone-100) 28%, transparent);
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-med) var(--ease-out-soft);
+	}
+	.ep-jump-pill:focus-within {
+		border-color: var(--accent);
+		background: color-mix(in oklab, var(--bone-100) 10%, transparent);
+		box-shadow:
+			0 0 8px color-mix(in oklab, var(--accent) 50%, transparent),
+			0 0 16px color-mix(in oklab, var(--accent) 25%, transparent);
+	}
+	.jump-input {
+		flex: 1;
+		min-inline-size: 0; /* let the input shrink inside the pill */
+		padding: 0;
+		background: transparent;
+		border: 0;
+		outline: 0;
+		color: var(--bone-100);
+		/* Numerals match the page-state marquee voice — bold mono so
+		   typed input feels like data on a projector display. */
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-body);
+		font-weight: 600;
+	}
+	.jump-input::placeholder {
+		font-family: var(--font-body);
+		font-weight: 400;
+		font-size: var(--type-meta);
+		letter-spacing: 0;
+		color: color-mix(in oklab, var(--bone-100) 55%, transparent);
+	}
+	.jump-input::-webkit-inner-spin-button,
+	.jump-input::-webkit-outer-spin-button {
+		appearance: none;
+	}
+	/* The pill's `:focus-within` rule already paints the accent halo,
+	   so suppress the global `:focus-visible` ring on the bare input
+	   — otherwise it shows through as a duplicate inner highlight. */
+	.jump-input:focus,
+	.jump-input:focus-visible {
+		outline: 0;
+		box-shadow: none;
+	}
+	/* Submit chevron embedded inside the pill, right edge. Reads as
+	   "press to go" — solves the "where does Enter take me" problem
+	   without an extra control taking up space. */
+	.ep-jump-go {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 24px;
+		block-size: 24px;
+		padding: 0;
+		border: 0;
+		border-radius: var(--radius-pill);
+		background: transparent;
+		color: var(--bone-300);
+		cursor: pointer;
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
-			border-color var(--dur-fast) var(--ease-out-soft);
+			background var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-med) var(--ease-out-elastic);
 	}
-	.ep-pager-btn:hover:not(:disabled) {
-		color: var(--bone-100);
-		border-color: var(--bone-300);
+	.ep-jump-go:hover:not(:disabled),
+	.ep-jump-go:focus-visible {
+		color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 14%, transparent);
+		transform: translateX(2px);
+		outline: 0;
 	}
-	.ep-pager-btn:disabled {
-		color: var(--bone-400);
-		border-color: var(--ink-200);
+	.ep-jump-go:disabled {
+		color: color-mix(in oklab, var(--bone-100) 24%, transparent);
 		cursor: not-allowed;
 	}
-	.ep-pager-state {
+	/* When the input has a value, brighten the chevron so the user
+	   knows pressing Enter (or clicking) will do something. The
+	   :has() selector pulls "filled" state across siblings without
+	   needing a JS-driven class. */
+	.ep-jump-pill:has(.jump-input:not(:placeholder-shown)) .ep-jump-go:not(:disabled) {
+		color: var(--accent);
+	}
+
+	/* Toolbar pieces — heading + range on the left, paginator on the
+	   right. Same shape as /play/[id]'s ep-toolbar so the two pages
+	   read as the same control vocabulary. */
+	.ep-section-heading {
+		margin: 0;
+		font-family: var(--font-body);
+		font-size: 1.25rem; /* 20px — section, not display */
+		font-weight: 600;
+		line-height: 1.1;
+		color: var(--bone-100);
+		letter-spacing: -0.01em;
+	}
+	.ep-range {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
 		font-size: var(--type-meta);
-		color: var(--bone-100);
-		min-inline-size: 4rem;
-		text-align: center;
+		font-weight: 500;
+		letter-spacing: var(--tracking-meta);
+		color: var(--bone-300);
 	}
-	.ep-pager-of {
+
+	/* Prev/next chevron mini-buttons — small bordered chips with
+	   weighted SVG arrows. Hover lifts to accent + halo + chevron
+	   slides in its pointing direction. */
+	.ep-pager-mini {
+		display: inline-flex;
+		gap: var(--space-1);
+	}
+	.ep-pager-mini-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		padding: 0;
+		border: 1px solid color-mix(in oklab, var(--bone-100) 22%, transparent);
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--bone-100);
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft);
+	}
+	.ep-pager-mini-btn svg {
+		transition: transform var(--dur-med) var(--ease-out-elastic);
+	}
+	.ep-pager-mini-btn:hover:not(:disabled) {
+		color: var(--accent);
+		border-color: color-mix(in oklab, var(--accent) 80%, transparent);
+		background: color-mix(in oklab, var(--accent) 10%, transparent);
+		box-shadow: 0 0 12px color-mix(in oklab, var(--accent) 30%, transparent);
+	}
+	.ep-pager-mini-btn:first-child:hover:not(:disabled) svg {
+		transform: translateX(-2px);
+	}
+	.ep-pager-mini-btn:last-child:hover:not(:disabled) svg {
+		transform: translateX(2px);
+	}
+	.ep-pager-mini-btn:disabled {
 		color: var(--bone-400);
+		border-color: color-mix(in oklab, var(--bone-100) 8%, transparent);
+		cursor: not-allowed;
 	}
 
 	/* — Similar titles strip below the body. Inherits Strip's gutter
