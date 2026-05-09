@@ -563,31 +563,26 @@
 	.hero {
 		position: relative;
 		/* Trimmed ~15%: was clamp(28rem, 70dvh, 44rem). The hero
-		   was eating too much vertical space above the strips. */
-		min-block-size: clamp(24rem, 60dvh, 37rem);
+		   was eating too much vertical space above the strips.
+		   Includes topbar-h so the hero grows TALLER by the bleed
+		   amount — its visual bottom stays at the original y, and
+		   the negative margin-block-start below extends the new
+		   chunk up under the topbar. (Padding-block-start can't
+		   do this job: hero-body is absolutely-positioned inside
+		   .hero-layer with inset:0, so it ignores hero's padding.) */
+		min-block-size: calc(clamp(24rem, 60dvh, 37rem) + var(--topbar-h));
 		overflow: hidden;
 		background: var(--ink-050);
-		/* Bottom margin compensates for the negative margin-block-start
-		   below: the hero pulls up by topbar-h, so the next sibling
-		   (the strips) would also rise by topbar-h. Add topbar-h here
-		   to keep the strips at their original y. */
+		/* Compensate the negative top margin so siblings below
+		   (the strips) stay at their original y. */
 		margin-block-end: calc(var(--space-7) + var(--topbar-h));
 		/* Escape the layout's inline gutters AND the rail column on
-		   the left — the banner extends behind the glassy rail too
-		   so its backdrop-blur frosts the hero like the topbar's
-		   does. Right side just escapes the gutter (no rail there). */
+		   the left — banner extends behind the glassy rail too. */
 		margin-inline-start: calc(-1 * (var(--space-7) + var(--rail-width)));
 		margin-inline-end: calc(-1 * var(--space-7));
 		inline-size: calc(100% + 2 * var(--space-7) + var(--rail-width));
-		/* Bleed under the glassy topbar: pull the banner up by the
-		   topbar's height so the hero image spreads behind it; the
-		   topbar's backdrop-filter then frosts the visible portion.
-		   Padding compensates so hero text stays clear of the bar. */
+		/* Bleed under the glassy topbar. */
 		margin-block-start: calc(-1 * var(--topbar-h));
-		padding-block-start: var(--topbar-h);
-		/* Inner padding pushes hero text past the rail so the title
-		   isn't read through frosted glass. */
-		padding-inline-start: var(--rail-width);
 	}
 
 	/* Each rotation tick mounts a new .hero-layer; the previous one
@@ -656,12 +651,16 @@
 		position: relative;
 		z-index: 2;
 		max-inline-size: 44rem;
-		/* Inline padding aligns the hero text with the strips below.
-		   The hero box is full-bleed (escapes .main-area's left
-		   gutter), so the body's inline-start padding has to make
-		   up the gutter (space-7) PLUS the strip's own pad (space-8)
-		   to land at the same vertical column as the strip eyebrows. */
-		padding: var(--space-8) var(--space-8) var(--space-7) calc(var(--space-7) + var(--space-8));
+		/* Inline padding aligns hero text with the strips below.
+		   The hero box now extends behind the rail too (margin-inline-
+		   start escapes both .main-area's gutter AND the rail column),
+		   so the body's inline-start padding has to clear three layers:
+		   the rail (rail-width), the gutter (space-7), AND the strip's
+		   own pad (space-8). Vertical padding unchanged — content is
+		   flex-end aligned, so its bottom (and visible y) is governed
+		   by the hero-layer bottom + padding-block-end here. */
+		padding: var(--space-8) var(--space-8) var(--space-7)
+			calc(var(--space-7) + var(--space-8) + var(--rail-width));
 		animation: hero-text-in var(--dur-med) var(--ease-out-soft) both;
 		animation-delay: 100ms;
 	}
