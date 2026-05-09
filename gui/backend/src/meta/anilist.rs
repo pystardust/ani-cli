@@ -102,6 +102,14 @@ const TRENDING_GQL: &str = "query Trending($perPage: Int!) { \
     } \
 }";
 
+/// Lightweight by-MAL-id query — used by detail-page enrichment
+/// when Kitsu's coverImage is null and we need a banner fallback.
+/// Smaller projection than [`TRENDING_GQL`] since the caller only
+/// needs the banner URL.
+const BANNER_BY_MAL_GQL: &str = "query BannerByMal($idMal: Int!) { \
+        Media(idMal: $idMal, type: ANIME) { bannerImage } \
+    }";
+
 /// Fetch the AniList trending feed, top `limit` entries.
 ///
 /// `base_override` mirrors the convention in `scraper::allanime` —
@@ -146,6 +154,71 @@ pub async fn trending(
     }
     let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
     parse_trending(&bytes)
+}
+
+/// Look up the AniList banner URL for a show by its MAL id.
+/// Returns `None` when AniList has no media for the supplied id, or
+/// when AniList has the media but no banner uploaded. Used by the
+/// detail-page enrichment chain (Kitsu null cover → MAL id → here).
+///
+/// # Errors
+/// Same as [`trending`] — Network / Upstream / ParseFailed.
+pub async fn banner_for_mal_id(
+    client: &reqwest::Client,
+    mal_id: u32,
+    base_override: Option<&str>,
+) -> Result<Option<String>> {
+    let url = base_override.unwrap_or(ANILIST_API);
+    let body = serde_json::json!({
+        "query": BANNER_BY_MAL_GQL,
+        "variables": { "idMal": mal_id },
+    });
+    let resp = client
+        .post(url)
+        .header(
+            "user-agent",
+            "ani-gui/0.1 (https://github.com/pucci/ani-gui)",
+        )
+        .header("content-type", "application/json")
+        .header("accept", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+    let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
+    parse_banner_response(&bytes)
+}
+
+/// Pure parser for the by-MAL banner response.
+///
+/// # Errors
+/// Returns [`AniError::ParseFailed`] when the body isn't the
+/// expected `{ data: { Media: { bannerImage } } }` envelope.
+pub fn parse_banner_response(body: &[u8]) -> Result<Option<String>> {
+    #[derive(Deserialize)]
+    struct Wrap {
+        data: Data,
+    }
+    #[derive(Deserialize)]
+    struct Data {
+        #[serde(rename = "Media")]
+        media: Option<Media>,
+    }
+    #[derive(Deserialize)]
+    struct Media {
+        #[serde(rename = "bannerImage")]
+        banner_image: Option<String>,
+    }
+    let parsed: Wrap = serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+        detail: format!("anilist banner response: {e}"),
+    })?;
+    Ok(parsed.data.media.and_then(|m| m.banner_image))
 }
 
 /// Pure parser for the trending response body.

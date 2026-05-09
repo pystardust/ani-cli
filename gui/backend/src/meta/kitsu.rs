@@ -336,6 +336,39 @@ pub fn parse_mappings_response(body: &[u8]) -> Result<Option<KitsuAnimeRef>> {
     Ok(anime.map(into_ref))
 }
 
+/// Pull the first `myanimelist/anime` external id out of a
+/// `/mappings` response (the response shape used by
+/// [`KitsuClient::mal_id_for_kitsu_id`]). Returns `None` when there's
+/// no MAL entry in the response, or the externalId can't be parsed
+/// as an integer.
+///
+/// # Errors
+/// Returns [`AniError::ParseFailed`] when the body isn't the expected
+/// `{ "data": [...] }` envelope.
+pub fn parse_mal_id_from_mappings(body: &[u8]) -> Result<Option<u32>> {
+    #[derive(Deserialize)]
+    struct Wrap {
+        data: Vec<Mapping>,
+    }
+    #[derive(Deserialize)]
+    struct Mapping {
+        attributes: Option<Attrs>,
+    }
+    #[derive(Deserialize)]
+    struct Attrs {
+        #[serde(rename = "externalId")]
+        external_id: Option<String>,
+    }
+    let parsed: Wrap = serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+        detail: format!("kitsu mal-id mappings parse: {e}"),
+    })?;
+    Ok(parsed
+        .data
+        .into_iter()
+        .find_map(|m| m.attributes?.external_id)
+        .and_then(|s| s.parse::<u32>().ok()))
+}
+
 /// Parse `{ "data": [...] }` into a list of episodes. Used for
 /// `/anime/:id/episodes`.
 ///
@@ -445,6 +478,38 @@ impl KitsuClient {
             ("fields[anime]", ANIME_FIELDS.to_string()),
         ])
         .await
+    }
+
+    /// Reverse of [`Self::lookup_by_mal_id`] — finds the MyAnimeList id
+    /// for a known Kitsu anime. Returns `None` when Kitsu has no MAL
+    /// mapping recorded (rare for popular shows; possible for niche
+    /// entries). Used by the detail-page banner enrichment chain
+    /// (Kitsu null cover → here → AniList by MAL id).
+    ///
+    /// # Errors
+    /// - [`AniError::Upstream`] on non-2xx HTTP.
+    /// - [`AniError::Network`] on transport failure.
+    /// - [`AniError::ParseFailed`] on malformed JSON:API.
+    pub async fn mal_id_for_kitsu_id(&self, kitsu_id: &str) -> Result<Option<u32>> {
+        let resp = self
+            .http
+            .get(format!("{}/mappings", self.base))
+            .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+            .query(&[
+                ("filter[itemType]", "Anime".to_string()),
+                ("filter[itemId]", kitsu_id.to_string()),
+                ("filter[externalSite]", "myanimelist/anime".to_string()),
+            ])
+            .send()
+            .await
+            .map_err(|_| AniError::Network)?;
+        if !resp.status().is_success() {
+            return Err(AniError::Upstream {
+                status: resp.status().as_u16(),
+            });
+        }
+        let body = resp.bytes().await.map_err(|_| AniError::Network)?;
+        parse_mal_id_from_mappings(&body)
     }
 
     /// Look up the Kitsu anime that maps to a given MyAnimeList id.

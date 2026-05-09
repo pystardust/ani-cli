@@ -527,14 +527,40 @@ pub fn watched_at_all(state: &AppState) -> Result<std::collections::HashMap<Stri
 /// # Errors
 /// Inherits from [`crate::meta::kitsu::KitsuClient::anime_detail`] on miss.
 pub async fn kitsu_anime_detail(state: &AppState, id: &str) -> Result<KitsuAnimeRef> {
-    let key = format!("kitsu:v2:anime:{id}");
+    // v3: cover_image now backfilled from AniList's bannerImage
+    //     when Kitsu's is null. v2 rows have null covers for new
+    //     ongoing shows; bumping forces a refresh.
+    let key = format!("kitsu:v3:anime:{id}");
     if let Some(body) = meta_cache_get(&state.cache_pool, &key)? {
         if let Ok(detail) = serde_json::from_str::<KitsuAnimeRef>(&body) {
             warm_signed_image_urls(state, &body);
             return Ok(detail);
         }
     }
-    let detail = state.kitsu.anime_detail(id).await?;
+    let mut detail = state.kitsu.anime_detail(id).await?;
+
+    // Banner enrichment: Kitsu cataloguers upload coverImage lazily,
+    // so newer ongoing shows often arrive with cover_image=null.
+    // Bridge through the MAL id to AniList where banners are
+    // user-uploaded reliably. Failures are silent — the detail
+    // still loads with the null-cover fallback (blurred poster) on
+    // the frontend. One extra round-trip on cold cache; the result
+    // is cached for 7 days.
+    if detail.cover_image.is_none() {
+        if let Ok(Some(mal_id)) = state.kitsu.mal_id_for_kitsu_id(id).await {
+            if let Ok(Some(banner)) =
+                crate::meta::anilist::banner_for_mal_id(&state.proxy_http, mal_id, None).await
+            {
+                detail.cover_image = Some(KitsuCoverImage {
+                    tiny: None,
+                    small: None,
+                    large: Some(banner.clone()),
+                    original: Some(banner),
+                });
+            }
+        }
+    }
+
     if let Ok(body) = serde_json::to_string(&detail) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ANIME_DETAIL_TTL.as_secs());
         warm_signed_image_urls(state, &body);
