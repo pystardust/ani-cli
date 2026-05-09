@@ -22,6 +22,7 @@ const ANISKIP_TTL_SECS: u64 = 7 * 24 * 60 * 60;
 /// Returns `Ok(empty Vec)` when:
 ///   - Kitsu has no MAL mapping for this anime, or
 ///   - aniskip has no skip times catalogued for this episode.
+///
 /// Either is normal — the player just doesn't show the skip
 /// button.
 ///

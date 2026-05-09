@@ -114,8 +114,12 @@ pub struct ShowMetadata {
 /// `availableEpisodesDetail` object — episode TAG lists per mode.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 pub struct AvailableEpisodesDetail {
+    /// Episode tags streamable in sub mode. Each entry is a string
+    /// `ani-cli`'s `-e` flag accepts (e.g. `"5"`, `"1061.5"`).
     #[serde(default)]
     pub sub: Vec<String>,
+    /// Episode tags streamable in dub mode. Same format as
+    /// [`Self::sub`]. Often shorter — many shows lack a dub track.
     #[serde(default)]
     pub dub: Vec<String>,
 }
@@ -162,15 +166,14 @@ impl ShowMetadata {
     #[must_use]
     pub fn search_terms(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
-        for raw in std::iter::once(self.english_name.as_deref())
+        for s in std::iter::once(self.english_name.as_deref())
             .chain(std::iter::once(self.native_name.as_deref()))
             .chain(self.alt_names.iter().map(|s| Some(s.as_str())))
+            .flatten()
         {
-            if let Some(s) = raw {
-                let trimmed = s.trim();
-                if !trimmed.is_empty() && !out.iter().any(|prev| prev == trimmed) {
-                    out.push(trimmed.to_string());
-                }
+            let trimmed = s.trim();
+            if !trimmed.is_empty() && !out.iter().any(|prev| prev == trimmed) {
+                out.push(trimmed.to_string());
             }
         }
         out

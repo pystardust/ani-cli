@@ -31,6 +31,11 @@ const AVAILABILITY_TTL_ONGOING_SECS: u64 = 24 * 60 * 60;
 /// availability shifts), so refresh negatives more often.
 const AVAILABILITY_TTL_NEGATIVE_SECS: u64 = 7 * 24 * 60 * 60;
 
+/// Inputs for `availability_check` — a Kitsu title (plus alts) and
+/// the audio mode under which to ask "is this on allmanga?". Carries
+/// optional Kitsu metadata (`episode_count`, `status`, `kitsu_id`)
+/// that lets the resolver disambiguate name collisions and pick the
+/// right cache TTL bucket.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AvailabilityArgs {
     /// Canonical Kitsu title — first search target.
@@ -62,6 +67,9 @@ pub struct AvailabilityArgs {
     pub status: Option<String>,
 }
 
+/// Result of an availability probe — does allmanga carry the show in
+/// the requested mode, and (when it does) what's the truthful episode
+/// cap and recap-tag list?
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AvailabilityResponse {
     /// True when allmanga has at least one candidate matching any of
@@ -83,14 +91,23 @@ pub struct AvailabilityResponse {
     pub extra_episodes: Vec<String>,
 }
 
+/// Inputs for the batch `availability_cached` lookup — a list of
+/// Kitsu ids and the mode to read cached results for. Skips the
+/// network entirely; only returns entries that already have a value
+/// in `meta_cache`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AvailabilityBatchArgs {
     /// Kitsu ids to look up. Mode disambiguates sub/dub since a
     /// title may exist in one and not the other.
     pub kitsu_ids: Vec<String>,
+    /// `"sub"` or `"dub"` — selects which cached probe to read.
     pub mode: String,
 }
 
+/// Cached-only batch response — `kitsu_id → available` for the rows
+/// the cache had a value for. Missing ids are absent from the map and
+/// the caller should render them optimistically while the lazy probe
+/// fills in.
 #[derive(Debug, Clone, Serialize)]
 pub struct AvailabilityBatchResponse {
     /// Map of kitsu_id → available. Only contains entries that have
@@ -321,6 +338,10 @@ pub async fn warm(state: std::sync::Arc<AppState>, items: Vec<AvailabilityArgs>)
     }
 }
 
+/// Inputs for `availability_warm` — a batch of titles whose cache
+/// rows the backend should probe (and populate) in the background.
+/// Drives the home-page hybrid filter that skips already-cached rows
+/// and rate-limits the rest at one probe per 500 ms.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AvailabilityWarmArgs {
     /// Per-title args — same shape as the single-item check.
@@ -343,7 +364,7 @@ mod tests {
         };
         let json = serde_json::to_string(&r).expect("serialize");
         let back: AvailabilityResponse = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back.available, true);
+        assert!(back.available);
         assert_eq!(back.episode_count, Some(1160));
         assert_eq!(back.extra_episodes, vec!["1061.5".to_string()]);
     }
@@ -357,7 +378,7 @@ mod tests {
     fn legacy_response_parses_with_defaults() {
         let legacy = r#"{"available":true}"#;
         let r: AvailabilityResponse = serde_json::from_str(legacy).expect("legacy parses");
-        assert_eq!(r.available, true);
+        assert!(r.available);
         assert_eq!(r.episode_count, None);
         assert!(r.extra_episodes.is_empty());
     }

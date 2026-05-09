@@ -67,9 +67,16 @@ pub struct AniListAnimeRef {
 /// the one the AniList UI itself defaults to.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct AniListTitle {
+    /// Latin-script transliteration of the original title (e.g.
+    /// `"Shingeki no Kyojin"`). Almost always present.
     pub romaji: Option<String>,
+    /// Localized English title when one exists (`"Attack on Titan"`).
+    /// Often null for less-licensed shows.
     pub english: Option<String>,
+    /// Native (Japanese) title in its original script.
     pub native: Option<String>,
+    /// AniList's own preferred display form — picks one of the
+    /// above based on the viewer's language settings on anilist.co.
     #[serde(rename = "userPreferred")]
     pub user_preferred: Option<String>,
 }
@@ -79,9 +86,12 @@ pub struct AniListTitle {
 /// theming accent.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct AniListCoverImage {
+    /// Largest cover variant — used for hero / detail-page art.
     #[serde(rename = "extraLarge")]
     pub extra_large: Option<String>,
+    /// Mid-size cover — used for grid cards and trending tiles.
     pub large: Option<String>,
+    /// Smallest cover — used for compact lists and search snippets.
     pub medium: Option<String>,
     /// `"#rrggbb"` — already in the format CSS expects.
     pub color: Option<String>,

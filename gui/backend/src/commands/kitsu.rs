@@ -1016,7 +1016,7 @@ mod tests {
         // doesn't surface a network error to the caller. Stub returns
         // Ok(None); the green-commit impl returns Ok(None) for this
         // synthetic id too.
-        assert!(matches!(got, Ok(_)), "resolver must not error: {got:?}");
+        assert!(got.is_ok(), "resolver must not error: {got:?}");
     }
 
     // — Watched-at timestamps for Continue Watching ordering ——————————

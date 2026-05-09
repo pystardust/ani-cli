@@ -31,7 +31,11 @@ pub struct SkipInterval {
     /// Aniskip skip type — `"op"`, `"ed"`, `"mixed-op"`,
     /// `"mixed-ed"`, `"recap"`. Display layer maps to user copy.
     pub skip_type: String,
+    /// Interval start, in seconds from episode beginning. Floats
+    /// because aniskip submissions are frame-accurate.
     pub start_time: f32,
+    /// Interval end, in seconds from episode beginning. Same
+    /// precision as [`Self::start_time`].
     pub end_time: f32,
 }
 

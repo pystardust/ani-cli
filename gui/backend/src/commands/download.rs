@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::anicli::process::spawn_download;
+use crate::anicli::process::{spawn_download, DownloadRequest};
 use crate::app::AppState;
 use crate::commands::play::{debug_options_for, pick_title_and_index, PlayArgs};
 use crate::error::{AniError, Result};
@@ -123,11 +123,13 @@ where
 
     spawn_download(
         &opts,
-        &search_title,
-        &args.episode,
-        quality,
-        &args.mode,
-        select_index,
+        &DownloadRequest {
+            query: &search_title,
+            episode: &args.episode,
+            quality,
+            mode: &args.mode,
+            select_index,
+        },
         &dest,
         |line| {
             tracing::info!(line = %line, "anicli.dl.stderr");

@@ -391,6 +391,29 @@ pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> 
     Ok(Vec::new())
 }
 
+/// Identifies the show + episode + variant that [`spawn_download`]
+/// should hand to `ani-cli -d`. Grouped into a single value so the
+/// spawn function stays under clippy's `too_many_arguments` cap and so
+/// callers don't shuffle positional `&str`s in the wrong order.
+#[derive(Debug, Clone)]
+pub struct DownloadRequest<'a> {
+    /// Title to pass after `ani-cli`'s `--` separator. Sanitized
+    /// internally before reaching the shell.
+    pub query: &'a str,
+    /// Episode token in `ani-cli`'s `-e` syntax (e.g. `"5"`, `"3-7"`).
+    pub episode: &'a str,
+    /// Quality bucket (`"best"`, `"1080"`, `"720"`, `"480"`,
+    /// `"worst"`).
+    pub quality: &'a str,
+    /// Audio variant — `"sub"` or `"dub"`. Anything other than
+    /// `"dub"` runs the default sub mode.
+    pub mode: &'a str,
+    /// 1-based index `ani-cli` picks from its search results when
+    /// the title is ambiguous. The disambiguator upstream of the
+    /// download path ensures this lands on the right show.
+    pub select_index: usize,
+}
+
 /// Spawn `ani-cli -d` to download an episode. The `-d` flag flips the
 /// script's player-function to `download`, which delegates to yt-dlp /
 /// ffmpeg / aria2c depending on the source kind. We point `ani-cli` at
@@ -405,14 +428,9 @@ pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> 
 /// - [`AniError::MissingBinary`] if the script can't be spawned.
 /// - [`AniError::Scraper`] / [`AniError::NoResults`] /
 ///   [`AniError::Timeout`] mirror the [`run_debug`] error mapping.
-///
 pub async fn spawn_download<F>(
     opts: &DebugOptions,
-    query: &str,
-    ep: &str,
-    quality: &str,
-    mode: &str,
-    select_index: usize,
+    req: &DownloadRequest<'_>,
     download_dir: &Path,
     mut on_stderr_line: F,
 ) -> Result<()>
@@ -422,20 +440,20 @@ where
     use tokio::io::{AsyncBufReadExt, BufReader};
     use tokio::process::Command;
 
-    let select_str = select_index.max(1).to_string();
+    let select_str = req.select_index.max(1).to_string();
 
     let mut cmd = Command::new(&opts.ani_cli_path);
     cmd.arg("-S")
         .arg(&select_str)
         .arg("-d")
         .arg("-e")
-        .arg(ep)
+        .arg(req.episode)
         .arg("-q")
-        .arg(quality);
-    if mode == "dub" {
+        .arg(req.quality);
+    if req.mode == "dub" {
         cmd.arg("--dub");
     }
-    let safe_query = sanitize_anicli_query(query);
+    let safe_query = sanitize_anicli_query(req.query);
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
@@ -529,7 +547,7 @@ where
             return Err(AniError::NoResults);
         }
         return Err(AniError::Scraper {
-            key: "download_failed".into(),
+            key: "download_failed",
         });
     }
     Ok(())
@@ -691,11 +709,13 @@ mod tests {
 
         let r = spawn_download(
             &debug_opts(stub),
-            "Naruto Shippuuden",
-            "5",
-            "1080",
-            "sub",
-            1,
+            &DownloadRequest {
+                query: "Naruto Shippuuden",
+                episode: "5",
+                quality: "1080",
+                mode: "sub",
+                select_index: 1,
+            },
             dl_dir.path(),
             move |line| cap.lock().expect("lock").push(line.to_string()),
         )
@@ -707,7 +727,7 @@ mod tests {
             .iter()
             .filter_map(|l| l.strip_prefix("argv:"))
             .collect();
-        assert!(argv.iter().any(|a| *a == "-d"), "argv: {argv:?}");
+        assert!(argv.contains(&"-d"), "argv: {argv:?}");
         assert!(
             argv.windows(2).any(|w| w == ["-e", "5"]),
             "argv missing -e 5: {argv:?}"
@@ -718,7 +738,7 @@ mod tests {
         );
         // The query is positional, after the `--` separator.
         assert!(
-            argv.iter().any(|a| *a == "Naruto Shippuuden"),
+            argv.contains(&"Naruto Shippuuden"),
             "argv missing query token: {argv:?}"
         );
     }
@@ -733,11 +753,13 @@ mod tests {
         let cap = captured.clone();
         spawn_download(
             &debug_opts(stub),
-            "any",
-            "1",
-            "best",
-            "dub",
-            1,
+            &DownloadRequest {
+                query: "any",
+                episode: "1",
+                quality: "best",
+                mode: "dub",
+                select_index: 1,
+            },
             dl_dir.path(),
             move |line| cap.lock().expect("lock").push(line.to_string()),
         )
@@ -748,10 +770,7 @@ mod tests {
             .iter()
             .filter_map(|l| l.strip_prefix("argv:"))
             .collect();
-        assert!(
-            argv.iter().any(|a| *a == "--dub"),
-            "argv missing --dub: {argv:?}"
-        );
+        assert!(argv.contains(&"--dub"), "argv missing --dub: {argv:?}");
     }
 
     #[cfg(unix)]
@@ -765,11 +784,13 @@ mod tests {
         let cap = captured.clone();
         spawn_download(
             &debug_opts(stub),
-            "any",
-            "1",
-            "best",
-            "sub",
-            1,
+            &DownloadRequest {
+                query: "any",
+                episode: "1",
+                quality: "best",
+                mode: "sub",
+                select_index: 1,
+            },
             &dl_path,
             move |line| cap.lock().expect("lock").push(line.to_string()),
         )
