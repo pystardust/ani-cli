@@ -18,6 +18,7 @@
 	import { resolve } from '$app/paths';
 	import {
 		altTitlesFromKitsu,
+		checkAvailability,
 		imageProxyUrl,
 		kitsuAnimeDetail,
 		kitsuEpisodes,
@@ -48,6 +49,13 @@
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
 	let scrollY = $state(0);
+
+	// Availability probe — runs once after detail loads. null = not
+	// yet checked / network error (lazy fallback handles the click);
+	// true = allmanga has at least one candidate; false = the show
+	// isn't in allmanga's catalog (Kitsu indexes Western animation
+	// like "Arcane Season 2" too — the play CTA there is a dead end).
+	let availability = $state<boolean | null>(null);
 
 	// Episode list — fetched in parallel with the detail. Holds the
 	// CURRENT page only (not concatenated) so a 500-episode show doesn't
@@ -326,10 +334,31 @@
 		episodesError = null;
 		similar = null;
 		error = null;
+		availability = null;
 		void kitsuAnimeDetail(currentId)
 			.then((d) => {
 				if (id !== currentId) return; // navigation raced ahead
 				detail = d;
+				// Probe allmanga in the background. Result gates the
+				// Play + Download CTAs so titles outside the catalog
+				// (Western animation, etc.) get a calm "Not on
+				// allmanga" notice instead of a click → error overlay.
+				// Network errors leave availability null — the lazy
+				// click-failure path then handles it.
+				const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+				void checkAvailability({
+					title: d.canonical_title,
+					mode,
+					alt_titles: altTitlesFromKitsu(d)
+				})
+					.then((r) => {
+						if (id !== currentId) return;
+						availability = r.available;
+					})
+					.catch(() => {
+						// Leave null; lazy fallback in the click handler
+						// will still surface the error.
+					});
 				// Override the layout's URL-only default with the
 				// loaded title so the breadcrumb reads the show
 				// instead of "Anime".
@@ -478,7 +507,13 @@
 	function describePlayFailure(e: unknown): string {
 		const raw = describeErrorString(e).toLowerCase();
 		if (raw.includes('no_results')) {
-			return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
+			// "Not in the catalog" reads cleaner than the prior
+			// "may not be available — try again later" hedge — when
+			// allmanga returns NoResults the title genuinely isn't
+			// indexed, retrying won't help. The detail page also
+			// gates the Play CTA proactively when the availability
+			// probe lands first; this copy is the lazy fallback.
+			return "This title isn't in the streaming catalogue. allmanga doesn't index it.";
 		}
 		if (raw.includes('scraper')) {
 			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
@@ -764,23 +799,34 @@
 
 					<h1 class="title">{detail.canonical_title}</h1>
 
-					<!-- Action row: primary play, secondary download, ghost external -->
-					<div class="actions" aria-label="Title actions">
-						<button
-							type="button"
-							class="btn btn-glass"
-							style:--btn-glow="var(--accent)"
-							onclick={onPlay}
-							disabled={actionBusy}
-						>
-							<span aria-hidden="true">▸</span>
-							<span>Play episode 1</span>
-						</button>
-						<button type="button" class="btn btn-outline" onclick={onDownload}>
-							<span aria-hidden="true">↓</span>
-							<span>Download</span>
-						</button>
-					</div>
+					<!-- Action row: primary play, secondary download. Gated
+					     by the availability probe — when allmanga has no
+					     candidate for this title, replace the CTAs with a
+					     calm notice so the user doesn't bounce off a
+					     dead-end click. -->
+					{#if availability === false}
+						<p class="unavailable" role="status">
+							<span aria-hidden="true">⏵</span>
+							Not in allmanga's catalogue — playback &amp; download unavailable for this title.
+						</p>
+					{:else}
+						<div class="actions" aria-label="Title actions">
+							<button
+								type="button"
+								class="btn btn-glass"
+								style:--btn-glow="var(--accent)"
+								onclick={onPlay}
+								disabled={actionBusy}
+							>
+								<span aria-hidden="true">▸</span>
+								<span>Play episode 1</span>
+							</button>
+							<button type="button" class="btn btn-outline" onclick={onDownload}>
+								<span aria-hidden="true">↓</span>
+								<span>Download</span>
+							</button>
+						</div>
+					{/if}
 
 					<!-- Sub/Dub + Quality controls. Reads/writes ani-gui config. -->
 					<div class="controls">
@@ -1402,6 +1448,23 @@
 		flex-wrap: wrap;
 		gap: var(--space-3);
 		margin-block-end: var(--space-5);
+	}
+	.unavailable {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin: 0 0 var(--space-5);
+		padding: var(--space-3) var(--space-4);
+		background: color-mix(in oklab, var(--ink-100) 60%, transparent);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-card);
+		font-family: var(--font-body);
+		font-size: var(--type-body-s);
+		color: var(--bone-200);
+	}
+	.unavailable > [aria-hidden] {
+		color: var(--bone-400);
+		font-family: var(--font-mono);
 	}
 	.btn {
 		display: inline-flex;

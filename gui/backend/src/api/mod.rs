@@ -26,9 +26,9 @@ use tower_http::cors::CorsLayer;
 
 use crate::app::AppState;
 use crate::commands::{
-    app_info, download as download_inner, external_player, history as h_inner,
-    kitsu as kitsu_inner, play as play_inner, proxy_url, session as session_inner,
-    settings as settings_inner,
+    app_info, availability as availability_inner, download as download_inner, external_player,
+    history as h_inner, kitsu as kitsu_inner, play as play_inner, proxy_url,
+    session as session_inner, settings as settings_inner,
 };
 use crate::config::Config;
 use crate::error::AniError;
@@ -87,6 +87,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/cache", delete(delete_cache))
         .route("/api/cache/images", delete(delete_image_cache))
         .route("/api/image", get(get_image))
+        .route("/api/availability", post(post_availability))
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
         .route("/api/download/stream", get(get_download_stream))
@@ -392,6 +393,15 @@ async fn get_download_stream(
     });
 
     Sse::new(UnboundedReceiverStream::new(rx)).keep_alive(KeepAlive::default())
+}
+
+async fn post_availability(
+    State(state): State<Arc<AppState>>,
+    Json(args): Json<availability_inner::AvailabilityArgs>,
+) -> Result<Json<availability_inner::AvailabilityResponse>, AniError> {
+    Ok(Json(
+        availability_inner::check_availability(&state, &args).await?,
+    ))
 }
 
 /// Returns the default download directory the modal should open at —

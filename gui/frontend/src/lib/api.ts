@@ -617,6 +617,22 @@ export function downloadDefaultDir(): Promise<string | null> {
 	return getJson<string | null>('/api/download/default-dir');
 }
 
+/** Wire payload for {@link checkAvailability}. Same title/mode/alt
+ *  shape PlayArgs uses so the detail page can pass through what it
+ *  already gathered. */
+export interface AvailabilityArgs {
+	title: string;
+	mode: string;
+	alt_titles?: string[];
+}
+
+/** "Is this title in allmanga's catalog?" probe. The detail page hits
+ *  this on mount so it can gate the Play + Download CTAs ahead of a
+ *  click instead of letting the user discover the gap by clicking. */
+export function checkAvailability(args: AvailabilityArgs): Promise<{ available: boolean }> {
+	return postJson<{ available: boolean }>('/api/availability', args);
+}
+
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
 	return postJson<KitsuAnimeRef[]>('/api/kitsu/search', { query });
 }
