@@ -307,6 +307,16 @@
 		videoEl.muted = !videoEl.muted;
 	}
 
+	function setVolume(v: number) {
+		if (!videoEl) return;
+		const clamped = Math.max(0, Math.min(1, v));
+		videoEl.volume = clamped;
+		// Drag implies the user wants to hear something; un-mute
+		// when they push above 0. Mute again at exactly 0 so the
+		// icon switches to muted-state.
+		videoEl.muted = clamped === 0;
+	}
+
 	function seekToFraction(fraction: number) {
 		if (!videoEl || !duration) return;
 		videoEl.currentTime = Math.max(0, Math.min(duration, fraction * duration));
@@ -1211,28 +1221,50 @@
 
 						<span class="pc-spacer"></span>
 
-						<button
-							type="button"
-							class="pc-btn"
-							onclick={toggleMute}
-							aria-label={isMuted ? 'Unmute' : 'Mute'}
-						>
-							{#if isMuted || videoVolume === 0}
-								<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-									<path
-										d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
-										fill="currentColor"
-									/>
-								</svg>
-							{:else}
-								<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-									<path
-										d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
-										fill="currentColor"
-									/>
-								</svg>
-							{/if}
-						</button>
+						<div class="pc-volume" role="group" aria-label="Volume">
+							<button
+								type="button"
+								class="pc-btn"
+								onclick={toggleMute}
+								aria-label={isMuted ? 'Unmute' : 'Mute'}
+							>
+								{#if isMuted || videoVolume === 0}
+									<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+										<path
+											d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
+											fill="currentColor"
+										/>
+									</svg>
+								{:else}
+									<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+										<path
+											d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
+											fill="currentColor"
+										/>
+									</svg>
+								{/if}
+							</button>
+							<!-- Slides out on hover / focus, like YouTube and
+							     Chromium's native volume affordance. The
+							     fill / track styling matches the scrubber
+							     so the two read as the same control family. -->
+							<div class="pc-volume-slider">
+								<input
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value={isMuted ? 0 : videoVolume}
+									oninput={(e) =>
+										setVolume(parseFloat((e.currentTarget as HTMLInputElement).value))}
+									aria-label="Volume"
+								/>
+								<span
+									class="pc-volume-fill"
+									style:inline-size="{(isMuted ? 0 : videoVolume) * 100}%"
+								></span>
+							</div>
+						</div>
 
 						<button
 							type="button"
@@ -1944,12 +1976,14 @@
 		color: #fff;
 	}
 	/* aria-pressed=true paints the toggle button accent so the on
-	   state reads at a glance — accent fill + filled icon (rendered
-	   in markup) instead of an outlined glyph. */
+	   state reads at a glance — accent fill + filled icon
+	   (rendered in markup), but the LABEL stays white so the
+	   "Auto-play" text matches the rest of the episode controls
+	   instead of disappearing into the per-show accent. */
 	.ep-toggle[aria-pressed='true'] {
 		background: color-mix(in oklab, var(--accent) 32%, var(--ink-050));
 		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-400));
-		color: var(--accent);
+		color: #fff;
 	}
 	.ep-toggle[aria-pressed='true']:hover:not(:disabled) {
 		background: color-mix(in oklab, var(--accent) 42%, var(--ink-050));
@@ -2244,6 +2278,65 @@
 		color: #fff;
 		flex-shrink: 0;
 		padding-inline-start: 0.5rem;
+	}
+
+	/* Volume control — button + slide-out slider. Mirrors
+	   YouTube's pattern: the slider is collapsed to 0 width by
+	   default and expands on hover/focus over either child. */
+	.pc-volume {
+		display: inline-flex;
+		align-items: center;
+	}
+	.pc-volume-slider {
+		position: relative;
+		display: flex;
+		align-items: center;
+		inline-size: 0;
+		block-size: 5px;
+		margin-inline-end: 0;
+		background: rgba(255, 255, 255, 0.18);
+		border-radius: 999px;
+		overflow: visible;
+		transition:
+			inline-size var(--dur-fast) var(--ease-out-soft),
+			margin var(--dur-fast) var(--ease-out-soft);
+	}
+	.pc-volume:hover .pc-volume-slider,
+	.pc-volume:focus-within .pc-volume-slider {
+		inline-size: 5.5rem;
+		margin-inline: 0.25rem 0.5rem;
+	}
+	.pc-volume-slider input[type='range'] {
+		position: absolute;
+		inset: -0.6rem 0;
+		inline-size: 100%;
+		block-size: auto;
+		margin: 0;
+		padding: 0;
+		background: transparent;
+		appearance: none;
+		-webkit-appearance: none;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.pc-volume-slider input[type='range']::-webkit-slider-thumb {
+		appearance: none;
+		-webkit-appearance: none;
+		inline-size: 12px;
+		block-size: 12px;
+	}
+	.pc-volume-slider input[type='range']::-moz-range-thumb {
+		appearance: none;
+		inline-size: 12px;
+		block-size: 12px;
+		border: 0;
+	}
+	.pc-volume-fill {
+		display: block;
+		block-size: 100%;
+		background: #fff;
+		border-radius: inherit;
+		pointer-events: none;
 	}
 	.pc-time-sep {
 		color: rgba(255, 255, 255, 0.55);
