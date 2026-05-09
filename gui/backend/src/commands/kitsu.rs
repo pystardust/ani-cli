@@ -291,11 +291,66 @@ pub fn allmanga_kitsu_put(state: &AppState, show_id: &str, kitsu_id: &str) -> Re
 /// `Ok(None)` so the caller (Continue Watching) can still render
 /// the bare allmanga title without breaking.
 pub async fn resolve_allmanga_show_id(
-    _state: &AppState,
-    _show_id: &str,
+    state: &AppState,
+    show_id: &str,
 ) -> Result<Option<KitsuAnimeRef>> {
-    // STUB (red commit). Real impl lands in the green commit; tests
-    // in this module assert the contract.
+    // 1) Reverse-cache fast path. If we've resolved this show before
+    //    (or a successful play stamped the mapping), the kitsu_id is
+    //    one cached IPC away. anime_detail itself is cached too, so
+    //    a warm lookup is two synchronous SQLite reads.
+    if let Ok(Some(kid)) = allmanga_kitsu_get(state, show_id) {
+        if let Ok(detail) = kitsu_anime_detail(state, &kid).await {
+            return Ok(Some(detail));
+        }
+        // Stale id (Kitsu removed it, or the cached row is bad) —
+        // fall through and re-resolve from allmanga.
+    }
+
+    // 2) Hit allmanga's Show GraphQL to get the alias surface
+    //    (englishName / nativeName / altNames). Network failure is
+    //    soft — Continue Watching can still render the bare
+    //    allmanga title, so we return Ok(None).
+    let show = match crate::scraper::allanime::fetch_show(&state.proxy_http, show_id, None).await {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(
+                show_id = show_id,
+                error = ?e,
+                "allmanga Show fetch failed during reverse-resolve",
+            );
+            return Ok(None);
+        }
+    };
+
+    // 3) Walk aliases through Kitsu text search. First non-empty hit
+    //    wins. We could be cleverer with slug-matching here (the
+    //    pickKitsuMatch heuristic already does that on the frontend
+    //    for cour-suffixed entries), but the cryptic-name case is
+    //    simpler — the alias is usually unambiguous (e.g.
+    //    "One Piece" lands one entry).
+    for term in show.search_terms() {
+        let hits = match state.kitsu.search(&term, SEARCH_PAGE_LIMIT).await {
+            Ok(h) => h,
+            Err(_) => continue, // Single-term failure shouldn't break the walk.
+        };
+        if let Some(first) = hits.into_iter().next() {
+            // 4) Persist the mapping so subsequent calls short-circuit
+            //    through step 1. Failure to write the cache is
+            //    non-fatal — the resolution still succeeds for this
+            //    request; the next call just walks aliases again.
+            if let Err(e) = allmanga_kitsu_put(state, show_id, &first.id) {
+                tracing::warn!(
+                    show_id = show_id,
+                    kitsu_id = %first.id,
+                    error = ?e,
+                    "reverse-cache write failed during enrichment resolve",
+                );
+            }
+            return Ok(Some(first));
+        }
+    }
+
+    // 5) Walked every alias, nothing matched. Soft-fail.
     Ok(None)
 }
 

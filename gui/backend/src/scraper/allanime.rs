@@ -142,13 +142,48 @@ const SHOW_GQL: &str =
 /// - [`AniError::ParseFailed`] when the JSON body doesn't shape into
 ///   `{ data: { show: {...} } }`.
 pub async fn fetch_show(
-    _client: &reqwest::Client,
-    _show_id: &str,
-    _base_override: Option<&str>,
+    client: &reqwest::Client,
+    show_id: &str,
+    base_override: Option<&str>,
 ) -> Result<ShowMetadata> {
-    // STUB (red commit). Real impl lands in the green commit; tests
-    // in this module assert the contract.
-    Ok(ShowMetadata::default())
+    let base = base_override.unwrap_or(ALLANIME_API);
+    let url = format!("{base}/api");
+    let _ = Url::parse(&url).map_err(|_| AniError::ParseFailed {
+        detail: format!("allanime show url: {url}"),
+    })?;
+
+    let body = serde_json::json!({
+        "variables": { "showId": show_id },
+        "query": SHOW_GQL,
+    });
+
+    let resp = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .header("referer", ALLANIME_REFERER)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+
+    #[derive(Deserialize)]
+    struct Wrap {
+        data: Data,
+    }
+    #[derive(Deserialize)]
+    struct Data {
+        show: Option<ShowMetadata>,
+    }
+    let parsed: Wrap = resp.json().await.map_err(|e| AniError::ParseFailed {
+        detail: format!("allanime show response: {e}"),
+    })?;
+    Ok(parsed.data.show.unwrap_or_default())
 }
 
 /// Replace ASCII space with `+` to match ani-cli's `search_anime`
