@@ -1222,6 +1222,34 @@
 						<span class="pc-spacer"></span>
 
 						<div class="pc-volume" role="group" aria-label="Volume">
+							<!-- Native-style: slider on the left of the icon,
+							     both wrapped in a rounded pill that only
+							     appears on hover/focus. The slider is hidden
+							     (width 0 + opacity 0) by default; on hover
+							     the pill grows and the slider with its dot
+							     fades in. -->
+							<div class="pc-volume-slider">
+								<div class="pc-volume-track">
+									<span
+										class="pc-volume-fill"
+										style:inline-size="{(isMuted ? 0 : videoVolume) * 100}%"
+									></span>
+									<span
+										class="pc-volume-thumb"
+										style:inset-inline-start="{(isMuted ? 0 : videoVolume) * 100}%"
+									></span>
+								</div>
+								<input
+									type="range"
+									min="0"
+									max="1"
+									step="0.01"
+									value={isMuted ? 0 : videoVolume}
+									oninput={(e) =>
+										setVolume(parseFloat((e.currentTarget as HTMLInputElement).value))}
+									aria-label="Volume"
+								/>
+							</div>
 							<button
 								type="button"
 								class="pc-btn"
@@ -1244,26 +1272,6 @@
 									</svg>
 								{/if}
 							</button>
-							<!-- Slides out on hover / focus, like YouTube and
-							     Chromium's native volume affordance. The
-							     fill / track styling matches the scrubber
-							     so the two read as the same control family. -->
-							<div class="pc-volume-slider">
-								<input
-									type="range"
-									min="0"
-									max="1"
-									step="0.01"
-									value={isMuted ? 0 : videoVolume}
-									oninput={(e) =>
-										setVolume(parseFloat((e.currentTarget as HTMLInputElement).value))}
-									aria-label="Volume"
-								/>
-								<span
-									class="pc-volume-fill"
-									style:inline-size="{(isMuted ? 0 : videoVolume) * 100}%"
-								></span>
-							</div>
 						</div>
 
 						<button
@@ -1968,12 +1976,13 @@
 		min-inline-size: 2.25rem;
 		justify-content: center;
 	}
-	/* Auto-play "off" state: pure white so the label reads at
-	   max contrast against the dark episode-controls strip.
-	   The on/off distinction is carried by the icon
-	   (outlined-vs-filled) and the accent fill on the on-state. */
+	/* Auto-play "off" state: matches the neighbouring Prev /
+	   Next pills (default .ep-btn color, var(--bone-200)). The
+	   on/off distinction is carried by the icon
+	   (outlined-vs-filled) and the accent fill on the on state,
+	   not by changing the label color. */
 	.ep-toggle[aria-pressed='false'] {
-		color: #fff;
+		color: var(--bone-200);
 	}
 	/* aria-pressed=true paints the toggle button accent so the on
 	   state reads at a glance — accent fill + filled icon
@@ -2280,36 +2289,76 @@
 		padding-inline-start: 0.5rem;
 	}
 
-	/* Volume control — button + slide-out slider. Mirrors
-	   YouTube's pattern: the slider is collapsed to 0 width by
-	   default and expands on hover/focus over either child. */
+	/* Volume control — Chromium-native pattern: a rounded dark
+	   pill containing the slider on the left and the speaker
+	   icon on the right. The pill is invisible (no background,
+	   slider collapsed) until hover/focus, then the slider
+	   slides into view inside a tinted pill. The thumb is
+	   visible whenever the slider is. */
 	.pc-volume {
 		display: inline-flex;
 		align-items: center;
+		border-radius: 999px;
+		padding-inline-start: 0;
+		background: transparent;
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			padding-inline-start var(--dur-fast) var(--ease-out-soft);
+	}
+	.pc-volume:hover,
+	.pc-volume:focus-within {
+		background: rgba(40, 40, 44, 0.85);
+		padding-inline-start: 0.65rem;
 	}
 	.pc-volume-slider {
 		position: relative;
 		display: flex;
 		align-items: center;
+		block-size: 1.5rem;
 		inline-size: 0;
-		block-size: 5px;
 		margin-inline-end: 0;
-		background: rgba(255, 255, 255, 0.18);
-		border-radius: 999px;
-		overflow: visible;
+		opacity: 0;
 		transition:
 			inline-size var(--dur-fast) var(--ease-out-soft),
-			margin var(--dur-fast) var(--ease-out-soft);
+			margin var(--dur-fast) var(--ease-out-soft),
+			opacity var(--dur-fast) var(--ease-out-soft);
 	}
 	.pc-volume:hover .pc-volume-slider,
 	.pc-volume:focus-within .pc-volume-slider {
-		inline-size: 5.5rem;
-		margin-inline: 0.25rem 0.5rem;
+		inline-size: 4.5rem;
+		margin-inline-end: 0.4rem;
+		opacity: 1;
+	}
+	.pc-volume-track {
+		position: relative;
+		flex: 1;
+		block-size: 3px;
+		background: rgba(255, 255, 255, 0.32);
+		border-radius: 999px;
+		min-inline-size: 0;
+	}
+	.pc-volume-fill {
+		display: block;
+		block-size: 100%;
+		background: #fff;
+		border-radius: inherit;
+		pointer-events: none;
+	}
+	.pc-volume-thumb {
+		position: absolute;
+		inset-block-start: 50%;
+		inline-size: 11px;
+		block-size: 11px;
+		margin-inline-start: -5.5px;
+		border-radius: 50%;
+		background: #fff;
+		transform: translateY(-50%);
+		pointer-events: none;
 	}
 	.pc-volume-slider input[type='range'] {
 		position: absolute;
-		inset: -0.6rem 0;
-		inline-size: 100%;
+		inset: -0.4rem -0.4rem;
+		inline-size: calc(100% + 0.8rem);
 		block-size: auto;
 		margin: 0;
 		padding: 0;
@@ -2322,21 +2371,14 @@
 	.pc-volume-slider input[type='range']::-webkit-slider-thumb {
 		appearance: none;
 		-webkit-appearance: none;
-		inline-size: 12px;
-		block-size: 12px;
+		inline-size: 14px;
+		block-size: 14px;
 	}
 	.pc-volume-slider input[type='range']::-moz-range-thumb {
 		appearance: none;
-		inline-size: 12px;
-		block-size: 12px;
+		inline-size: 14px;
+		block-size: 14px;
 		border: 0;
-	}
-	.pc-volume-fill {
-		display: block;
-		block-size: 100%;
-		background: #fff;
-		border-radius: inherit;
-		pointer-events: none;
 	}
 	.pc-time-sep {
 		color: rgba(255, 255, 255, 0.55);
