@@ -580,13 +580,12 @@
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
-		/* Escape the layout shell's left gutter — the banner stays
-		   flush with the rail edge, only the strips below carry the
-		   gutter inset. Negative margin + extra width grows the
-		   element's box back to the area before .main-area's
-		   padding-inline-start was applied. */
-		margin-inline-start: calc(-1 * var(--space-7));
-		inline-size: calc(100% + var(--space-7));
+		/* Escape the layout shell's inline gutters — the banner
+		   stays flush with the rail on the left and the window
+		   edge on the right; only the strips below carry the
+		   gutter inset. */
+		margin-inline: calc(-1 * var(--space-7));
+		inline-size: calc(100% + 2 * var(--space-7));
 	}
 
 	/* Each rotation tick mounts a new .hero-layer; the previous one
@@ -780,7 +779,10 @@
 		position: absolute;
 		z-index: 3;
 		inset-block-end: var(--space-5);
-		inset-inline-end: var(--space-8);
+		/* Hero box now extends past .main-area's right gutter
+		   (full-bleed), so push the pager inward by that gutter
+		   so it lines up with the strip's right edge below. */
+		inset-inline-end: calc(var(--space-8) + var(--space-7));
 		display: inline-flex;
 		gap: var(--space-2);
 		align-items: center;

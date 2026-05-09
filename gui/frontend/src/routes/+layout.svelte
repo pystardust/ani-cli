@@ -482,16 +482,18 @@
 		display: flex;
 		flex-direction: column;
 		min-inline-size: 0; /* prevent overflow from blowing out the grid */
-		/* Extra left gutter between the rail and route content so
-		   the main column doesn't feel glued to the nav. Stacks on
-		   top of each route's own padding-inline. */
-		padding-inline-start: var(--space-7);
+		/* Extra inline gutter on both sides so the main column
+		   doesn't feel glued to the rail on the left or the
+		   window edge on the right. Stacks on top of each route's
+		   own padding-inline. Banners (.hero, .masthead) escape
+		   this gutter via negative margins so they stay full-bleed. */
+		padding-inline: var(--space-7);
 	}
 	@media (max-inline-size: 720px) {
 		/* Narrow shell collapses the rail to a horizontal bar at the
-		   top, so the left gutter is irrelevant there. */
+		   top — drop the gutter so content uses every horizontal pixel. */
 		.main-area {
-			padding-inline-start: 0;
+			padding-inline: 0;
 		}
 	}
 
