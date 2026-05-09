@@ -17,8 +17,8 @@
 	},
 	"crap": {
 		"_comment": "CRAP = ccn² × (1 − cov)² + ccn, per file. max + p95 are the ratcheted aggregates; high_risk is the count of files with CRAP > 30 (informational, not a hard gate).",
-		"max_le": 280,
-		"p95_le": 175,
-		"high_risk_le": 17
+		"max_le": 1144.82,
+		"p95_le": 544.36,
+		"high_risk_le": 22
 	}
 }

@@ -17,7 +17,7 @@ These are different problems with related primitives. Cast is one-to-many output
 
 1. **Receiver discovery** — mDNS-SD on the LAN to enumerate Cast/AirPlay/DLNA receivers.
 2. **Stream URL** — receivers can't reach `127.0.0.1` on the casting laptop. The local stream proxy needs an opt-in mode that binds to the LAN interface (`0.0.0.0`) for the duration of a cast session, with token-gated access to prevent open relays.
-3. **Receiver protocol** — Cast (Google) or AirPlay (Apple) or DLNA. Cast has the broadest device coverage; the protocol is documented but the official SDK is closed. Open-source implementations exist (e.g. `castnow`, `go-chromecast`). Tauri-side: a Rust crate that talks Cast directly, OR shell out to `catt` (already a dependency in some `ani-cli` installs).
+3. **Receiver protocol** — Cast (Google) or AirPlay (Apple) or DLNA. Cast has the broadest device coverage; the protocol is documented but the official SDK is closed. Open-source implementations exist (e.g. `castnow`, `go-chromecast`). On the Rust side: a crate that talks Cast directly, OR shell out to `catt` (already a dependency in some `ani-cli` installs).
 4. **UI** — a Cast button in the player chrome; receiver picker overlay; "Now casting on <device>" banner; control parity (play/pause/seek/quality).
 
 ### Risks

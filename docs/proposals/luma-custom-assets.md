@@ -75,7 +75,7 @@ Concrete pipeline:
 1. Asset directory `gui/frontend/static/illustrations/`, gitignored at the source level but populated by a `pnpm run assets:bake` script that hits Luma, runs through the critic agent, and saves the surviving .webp / .mp4 outputs into the directory.
 2. The bake script is run by maintainers, not CI. The output is committed to git (binary blobs under git-LFS) so that fresh checkouts don't regenerate.
 3. Each asset has a manifest entry (`assets/MANIFEST.json`) recording: prompt, character bible version, generation timestamp, sha256, the critic verdict and any human edits applied. Same hygiene as our existing `tests/fixtures/` — the asset is a fixture, not a runtime artifact.
-4. Components reference assets by their static path. No protocol handler, no remote URL. Tauri serves them as part of the bundled SPA.
+4. Components reference assets by their static path. No protocol handler, no remote URL. They ship as part of the bundled SPA.
 5. To regenerate (e.g. when the character bible iterates), bump the bible version, re-run the bake, review the diff, commit.
 
 ## Cost ceiling

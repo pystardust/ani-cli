@@ -7,7 +7,7 @@ Operational contract for any AI agent (Claude Code, Codex, others) working in th
 `ani-gui` is a fork of [`pystardust/ani-cli`](https://github.com/pystardust/ani-cli) that adds a desktop GUI on top of the existing CLI. The repo holds **two peer artifacts**:
 
 - `ani-cli` (root) — the original 666-line POSIX-shell anime scraper, vendored from upstream and intentionally kept untouched.
-- `gui/` — the new Tauri 2 + Rust + SvelteKit desktop app. Drives `ani-cli` strictly as a subprocess.
+- `gui/` — the desktop app. Electron shell (`gui/electron/`) hosts a SvelteKit static SPA (`gui/frontend/`) and launches a Rust sidecar (`gui/backend/`) that drives `ani-cli` strictly as a subprocess.
 
 Read first:
 
@@ -15,6 +15,7 @@ Read first:
 - `docs/testing.md` — test pyramid and how to run each layer
 - `docs/development.md` — dev environment, build, debug
 - `docs/i18n.md` — adding a locale
+- `docs/title-resolution.md` — the cross-API bridge (Kitsu ↔ allmanga ↔ MAL ↔ aniskip / AniList) and how disambiguation by episode count works
 - `docs/proposals/` — future-feature proposals (Cast/multi-viewer, etc.)
 
 ## 2. Test discipline (non-negotiable, TDD)
