@@ -19,7 +19,6 @@ use serde::Deserialize;
 
 use crate::error::{AniError, Result};
 
-#[allow(dead_code)]
 const ANILIST_API: &str = "https://graphql.anilist.co";
 
 /// One trending anime as AniList serves it. Fields chosen to match
@@ -88,8 +87,9 @@ pub struct AniListCoverImage {
     pub color: Option<String>,
 }
 
-/// GraphQL query string for the trending feed.
-#[allow(dead_code)]
+/// GraphQL query string for the trending feed. Field set is the
+/// minimum the bridge + frontend need; expand here when adding new
+/// surfaces. `perPage` is bound at call time.
 const TRENDING_GQL: &str = "query Trending($perPage: Int!) { \
     Page(perPage: $perPage) { \
         media(type: ANIME, sort: TRENDING_DESC) { \
@@ -113,13 +113,31 @@ const TRENDING_GQL: &str = "query Trending($perPage: Int!) { \
 /// - [`AniError::Upstream`] on non-2xx HTTP.
 /// - [`AniError::ParseFailed`] when the response shape is wrong.
 pub async fn trending(
-    _client: &reqwest::Client,
-    _limit: u8,
-    _base_override: Option<&str>,
+    client: &reqwest::Client,
+    limit: u8,
+    base_override: Option<&str>,
 ) -> Result<Vec<AniListAnimeRef>> {
-    Err(AniError::ParseFailed {
-        detail: "anilist::trending not implemented yet".into(),
-    })
+    let url = base_override.unwrap_or(ANILIST_API);
+    let body = serde_json::json!({
+        "query": TRENDING_GQL,
+        "variables": { "perPage": limit },
+    });
+    let resp = client
+        .post(url)
+        .header("content-type", "application/json")
+        .header("accept", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+    let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
+    parse_trending(&bytes)
 }
 
 /// Pure parser for the trending response body.
@@ -127,10 +145,24 @@ pub async fn trending(
 /// # Errors
 /// Returns [`AniError::ParseFailed`] when the JSON doesn't shape
 /// into `{ data: { Page: { media: [...] } } }`.
-pub fn parse_trending(_body: &[u8]) -> Result<Vec<AniListAnimeRef>> {
-    Err(AniError::ParseFailed {
-        detail: "anilist::parse_trending not implemented yet".into(),
-    })
+pub fn parse_trending(body: &[u8]) -> Result<Vec<AniListAnimeRef>> {
+    #[derive(Deserialize)]
+    struct Wrap {
+        data: Data,
+    }
+    #[derive(Deserialize)]
+    struct Data {
+        #[serde(rename = "Page")]
+        page: Page,
+    }
+    #[derive(Deserialize)]
+    struct Page {
+        media: Vec<AniListAnimeRef>,
+    }
+    let parsed: Wrap = serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+        detail: format!("anilist trending response: {e}"),
+    })?;
+    Ok(parsed.data.page.media)
 }
 
 #[cfg(test)]
