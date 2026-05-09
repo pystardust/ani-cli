@@ -392,11 +392,19 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
+            _saved_pos=$(grep -F "$(printf '%s\t%s\t' "$id" "$ep_no")" "$progress_file" 2>/dev/null | cut -f3)
+            [ -n "$_saved_pos" ] && [ "$_saved_pos" != "0" ] && _start_flag="--start=$_saved_pos" || _start_flag=""
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+                nohup $player_function $_start_flag --save-position-on-quit --watch-later-dir="$hist_dir/watch_later" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
             else
-                $player_function $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                $player_function $_start_flag --save-position-on-quit --watch-later-dir="$hist_dir/watch_later" $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
+                _new_pos=$(grep -o 'start=[0-9.]*' "$hist_dir/watch_later"/* 2>/dev/null | head -1 | cut -d= -f2)
+                [ -n "$_new_pos" ] && {
+                    grep -vF "$(printf '%s\t%s\t' "$id" "$ep_no")" "$progress_file" > "$progress_file.tmp" 2>/dev/null
+                    printf "%s\t%s\t%s\n" "$id" "$ep_no" "$_new_pos" >> "$progress_file.tmp" 2>/dev/null
+                    mv "$progress_file.tmp" "$progress_file" 2>/dev/null
+                }
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
@@ -428,6 +436,13 @@ play_episode() {
     update_history
     [ "$use_external_menu" = "1" ] && wait
     [ "$use_external_menu" = "2" ] && wait
+    # save progress marker (only if no exact position already saved)
+    _cur=$(grep -F "$(printf '%s\t%s\t' "$id" "$ep_no")" "$progress_file" 2>/dev/null | cut -f3)
+    if [ -z "$_cur" ] || [ "$_cur" = "0" ]; then
+        grep -vF "$(printf '%s\t%s\t' "$id" "$ep_no")" "$progress_file" > "$progress_file.tmp" 2>/dev/null
+        printf "%s\t%s\t%s\n" "$id" "$ep_no" "0" >> "$progress_file.tmp"
+        mv "$progress_file.tmp" "$progress_file" 2>/dev/null
+    fi
 }
 
 play() {
@@ -488,6 +503,8 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
+progress_file="$hist_dir/ani-progress"
+[ ! -f "$progress_file" ] && : >"$progress_file"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
 while [ $# -gt 0 ]; do
@@ -617,7 +634,13 @@ case "$search" in
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
         ep_list=$(episodes_list "$id")
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | while read -r ep; do
+            if grep -qF "$(printf '%s	%s	' "$id" "$ep")" "$progress_file" 2>/dev/null; then
+                printf "%s\t%s\t▶ \n" "$ep" "$ep"
+            else
+                printf "%s\t%s\t  \n" "$ep" "$ep"
+            fi
+        done | nth "Select episode: " "$multi_selection_flag" | cut -f1)
         [ -z "$ep_no" ] && exit 1
         ;;
 esac
@@ -637,7 +660,13 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) episode="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-        select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
+        select) ep_no=$(printf "%s" "$ep_list" | while read -r ep; do
+                if grep -qF "$(printf '%s	%s	' "$id" "$ep")" "$progress_file" 2>/dev/null; then
+                    printf "%s\t%s\t▶ \n" "$ep" "$ep"
+                else
+                    printf "%s\t%s\t  \n" "$ep" "$ep"
+                fi
+            done | nth "Select episode: " "$multi_selection_flag" | cut -f1) ;;
         change_quality)
             new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
             select_quality "$new_quality"
