@@ -1106,6 +1106,59 @@ mod tests {
         assert!(args.alt_titles.is_empty());
     }
 
+    /// Pass a literal `null` for alt_titles so the deserializer's
+    /// `None` arm fires (serde's `default` only short-circuits when
+    /// the FIELD is missing; an explicit `null` still goes through
+    /// `deserialize_alt_titles`).
+    #[test]
+    fn play_args_treats_explicit_null_alt_titles_as_empty_vec() {
+        let json = r#"{"title":"x","episode":"1","mode":"sub","alt_titles":null}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(args.alt_titles.is_empty());
+    }
+
+    /// `prefetch` tolerates the JSON bool form, the SSE-string form
+    /// ("1" / "true" / "yes"), and missing / null. Test all three
+    /// truthy strings + the negative ones + null so the
+    /// `deserialize_loose_bool` switch is fully exercised.
+    #[test]
+    fn play_args_loose_bool_accepts_true_strings() {
+        for truthy in ["1", "true", "yes"] {
+            let qs = format!("title=X&episode=1&mode=sub&prefetch={truthy}");
+            let args: PlayArgs = serde_urlencoded::from_str(&qs).expect("parses");
+            assert!(args.prefetch, "expected prefetch=true for {truthy:?}");
+        }
+    }
+
+    #[test]
+    fn play_args_loose_bool_treats_other_strings_as_false() {
+        for falsy in ["0", "false", "no", "wat"] {
+            let qs = format!("title=X&episode=1&mode=sub&prefetch={falsy}");
+            let args: PlayArgs = serde_urlencoded::from_str(&qs).expect("parses");
+            assert!(!args.prefetch, "expected prefetch=false for {falsy:?}");
+        }
+    }
+
+    #[test]
+    fn play_args_loose_bool_accepts_explicit_json_bool() {
+        // Direct POST clients still send the field as a JSON
+        // boolean — serde_json's untagged enum tries the Bool arm
+        // first.
+        let json = r#"{"title":"x","episode":"1","mode":"sub","prefetch":true}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(args.prefetch);
+    }
+
+    #[test]
+    fn play_args_loose_bool_treats_explicit_null_as_false() {
+        // Pin the None-arm of `deserialize_loose_bool` — explicit
+        // `null` should keep the click-path default rather than
+        // erroring.
+        let json = r#"{"title":"x","episode":"1","mode":"sub","prefetch":null}"#;
+        let args: PlayArgs = serde_json::from_str(json).expect("parses");
+        assert!(!args.prefetch);
+    }
+
     #[test]
     fn play_args_prefetch_defaults_to_false_when_omitted() {
         // Older clients (and click handlers that don't bother passing
