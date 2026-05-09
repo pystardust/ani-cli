@@ -1154,6 +1154,7 @@
 	bind:open={downloadModalOpen}
 	args={downloadArgs}
 	defaultDir={downloadDefaultDir}
+	availableEpisodes={knownAvailableEpisodes}
 	onClose={() => (downloadModalOpen = false)}
 />
 

@@ -17,9 +17,24 @@
 		open: boolean;
 		args: DownloadArgs | null;
 		defaultDir: string;
+		/** Overrides args.episode_count for the "All" + Range upper
+		 *  bound when Kitsu has indexed fewer episodes than the show
+		 *  announces (e.g. currently-airing seasons: episode_count=19
+		 *  but only 5 aired). Detail page passes its
+		 *  knownAvailableEpisodes; otherwise null. */
+		availableEpisodes?: number | null;
 		onClose: () => void;
 	}
-	let { open = $bindable(), args, defaultDir, onClose }: Props = $props();
+	let { open = $bindable(), args, defaultDir, availableEpisodes = null, onClose }: Props = $props();
+
+	// Effective max — what "All" actually targets and what Range
+	// inputs clamp to. Falls back to the announced count when we
+	// don't have a tighter bound.
+	const maxEpisode = $derived(availableEpisodes ?? args?.episode_count ?? null);
+	const announcedEpisode = $derived(args?.episode_count ?? null);
+	const hasGap = $derived(
+		availableEpisodes != null && announcedEpisode != null && availableEpisodes < announcedEpisode
+	);
 
 	let dir = $state('');
 	let busy = $state(false);
@@ -46,7 +61,7 @@
 	const episodeArg = $derived.by(() => {
 		if (mode === 'this') return args ? args.episode : '1';
 		if (mode === 'all') {
-			const last = args?.episode_count ?? Math.floor(endEp);
+			const last = maxEpisode ?? Math.floor(endEp);
 			return `1-${Math.max(1, last)}`;
 		}
 		// range
@@ -56,7 +71,7 @@
 	});
 	const rangeCount = $derived.by(() => {
 		if (mode === 'this') return 1;
-		if (mode === 'all') return Math.max(1, args?.episode_count ?? 1);
+		if (mode === 'all') return Math.max(1, maxEpisode ?? 1);
 		return Math.max(1, Math.floor(endEp) - Math.floor(startEp) + 1);
 	});
 
@@ -125,7 +140,7 @@
 						{mode === 'this'
 							? `episode ${args.episode}`
 							: mode === 'all'
-								? `all ${args.episode_count ?? '?'} episodes`
+								? `all ${maxEpisode ?? '?'} episodes`
 								: `episodes ${Math.floor(startEp)}–${Math.floor(endEp)}`}
 					</span>
 				</p>
@@ -159,12 +174,12 @@
 						class="dl-mode-btn"
 						class:active={mode === 'all'}
 						aria-pressed={mode === 'all'}
-						disabled={!args.episode_count}
+						disabled={!maxEpisode}
 						onclick={() => (mode = 'all')}
 					>
 						All
-						{#if args.episode_count}
-							<span class="dl-mode-num">{args.episode_count}</span>
+						{#if maxEpisode}
+							<span class="dl-mode-num">{maxEpisode}</span>
 						{/if}
 					</button>
 				</div>
@@ -176,7 +191,7 @@
 							class="dl-input dl-input-num"
 							type="number"
 							min="1"
-							max={args.episode_count ?? undefined}
+							max={maxEpisode ?? undefined}
 							bind:value={startEp}
 							aria-label="From episode"
 						/>
@@ -185,12 +200,17 @@
 							class="dl-input dl-input-num"
 							type="number"
 							min={Math.floor(startEp)}
-							max={args.episode_count ?? undefined}
+							max={maxEpisode ?? undefined}
 							bind:value={endEp}
 							aria-label="To episode"
 						/>
-						{#if args.episode_count}
-							<span class="dl-range-total">of {args.episode_count}</span>
+						{#if maxEpisode}
+							<span class="dl-range-total">
+								of {maxEpisode}
+								{#if hasGap}
+									<span class="dl-range-faint">· {announcedEpisode} announced</span>
+								{/if}
+							</span>
 						{/if}
 					</div>
 				{/if}
@@ -199,8 +219,10 @@
 					{#if mode === 'this'}
 						Downloads episode {args.episode} only.
 					{:else if mode === 'all'}
-						{#if args.episode_count}
-							Downloads all {args.episode_count} episodes sequentially.
+						{#if maxEpisode}
+							Downloads all {maxEpisode}
+							{hasGap ? 'aired' : ''} episodes sequentially{#if hasGap}
+								— {announcedEpisode} are announced but only {maxEpisode} have been released so far.{:else}.{/if}
 						{:else}
 							Episode count unknown — use Range to specify.
 						{/if}
@@ -415,6 +437,10 @@
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
+	}
+	.dl-range-faint {
+		color: color-mix(in oklab, var(--bone-300) 60%, transparent);
+		margin-inline-start: var(--space-1);
 	}
 	.dl-input {
 		flex: 1 1 auto;
