@@ -604,18 +604,18 @@
 	}
 
 	/* Sort + filter controls — sit between the eyebrow and the grid.
-	   Two control-groups stacked horizontally on wide; wrap on narrow. */
+	   Stacked: Sort on its own row, Type on the next. */
 	.controls {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-5);
-		align-items: center;
+		flex-direction: column;
+		gap: var(--space-3);
 		margin-block-end: var(--space-5);
 	}
 	.control-group {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+		flex-wrap: wrap;
 	}
 	.control-label {
 		font-family: var(--font-mono);
@@ -628,8 +628,11 @@
 		display: inline-flex;
 		gap: 1px;
 		padding: 2px;
-		background: var(--ink-050);
-		border: 1px solid var(--ink-200);
+		/* Bumped from ink-050 to ink-100 for visible contrast against
+		   the page background — earlier the inactive segment track
+		   blended with the surrounding ink-000 page surface. */
+		background: var(--ink-100);
+		border: 1px solid var(--ink-300);
 		border-radius: var(--radius-card);
 	}
 	.seg-btn {
