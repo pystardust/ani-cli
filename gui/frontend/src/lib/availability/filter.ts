@@ -44,7 +44,8 @@ export async function filterAvailable<T extends KitsuAnimeRef>(
 			mode,
 			alt_titles: altTitlesFromKitsu(i),
 			episode_count: i.episode_count ?? undefined,
-			kitsu_id: i.id
+			kitsu_id: i.id,
+			status: i.status ?? undefined
 		}));
 	if (toWarm.length > 0) {
 		void availabilityWarm(toWarm).catch(() => {});
@@ -87,7 +88,8 @@ export async function filterAvailableStrict<T extends KitsuAnimeRef>(
 						mode,
 						alt_titles: altTitlesFromKitsu(item),
 						episode_count: item.episode_count ?? undefined,
-						kitsu_id: item.id
+						kitsu_id: item.id,
+						status: item.status ?? undefined
 					});
 					cached[item.id] = r.available;
 				} catch {

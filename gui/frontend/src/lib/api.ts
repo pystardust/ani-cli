@@ -638,6 +638,11 @@ export interface AvailabilityArgs {
 	alt_titles?: string[];
 	episode_count?: number;
 	kitsu_id?: string;
+	/** Kitsu's airing status — one of "current", "finished",
+	 *  "upcoming", "tba", "unreleased". Branches the positive cache
+	 *  TTL: ongoing shows refresh in 24h, finished in 30d. Optional;
+	 *  unknown status defaults to the short TTL. */
+	status?: string;
 }
 
 /** Response from {@link checkAvailability}. `episode_count` is the

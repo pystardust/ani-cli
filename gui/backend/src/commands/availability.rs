@@ -17,9 +17,15 @@ use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::commands::play::{pick_title_and_index, PlayArgs};
 use crate::error::Result;
 
-/// Cache TTL for positive results — 30 days. Once a show is on
-/// allmanga it stays on allmanga; re-probing weekly is wasted work.
-const AVAILABILITY_TTL_POSITIVE_SECS: u64 = 30 * 24 * 60 * 60;
+/// Cache TTL for positive results on FINISHED shows — 30 days.
+/// Catalog is stable; episode_count won't move.
+const AVAILABILITY_TTL_FINISHED_SECS: u64 = 30 * 24 * 60 * 60;
+/// Cache TTL for positive results on ONGOING shows (status =
+/// "current" / "upcoming" / "tba") — 24 hours. Most shows release
+/// once a week; a 1-day window means new episodes surface within
+/// a day of the next probe rather than waiting up to a month for
+/// the cap to refresh.
+const AVAILABILITY_TTL_ONGOING_SECS: u64 = 24 * 60 * 60;
 /// Cache TTL for negative results — 7 days. Catalog adds are rarer
 /// than removals but still happen (late-season uploads, region
 /// availability shifts), so refresh negatives more often.
@@ -46,6 +52,14 @@ pub struct AvailabilityArgs {
     /// check still runs but its result isn't persisted.
     #[serde(default)]
     pub kitsu_id: Option<String>,
+    /// Kitsu's airing status (`"current"`, `"finished"`,
+    /// `"upcoming"`, `"tba"`, `"unreleased"`). When known, it
+    /// branches the positive cache TTL: ongoing shows refresh in
+    /// 24h so weekly drops surface within a day; finished shows
+    /// hold for 30d. When omitted, defaults to the ongoing TTL —
+    /// safer to refresh too often than to serve a stale cap.
+    #[serde(default)]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,6 +200,7 @@ pub async fn check_availability(
             available,
             episode_count,
             extra_episodes.clone(),
+            args.status.as_deref(),
         );
     }
 
@@ -204,7 +219,23 @@ pub async fn check_availability(
 /// off the candidate), so the cache row stores None there; the next
 /// detail-page probe will fill it in.
 pub fn write_cache(state: &AppState, kitsu_id: &str, mode: &str, available: bool) {
-    write_cache_full(state, kitsu_id, mode, available, None, Vec::new());
+    // Status unknown at this call site (play / download success /
+    // failure paths). Use ongoing TTL — the next detail-page probe
+    // will overwrite this row anyway, since check_availability's
+    // self-heal kicks in for rows with episode_count=None.
+    write_cache_full(state, kitsu_id, mode, available, None, Vec::new(), None);
+}
+
+/// Pick the positive cache TTL based on Kitsu's airing status.
+/// Returns the short (24h) TTL for shows likely to get new episodes
+/// soon, and the long (30d) TTL only for definitively finished
+/// shows. Unknown status falls back to the short TTL — better to
+/// re-probe than to serve a stale cap.
+fn positive_ttl_for(status: Option<&str>) -> u64 {
+    match status {
+        Some("finished") => AVAILABILITY_TTL_FINISHED_SECS,
+        _ => AVAILABILITY_TTL_ONGOING_SECS,
+    }
 }
 
 /// Same as [`write_cache`] but lets the caller supply the episode
@@ -218,13 +249,14 @@ pub fn write_cache_full(
     available: bool,
     episode_count: Option<u32>,
     extra_episodes: Vec<String>,
+    status: Option<&str>,
 ) {
     if kitsu_id.is_empty() {
         return;
     }
     let key = cache_key(kitsu_id, mode);
     let ttl = if available {
-        AVAILABILITY_TTL_POSITIVE_SECS
+        positive_ttl_for(status)
     } else {
         AVAILABILITY_TTL_NEGATIVE_SECS
     };

@@ -440,7 +440,8 @@
 					mode,
 					alt_titles: altTitlesFromKitsu(d),
 					episode_count: d.episode_count ?? undefined,
-					kitsu_id: d.id
+					kitsu_id: d.id,
+					status: d.status ?? undefined
 				})
 					.then((r) => {
 						if (id !== currentId) return;
