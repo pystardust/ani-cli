@@ -20,7 +20,7 @@ use crate::cache::ttl::{
 use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::commands::kitsu_warm::warm_signed_image_urls;
 use crate::error::Result;
-use crate::meta::kitsu::{KitsuAnimeRef, KitsuEpisode};
+use crate::meta::kitsu::{KitsuAnimeRef, KitsuCoverImage, KitsuEpisode};
 
 // Schema version is encoded in the cache key prefix (`kitsu:v2:`).
 // Bump when KitsuAnimeRef gains a field consumers depend on — v2 was
@@ -104,7 +104,10 @@ pub async fn kitsu_trending(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
 /// Bubbles AniList / Kitsu transport failures only when the fallback
 /// also fails. Cache write failures are silently ignored.
 pub async fn kitsu_trending_anilist(state: &AppState) -> Result<Vec<KitsuAnimeRef>> {
-    const KEY: &str = "kitsu:v3:trending_anilist";
+    // v4: bridge backfills cover_image from AniList's bannerImage
+    //     when Kitsu's is null (new ongoing shows). v3 rows have
+    //     null covers for those entries; bumping forces a refresh.
+    const KEY: &str = "kitsu:v4:trending_anilist";
     if let Some(body) = meta_cache_get(&state.cache_pool, KEY)? {
         if let Ok(hits) = serde_json::from_str::<Vec<KitsuAnimeRef>>(&body) {
             warm_signed_image_urls(state, &body);
@@ -161,9 +164,27 @@ pub(super) async fn bridge_anilist_to_kitsu(
     let mut futures = FuturesOrdered::new();
     for entry in anilist {
         let kitsu = state.kitsu.clone();
+        let banner = entry.banner_image.clone();
         futures.push_back(async move {
             let mal_id = entry.id_mal?;
-            kitsu.lookup_by_mal_id(mal_id).await.ok().flatten()
+            let mut kref = kitsu.lookup_by_mal_id(mal_id).await.ok().flatten()?;
+            // Backfill banner from AniList when Kitsu hasn't
+            // catalogued one. New ongoing shows like Slime S4 land
+            // on Kitsu before their cataloguers upload a banner;
+            // AniList typically has it from day one. The image
+            // proxy accepts any https URL so the renderer doesn't
+            // need to know the source.
+            if kref.cover_image.is_none() {
+                if let Some(url) = banner {
+                    kref.cover_image = Some(KitsuCoverImage {
+                        tiny: None,
+                        small: None,
+                        large: Some(url.clone()),
+                        original: Some(url),
+                    });
+                }
+            }
+            Some(kref)
         });
     }
     let mut out = Vec::new();
