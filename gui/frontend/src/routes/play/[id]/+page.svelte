@@ -2188,7 +2188,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
-		padding: 0.5rem 1rem 0.4rem;
+		padding: 0.5rem 2rem 0.4rem;
 		background: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.85) 100%);
 		color: #fff;
 		opacity: 0;
