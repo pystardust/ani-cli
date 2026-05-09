@@ -80,8 +80,26 @@
 	// The cache itself doesn't drive any reactive UI — the windowed slice
 	// gets stored back into `episodes`.
 	const kitsuPageCache = new SvelteMap<number, KitsuEpisode[]>();
+	// Number of episodes Kitsu actually indexed for this show. When the
+	// user is on page 1 and Kitsu returned fewer than UI_PAGE_SIZE,
+	// that's the entire dataset — Kitsu doesn't have more. Different
+	// from `detail.episode_count` (the announced total), which can be
+	// higher than what Kitsu has actually listed for currently-airing
+	// or partially-cataloged seasons (e.g. Re:Zero S4 says 19 but only
+	// 5 are indexed).
+	const knownAvailableEpisodes = $derived.by(() => {
+		if (episodesPage !== 1) return null;
+		if (!episodes) return null;
+		if (episodes.length < UI_PAGE_SIZE) return episodes.length;
+		return null;
+	});
 	const totalEpisodePages = $derived.by(() => {
 		const total = detail?.episode_count;
+		// If we already know Kitsu only has K (< UI_PAGE_SIZE) episodes
+		// despite episode_count claiming more, there's nothing on page 2
+		// — clamp to a single page so prev/next controls don't take the
+		// user to an empty grid.
+		if (knownAvailableEpisodes !== null) return 1;
 		if (!total) return null;
 		return Math.max(1, Math.ceil(total / UI_PAGE_SIZE));
 	});
@@ -894,7 +912,12 @@
 							<h2 class="ep-section-heading">Episodes</h2>
 							<span class="ep-range">
 								{#if episodes && episodes.length > 0 && detail.episode_count}
-									{#if totalEpisodePages !== null && totalEpisodePages > 1}
+									{#if knownAvailableEpisodes !== null && knownAvailableEpisodes < detail.episode_count}
+										<!-- Kitsu indexed fewer episodes than the show announces;
+										     state the gap explicitly so "1–5 of 19" doesn't read
+										     like a stuck pagination. -->
+										{knownAvailableEpisodes} of {detail.episode_count} listed
+									{:else if totalEpisodePages !== null && totalEpisodePages > 1}
 										{epStart}–{epEnd} of {detail.episode_count}
 									{:else}
 										{detail.episode_count} episodes
