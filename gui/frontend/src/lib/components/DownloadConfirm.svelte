@@ -48,6 +48,11 @@
 	const hasGap = $derived(
 		availableEpisodes != null && announcedEpisode != null && availableEpisodes < announcedEpisode
 	);
+	// Range upper bound. When the episode count is unknown (Kitsu
+	// gap, ova, currently-airing without count), cap at 10 so a
+	// stray "200" in the To input can't kick off a runaway loop.
+	const RANGE_FALLBACK_CAP = 10;
+	const rangeMax = $derived(maxEpisode ?? RANGE_FALLBACK_CAP);
 
 	let dir = $state('');
 	let busy = $state(false);
@@ -81,9 +86,11 @@
 			const last = maxEpisode ?? Math.floor(endEp);
 			return `1-${Math.max(1, last)}`;
 		}
-		// range
+		// range — clamp end to the rangeMax so the unknown-count case
+		// can't ask ani-cli for episodes 1-200.
 		const s = Math.max(1, Math.floor(startEp));
-		const e = Math.max(s, Math.floor(endEp));
+		const eRaw = Math.floor(endEp);
+		const e = Math.max(s, Math.min(rangeMax, eRaw));
 		return s === e ? String(s) : `${s}-${e}`;
 	});
 	const rangeCount = $derived.by(() => {
@@ -239,7 +246,7 @@
 							class="dl-input dl-input-num"
 							type="number"
 							min="1"
-							max={maxEpisode ?? undefined}
+							max={rangeMax}
 							bind:value={startEp}
 							aria-label="From episode"
 						/>
@@ -248,7 +255,7 @@
 							class="dl-input dl-input-num"
 							type="number"
 							min={Math.floor(startEp)}
-							max={maxEpisode ?? undefined}
+							max={rangeMax}
 							bind:value={endEp}
 							aria-label="To episode"
 						/>
@@ -258,6 +265,11 @@
 								{#if hasGap}
 									<span class="dl-range-faint">· {announcedEpisode} announced</span>
 								{/if}
+							</span>
+						{:else}
+							<span class="dl-range-total">
+								max {rangeMax}
+								<span class="dl-range-faint">· episode count unknown</span>
 							</span>
 						{/if}
 					</div>
