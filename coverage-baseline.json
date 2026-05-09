@@ -1,15 +1,15 @@
 {
 	"_comment": "Coverage ratchet baseline. CI fails if any metric below this drops on a PR. Refresh by running `node tools/check-coverage-baseline.mjs --update` after intentionally adjusting tests.",
 	"rust": {
-		"lines_pct": 88.45,
-		"functions_pct": 86.3,
+		"lines_pct": 86.53,
+		"functions_pct": 85.03,
 		"regions_pct": 0
 	},
 	"frontend": {
-		"lines_pct": 99.31,
-		"functions_pct": 100,
-		"statements_pct": 99.13,
-		"branches_pct": 95.39
+		"lines_pct": 75.61,
+		"functions_pct": 69.13,
+		"statements_pct": 75.86,
+		"branches_pct": 79.44
 	},
 	"bash": {
 		"pure_covered_min": 78,

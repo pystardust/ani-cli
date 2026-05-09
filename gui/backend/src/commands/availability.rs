@@ -382,4 +382,41 @@ mod tests {
         assert_eq!(r.episode_count, None);
         assert!(r.extra_episodes.is_empty());
     }
+
+    /// `positive_ttl_for` is the load-bearing branch on Kitsu's
+    /// status string. Misclassifying a finished show as ongoing only
+    /// wastes a network probe; misclassifying an ongoing show as
+    /// finished would hide weekly drops for 30 days. Both directions
+    /// must be guarded.
+    #[test]
+    fn positive_ttl_for_finished_returns_30_day_window() {
+        assert_eq!(positive_ttl_for(Some("finished")), 30 * 24 * 60 * 60);
+    }
+
+    #[test]
+    fn positive_ttl_for_current_returns_24_hour_window() {
+        // Kitsu's "current" maps to ongoing — the 24h window keeps
+        // weekly drops visible within a day of upload.
+        assert_eq!(positive_ttl_for(Some("current")), 24 * 60 * 60);
+    }
+
+    #[test]
+    fn positive_ttl_for_unknown_or_missing_falls_back_to_ongoing() {
+        // The "unknown status" branch has to favour ongoing — a
+        // 30-day cap on a maybe-airing show is the worst failure
+        // mode (silently stale episode count).
+        for s in [
+            None,
+            Some("upcoming"),
+            Some("tba"),
+            Some("unreleased"),
+            Some(""),
+        ] {
+            assert_eq!(
+                positive_ttl_for(s),
+                24 * 60 * 60,
+                "expected ongoing TTL for status {s:?}"
+            );
+        }
+    }
 }

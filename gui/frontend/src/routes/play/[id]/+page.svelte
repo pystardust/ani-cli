@@ -70,6 +70,7 @@
 		setCurrentSession,
 		setSubtitleTrack
 	} from '$lib/play/global-video';
+	import { decideNavigateAction } from '$lib/play/navigate-decision';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
@@ -897,19 +898,22 @@
 	//     host and keeps streaming audio off-screen.
 	beforeNavigate(({ to }) => {
 		if (!videoEl) return;
-		const targetRoute = to?.route?.id ?? '';
-		const targetShowId = to?.params?.id ?? '';
-		const sameShowSwap = targetRoute === '/play/[id]' && targetShowId === id;
-		if (sameShowSwap) return;
-		if (videoEl.paused) return;
-		if (document.pictureInPictureElement) return;
-		if (config?.disable_auto_pip_on_leave) {
+		const action = decideNavigateAction({
+			targetRoute: to?.route?.id ?? '',
+			targetShowId: to?.params?.id ?? '',
+			currentShowId: id,
+			videoPaused: videoEl.paused,
+			alreadyInPip: document.pictureInPictureElement === videoEl,
+			disableAutoPip: !!config?.disable_auto_pip_on_leave
+		});
+		if (action === 'noop') return;
+		if (action === 'pause') {
 			videoEl.pause();
-		} else {
-			void videoEl.requestPictureInPicture().catch(() => {
-				if (videoEl) videoEl.pause();
-			});
+			return;
 		}
+		void videoEl.requestPictureInPicture().catch(() => {
+			if (videoEl) videoEl.pause();
+		});
 	});
 
 	function describeError(e: unknown): string {

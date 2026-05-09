@@ -563,6 +563,72 @@ mod tests {
         assert_eq!(m.max_integer_episode("sub"), None);
     }
 
+    use proptest::strategy::Strategy;
+
+    proptest::proptest! {
+        // For any tag list mixing valid integer episode tags with
+        // arbitrary "noise" tags (decimals, empty strings, alphabet
+        // soup), `max_integer_episode` must:
+        //
+        //   • return Some(largest integer present), OR
+        //   • return None when no integer tag exists.
+        //
+        // The noise generator deliberately includes "<n>.5" style
+        // half-episodes — the One-Piece-1161 regression came from
+        // counting those as if they were integers. This property
+        // pins the fix.
+        #[test]
+        fn max_integer_episode_picks_largest_int_and_ignores_noise(
+            ints in proptest::collection::vec(0u32..=20_000u32, 0..40),
+            noise in proptest::collection::vec(
+                proptest::prop_oneof![
+                    // Half-episode tags — the actual regression source.
+                    (0u32..=20_000u32).prop_map(|n| format!("{n}.5")),
+                    // Decimal tags with arbitrary fractional component.
+                    proptest::strategy::Just(".5".to_string()),
+                    proptest::strategy::Just("".to_string()),
+                    proptest::strategy::Just("foo".to_string()),
+                    proptest::strategy::Just("12abc".to_string()),
+                ],
+                0..20,
+            ),
+        ) {
+            let mut sub: Vec<String> = ints.iter().map(|n| n.to_string()).collect();
+            sub.extend(noise.iter().cloned());
+            let m = ShowMetadata {
+                available_episodes_detail: AvailableEpisodesDetail {
+                    sub,
+                    dub: Vec::new(),
+                },
+                ..Default::default()
+            };
+            let got = m.max_integer_episode("sub");
+            let expected = ints.iter().max().copied();
+            proptest::prop_assert_eq!(got, expected);
+        }
+
+        // The mode parameter must be honoured — sub and dub are
+        // independent lists. Mixing them up would mis-cap one mode
+        // when only the other has episodes.
+        #[test]
+        fn max_integer_episode_reads_only_the_requested_mode(
+            sub_max in 0u32..=10_000u32,
+            dub_max in 0u32..=10_000u32,
+        ) {
+            let m = ShowMetadata {
+                available_episodes_detail: AvailableEpisodesDetail {
+                    sub: (1..=sub_max).map(|n| n.to_string()).collect(),
+                    dub: (1..=dub_max).map(|n| n.to_string()).collect(),
+                },
+                ..Default::default()
+            };
+            let want_sub = if sub_max == 0 { None } else { Some(sub_max) };
+            let want_dub = if dub_max == 0 { None } else { Some(dub_max) };
+            proptest::prop_assert_eq!(m.max_integer_episode("sub"), want_sub);
+            proptest::prop_assert_eq!(m.max_integer_episode("dub"), want_dub);
+        }
+    }
+
     #[tokio::test]
     async fn fetch_show_returns_upstream_error_on_5xx() {
         let server = wiremock::MockServer::start().await;

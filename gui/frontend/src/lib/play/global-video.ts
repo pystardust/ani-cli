@@ -107,21 +107,54 @@ export function setCurrentSession(s: VideoSession | null): void {
 	currentSession = s;
 }
 
-/** Returns the current singleton session iff it matches the
- *  requested `(kitsu_id, episode)` and the video is in a state
- *  that's worth resuming (has a src loaded, isn't ended). Used
- *  by play call sites to short-circuit a redundant ani-cli spawn
- *  when the user clicks an episode they're already watching in
- *  PiP — navigating with the cached session keeps playback at
- *  its current timestamp instead of restarting from zero. */
+/** Snapshot of the singleton's playback state used by
+ *  [`canReuseSession`] to decide whether resuming is sensible.
+ *  Extracted into a plain interface so the decision can be unit-
+ *  tested without instantiating an `HTMLVideoElement`. */
+export interface VideoStateSnapshot {
+	/** Truthy when the element has a source loaded — either via
+	 *  `src=` (mp4 / native HLS) or `attachMedia()` (hls.js sets
+	 *  `currentSrc`). When neither is set there's nothing to resume. */
+	hasSource: boolean;
+	/** Element fired its `ended` event since the last `play()`.
+	 *  Reusing an ended session would replay the last frame for an
+	 *  instant before the URL change kicks in — not desirable. */
+	ended: boolean;
+}
+
+/** Pure decision: "given a current session, a target `(kitsuId,
+ *  episode)`, and the video's playback state, can we reuse the
+ *  session instead of respawning ani-cli?". Returns the session on
+ *  match (so the caller can read its `session_id` etc.) or null.
+ *  All four early-out reasons are exercised by the colocated test. */
+export function canReuseSession(
+	session: VideoSession | null,
+	state: VideoStateSnapshot | null,
+	kitsuId: string,
+	episode: number
+): VideoSession | null {
+	if (!session) return null;
+	if (session.kitsu_id !== kitsuId) return null;
+	if (session.episode !== episode) return null;
+	if (!state) return null;
+	if (!state.hasSource) return null;
+	if (state.ended) return null;
+	return session;
+}
+
+/** Module-level wrapper around [`canReuseSession`] that reads the
+ *  live singleton state. Used by play call sites to short-circuit a
+ *  redundant ani-cli spawn when the user clicks an episode they're
+ *  already watching in PiP — navigating with the cached session keeps
+ *  playback at its current timestamp instead of restarting from zero. */
 export function reuseSessionIfMatching(kitsuId: string, episode: number): VideoSession | null {
-	if (!currentSession) return null;
-	if (currentSession.kitsu_id !== kitsuId) return null;
-	if (currentSession.episode !== episode) return null;
-	if (!videoEl) return null;
-	if (!videoEl.src && !videoEl.currentSrc) return null;
-	if (videoEl.ended) return null;
-	return currentSession;
+	const state: VideoStateSnapshot | null = videoEl
+		? {
+				hasSource: !!(videoEl.src || videoEl.currentSrc),
+				ended: videoEl.ended
+			}
+		: null;
+	return canReuseSession(currentSession, state, kitsuId, episode);
 }
 
 /** Replace the subtitle track on the singleton. Removes any
