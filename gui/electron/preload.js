@@ -12,7 +12,7 @@
 
 'use strict';
 
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 const flag = '--ani-gui-api-base=';
 const arg = process.argv.find((a) => a.startsWith(flag));
@@ -23,5 +23,20 @@ if (!apiBase) {
 }
 
 contextBridge.exposeInMainWorld('aniGui', {
-	apiBase
+	apiBase,
+
+	// Native folder picker — opens an OS dialog, returns the chosen
+	// absolute path or `null` on cancel. The renderer's download
+	// confirmation modal calls this when the user clicks "Browse…".
+	async pickDirectory(options) {
+		return ipcRenderer.invoke('ani-gui:pick-directory', options || {});
+	},
+
+	// Open the OS file manager at the given directory. Used by the
+	// download dock and the completion toast's "Reveal in folder"
+	// button. Returns `true` on success, `false` if the path didn't
+	// resolve.
+	async revealInFolder(dirPath) {
+		return ipcRenderer.invoke('ani-gui:reveal-in-folder', dirPath);
+	}
 });

@@ -28,7 +28,18 @@ let apiBaseCache: string | null = null;
 
 declare global {
 	interface Window {
-		aniGui?: { apiBase?: string };
+		aniGui?: {
+			apiBase?: string;
+			/** Open a native folder picker dialog. Returns the chosen
+			 *  absolute path or null on cancel. */
+			pickDirectory?: (options?: {
+				title?: string;
+				defaultPath?: string;
+			}) => Promise<string | null>;
+			/** Open the OS file manager at `dirPath`. Returns true on
+			 *  success. */
+			revealInFolder?: (dirPath: string) => Promise<boolean>;
+		};
 	}
 }
 

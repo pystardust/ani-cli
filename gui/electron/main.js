@@ -16,7 +16,7 @@
 
 'use strict';
 
-const { app, BrowserWindow, net, protocol, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -245,6 +245,27 @@ function registerAppProtocol() {
 		}
 	});
 }
+
+// IPC handlers for the renderer's preload bridge. Exposed as
+// window.aniGui.pickDirectory() / .revealInFolder(path).
+ipcMain.handle('ani-gui:pick-directory', async (_event, options) => {
+	const result = await dialog.showOpenDialog({
+		properties: ['openDirectory', 'createDirectory'],
+		title: options?.title || 'Choose download folder',
+		defaultPath: options?.defaultPath || undefined
+	});
+	if (result.canceled || !result.filePaths?.[0]) return null;
+	return result.filePaths[0];
+});
+
+ipcMain.handle('ani-gui:reveal-in-folder', async (_event, dirPath) => {
+	if (typeof dirPath !== 'string' || !dirPath) return false;
+	// Use openPath for directories (showItemInFolder targets a file
+	// and selects it; for our case the renderer always passes a
+	// directory). Returns '' on success per Electron docs.
+	const err = await shell.openPath(dirPath);
+	return err === '';
+});
 
 app.whenReady().then(async () => {
 	try {
