@@ -231,10 +231,10 @@
 		block-size: 2.5rem;
 		background: transparent;
 		border: 1px solid transparent;
-		/* Pill — square hit-target with full rounding so the trigger
-		   reads as a circular icon button. var(--radius-sm) was an
-		   undefined token leaving it square at 0. */
-		border-radius: var(--radius-pill);
+		/* Rounded square — radius-card (8px) gives noticeable corner
+		   rounding without going full circle. var(--radius-sm) was
+		   an undefined token leaving the active state square at 0. */
+		border-radius: var(--radius-card);
 		color: var(--bone-300);
 		cursor: pointer;
 		transition:
