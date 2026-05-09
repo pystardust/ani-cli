@@ -726,6 +726,10 @@
 		downloadModalOpen = true;
 	}
 	function onPickEpisode(n: number) {
+		// Honour the availability gate — episode tiles call this too,
+		// not just the masthead Play CTA. Without this guard a click
+		// on a tile fires startPlay → ani-cli → NoResults overlay.
+		if (availability === false) return;
 		void startPlay(n);
 	}
 </script>
@@ -1105,7 +1109,14 @@
 									in:settle={{ duration: 620, delay: i * 45 }}
 									out:settleOut={{ duration: 320, delay: i * 18 }}
 								>
-									<button type="button" class="ep-tile" onclick={() => onPickEpisode(num ?? 0)}>
+									<button
+										type="button"
+										class="ep-tile"
+										class:ep-tile-disabled={availability === false}
+										aria-disabled={availability === false}
+										title={availability === false ? "Not in allmanga's catalogue." : undefined}
+										onclick={() => onPickEpisode(num ?? 0)}
+									>
 										<span class="ep-thumb">
 											{#if thumb}
 												<img src={thumb} alt="" loading="lazy" decoding="async" />
@@ -1141,7 +1152,14 @@
 									in:settle={{ duration: 580, delay: i * 40 }}
 									out:settleOut={{ duration: 300, delay: i * 16 }}
 								>
-									<button type="button" class="ep-tile" onclick={() => onPickEpisode(n)}>
+									<button
+										type="button"
+										class="ep-tile"
+										class:ep-tile-disabled={availability === false}
+										aria-disabled={availability === false}
+										title={availability === false ? "Not in allmanga's catalogue." : undefined}
+										onclick={() => onPickEpisode(n)}
+									>
 										<span class="ep-thumb">
 											<span class="ep-thumb-placeholder" aria-hidden="true">
 												{n.toString().padStart(2, '0')}
@@ -1791,7 +1809,7 @@
 			box-shadow var(--dur-med) var(--ease-out-soft),
 			opacity 1.4s var(--ease-out-soft);
 	}
-	.ep-tile:hover {
+	.ep-tile:hover:not(.ep-tile-disabled) {
 		/* More expressed pop: lift, scale, accent-tinted shadow halo. */
 		transform: translateY(-4px) scale(1.04);
 		z-index: 1;
@@ -1801,8 +1819,16 @@
 			0 4px 10px -4px rgb(0 0 0 / 0.45);
 	}
 
-	.ep-tile:hover .ep-thumb img {
+	.ep-tile:hover:not(.ep-tile-disabled) .ep-thumb img {
 		filter: brightness(1);
+	}
+
+	/* Availability gate — when allmanga doesn't index the show, the
+	   tiles still render (Kitsu metadata) but as read-only thumbs. */
+	.ep-tile-disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+		filter: saturate(0.6);
 	}
 
 	/* Spotlight: while the grid contains a highlighted tile, every
