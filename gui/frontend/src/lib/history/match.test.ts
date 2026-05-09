@@ -5,6 +5,7 @@ import {
 	allmangaKitsuMapGet,
 	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
+	kitsuResolveAllmangaShowId,
 	kitsuSearch,
 	kitsuTitleMatchGet,
 	kitsuTitleMatchPut,
@@ -21,6 +22,7 @@ vi.mock('$lib/api', () => ({
 	allmangaKitsuMapGet: vi.fn(),
 	kitsuAnimeBySlug: vi.fn(),
 	kitsuAnimeDetail: vi.fn(),
+	kitsuResolveAllmangaShowId: vi.fn(),
 	kitsuSearch: vi.fn(),
 	kitsuTitleMatchGet: vi.fn(),
 	kitsuTitleMatchPut: vi.fn()
@@ -29,6 +31,7 @@ vi.mock('$lib/api', () => ({
 const mockedAllmangaMap = vi.mocked(allmangaKitsuMapGet);
 const mockedSlug = vi.mocked(kitsuAnimeBySlug);
 const mockedDetail = vi.mocked(kitsuAnimeDetail);
+const mockedResolveAllmanga = vi.mocked(kitsuResolveAllmangaShowId);
 const mockedSearch = vi.mocked(kitsuSearch);
 const mockedGetMatch = vi.mocked(kitsuTitleMatchGet);
 const mockedPutMatch = vi.mocked(kitsuTitleMatchPut);
@@ -61,6 +64,8 @@ beforeEach(() => {
 	mockedAllmangaMap.mockResolvedValue(null);
 	mockedSlug.mockReset();
 	mockedDetail.mockReset();
+	mockedResolveAllmanga.mockReset();
+	mockedResolveAllmanga.mockResolvedValue(null);
 	mockedSearch.mockReset();
 	mockedGetMatch.mockReset();
 	mockedPutMatch.mockReset();
@@ -307,5 +312,63 @@ describe('resolveKitsuMatch', () => {
 
 		expect(got?.id).toBe('fresh-id');
 		expect(mockedSearch).toHaveBeenCalled();
+	});
+
+	it('falls through to allmanga show enrichment when text search returns 0 hits', async () => {
+		// Repro: cleared metadata cache + cryptic allmanga `name`. The
+		// reverse cache miss + title-match cache miss + slug skip + 0-hit
+		// text search should NOT be terminal — the resolver calls the
+		// new enrichment IPC, which fetches allmanga's Show GraphQL and
+		// retries Kitsu search with englishName / altNames.
+		const preliminary = resolveHistoryEntry(
+			{ id: 'ReooPAxPMsHM4KPMY', ep_no: '1', title: '1P (1161 episodes)' },
+			null
+		);
+		// All earlier paths whiff:
+		mockedAllmangaMap.mockResolvedValue(null);
+		mockedGetMatch.mockResolvedValue(null);
+		mockedSearch.mockResolvedValue([]);
+		// Enrichment recovers — backend returns the proper Kitsu entry.
+		mockedResolveAllmanga.mockResolvedValue(stubKitsu('12', 'One Piece'));
+
+		const got = await resolveKitsuMatch(preliminary);
+
+		expect(got?.id).toBe('12');
+		expect(got?.canonical_title).toBe('One Piece');
+		expect(mockedResolveAllmanga).toHaveBeenCalledWith('ReooPAxPMsHM4KPMY');
+	});
+
+	it('returns null when text search and allmanga enrichment both miss', async () => {
+		// Worst case: title-search empty AND backend enrichment also
+		// finds no Kitsu match (shows allmanga indexes that Kitsu
+		// doesn't carry at all). Resolver returns null; the home page
+		// renders the bare allmanga title and routes the resume card
+		// to /search.
+		const preliminary = resolveHistoryEntry(
+			{ id: 'unknown-show', ep_no: '1', title: 'mystery (1 episodes)' },
+			null
+		);
+		mockedAllmangaMap.mockResolvedValue(null);
+		mockedGetMatch.mockResolvedValue(null);
+		mockedSearch.mockResolvedValue([]);
+		mockedResolveAllmanga.mockResolvedValue(null);
+
+		const got = await resolveKitsuMatch(preliminary);
+		expect(got).toBeNull();
+	});
+
+	it('skips enrichment when text search hits — no extra IPC', async () => {
+		// Common case: title-search wins on the first try. Don't
+		// double-spend by also calling the enrichment endpoint.
+		const preliminary = resolveHistoryEntry(
+			{ id: 'show-x', ep_no: '5', title: 'Demon Slayer (26 episodes)' },
+			null
+		);
+		mockedAllmangaMap.mockResolvedValue(null);
+		mockedGetMatch.mockResolvedValue(null);
+		mockedSearch.mockResolvedValue([stubKitsu('id-1', 'Demon Slayer')]);
+
+		await resolveKitsuMatch(preliminary);
+		expect(mockedResolveAllmanga).not.toHaveBeenCalled();
 	});
 });

@@ -561,6 +561,23 @@ export function allmangaKitsuMapGet(showId: string): Promise<string | null> {
 }
 
 /**
+ * Resolve an allmanga show_id to its full Kitsu entry by walking
+ * allmanga's `Show` GraphQL aliases (englishName / nativeName /
+ * altNames) through Kitsu's text search. Returns null when no Kitsu
+ * match is found OR when the upstream HTTP fails.
+ *
+ * Use this as the LAST step in the Continue Watching resolver, when
+ * the reverse cache and the title-search both yield nothing — e.g.
+ * fresh-from-cache-clear renders where allmanga's stub `name`
+ * (`"1P"` for One Piece, `"Nato: Shippuuden"` for Naruto Shippuuden)
+ * has no Kitsu text-search hit. The backend persists the resolved
+ * mapping into the reverse cache so subsequent calls short-circuit.
+ */
+export function kitsuResolveAllmangaShowId(showId: string): Promise<KitsuAnimeRef | null> {
+	return getJson<KitsuAnimeRef | null>(`/api/kitsu/resolve-allmanga/${encodeURIComponent(showId)}`);
+}
+
+/**
  * Per-show last-watched millis-since-epoch map. Populated by the
  * backend's `mark-watched` handler whenever the user clicks an
  * episode through the GUI; CLI plays bypass it. Drives the home
