@@ -157,6 +157,30 @@
 	let skipIntervals = $state<SkipInterval[]>([]);
 	const activeSkip = $derived(pickActiveSkip(skipIntervals, currentTime));
 
+	// Auto-skip: when a skip becomes active AND the user has the
+	// matching toggle on, jump past it without rendering the
+	// button. Tracks the last-skipped interval id to avoid the
+	// re-trigger loop where the seek lands inside the same
+	// interval and we skip again. Cleared when activeSkip
+	// transitions to null (we left the interval naturally or via
+	// the click).
+	let lastAutoSkipped = $state<string | null>(null);
+	$effect(() => {
+		if (!activeSkip || !videoEl || !config) {
+			if (!activeSkip) lastAutoSkipped = null;
+			return;
+		}
+		const key = `${activeSkip.skip_type}:${activeSkip.start_time}`;
+		if (lastAutoSkipped === key) return;
+		const enabled =
+			(activeSkip.skip_type === 'op' && config.auto_skip_op) ||
+			(activeSkip.skip_type === 'ed' && config.auto_skip_ed);
+		if (enabled) {
+			lastAutoSkipped = key;
+			videoEl.currentTime = activeSkip.end_time + 0.05;
+		}
+	});
+
 	$effect(() => {
 		if (!id || !episodeNum || !Number.isFinite(duration) || duration <= 0) {
 			skipIntervals = [];

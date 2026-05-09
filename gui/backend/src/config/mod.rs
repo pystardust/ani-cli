@@ -36,6 +36,14 @@ pub struct Config {
     /// download icon + popover dock remain available either way; this
     /// setting only governs the persistent bottom-of-screen surface.
     pub download_bottom_bar_enabled: bool,
+    /// When `true`, the player auto-skips opening sequences using
+    /// aniskip's crowd-sourced timestamps instead of showing a
+    /// manual Skip button. Opt-in — most users want to read /
+    /// vibe with the OP at least the first time. Default `false`.
+    pub auto_skip_op: bool,
+    /// When `true`, the player auto-skips ending sequences. Same
+    /// rationale as `auto_skip_op`. Default `false`.
+    pub auto_skip_ed: bool,
 }
 
 impl Default for Config {
@@ -48,6 +56,8 @@ impl Default for Config {
             image_cache_cap_mb: 500,
             auto_play_next: false,
             download_bottom_bar_enabled: true,
+            auto_skip_op: false,
+            auto_skip_ed: false,
         }
     }
 }
@@ -104,6 +114,16 @@ mod tests {
         // config.toml) shouldn't suddenly find episodes auto-advancing
         // after an upgrade.
         assert!(!Config::default().auto_play_next);
+    }
+
+    #[test]
+    fn auto_skip_defaults_to_false() {
+        // Same opt-in rationale: existing users shouldn't suddenly
+        // lose the OP/ED on upgrade. Many fans actively want to
+        // hear the OP at least the first time.
+        let c = Config::default();
+        assert!(!c.auto_skip_op);
+        assert!(!c.auto_skip_ed);
     }
 
     #[test]

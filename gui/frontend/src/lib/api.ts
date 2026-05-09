@@ -224,6 +224,8 @@ export interface Config {
 	image_cache_cap_mb: number;
 	auto_play_next: boolean;
 	download_bottom_bar_enabled: boolean;
+	auto_skip_op: boolean;
+	auto_skip_ed: boolean;
 }
 
 /** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */

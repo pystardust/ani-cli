@@ -109,6 +109,14 @@
 		if (!cfg) return;
 		void persist({ ...cfg, download_bottom_bar_enabled: value });
 	}
+	function setAutoSkipOp(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, auto_skip_op: value });
+	}
+	function setAutoSkipEd(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, auto_skip_ed: value });
+	}
 
 	async function clearHistory() {
 		clearing = true;
@@ -286,6 +294,50 @@
 						<span class="switch-thumb"></span>
 					</span>
 					<span class="switch-state">{cfg.download_bottom_bar_enabled ? 'On' : 'Off'}</span>
+				</label>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">Auto-skip openings</span>
+					<span class="field-hint">
+						Jump past the OP automatically when one is detected. Off by default — you can still use
+						the manual Skip button. Powered by aniskip's crowd-sourced timestamps.
+					</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.auto_skip_op}
+						onchange={(e) => setAutoSkipOp((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Auto-skip openings"
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state">{cfg.auto_skip_op ? 'On' : 'Off'}</span>
+				</label>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">Auto-skip endings</span>
+					<span class="field-hint">
+						Jump past the ED automatically when one is detected. Pairs well with Auto-play next for
+						binge sessions.
+					</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.auto_skip_ed}
+						onchange={(e) => setAutoSkipEd((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Auto-skip endings"
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state">{cfg.auto_skip_ed ? 'On' : 'Off'}</span>
 				</label>
 			</div>
 		</section>
