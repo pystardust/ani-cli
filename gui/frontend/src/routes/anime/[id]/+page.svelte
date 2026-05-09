@@ -883,7 +883,13 @@
 					{#if detail.synopsis}
 						<div class="prose-wrap" class:expanded={synopsisExpanded}>
 							<p class="prose">{detail.synopsis}</p>
-							<div class="prose-fade" aria-hidden="true"></div>
+							{#if detail.synopsis.length > 360}
+								<!-- Only render the fade when the prose actually clips
+								     past the 9.5rem max-block-size — short synopses fit
+								     in the box and the gradient over empty space reads
+								     as a stray blur. -->
+								<div class="prose-fade" aria-hidden="true"></div>
+							{/if}
 						</div>
 						{#if detail.synopsis.length > 360}
 							<button
