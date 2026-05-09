@@ -421,7 +421,7 @@
 
 <!-- Continue Watching: only when history is non-empty -->
 {#if history && history.length > 0}
-	<Strip eyebrow="Continue watching" caption="resume from history">
+	<Strip eyebrow="Continue watching" caption="resume from history" cardWidth="16rem">
 		{#each history as entry (entry.id)}
 			{@const match = historyMatches[entry.id]}
 			{@const ep = historyEpisodes[entry.id]}
@@ -474,10 +474,6 @@
 						{:else}
 							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
 						{/if}
-						<span class="resume-cta">
-							<span aria-hidden="true">↺</span>
-							<span>Resume</span>
-						</span>
 					</span>
 				</button>
 			{:else}
@@ -507,10 +503,6 @@
 						{:else}
 							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
 						{/if}
-						<span class="resume-cta">
-							<span aria-hidden="true">↺</span>
-							<span>Resume</span>
-						</span>
 					</span>
 				</a>
 			{/if}
@@ -655,7 +647,7 @@
 		   gutter), so the body's inline-start padding has to make
 		   up the gutter (space-7) PLUS the strip's own pad (space-8)
 		   to land at the same vertical column as the strip eyebrows. */
-		padding: var(--space-9) var(--space-8) var(--space-7) calc(var(--space-7) + var(--space-8));
+		padding: var(--space-8) var(--space-8) var(--space-7) calc(var(--space-7) + var(--space-8));
 		animation: hero-text-in var(--dur-med) var(--ease-out-soft) both;
 		animation-delay: 100ms;
 	}
@@ -672,21 +664,9 @@
 
 	.eyebrow {
 		margin: 0 0 var(--space-4);
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
-	}
-	.eyebrow-key {
-		color: var(--bone-200);
 	}
 	.eyebrow-rule {
-		inline-size: 2.5rem;
-		block-size: 1px;
+		/* hero eyebrow rides the per-show accent for theming punch. */
 		background: var(--accent);
 	}
 
@@ -864,27 +844,60 @@
 		scroll-snap-align: start;
 		display: grid;
 		grid-template-rows: auto auto;
-		gap: var(--space-3);
+		/* Body owns the thumb-to-text gap (matches PosterCard's
+		   `padding-block-start: var(--space-3)` shape so resume
+		   cards and the rows below align visually). */
+		gap: 0;
 		color: inherit;
-		background: var(--ink-050);
-		border: 1px solid var(--ink-200);
-		border-radius: var(--radius-card);
-		overflow: hidden;
-		transition:
-			transform var(--dur-med) var(--ease-out-elastic),
-			border-color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
+		/* No card border, no card background — the thumb is the card.
+		   Title + episode meta sit directly under the rounded thumb
+		   on the page background. Hover surfaces an accent halo via
+		   box-shadow instead of a border. */
+		background: transparent;
+		transition: transform var(--dur-med) var(--ease-out-elastic);
 	}
 	.resume-card:hover {
 		transform: translateY(-3px);
-		border-color: color-mix(in oklab, var(--accent) 60%, var(--ink-300));
-		background: color-mix(in oklab, var(--accent) 6%, var(--ink-050));
 	}
 	.resume-poster {
 		position: relative;
 		aspect-ratio: 16 / 9;
 		overflow: hidden;
+		/* Self-contained rounded rectangle. With the card's border +
+		   background gone, the poster IS the card's visual chrome —
+		   gives it its own corners so the thumb reads as a deliberate
+		   tile, not a flat-bottomed band. */
+		border-radius: var(--radius-card);
 		background: var(--ink-100);
+		transition: box-shadow var(--dur-fast) var(--ease-out-soft);
+	}
+	.resume-card:hover .resume-poster {
+		/* Hover halo replaces the old border-tint cue. Accent-tinted
+		   box-shadow lifts the thumb without adding a 1px ring. */
+		box-shadow:
+			0 12px 28px -8px color-mix(in oklab, var(--accent) 38%, transparent),
+			0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent);
+	}
+	/* Bottom scrim under the frame-number — keeps the oversized "EP 24"
+	   readable against any thumbnail without painting a chip. */
+	.resume-poster::after {
+		content: '';
+		position: absolute;
+		inset-block-end: 0;
+		inset-inline: 0;
+		block-size: 55%;
+		background: linear-gradient(
+			180deg,
+			transparent 0%,
+			color-mix(in oklab, var(--ink-000) 75%, transparent) 100%
+		);
+		pointer-events: none;
+		opacity: 0.85;
+		transition: opacity var(--dur-fast) var(--ease-out-soft);
+		z-index: 1;
+	}
+	.resume-card:hover .resume-poster::after {
+		opacity: 1;
 	}
 	.resume-poster img {
 		inline-size: 100%;
@@ -912,35 +925,61 @@
 			color-mix(in oklab, var(--accent) 15%, var(--ink-100))
 		);
 	}
+	/* Frame-number style — same recipe as the detail-page episode tiles
+	   (no chip background, drop-shadow legibility, hover lifts + tints
+	   accent). Sized smaller (28px) than the detail tiles since the
+	   resume poster is narrower than the episode-grid thumbs. */
 	.resume-ep-tag {
 		position: absolute;
-		inset-block-start: var(--space-2);
-		inset-inline-start: var(--space-2);
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-2);
-		background: color-mix(in oklab, var(--ink-000) 78%, transparent);
-		backdrop-filter: blur(4px);
-		border: 1px solid color-mix(in oklab, var(--accent) 40%, var(--bone-400));
+		inset-block-end: var(--space-2);
+		inset-inline-start: var(--space-3);
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		line-height: 1;
+		pointer-events: none;
+		filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.65));
+		transition:
+			transform var(--dur-med) var(--ease-out-elastic),
+			filter var(--dur-fast) var(--ease-out-soft);
+		z-index: 2;
 	}
 	.resume-ep-key {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-family: var(--font-body);
+		font-size: 0.6875rem; /* 11px */
+		font-weight: 600;
+		letter-spacing: 0.18em;
 		text-transform: uppercase;
-		color: var(--bone-300);
+		color: color-mix(in oklab, var(--bone-100) 75%, transparent);
+		margin-block-end: 1px;
+		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
 	.resume-ep-num {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums lining-nums;
-		font-size: var(--type-body);
+		font-size: 1.75rem; /* 28px */
+		font-weight: 700;
+		color: var(--bone-100);
+		transition: color var(--dur-fast) var(--ease-out-soft);
+	}
+	.resume-card:hover .resume-ep-tag {
+		transform: translateY(-3px);
+		filter: drop-shadow(0 0 8px color-mix(in oklab, var(--accent) 50%, transparent));
+	}
+	.resume-card:hover .resume-ep-num {
+		color: var(--accent);
+	}
+	.resume-card:hover .resume-ep-key {
 		color: var(--bone-100);
 	}
 	.resume-body {
 		display: grid;
 		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4) var(--space-4);
+		/* Matches PosterCard's `padding-block-start: var(--space-3)` so
+		   resume cards and the rows below them (Trending, Top Rated)
+		   share one thumb-to-title rhythm. No bottom padding —
+		   between-card spacing is owned by the strip's gap. */
+		padding-block-start: var(--space-3);
 	}
 	/* Anime title above the episode title — small mono eyebrow voice. */
 	.resume-show {
@@ -969,20 +1008,6 @@
 	}
 	.resume-title-faint {
 		color: var(--bone-300);
-	}
-	.resume-cta {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
-		transition: color var(--dur-fast) var(--ease-out-soft);
-	}
-	.resume-card:hover .resume-cta {
-		color: var(--bone-100);
 	}
 	.resume-card-loading .resume-poster-placeholder {
 		animation: pulse 1.6s var(--ease-in-out) infinite;
