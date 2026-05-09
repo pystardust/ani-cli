@@ -21,6 +21,16 @@ use crate::error::{AniError, Result};
 /// How long any single `ani-cli` invocation may run before it is killed.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Strip characters that break ani-cli's `search_anime()` shell-string
+/// JSON interpolation. Currently a no-op stub — the implementation
+/// lands in the green commit. See the test module for the upstream
+/// root cause and the contract this function must honour.
+pub(crate) fn sanitize_anicli_query(q: &str) -> String {
+    // STUB (red). The green commit replaces this with the actual
+    // sanitiser; the test in this module asserts the contract.
+    q.to_string()
+}
+
 /// Locate the `ani-cli` binary. Looks at `$PATH`, then falls back to a
 /// path passed by the caller (typically the Tauri resource directory).
 ///
@@ -462,5 +472,29 @@ mod tests {
         let (_td2, p2) = stub_ani_cli("Episode not released", 1);
         let r2 = run_debug_streaming(&debug_opts(p2), "any", "1", "best", "sub", 1, |_| {}).await;
         assert!(matches!(r2, Err(AniError::Scraper { .. })), "got: {r2:?}");
+    }
+
+    /// ani-cli's `search_anime()` builds its allanime curl POST via
+    /// shell-string interpolation: `--data "{...\"query\":\"$1\"...}"`.
+    /// A literal `"` in the title closes the JSON string mid-way and
+    /// the server returns nothing (manifesting as "No results found").
+    /// Kitsu's canonical title for Naruto Shippuuden's "Konoha Gakuen"
+    /// special is the repro case. Our backend strips embedded quotes
+    /// before handing the title to ani-cli; allanime's fuzzy search
+    /// matches the de-quoted query to the same `_id` with the same
+    /// ranking, so `-S 1` still lands on the right candidate.
+    #[test]
+    fn sanitize_anicli_query_strips_embedded_double_quotes() {
+        let q = r#"Naruto Shippuuden: Shippuu! "Konoha Gakuen" Den"#;
+        assert_eq!(
+            sanitize_anicli_query(q),
+            "Naruto Shippuuden: Shippuu! Konoha Gakuen Den",
+        );
+    }
+
+    #[test]
+    fn sanitize_anicli_query_passes_quote_free_titles_through() {
+        assert_eq!(sanitize_anicli_query("One Piece"), "One Piece");
+        assert_eq!(sanitize_anicli_query(""), "");
     }
 }
