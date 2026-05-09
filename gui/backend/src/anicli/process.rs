@@ -406,22 +406,133 @@ pub async fn run_search(_query: &str, _mode: &str) -> Result<Vec<SearchResult>> 
 /// - [`AniError::Scraper`] / [`AniError::NoResults`] /
 ///   [`AniError::Timeout`] mirror the [`run_debug`] error mapping.
 ///
-/// STUB (red commit). Implementation lands in the green commit; tests
-/// at the bottom of the module assert argv + env contract.
 pub async fn spawn_download<F>(
-    _opts: &DebugOptions,
-    _query: &str,
-    _ep: &str,
-    _quality: &str,
-    _mode: &str,
-    _select_index: usize,
-    _download_dir: &Path,
-    _on_stderr_line: F,
+    opts: &DebugOptions,
+    query: &str,
+    ep: &str,
+    quality: &str,
+    mode: &str,
+    select_index: usize,
+    download_dir: &Path,
+    mut on_stderr_line: F,
 ) -> Result<()>
 where
     F: FnMut(&str) + Send,
 {
-    Err(AniError::MissingBinary)
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    use tokio::process::Command;
+
+    let select_str = select_index.max(1).to_string();
+
+    let mut cmd = Command::new(&opts.ani_cli_path);
+    cmd.arg("-S")
+        .arg(&select_str)
+        .arg("-d")
+        .arg("-e")
+        .arg(ep)
+        .arg("-q")
+        .arg(quality);
+    if mode == "dub" {
+        cmd.arg("--dub");
+    }
+    let safe_query = sanitize_anicli_query(query);
+    cmd.arg("--").arg(&safe_query);
+
+    cmd.env_clear();
+    let path_value = opts
+        .path_override
+        .clone()
+        .or_else(|| std::env::var("PATH").ok())
+        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
+    cmd.env("PATH", path_value);
+    if let Some(home) = std::env::var_os("HOME") {
+        cmd.env("HOME", home);
+    }
+    cmd.env("TERM", "dumb");
+    cmd.env("NO_COLOR", "1");
+    // The whole point of this function: tell ani-cli where to drop the
+    // downloaded mp4. Upstream reads the env at line 468.
+    cmd.env("ANI_CLI_DOWNLOAD_DIR", download_dir);
+    if let Some(dir) = &opts.hist_dir {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    } else if let Some(dir) = std::env::var_os("ANI_CLI_HIST_DIR") {
+        cmd.env("ANI_CLI_HIST_DIR", dir);
+    }
+
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true);
+
+    let mut child = cmd.spawn().map_err(|_| AniError::MissingBinary)?;
+    let stderr_reader = child.stderr.take().expect("stderr piped");
+
+    // Stream stderr line-by-line. aria2c / yt-dlp / ffmpeg all write
+    // their progress to stderr. Buffer the raw bytes too so the
+    // post-exit error mapping can match against the same patterns
+    // run_debug uses.
+    let stderr_collected: std::sync::Arc<std::sync::Mutex<Vec<u8>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let collected_for_reader = stderr_collected.clone();
+
+    let stream_fut = async {
+        let mut reader = BufReader::new(stderr_reader);
+        let mut buf = String::new();
+        loop {
+            buf.clear();
+            let read = reader.read_line(&mut buf).await?;
+            if read == 0 {
+                break;
+            }
+            {
+                let mut lock = collected_for_reader.lock().expect("mutex");
+                lock.extend_from_slice(buf.as_bytes());
+            }
+            let stripped = super::parser::strip_ansi(buf.as_bytes());
+            for line in stripped.lines() {
+                on_stderr_line(line);
+            }
+        }
+        Ok::<(), std::io::Error>(())
+    };
+
+    // Stdout is ignored (ani-cli's download path doesn't print
+    // anything we'd parse), but we still drain it so the pipe doesn't
+    // back up.
+    let stdout_reader = child.stdout.take().expect("stdout piped");
+    let drain_stdout = async move {
+        let mut reader = BufReader::new(stdout_reader);
+        let mut sink = String::new();
+        loop {
+            sink.clear();
+            if reader.read_line(&mut sink).await? == 0 {
+                break;
+            }
+        }
+        Ok::<(), std::io::Error>(())
+    };
+
+    let collected = tokio::time::timeout(opts.timeout, async {
+        let (a, b) = tokio::join!(stream_fut, drain_stdout);
+        a?;
+        b?;
+        let status = child.wait().await?;
+        Result::<std::process::ExitStatus>::Ok(status)
+    })
+    .await
+    .map_err(|_| AniError::Timeout)??;
+
+    if !collected.success() {
+        let stderr_bytes = stderr_collected.lock().expect("mutex").clone();
+        let stderr_text = super::parser::strip_ansi(&stderr_bytes);
+        if stderr_text.contains("No results found") {
+            return Err(AniError::NoResults);
+        }
+        return Err(AniError::Scraper {
+            key: "download_failed".into(),
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]
