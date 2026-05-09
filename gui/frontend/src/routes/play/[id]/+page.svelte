@@ -1483,18 +1483,22 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-5);
-		flex-wrap: wrap;
+		/* No-wrap: controls must never drop to a second line. The
+		   np-link inside shrinks via flex + ellipsis so the row
+		   stays on a single line at narrower widths. */
+		flex-wrap: nowrap;
 		margin-block-start: var(--space-2);
 	}
 	.np-link {
 		display: inline-flex;
 		align-items: baseline;
-		flex-wrap: wrap;
+		flex: 1 1 0;
+		min-inline-size: 0;
+		flex-wrap: nowrap;
 		gap: 0 var(--space-3);
-		row-gap: 4px;
 		color: inherit;
 		text-decoration: none;
-		min-inline-size: 0;
+		overflow: hidden;
 	}
 	.np-show {
 		font-family: var(--font-body);
@@ -1502,14 +1506,24 @@
 		font-weight: 600;
 		color: var(--bone-100);
 		transition: color var(--dur-fast) var(--ease-out-soft);
+		/* Truncates second — only after the episode title has been
+		   fully clipped. flex-shrink: 1 (default) is dwarfed by the
+		   ep-title's flex-shrink: 100, so the show name keeps its
+		   width as long as possible. */
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.np-link:hover .np-show {
 		color: var(--accent);
 	}
 	.np-sep {
+		flex: 0 0 auto;
 		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
 	}
 	.np-ep {
+		flex: 0 0 auto;
 		font-family: var(--font-body);
 		font-size: 0.75rem;
 		font-weight: 600;
@@ -1518,12 +1532,17 @@
 		color: var(--accent);
 	}
 	.np-em-dash {
+		flex: 0 0 auto;
 		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
 	}
 	.np-ep-title {
 		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		color: color-mix(in oklab, var(--bone-100) 78%, transparent);
+		/* Truncates first when the row gets tight — the episode's own
+		   title is the lowest-priority piece of context. flex-shrink
+		   100 makes it lose width far ahead of the show name. */
+		flex: 1 100 0;
 		min-inline-size: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1534,7 +1553,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-3);
-		flex-wrap: wrap;
+		flex: 0 0 auto;
 	}
 	.ep-nav {
 		display: inline-flex;
@@ -1721,8 +1740,9 @@
 		/* Margin under the player so the now-playing row gets
 		   breathing room. The watch-column gap normally handles
 		   that, but the player is now its sibling — gap doesn't
-		   apply. */
-		margin-block-end: var(--space-7);
+		   apply. Tightened from space-7 to space-5 — the previous
+		   gap dwarfed the now-playing row beneath. */
+		margin-block-end: var(--space-5);
 		/* No border / no radius / no glow — the frame is a true
 		   full-bleed black surface, the way the Patreon player
 		   reads. The ambient accent glow used to live on the
