@@ -210,6 +210,18 @@
 		return base ? `${base.replace(/\/+$/, '')}/s/${sessionId}/sub.vtt` : null;
 	});
 
+	// Poster shown next to the now-playing title block. Same fallback
+	// chain as the detail-page masthead — small first (cheapest cache),
+	// fall through if Kitsu's posterImage doesn't have that size.
+	const npPoster = $derived(
+		imageProxyUrl(
+			detail?.poster_image?.small ??
+				detail?.poster_image?.medium ??
+				detail?.poster_image?.large ??
+				null
+		)
+	);
+
 	const totalEpisodes = $derived(detail?.episode_count ?? null);
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
@@ -1023,23 +1035,30 @@
 					void goto(resolve('/anime/[id]', { id }), { replaceState: true });
 				}}
 			>
-				<!-- title attrs surface the full string when the text is
-				     truncated by the row's no-wrap shrink. Native title
-				     fires after the OS hover delay (~600ms) — that's the
-				     conventional "wait then reveal" affordance the user
-				     asked for, not the immediate custom tooltip used on
-				     the disabled "All" button. -->
-				<span class="np-show" title={detail?.canonical_title ?? ''}
-					>{detail?.canonical_title ?? 'Loading…'}</span
-				>
-				<span class="np-sep" aria-hidden="true">·</span>
-				<span class="np-ep">Episode {episodeNum}</span>
-				{#if currentEpisodeMeta?.canonical_title}
-					<span class="np-em-dash" aria-hidden="true">—</span>
-					<span class="np-ep-title" title={currentEpisodeMeta.canonical_title}
-						>{currentEpisodeMeta.canonical_title}</span
-					>
+				{#if npPoster}
+					<!-- Poster covers the full height of the title + meta
+					     stack, anchoring the now-playing block as a card
+					     instead of a stretched horizontal line. -->
+					<span class="np-poster" aria-hidden="true">
+						<img src={npPoster} alt="" loading="lazy" decoding="async" />
+					</span>
 				{/if}
+				<span class="np-stack">
+					<!-- title attrs surface the full string when the text is
+					     truncated by the row's no-wrap shrink. -->
+					<span class="np-show" title={detail?.canonical_title ?? ''}
+						>{detail?.canonical_title ?? 'Loading…'}</span
+					>
+					<span class="np-meta">
+						<span class="np-ep">Episode {episodeNum}</span>
+						{#if currentEpisodeMeta?.canonical_title}
+							<span class="np-em-dash" aria-hidden="true">—</span>
+							<span class="np-ep-title" title={currentEpisodeMeta.canonical_title}
+								>{currentEpisodeMeta.canonical_title}</span
+							>
+						{/if}
+					</span>
+				</span>
 			</a>
 
 			<div class="np-actions">
@@ -1501,14 +1520,40 @@
 	}
 	.np-link {
 		display: inline-flex;
-		align-items: baseline;
+		align-items: stretch;
 		flex: 1 1 0;
 		min-inline-size: 0;
-		flex-wrap: nowrap;
-		gap: 0 var(--space-3);
+		gap: var(--space-3);
 		color: inherit;
 		text-decoration: none;
 		overflow: hidden;
+	}
+	/* Poster — anchors the now-playing block on its left edge.
+	   aspect-ratio matches the 5:7 poster ratio used elsewhere; the
+	   block-size matches the stack's two-line height so the poster
+	   reads as a card edge rather than an inline thumbnail. */
+	.np-poster {
+		flex: 0 0 auto;
+		display: block;
+		aspect-ratio: 5 / 7;
+		block-size: 3.25rem;
+		overflow: hidden;
+		border-radius: var(--radius-card);
+		background: var(--ink-100);
+	}
+	.np-poster img {
+		inline-size: 100%;
+		block-size: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	.np-stack {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 4px;
+		min-inline-size: 0;
+		flex: 1 1 auto;
 	}
 	.np-show {
 		font-family: var(--font-body);
@@ -1516,10 +1561,6 @@
 		font-weight: 600;
 		color: var(--bone-100);
 		transition: color var(--dur-fast) var(--ease-out-soft);
-		/* Truncates second — only after the episode title has been
-		   fully clipped. flex-shrink: 1 (default) is dwarfed by the
-		   ep-title's flex-shrink: 100, so the show name keeps its
-		   width as long as possible. */
 		min-inline-size: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1528,9 +1569,12 @@
 	.np-link:hover .np-show {
 		color: var(--accent);
 	}
-	.np-sep {
-		flex: 0 0 auto;
-		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
+	.np-meta {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		min-inline-size: 0;
+		overflow: hidden;
 	}
 	.np-ep {
 		flex: 0 0 auto;
@@ -1549,10 +1593,6 @@
 		font-family: var(--font-body);
 		font-size: var(--type-meta);
 		color: color-mix(in oklab, var(--bone-100) 78%, transparent);
-		/* Truncates first when the row gets tight — the episode's own
-		   title is the lowest-priority piece of context. flex-shrink
-		   100 makes it lose width far ahead of the show name. */
-		flex: 1 100 0;
 		min-inline-size: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
