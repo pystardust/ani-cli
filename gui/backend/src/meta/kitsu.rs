@@ -283,6 +283,24 @@ pub fn parse_anime_response(body: &[u8]) -> Result<KitsuAnimeRef> {
     Ok(into_ref(parsed.data))
 }
 
+/// Parse the response of a `/mappings?include=item` lookup into the
+/// referenced anime. Returns `None` when the lookup found no mapping
+/// (empty `data`) or the `included` array doesn't contain the
+/// referenced anime resource.
+///
+/// Used by [`KitsuClient::lookup_by_mal_id`] — the AniList trending
+/// bridge feeds MAL ids in and gets full Kitsu refs out, in a single
+/// round-trip per lookup.
+///
+/// # Errors
+/// Returns [`AniError::ParseFailed`] when the body isn't valid
+/// JSON:API.
+pub fn parse_mappings_response(_body: &[u8]) -> Result<Option<KitsuAnimeRef>> {
+    Err(AniError::ParseFailed {
+        detail: "kitsu::parse_mappings_response not implemented yet".into(),
+    })
+}
+
 /// Parse `{ "data": [...] }` into a list of episodes. Used for
 /// `/anime/:id/episodes`.
 ///
@@ -392,6 +410,25 @@ impl KitsuClient {
             ("fields[anime]", ANIME_FIELDS.to_string()),
         ])
         .await
+    }
+
+    /// Look up the Kitsu anime that maps to a given MyAnimeList id.
+    /// Returns `None` when Kitsu has no mapping for the supplied id
+    /// (e.g. AniList lists a show MAL doesn't, or MAL has it but
+    /// Kitsu hasn't catalogued it).
+    ///
+    /// One round-trip — `?include=item` makes Kitsu inline the full
+    /// anime resource in the response's `included` array, so we
+    /// don't need a follow-up `/anime/:id` fetch.
+    ///
+    /// # Errors
+    /// - [`AniError::Upstream`] on non-2xx HTTP.
+    /// - [`AniError::Network`] on transport failure.
+    /// - [`AniError::ParseFailed`] on malformed JSON:API.
+    pub async fn lookup_by_mal_id(&self, _mal_id: u32) -> Result<Option<KitsuAnimeRef>> {
+        Err(AniError::ParseFailed {
+            detail: "kitsu::lookup_by_mal_id not implemented yet".into(),
+        })
     }
 
     /// Top-rated anime above the noise floor (averageRating ≥ 70/100).
@@ -740,5 +777,141 @@ mod tests {
         assert!((some.v.unwrap() - 7.5).abs() < 1e-6);
         let bad: std::result::Result<W, _> = serde_json::from_str(r#"{"v":"not-a-number"}"#);
         assert!(bad.is_err());
+    }
+
+    // — Mappings (lookup by MAL id) ───────────────────────────────────
+    //
+    // Real shape lifted from a live probe of /mappings?filter[…]=…&
+    // include=item for One Piece (mal_id=21 → kitsu_id=12). The
+    // included array carries the same anime resource shape as a
+    // single /anime/:id detail call.
+    const MAPPINGS_HIT_FIXTURE: &str = r##"{
+        "data": [{
+            "id": "1175",
+            "type": "mappings",
+            "attributes": {
+                "externalSite": "myanimelist/anime",
+                "externalId": "21"
+            },
+            "relationships": {
+                "item": { "data": { "type": "anime", "id": "12" } }
+            }
+        }],
+        "included": [{
+            "id": "12",
+            "type": "anime",
+            "attributes": {
+                "canonicalTitle": "One Piece",
+                "titles": { "en": "One Piece", "en_jp": "One Piece", "ja_jp": "ONE PIECE" },
+                "slug": "one-piece",
+                "synopsis": "Pirate adventures.",
+                "startDate": "1999-10-20",
+                "endDate": null,
+                "episodeCount": null,
+                "averageRating": "83.98",
+                "subtype": "TV",
+                "status": "current",
+                "ageRating": "PG",
+                "popularityRank": 25,
+                "posterImage": null,
+                "coverImage": null
+            }
+        }]
+    }"##;
+
+    const MAPPINGS_EMPTY_FIXTURE: &str = r#"{
+        "data": [],
+        "included": []
+    }"#;
+
+    #[test]
+    fn parse_mappings_returns_anime_when_included_carries_it() {
+        let r = parse_mappings_response(MAPPINGS_HIT_FIXTURE.as_bytes()).expect("parses");
+        let anime = r.expect("mapping found");
+        assert_eq!(anime.id, "12");
+        assert_eq!(anime.canonical_title, "One Piece");
+        assert_eq!(anime.status.as_deref(), Some("current"));
+    }
+
+    #[test]
+    fn parse_mappings_returns_none_when_data_is_empty() {
+        let r = parse_mappings_response(MAPPINGS_EMPTY_FIXTURE.as_bytes()).expect("parses");
+        assert!(r.is_none());
+    }
+
+    #[test]
+    fn parse_mappings_returns_none_when_included_is_missing_or_empty() {
+        // Mapping exists but no `included` (e.g. a malformed response).
+        // Defensive: don't panic, just report no match.
+        let body = r##"{
+            "data": [{
+                "id": "1175",
+                "type": "mappings",
+                "attributes": { "externalSite": "myanimelist/anime", "externalId": "21" },
+                "relationships": { "item": { "data": { "type": "anime", "id": "12" } } }
+            }]
+        }"##;
+        let r = parse_mappings_response(body.as_bytes()).expect("parses");
+        assert!(r.is_none());
+    }
+
+    #[test]
+    fn parse_mappings_rejects_garbage() {
+        let r = parse_mappings_response(b"<html>nope</html>");
+        assert!(matches!(r, Err(AniError::ParseFailed { .. })));
+    }
+
+    #[tokio::test]
+    async fn lookup_by_mal_id_hits_the_right_endpoint() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/mappings"))
+            .and(wiremock::matchers::query_param(
+                "filter[externalSite]",
+                "myanimelist/anime",
+            ))
+            .and(wiremock::matchers::query_param("filter[externalId]", "21"))
+            .and(wiremock::matchers::query_param("include", "item"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_string(MAPPINGS_HIT_FIXTURE),
+            )
+            .mount(&server)
+            .await;
+
+        let client = KitsuClient::with_base(reqwest::Client::new(), server.uri());
+        let r = client.lookup_by_mal_id(21).await.expect("ok");
+        let anime = r.expect("found");
+        assert_eq!(anime.id, "12");
+        assert_eq!(anime.canonical_title, "One Piece");
+    }
+
+    #[tokio::test]
+    async fn lookup_by_mal_id_returns_none_for_unmapped_show() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .and(wiremock::matchers::path("/mappings"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200).set_body_string(MAPPINGS_EMPTY_FIXTURE),
+            )
+            .mount(&server)
+            .await;
+
+        let client = KitsuClient::with_base(reqwest::Client::new(), server.uri());
+        let r = client.lookup_by_mal_id(99999999).await.expect("ok");
+        assert!(r.is_none());
+    }
+
+    #[tokio::test]
+    async fn lookup_by_mal_id_propagates_5xx() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("GET"))
+            .respond_with(wiremock::ResponseTemplate::new(503))
+            .mount(&server)
+            .await;
+        let client = KitsuClient::with_base(reqwest::Client::new(), server.uri());
+        let err = client.lookup_by_mal_id(21).await.unwrap_err();
+        assert!(matches!(err, AniError::Upstream { status: 503 }));
     }
 }
