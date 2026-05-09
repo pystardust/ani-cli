@@ -709,6 +709,15 @@ export function kitsuTrending(): Promise<KitsuAnimeRef[]> {
 	return getJson<KitsuAnimeRef[]>('/api/kitsu/trending');
 }
 
+/** AniList-backed trending — recency-weighted (last few days of
+ *  viewer activity). Backend bridges each AniList entry to a Kitsu
+ *  ref via /mappings, so the response shape matches the regular
+ *  trending endpoint. Falls back to {@link kitsuTrending} when
+ *  AniList is unreachable; the page still loads either way. */
+export function kitsuTrendingAnilist(): Promise<KitsuAnimeRef[]> {
+	return getJson<KitsuAnimeRef[]>('/api/kitsu/trending-anilist');
+}
+
 export function kitsuTopRated(): Promise<KitsuAnimeRef[]> {
 	return getJson<KitsuAnimeRef[]>('/api/kitsu/top-rated');
 }

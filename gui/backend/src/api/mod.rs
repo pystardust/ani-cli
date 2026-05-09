@@ -78,6 +78,10 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(get_kitsu_anime_by_slug),
         )
         .route("/api/kitsu/trending", get(get_kitsu_trending))
+        .route(
+            "/api/kitsu/trending-anilist",
+            get(get_kitsu_trending_anilist),
+        )
         .route("/api/kitsu/top-rated", get(get_kitsu_top_rated))
         .route("/api/kitsu/episodes/:anime_id", get(get_kitsu_episodes))
         .route(
@@ -191,6 +195,12 @@ async fn get_kitsu_trending(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<KitsuAnimeRef>>, AniError> {
     Ok(Json(kitsu_inner::kitsu_trending(&state).await?))
+}
+
+async fn get_kitsu_trending_anilist(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<KitsuAnimeRef>>, AniError> {
+    Ok(Json(kitsu_inner::kitsu_trending_anilist(&state).await?))
 }
 
 async fn get_kitsu_top_rated(
