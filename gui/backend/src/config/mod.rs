@@ -88,6 +88,35 @@ mod tests {
     }
 
     #[test]
+    fn auto_play_next_defaults_to_false() {
+        // The toggle must be opt-in. Existing users (no field in their
+        // config.toml) shouldn't suddenly find episodes auto-advancing
+        // after an upgrade.
+        assert!(!Config::default().auto_play_next);
+    }
+
+    #[test]
+    fn auto_play_next_round_trips_through_toml() {
+        let c = Config {
+            auto_play_next: true,
+            ..Config::default()
+        };
+        let s = toml::to_string(&c).unwrap();
+        let parsed: Config = toml::from_str(&s).unwrap();
+        assert!(parsed.auto_play_next);
+    }
+
+    #[test]
+    fn auto_play_next_absent_in_old_config_decodes_as_false() {
+        // Pre-existing config.toml files don't have this field. Thanks
+        // to #[serde(default)] on the struct they should still parse,
+        // with the missing field defaulting to false.
+        let body = "mode = \"sub\"\nquality = \"best\"\n";
+        let cfg: Config = toml::from_str(body).unwrap();
+        assert!(!cfg.auto_play_next);
+    }
+
+    #[test]
     fn round_trips_through_toml() {
         let c = Config {
             locale: "pt-BR".into(),
