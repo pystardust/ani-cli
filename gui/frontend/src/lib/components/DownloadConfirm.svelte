@@ -67,7 +67,11 @@
 			const initial = args ? Number.parseInt(args.episode, 10) : 1;
 			startEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
 			endEp = startEp;
-			mode = showThisEpisode ? 'this' : 'range';
+			// On /play: This is the obvious default (current ep). On the
+			// detail page where This is hidden, prefer All when we know
+			// the count (most common intent — grab the season); fall
+			// back to Range when count is unknown.
+			mode = showThisEpisode ? 'this' : maxEpisode ? 'all' : 'range';
 		}
 	});
 
@@ -162,6 +166,12 @@
 
 			<div class="dl-body">
 				<span class="dl-label">Episodes</span>
+				<!-- Order varies by surface: /play has a clear "current"
+				     episode so This → Range → All keeps the obvious
+				     default first. The detail page has no current
+				     referent and the user is more likely to grab the
+				     whole season than to dial in a range, so put All
+				     ahead of Range there. -->
 				<div class="dl-mode" role="group" aria-label="Episode selection">
 					{#if showThisEpisode}
 						<button
@@ -174,29 +184,52 @@
 							This episode
 							<span class="dl-mode-num">{args.episode}</span>
 						</button>
+						<button
+							type="button"
+							class="dl-mode-btn"
+							class:active={mode === 'range'}
+							aria-pressed={mode === 'range'}
+							onclick={() => (mode = 'range')}
+						>
+							Range
+						</button>
+						<button
+							type="button"
+							class="dl-mode-btn"
+							class:active={mode === 'all'}
+							aria-pressed={mode === 'all'}
+							disabled={!maxEpisode}
+							onclick={() => (mode = 'all')}
+						>
+							All
+							{#if maxEpisode}
+								<span class="dl-mode-num">{maxEpisode}</span>
+							{/if}
+						</button>
+					{:else}
+						<button
+							type="button"
+							class="dl-mode-btn"
+							class:active={mode === 'all'}
+							aria-pressed={mode === 'all'}
+							disabled={!maxEpisode}
+							onclick={() => (mode = 'all')}
+						>
+							All
+							{#if maxEpisode}
+								<span class="dl-mode-num">{maxEpisode}</span>
+							{/if}
+						</button>
+						<button
+							type="button"
+							class="dl-mode-btn"
+							class:active={mode === 'range'}
+							aria-pressed={mode === 'range'}
+							onclick={() => (mode = 'range')}
+						>
+							Range
+						</button>
 					{/if}
-					<button
-						type="button"
-						class="dl-mode-btn"
-						class:active={mode === 'range'}
-						aria-pressed={mode === 'range'}
-						onclick={() => (mode = 'range')}
-					>
-						Range
-					</button>
-					<button
-						type="button"
-						class="dl-mode-btn"
-						class:active={mode === 'all'}
-						aria-pressed={mode === 'all'}
-						disabled={!maxEpisode}
-						onclick={() => (mode = 'all')}
-					>
-						All
-						{#if maxEpisode}
-							<span class="dl-mode-num">{maxEpisode}</span>
-						{/if}
-					</button>
 				</div>
 
 				{#if mode === 'range'}
