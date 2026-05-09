@@ -97,8 +97,8 @@
 		background: color-mix(in oklab, var(--ink-100) 80%, transparent);
 	}
 	.up svg {
-		inline-size: 14px;
-		block-size: 14px;
+		inline-size: 16px;
+		block-size: 16px;
 	}
 	ol {
 		display: inline-flex;
@@ -108,7 +108,9 @@
 		margin: 0;
 		padding: 0;
 		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		/* Bumped from --type-meta (12px) to --type-body-s (14px) — the
+		   prior size felt swallowed by the topbar's other elements. */
+		font-size: var(--type-body-s);
 		letter-spacing: var(--tracking-meta);
 		min-inline-size: 0;
 	}
