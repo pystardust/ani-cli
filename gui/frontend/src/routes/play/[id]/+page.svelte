@@ -31,7 +31,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Hls from 'hls.js';
 	import { settle } from '$lib/transitions/settle';
@@ -63,6 +63,13 @@
 	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
 	import { pickActiveSkip } from '$lib/play/aniskip-active';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
+	import {
+		attachGlobalVideoTo,
+		detachGlobalVideo,
+		getGlobalVideo,
+		setCurrentSession,
+		setSubtitleTrack
+	} from '$lib/play/global-video';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
@@ -125,7 +132,13 @@
 		}
 	}
 
+	// Singleton-backed video element, owned by lib/play/global-video.
+	// Survives /play/[id] route destroys so PiP keeps showing.
+	// Cast through `as any` because Svelte expects the optional
+	// $state form; the singleton is available synchronously after
+	// our onMount attaches it to the player frame.
 	let videoEl: HTMLVideoElement | undefined = $state();
+	let frameTargetEl = $state<HTMLDivElement | undefined>();
 	let hls: Hls | null = null;
 
 	// Settings-driven: whether to use our custom controls bar in
@@ -665,8 +678,119 @@
 		}
 	}
 
+	// Mount the singleton video into the frame slot when it
+	// appears, wire up reactive listeners so the page's state vars
+	// stay in sync (replacing what bind: used to do), and detach
+	// the video back to the hidden host on destroy so PiP can
+	// outlive route navigation.
+	$effect(() => {
+		if (!frameTargetEl) return;
+		const v = attachGlobalVideoTo(frameTargetEl);
+		v.controls = !USE_CUSTOM_PLAYER_CONTROLS;
+		videoEl = v;
+
+		// Sync initial state from whatever the singleton is doing
+		// right now (it may already be playing from a prior page
+		// or PiP session).
+		currentTime = v.currentTime;
+		duration = isFinite(v.duration) ? v.duration : 0;
+		isPaused = v.paused;
+		videoVolume = v.volume;
+		isMuted = v.muted;
+		playbackRate = v.playbackRate;
+
+		const onTime = () => {
+			currentTime = v.currentTime;
+		};
+		const onDuration = () => {
+			duration = isFinite(v.duration) ? v.duration : 0;
+		};
+		const onPlay = () => {
+			isPaused = false;
+		};
+		const onPause = () => {
+			isPaused = true;
+		};
+		const onVol = () => {
+			videoVolume = v.volume;
+			isMuted = v.muted;
+		};
+		const onRate = () => {
+			playbackRate = v.playbackRate;
+		};
+		const onProg = () => {
+			recomputeBuffered();
+		};
+		const onMeta = () => {
+			duration = isFinite(v.duration) ? v.duration : 0;
+		};
+		const onEnded = () => {
+			onVideoEnded();
+		};
+		const onClick = () => {
+			if (USE_CUSTOM_PLAYER_CONTROLS) togglePlay();
+		};
+
+		v.addEventListener('timeupdate', onTime);
+		v.addEventListener('timeupdate', onProg);
+		v.addEventListener('progress', onProg);
+		v.addEventListener('durationchange', onDuration);
+		v.addEventListener('loadedmetadata', onMeta);
+		v.addEventListener('play', onPlay);
+		v.addEventListener('pause', onPause);
+		v.addEventListener('volumechange', onVol);
+		v.addEventListener('ratechange', onRate);
+		v.addEventListener('ended', onEnded);
+		v.addEventListener('click', onClick);
+
+		return () => {
+			v.removeEventListener('timeupdate', onTime);
+			v.removeEventListener('timeupdate', onProg);
+			v.removeEventListener('progress', onProg);
+			v.removeEventListener('durationchange', onDuration);
+			v.removeEventListener('loadedmetadata', onMeta);
+			v.removeEventListener('play', onPlay);
+			v.removeEventListener('pause', onPause);
+			v.removeEventListener('volumechange', onVol);
+			v.removeEventListener('ratechange', onRate);
+			v.removeEventListener('ended', onEnded);
+			v.removeEventListener('click', onClick);
+			detachGlobalVideo();
+		};
+	});
+
+	// Reactively swap the controls type when the user flips the
+	// settings toggle; the listeners above don't re-run for that.
+	$effect(() => {
+		const v = getGlobalVideo();
+		v.controls = !USE_CUSTOM_PLAYER_CONTROLS;
+	});
+
+	// Subtitle track — managed imperatively on the singleton.
+	$effect(() => {
+		setSubtitleTrack(subtitleUrl ?? null);
+	});
+
 	$effect(() => {
 		if (!videoEl || !mediaUrl) return;
+		// If the singleton is already loaded with this exact
+		// mediaUrl (i.e. the user navigated away into PiP and came
+		// back), skip the teardown + re-attach — it would restart
+		// playback from 0 and tear down a working HLS pipeline for
+		// no reason. We still update the session pointer so the
+		// PiP-leave navigation knows where to land next time.
+		const same = videoEl.src === mediaUrl || videoEl.currentSrc === mediaUrl;
+		if (same) {
+			setCurrentSession({
+				kitsu_id: id,
+				episode: episodeNum,
+				session_id: sessionId,
+				media_url: mediaUrl,
+				media_kind: mediaKind,
+				subtitle_url: subtitleUrl
+			});
+			return;
+		}
 		teardown();
 		playerError = null;
 
@@ -724,19 +848,52 @@
 			playerError = 'HLS playback is not supported in this webview.';
 		}
 
+		// Stamp the session so the layout's PiP-leave handler knows
+		// where to navigate back when the user closes the floating
+		// PiP window from off-route.
+		setCurrentSession({
+			kitsu_id: id,
+			episode: episodeNum,
+			session_id: sessionId,
+			media_url: mediaUrl,
+			media_kind: mediaKind,
+			subtitle_url: subtitleUrl
+		});
+
 		return () => {
 			videoEl?.removeEventListener('error', onVideoError);
 		};
 	});
 
 	onDestroy(() => {
-		teardown();
 		// Cancel any in-flight prefetches for this show. Without this,
 		// abandoned ani-cli spawns keep streaming SSE events to a
 		// closed page and holding allmanga rate-limit slots. Note this
 		// runs on real component unmount only — episode switching keeps
 		// the component alive and prefetches remain valid.
 		if (id) clearForShow(id);
+		// Note: we deliberately DO NOT teardown() the singleton on
+		// destroy. The video element survives in $lib/play/global-video
+		// so PiP keeps playing across navigation. Teardown only runs
+		// when a different mediaUrl arrives (the effect below).
+	});
+
+	// Auto-PiP on leaving /play to another section of the app, so
+	// the user keeps watching while they browse. Skipped when the
+	// target is another /play/[id] route — that's just a session
+	// swap and the singleton's src changes in place. Also skipped
+	// when video is paused or already in PiP.
+	beforeNavigate(({ to }) => {
+		if (!videoEl) return;
+		const targetId = to?.route?.id ?? '';
+		if (targetId === '/play/[id]') return;
+		if (videoEl.paused) return;
+		if (document.pictureInPictureElement) return;
+		// Fire-and-forget — request returns a Promise but the
+		// navigation can't be awaited; if PiP fails the worst case
+		// is the user loses the video, which is what would have
+		// happened pre-feature anyway.
+		void videoEl.requestPictureInPicture().catch(() => {});
 	});
 
 	function describeError(e: unknown): string {
@@ -1211,24 +1368,13 @@
 		{:else if playerError}
 			<p class="player-empty">{playerError}</p>
 		{:else}
-			<video
-				bind:this={videoEl}
-				bind:currentTime
-				bind:duration
-				bind:paused={isPaused}
-				bind:volume={videoVolume}
-				bind:muted={isMuted}
-				autoplay
-				controls={!USE_CUSTOM_PLAYER_CONTROLS}
-				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
-				onended={onVideoEnded}
-				onprogress={recomputeBuffered}
-				ontimeupdate={recomputeBuffered}
-			>
-				{#if subtitleUrl}
-					<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
-				{/if}
-			</video>
+			<!-- Target slot for the singleton video. The actual
+			     <video> lives in $lib/play/global-video and gets
+			     appendChild'd here on mount; on destroy it goes
+			     back to a hidden host so PiP survives navigation.
+			     Width/height fill the frame so the singleton's
+			     100%/100% sizing letterboxes within. -->
+			<div class="player-video-slot" bind:this={frameTargetEl}></div>
 
 			<!-- Skip OP / Skip Outro overlay — driven by aniskip's
 			     crowd-sourced timestamps. Renders only when the
@@ -2352,17 +2498,25 @@
 		box-shadow: none;
 	}
 
-	.player-frame video {
+	/* The singleton video lives in the global host (lib/play/
+	   global-video) and gets appendChild'd into .player-video-slot
+	   on mount. Style targets are :global() because the element
+	   isn't owned by this Svelte component. */
+	:global(.player-frame video) {
 		inline-size: 100%;
 		block-size: 100%;
 		display: block;
 		background: #000;
 		cursor: pointer;
-		/* Letterbox: video stays at 16:9 aspect, centered inside the
-		   frame, with black bars on whichever axis has slack. Frame
-		   is wider than 16:9 of its height on most desktop windows,
-		   so the bars sit on the left + right. */
+		/* Letterbox: 16:9 aspect, centered, black bars on whichever
+		   axis has slack. */
 		object-fit: contain;
+	}
+	.player-video-slot {
+		inline-size: 100%;
+		block-size: 100%;
+		display: block;
+		background: #000;
 	}
 
 	/* aniskip Skip OP / Skip Outro button. Anchored bottom-right
@@ -2741,7 +2895,7 @@
 		font-weight: 500;
 		line-height: 1.5;
 	}
-	.player-busy video {
+	:global(.player-busy video) {
 		opacity: 0.5;
 		transition: opacity var(--dur-med) var(--ease-out-soft);
 	}

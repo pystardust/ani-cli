@@ -43,6 +43,7 @@
 		parseStoredRecents,
 		shouldRenderDropdown
 	} from '$lib/topbar/dropdown';
+	import { getCurrentSession, getGlobalVideo } from '$lib/play/global-video';
 
 	let { children } = $props();
 
@@ -128,6 +129,38 @@
 		} catch {
 			// localStorage unavailable — leave recentSearches empty.
 		}
+
+		// Persistent PiP — when the user closes the PiP window
+		// (or it closes itself via stop/play-end) and the player
+		// page isn't currently mounted, navigate back to the play
+		// route so the in-page player picks up the now-orphaned
+		// singleton video and the user can continue watching
+		// inline. If we're already on /play/[id], do nothing —
+		// the page itself will reabsorb the video on its next
+		// effect tick.
+		const v = getGlobalVideo();
+		const onLeave = () => {
+			const sess = getCurrentSession();
+			if (!sess) return;
+			const onPlayPage = page.route?.id === '/play/[id]';
+			if (onPlayPage) return;
+			// Build the play URL inline — buildPlayQuery wants a
+			// full CreateSessionResponse and we only kept the
+			// load-bearing fields. The query shape is stable, so
+			// reproducing it here is fine.
+			const parts = [
+				`session=${encodeURIComponent(sess.session_id)}`,
+				`episode=${sess.episode}`,
+				`kind=${sess.media_kind}`
+			];
+			if (sess.subtitle_url) parts.push('sub=1');
+			const target = resolve('/play/[id]', { id: sess.kitsu_id }) + `?${parts.join('&')}`;
+			/* eslint-disable svelte/no-navigation-without-resolve */
+			void goto(target);
+			/* eslint-enable svelte/no-navigation-without-resolve */
+		};
+		v.addEventListener('leavepictureinpicture', onLeave);
+		return () => v.removeEventListener('leavepictureinpicture', onLeave);
 	});
 
 	function persistRecents(q: string) {
