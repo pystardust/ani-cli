@@ -589,6 +589,18 @@
 	.brand:hover .brand-mark {
 		transform: scale(1.05);
 	}
+	/* Drop the browser default focus ring (the chunky blue outline
+	   visible on first paint when Chromium auto-focuses the first
+	   tabbable element). Keyboard users still get a visible halo
+	   via :focus-visible — accent-tinted to match the rail. */
+	.brand:focus {
+		outline: none;
+	}
+	.brand:focus-visible {
+		outline: 2px solid color-mix(in oklab, var(--accent) 70%, transparent);
+		outline-offset: 4px;
+		border-radius: var(--radius-pill);
+	}
 	.brand-word {
 		display: inline-flex;
 		align-items: baseline;
