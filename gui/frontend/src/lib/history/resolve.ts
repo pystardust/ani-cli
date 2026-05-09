@@ -18,13 +18,17 @@
  * UI can show "Part N" badges if desired, but kitsuEpisode is now a
  * direct passthrough of displayEpisode.
  *
- * TODO(post-v1): replace direct mapping with an offline-DB lookup.
- * `anime-offline-database` (manami-project) maps allmanga titles → an
- * anilist_id → kitsu_id with an explicit episode offset where the two
- * services disagree. AniList splits cours like allmanga does, so the
- * anilist_id resolution is exact; the kitsu offset is the only
- * inferred bit. Cache the DB locally, refresh weekly, fall back to
- * the title heuristic for entries the DB doesn't cover.
+ * Allmanga's `name` is sometimes a stub ("1P" for One Piece) — the
+ * recovery path lives on the backend at `resolve_allmanga_show_id`,
+ * which fetches allmanga's `Show` GraphQL aliases (englishName /
+ * nativeName / altNames) and retries Kitsu search with each. The
+ * frontend reaches it via the `kitsuResolveAllmangaShowId` IPC as
+ * the last step in `resolveKitsuMatch`.
+ *
+ * NOTE: anime-offline-database (Manami) is NOT a viable bridge here —
+ * it indexes AniList / MAL / Kitsu / AniDB but does NOT include
+ * allmanga show_ids, so reverse-mapping our `ani-hsts` rows still
+ * has to go through the alias-walk above.
  */
 
 import type { HistoryEntry, KitsuAnimeRef } from '$lib/api';

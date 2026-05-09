@@ -14,6 +14,7 @@ import {
 	allmangaKitsuMapGet,
 	kitsuAnimeBySlug,
 	kitsuAnimeDetail,
+	kitsuResolveAllmangaShowId,
 	kitsuSearch,
 	kitsuTitleMatchGet,
 	kitsuTitleMatchPut,
@@ -110,7 +111,28 @@ export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<Kits
 		}
 	}
 
-	// 4) Persist on success so the next session bypasses the lookup.
+	// 4) Allmanga-aliases enrichment fallback. Reach here when steps
+	//    0-3 all whiff — typically because allmanga's primary `name`
+	//    is a stub the Kitsu text search can't resolve ("1P" for One
+	//    Piece, "Nato: Shippuuden" for Naruto Shippuuden). The backend
+	//    fetches allmanga's Show GraphQL, harvests englishName /
+	//    nativeName / altNames, retries Kitsu search with each, and
+	//    persists the resolved kitsu_id into the reverse cache so
+	//    subsequent calls short-circuit through step 0.
+	//
+	//    Only fires when there's an allmanga show_id to enrich AND
+	//    earlier paths already failed — title-search hits skip this
+	//    branch entirely (verified by the "skips enrichment" test).
+	if (!match && preliminary.allmangaShowId) {
+		try {
+			match = await kitsuResolveAllmangaShowId(preliminary.allmangaShowId);
+		} catch {
+			// Enrichment endpoint failure is non-fatal — fall through
+			// to the null return below.
+		}
+	}
+
+	// 5) Persist on success so the next session bypasses the lookup.
 	if (match) {
 		try {
 			await kitsuTitleMatchPut(preliminary.searchTitle, preliminary.cour, match.id);
