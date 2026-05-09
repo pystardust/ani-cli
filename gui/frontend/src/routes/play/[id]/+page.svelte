@@ -2325,7 +2325,8 @@
 	.pc-volume:hover .pc-volume-slider,
 	.pc-volume:focus-within .pc-volume-slider {
 		inline-size: 4.5rem;
-		margin-inline-end: 0.75rem;
+		margin-inline-start: 0.4rem;
+		margin-inline-end: 0.35rem;
 		opacity: 1;
 	}
 	.pc-volume-track {
