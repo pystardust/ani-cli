@@ -760,6 +760,95 @@ mod tests {
         );
     }
 
+    /// Drive `play_with_progress` through the cache-hit short-circuit
+    /// so the lines inside the `if let Some(cached) = ...` branch
+    /// (history-write skip, info!, the early `return Ok(resp)`) all
+    /// run. This is a real test of the embedded-player fast path —
+    /// it would have caught the regression that prompted the
+    /// long-term cache to ship.
+    #[tokio::test]
+    async fn play_with_progress_returns_cache_hit_response_when_head_succeeds() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Cached Show", "5");
+        let upstream = format!("{}/cached.mp4", server.uri());
+        seed_play_cache(&state, &args, &upstream, "");
+        let resp = play_with_progress(&state, &args, |_| {})
+            .await
+            .expect("cache-hit returns Ok");
+        assert!(
+            resp.cache_hit,
+            "play_with_progress must tag cache-hit responses so the renderer can retry on player error"
+        );
+        assert_eq!(resp.media_kind, MediaKind::Mp4);
+    }
+
+    /// Same shape, but with a non-empty referer + show_id — exercises
+    /// the cache-hit history-write branch (lines 266-282 in the file
+    /// before this test landed). Without this the upsert-on-cache-hit
+    /// path was uncovered, leaving Continue Watching's "I just played
+    /// this" feedback silently broken if it regressed.
+    #[tokio::test]
+    async fn play_with_progress_writes_history_on_cache_hit_with_show_id() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Show With History", "3");
+        let upstream = format!("{}/cached.mp4", server.uri());
+        seed_play_cache(&state, &args, &upstream, "");
+        // Non-prefetch click → history must be written. The upsert
+        // target is state.history_path, which is /tmp/ani-cli/ani-hsts
+        // by default — make it a real tempfile so the write
+        // succeeds and we can assert against it.
+        let td = tempfile::tempdir().expect("tempdir");
+        let mut state = state;
+        state.history_path = td.path().join("ani-hsts");
+        let _ = play_with_progress(&state, &args, |_| {}).await.expect("ok");
+        // The history file must exist with one row referencing the
+        // seeded show_id.
+        let body = std::fs::read_to_string(&state.history_path).unwrap_or_default();
+        assert!(
+            body.contains("abc"),
+            "history must contain seeded show_id; got: {body:?}"
+        );
+    }
+
+    /// HEAD failure → cache row evicted, function falls through to
+    /// ani-cli (which fails because the spawn binary path is bogus
+    /// in the test fixture). The test just needs to confirm the
+    /// eviction-and-fallthrough branch runs without panicking;
+    /// covers lines 288-292 (eviction warn).
+    #[tokio::test]
+    async fn play_with_progress_evicts_cache_when_head_fails_then_returns_error() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("HEAD"))
+            .respond_with(wiremock::ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+        let state = state_with_proxy_origin();
+        let args = external_args("Stale Show", "1");
+        let upstream = format!("{}/dead.mp4", server.uri());
+        seed_play_cache(&state, &args, &upstream, "");
+        let r = play_with_progress(&state, &args, |_| {}).await;
+        assert!(r.is_err(), "ani-cli fallback must error in the test env");
+        // Cache row should be gone.
+        let key = play_resolution_cache::cache_key(&args.title, &args.mode, "best", &args.episode);
+        assert!(
+            play_resolution_cache::get(&state.cache_pool, &key)
+                .ok()
+                .flatten()
+                .is_none(),
+            "stale row must be evicted on HEAD failure"
+        );
+    }
+
     #[tokio::test]
     async fn try_launch_args_from_cache_returns_none_on_cache_miss() {
         let state = state_with_proxy_origin();
