@@ -655,9 +655,12 @@
 		position: relative;
 		z-index: 2;
 		max-inline-size: 44rem;
-		/* Inline padding matches the strip gutter (--space-8) so the hero
-		   text and the trending row sit on the same vertical column. */
-		padding: var(--space-9) var(--space-8) var(--space-7);
+		/* Inline padding aligns the hero text with the strips below.
+		   The hero box is full-bleed (escapes .main-area's left
+		   gutter), so the body's inline-start padding has to make
+		   up the gutter (space-7) PLUS the strip's own pad (space-8)
+		   to land at the same vertical column as the strip eyebrows. */
+		padding: var(--space-9) var(--space-8) var(--space-7) calc(var(--space-7) + var(--space-8));
 		animation: hero-text-in var(--dur-med) var(--ease-out-soft) both;
 		animation-delay: 100ms;
 	}
