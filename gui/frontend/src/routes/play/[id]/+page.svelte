@@ -147,6 +147,29 @@
 	let videoVolume = $state(1);
 	let isMuted = $state(false);
 	let scrubberHover = $state(false);
+	// Furthest end of the contiguous buffered range that contains
+	// currentTime — feeds the dimmer "preloaded" segment of the
+	// custom scrubber. Updated on the video's `progress` event.
+	let bufferedEnd = $state(0);
+
+	function recomputeBuffered() {
+		if (!videoEl) return;
+		const ranges = videoEl.buffered;
+		let end = 0;
+		for (let i = 0; i < ranges.length; i++) {
+			const s = ranges.start(i);
+			const e = ranges.end(i);
+			// Largest end among ranges that contain currentTime, or
+			// failing that the largest end overall (matches the
+			// native player's "play head sits in this segment" cue).
+			if (currentTime >= s && currentTime <= e) {
+				end = Math.max(end, e);
+			} else if (end === 0) {
+				end = Math.max(end, e);
+			}
+		}
+		bufferedEnd = end;
+	}
 
 	// aniskip skip-times for the current (kitsu_id, episode). Fetched
 	// once `duration` becomes finite (we need the value to disambig
@@ -1126,6 +1149,8 @@
 				controls={!USE_CUSTOM_PLAYER_CONTROLS}
 				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
 				onended={onVideoEnded}
+				onprogress={recomputeBuffered}
+				ontimeupdate={recomputeBuffered}
 			>
 				{#if subtitleUrl}
 					<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
@@ -1244,6 +1269,10 @@
 							}}
 						>
 							<div class="pc-scrubber-track">
+								<div
+									class="pc-scrubber-buffered"
+									style:inline-size="{duration ? (bufferedEnd / duration) * 100 : 0}%"
+								></div>
 								<div
 									class="pc-scrubber-fill"
 									style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
@@ -2244,6 +2273,17 @@
 	.pc-scrubber:focus-visible .pc-scrubber-track {
 		block-size: 6px;
 	}
+	/* Dimmer fill showing how much of the video has been
+	   preloaded ahead of the playhead. Same role as the lighter
+	   grey segment on Chromium / YouTube's native scrubber. */
+	.pc-scrubber-buffered {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-start: 0;
+		background: rgba(255, 255, 255, 0.35);
+		border-radius: inherit;
+		pointer-events: none;
+	}
 	.pc-scrubber-fill {
 		position: absolute;
 		inset-block: 0;
@@ -2254,18 +2294,18 @@
 	.pc-scrubber-thumb {
 		position: absolute;
 		inset-block-start: 50%;
-		inline-size: 12px;
-		block-size: 12px;
-		margin-inline-start: -6px;
+		inline-size: 10px;
+		block-size: 10px;
+		margin-inline-start: -5px;
 		border-radius: 50%;
 		background: var(--accent);
-		transform: translateY(-50%) scale(0);
+		transform: translateY(-50%) scale(1);
 		transition: transform var(--dur-fast) var(--ease-out-soft);
-		box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
 	}
 	.pc-scrubber:hover .pc-scrubber-thumb,
 	.pc-scrubber:focus-visible .pc-scrubber-thumb {
-		transform: translateY(-50%) scale(1);
+		transform: translateY(-50%) scale(1.5);
 	}
 	.player-empty {
 		position: absolute;
