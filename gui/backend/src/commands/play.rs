@@ -445,10 +445,48 @@ where
             }
         }
     })?;
-    // Successful resolve = available. Persist for the cache so home /
-    // search filters skip the extra check on next visit.
+    // Successful resolve = available. Enrich the cache row with the
+    // playable episode count + recap extras so the next detail/play
+    // visit doesn't have to re-probe. fetch_show is one extra
+    // GraphQL round-trip against allmanga (~200ms) — invisible
+    // here because the user is past ani-cli's multi-second
+    // resolution and about to navigate to /play. Failure falls
+    // through to the simple write so the row at least records
+    // `available=true`.
     if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
-        crate::commands::availability::write_cache(state, id, &args.mode, true);
+        if let Some(c) = chosen_candidate.as_ref() {
+            let mode_str = args.mode.as_str();
+            let (episode_count, extras) =
+                match crate::scraper::allanime::fetch_show(&state.proxy_http, &c.id, None).await {
+                    Ok(detail) => {
+                        let cap = detail.max_integer_episode(mode_str);
+                        let ex: Vec<String> = detail
+                            .available_episodes_detail
+                            .for_mode(mode_str)
+                            .iter()
+                            .filter(|t| t.parse::<u32>().is_err())
+                            .cloned()
+                            .collect();
+                        (cap, ex)
+                    }
+                    Err(_) => (None, Vec::new()),
+                };
+            // Status unknown at this layer (PlayArgs doesn't carry
+            // it). None → write_cache_full uses the conservative
+            // ongoing TTL (24h); the next detail-page probe knows
+            // status and will overwrite with the right TTL.
+            crate::commands::availability::write_cache_full(
+                state,
+                id,
+                mode_str,
+                true,
+                episode_count,
+                extras,
+                None,
+            );
+        } else {
+            crate::commands::availability::write_cache(state, id, &args.mode, true);
+        }
     }
 
     // Decide media kind: cheap path-extension first, HEAD fallback
