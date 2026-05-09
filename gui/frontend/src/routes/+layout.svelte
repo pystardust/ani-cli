@@ -376,7 +376,7 @@
 				role="search"
 			>
 				<span class="topbar-search-icon" aria-hidden="true">
-					<Icon name="search" size={18} />
+					<Icon name="search" size={20} />
 				</span>
 				<input
 					bind:this={topbarInputEl}
@@ -544,25 +544,42 @@
 	}
 	.brand-mark {
 		display: block;
-		inline-size: 2.5rem;
-		block-size: 2.5rem;
-		filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.4));
+		/* Bumped from 2.5rem (40px) to 2.75rem (44px) so the icon
+		   reads as a real identity mark rather than a debug badge.
+		   Drop-shadow gives it weight against the dark rail. */
+		inline-size: 2.75rem;
+		block-size: 2.75rem;
+		filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.45));
+		transition: transform var(--dur-med) var(--ease-out-elastic);
+	}
+	.brand:hover .brand-mark {
+		transform: scale(1.05);
 	}
 	.brand-word {
 		display: inline-flex;
 		align-items: baseline;
-		gap: 2px;
+		gap: 1px;
 		font-family: var(--font-display);
-		font-size: var(--type-meta);
-		color: var(--bone-200);
+		/* Bumped 14px → 16px (type-body) and lifted to bone-100 so
+		   the wordmark feels like a real identity instead of a
+		   subscript. The italic-display voice is preserved per the
+		   typography rules (italic only for show titles + brand). */
+		font-size: var(--type-body);
+		font-weight: 500;
+		letter-spacing: 0.02em;
+		color: var(--bone-100);
 	}
 	.brand-word-italic {
 		font-style: italic;
 	}
 	.brand-word-dot {
 		font-family: var(--font-mono);
-		color: var(--bone-400);
 		font-style: normal;
+		/* Brand-tinted middot ties the wordmark to the icon
+		   colourway (the icon's mark fill is var(--brand)). */
+		color: var(--brand);
+		font-weight: 600;
+		margin-inline: 1px;
 	}
 
 	/* — Nav. */
@@ -619,12 +636,16 @@
 	}
 	.nav-link.active {
 		color: var(--bone-100);
-		background: color-mix(in oklab, var(--brand) 10%, transparent);
+		/* Bumped from 10% brand → 16% so the active item has a clear
+		   wash, not a hairline tint. Combined with the 3px left rule
+		   below + the brand bloom (::after) the "you-are-here" cue
+		   is unambiguous at a glance. */
+		background: color-mix(in oklab, var(--brand) 16%, transparent);
 	}
 	.nav-link.active::before {
-		/* Stronger 3px accent rule on the inline-start edge marks the
-		   active item — was 2px and read as a hairline; bumped so the
-		   "you are here" cue is unmistakable at a glance. */
+		/* 3px brand rule on the inline-start edge marks the active
+		   item. Was 2px and read as a hairline; bumped so the cue
+		   is unmistakable at a glance. */
 		content: '';
 		position: absolute;
 		inset-block: var(--space-2);
@@ -633,6 +654,12 @@
 		background: var(--brand);
 		border-radius: 0 2px 2px 0;
 		z-index: 1;
+	}
+	.nav-link.active .nav-mark {
+		/* Icon picks up a brand tint on active — same colour as the
+		   left rule, so the whole row reads as a single brand cue
+		   rather than three separate styled bits. */
+		color: color-mix(in oklab, var(--brand) 80%, var(--bone-100));
 	}
 	@media (max-inline-size: 720px) {
 		.nav-link.active::before {
@@ -672,9 +699,10 @@
 		transform: scale(1.05);
 	}
 	.nav-link.active::after {
-		/* Active item stays lit, slightly dimmer than hover so the
-		   accent rule still wins as the primary "you-are-here" cue. */
-		opacity: 0.7;
+		/* Active item bloom — bumped from 0.7 → 0.85 so the brand
+		   glow behind the icon reads decisively. Still under 1 so
+		   the 3px left rule + 16% bg wash remain the primary cue. */
+		opacity: 0.85;
 		transform: scale(1);
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -733,9 +761,13 @@
 	}
 
 	/* — Global topbar. Sticky against the viewport, glassy-translucent
-	     so it reads as an overlay rather than a solid header. Same
-	     gutter as the strip rail (--space-8) so the BackButton lines
-	     up with the leading edge of every page's content. */
+	     so it reads as an overlay rather than a solid header.
+	     Escapes .main-area's `padding-inline: var(--space-7)` via a
+	     negative margin so the bar reaches the rail's right edge on
+	     the left and the window's right edge on the right —
+	     otherwise it floats with empty bands of background on both
+	     sides. Internal `--space-8` padding keeps the BackButton and
+	     search from hugging the new edges. */
 	.topbar {
 		position: sticky;
 		inset-block-start: 0;
@@ -743,14 +775,26 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-5);
-		padding: var(--space-3) var(--space-8);
+		margin-inline: calc(-1 * var(--space-7));
+		inline-size: calc(100% + 2 * var(--space-7));
+		/* Block padding bumped from --space-3 (12px) to --space-4
+		   (16px) so the bar reads as a proper chrome row, not a
+		   thin strip. */
+		padding: var(--space-4) var(--space-8);
 		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
 		backdrop-filter: blur(16px) saturate(1.3);
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
 		border-block-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
 	}
 	@media (max-inline-size: 720px) {
+		/* Narrow shell: .main-area drops its inline gutter, so the
+		   topbar's escape calc collapses to zero — but keep an
+		   explicit reset to avoid surprising overflow at boundary
+		   widths. Inner pad shrinks to space-4 so the search input
+		   keeps room. */
 		.topbar {
+			margin-inline: 0;
+			inline-size: 100%;
 			padding-inline: var(--space-4);
 		}
 	}
@@ -764,10 +808,16 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-		flex: 0 1 28rem;
+		/* Bumped from 28rem to 32rem; the search is the topbar's
+		   primary action and the previous size made the input feel
+		   secondary. */
+		flex: 0 1 32rem;
 		margin-inline-start: auto;
-		padding: var(--space-2) var(--space-4);
-		border: 1px solid var(--ink-300);
+		/* Pill thickens (--space-2 → --space-3 vertical, --space-4
+		   → --space-5 horizontal) to host the new 16px body-sans
+		   input without feeling cramped. */
+		padding: var(--space-3) var(--space-5);
+		border: 1px solid color-mix(in oklab, var(--bone-100) 22%, transparent);
 		border-radius: var(--radius-pill);
 		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
 		transition:
@@ -807,8 +857,12 @@
 		-webkit-appearance: none;
 		-moz-appearance: none;
 		box-shadow: none;
-		font-family: var(--font-mono);
-		font-size: var(--type-meta);
+		/* Body sans / 16px / 500 weight — was mono / 14px which read
+		   as a debug field. Search is the topbar's primary action;
+		   the input should feel like a real query box. */
+		font-family: var(--font-body);
+		font-size: var(--type-body);
+		font-weight: 500;
 		color: var(--bone-100);
 	}
 	.topbar-search input:focus,
@@ -824,7 +878,11 @@
 		display: none;
 	}
 	.topbar-search input::placeholder {
-		color: var(--bone-400);
+		/* Lift placeholder from bone-400 to a brighter color-mix so
+		   the call-to-action ("Search anime…") is legible at the
+		   bumped 16px size. */
+		color: color-mix(in oklab, var(--bone-100) 55%, transparent);
+		font-weight: 400;
 	}
 	.topbar-search input::-webkit-search-cancel-button {
 		appearance: none;
