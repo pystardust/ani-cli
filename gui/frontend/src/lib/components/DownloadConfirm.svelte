@@ -99,6 +99,43 @@
 		return Math.max(1, Math.floor(endEp) - Math.floor(startEp) + 1);
 	});
 
+	// Range validation. Returns null when valid, a human-readable
+	// message when not. Used to disable Confirm and surface an inline
+	// error row beneath the inputs. Only checked while in `range`
+	// mode — This and All build their episode arg from constants.
+	const rangeError = $derived.by(() => {
+		if (mode !== 'range') return null;
+		const s = Math.floor(startEp);
+		const e = Math.floor(endEp);
+		if (!Number.isFinite(startEp) || !Number.isFinite(endEp)) {
+			return 'Enter a number for both From and To.';
+		}
+		if (s < 1 || e < 1) return 'Episode numbers must be at least 1.';
+		if (s > rangeMax) {
+			return maxEpisode
+				? `Only ${maxEpisode} episode${maxEpisode === 1 ? '' : 's'} available — From can't exceed ${maxEpisode}.`
+				: `Capped at ${rangeMax} — episode count unknown for this show.`;
+		}
+		if (e > rangeMax) {
+			return maxEpisode
+				? `Only ${maxEpisode} episode${maxEpisode === 1 ? '' : 's'} available — To can't exceed ${maxEpisode}.`
+				: `Capped at ${rangeMax} — episode count unknown for this show.`;
+		}
+		if (e < s) return 'To must be greater than or equal to From.';
+		return null;
+	});
+	const startInvalid = $derived(
+		mode === 'range' &&
+			(!Number.isFinite(startEp) || Math.floor(startEp) < 1 || Math.floor(startEp) > rangeMax)
+	);
+	const endInvalid = $derived(
+		mode === 'range' &&
+			(!Number.isFinite(endEp) ||
+				Math.floor(endEp) < 1 ||
+				Math.floor(endEp) > rangeMax ||
+				Math.floor(endEp) < Math.floor(startEp))
+	);
+
 	async function browse() {
 		const picker = typeof window !== 'undefined' ? window.aniGui?.pickDirectory : null;
 		if (!picker) return; // dev-mode browser without preload — leave dir as-is
@@ -244,20 +281,24 @@
 						<input
 							id="dl-start-ep"
 							class="dl-input dl-input-num"
+							class:dl-input-error={startInvalid}
 							type="number"
 							min="1"
 							max={rangeMax}
 							bind:value={startEp}
 							aria-label="From episode"
+							aria-invalid={startInvalid}
 						/>
 						<span class="dl-range-sep" aria-hidden="true">–</span>
 						<input
 							class="dl-input dl-input-num"
+							class:dl-input-error={endInvalid}
 							type="number"
 							min={Math.floor(startEp)}
 							max={rangeMax}
 							bind:value={endEp}
 							aria-label="To episode"
+							aria-invalid={endInvalid}
 						/>
 						{#if maxEpisode}
 							<span class="dl-range-total">
@@ -273,6 +314,9 @@
 							</span>
 						{/if}
 					</div>
+					{#if rangeError}
+						<p class="dl-error" role="alert" aria-live="polite">{rangeError}</p>
+					{/if}
 				{/if}
 
 				<p class="dl-hint">
@@ -328,7 +372,7 @@
 					type="button"
 					class="dl-btn dl-btn-accent"
 					onclick={confirm}
-					disabled={busy || !dir.trim()}
+					disabled={busy || !dir.trim() || rangeError !== null}
 				>
 					{busy ? 'Starting…' : 'Start download'}
 				</button>
@@ -517,6 +561,22 @@
 		outline: none;
 		border-color: var(--accent);
 		box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
+	}
+	/* Invalid Range input — oxblood border, faint background tint;
+	   keeps the focus halo readable on top via box-shadow stack. */
+	.dl-input-error {
+		border-color: var(--oxblood, #b11a1a);
+		background: color-mix(in oklab, var(--oxblood, #b11a1a) 10%, var(--ink-000));
+	}
+	.dl-input-error:focus-visible {
+		border-color: var(--oxblood, #b11a1a);
+		box-shadow: 0 0 0 2px color-mix(in oklab, var(--oxblood, #b11a1a) 35%, transparent);
+	}
+	.dl-error {
+		margin: var(--space-2) 0 0;
+		font-family: var(--font-body);
+		font-size: var(--type-meta);
+		color: var(--oxblood, #b11a1a);
 	}
 	.dl-hint {
 		margin: 0;
