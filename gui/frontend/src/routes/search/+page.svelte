@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import {
@@ -28,7 +29,51 @@
 	let trending = $state<KitsuAnimeRef[] | null>(null);
 	let topRated = $state<KitsuAnimeRef[] | null>(null);
 
-	const count = $derived(results?.length ?? 0);
+	// Client-side sort + filter on the result set. Kitsu returns up
+	// to ~20 hits per query; sorting/filtering is cheap to do here
+	// rather than re-querying.
+	type SortKey = 'relevance' | 'title' | 'year' | 'rating';
+	const SORT_LABELS: Record<SortKey, string> = {
+		relevance: 'Relevance',
+		title: 'Title',
+		year: 'Year',
+		rating: 'Rating'
+	};
+	const SUBTYPES = ['TV', 'movie', 'special', 'OVA', 'ONA', 'music'];
+	let sortKey = $state<SortKey>('relevance');
+	const activeSubtypes = new SvelteSet<string>();
+
+	function toggleSubtype(s: string) {
+		if (activeSubtypes.has(s)) activeSubtypes.delete(s);
+		else activeSubtypes.add(s);
+	}
+
+	const displayed = $derived.by(() => {
+		if (!results) return null;
+		let list = results.slice();
+		if (activeSubtypes.size > 0) {
+			list = list.filter((h) => activeSubtypes.has(h.subtype ?? 'TV'));
+		}
+		if (sortKey === 'title') {
+			list.sort((a, b) =>
+				a.canonical_title.localeCompare(b.canonical_title, undefined, { sensitivity: 'base' })
+			);
+		} else if (sortKey === 'year') {
+			// Empty start_date sorts last regardless of direction.
+			list.sort((a, b) => {
+				const aY = a.start_date ?? '';
+				const bY = b.start_date ?? '';
+				if (!aY && bY) return 1;
+				if (aY && !bY) return -1;
+				return bY.localeCompare(aY);
+			});
+		} else if (sortKey === 'rating') {
+			list.sort((a, b) => (b.average_rating ?? -1) - (a.average_rating ?? -1));
+		}
+		return list;
+	});
+
+	const count = $derived(displayed?.length ?? 0);
 
 	onMount(() => {
 		kitsuTrending()
@@ -143,6 +188,53 @@
 		{/if}
 	</section>
 
+	{#if submitted && results !== null && results.length > 0}
+		<section class="controls" aria-label="Sort and filter results">
+			<div class="control-group">
+				<span class="control-label">Sort</span>
+				<div class="seg" role="group" aria-label="Sort">
+					{#each Object.entries(SORT_LABELS) as [key, label] (key)}
+						<button
+							type="button"
+							class="seg-btn"
+							class:active={sortKey === key}
+							aria-pressed={sortKey === key}
+							onclick={() => (sortKey = key as SortKey)}
+						>
+							{label}
+						</button>
+					{/each}
+				</div>
+			</div>
+			<div class="control-group">
+				<span class="control-label">Type</span>
+				<div class="chips" role="group" aria-label="Filter by subtype">
+					{#each SUBTYPES as s (s)}
+						<button
+							type="button"
+							class="chip"
+							class:active={activeSubtypes.has(s)}
+							aria-pressed={activeSubtypes.has(s)}
+							onclick={() => toggleSubtype(s)}
+						>
+							{s.toUpperCase()}
+						</button>
+					{/each}
+					{#if activeSubtypes.size > 0}
+						<button
+							type="button"
+							class="chip chip-clear"
+							onclick={() => activeSubtypes.clear()}
+							aria-label="Clear type filters"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
+			</div>
+		</section>
+	{/if}
+
 	{#if error}
 		<div class="state state-error" role="alert">
 			<p class="state-headline">{error.headline}</p>
@@ -184,9 +276,14 @@
 				{/each}
 			</Strip>
 		{/if}
-	{:else if results !== null}
+	{:else if displayed !== null && displayed.length === 0 && results !== null && results.length > 0}
+		<div class="state state-empty">
+			<p class="state-headline">No matches in the current filter.</p>
+			<p class="state-detail">Clear or change the type filter above to see more results.</p>
+		</div>
+	{:else if displayed !== null}
 		<ul class="grid">
-			{#each results as hit, i (hit.id)}
+			{#each displayed as hit, i (hit.id)}
 				{@const poster = posterFor(hit)}
 				{@const posterHover = posterHoverFor(hit)}
 				{@const accent = accentFor(hit.id)}
@@ -504,5 +601,88 @@
 		font-size: var(--type-body);
 		color: var(--bone-300);
 		max-inline-size: 60ch;
+	}
+
+	/* Sort + filter controls — sit between the eyebrow and the grid.
+	   Two control-groups stacked horizontally on wide; wrap on narrow. */
+	.controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-5);
+		align-items: center;
+		margin-block-end: var(--space-5);
+	}
+	.control-group {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+	.control-label {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
+	}
+	.seg {
+		display: inline-flex;
+		gap: 1px;
+		padding: 2px;
+		background: var(--ink-050);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-card);
+	}
+	.seg-btn {
+		padding: 4px var(--space-3);
+		background: transparent;
+		border: 0;
+		border-radius: calc(var(--radius-card) - 2px);
+		font-family: var(--font-body);
+		font-size: var(--type-body-s);
+		color: var(--bone-200);
+		cursor: pointer;
+		transition: background var(--dur-fast) var(--ease-out-soft);
+	}
+	.seg-btn:hover:not(.active) {
+		background: color-mix(in oklab, var(--bone-100) 6%, transparent);
+		color: var(--bone-100);
+	}
+	.seg-btn.active {
+		background: var(--accent-persimmon);
+		color: var(--ink-000);
+	}
+	.chips {
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	.chip {
+		padding: 4px var(--space-3);
+		background: transparent;
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-pill);
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		color: var(--bone-300);
+		cursor: pointer;
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
+	}
+	.chip:hover:not(.active) {
+		color: var(--bone-100);
+		border-color: var(--ink-300);
+	}
+	.chip.active {
+		background: color-mix(in oklab, var(--accent-persimmon) 22%, var(--ink-050));
+		color: var(--bone-100);
+		border-color: var(--accent-persimmon);
+	}
+	.chip-clear {
+		border-style: dashed;
+		text-transform: none;
+		letter-spacing: normal;
 	}
 </style>
