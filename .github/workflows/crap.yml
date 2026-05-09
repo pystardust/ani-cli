@@ -77,11 +77,19 @@ jobs:
       - name: Compute CRAP
         run: |
           mkdir -p coverage
-          lizard --xml gui/backend/src gui/frontend/src \
-            | node tools/crap-score.mjs \
-                --lcov=gui/backend/lcov.info \
-                --lcov=gui/frontend/coverage/lcov.info:gui/frontend \
-                --root=. --json > coverage/crap-summary.json
+          # Run lizard once, fan out to two crap-score invocations:
+          # the JSON one feeds the ratchet check; the table goes to
+          # the build log so failures surface the top-N offenders
+          # without needing a second push.
+          lizard --xml gui/backend/src gui/frontend/src > coverage/lizard.xml
+          node tools/crap-score.mjs \
+              --lcov=gui/backend/lcov.info \
+              --lcov=gui/frontend/coverage/lcov.info:gui/frontend \
+              --root=. < coverage/lizard.xml
+          node tools/crap-score.mjs \
+              --lcov=gui/backend/lcov.info \
+              --lcov=gui/frontend/coverage/lcov.info:gui/frontend \
+              --root=. --json < coverage/lizard.xml > coverage/crap-summary.json
           cat coverage/crap-summary.json
 
       - name: Ratchet — fail if max/p95/high_risk regressed
