@@ -23,13 +23,31 @@
 
 	let dir = $state('');
 	let busy = $state(false);
+	// Range fields. start defaults to args.episode (the episode the
+	// user clicked from); end defaults to start so a fresh open reads
+	// as "single-episode download" until the user opts in. ani-cli's
+	// `-e M-N` loops sequentially so the range can be arbitrary; we
+	// just clamp to args.episode_count when known.
+	let startEp = $state(1);
+	let endEp = $state(1);
 
 	$effect(() => {
 		if (open) {
 			dir = args?.download_dir && args.download_dir.length > 0 ? args.download_dir : defaultDir;
 			busy = false;
+			const initial = args ? Number.parseInt(args.episode, 10) : 1;
+			startEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
+			endEp = startEp;
 		}
 	});
+
+	const episodeArg = $derived.by(() => {
+		const s = Math.max(1, Math.floor(startEp));
+		const e = Math.max(s, Math.floor(endEp));
+		return s === e ? String(s) : `${s}-${e}`;
+	});
+	const isRange = $derived(Math.floor(endEp) > Math.floor(startEp));
+	const rangeCount = $derived(Math.max(1, Math.floor(endEp) - Math.floor(startEp) + 1));
 
 	async function browse() {
 		const picker = typeof window !== 'undefined' ? window.aniGui?.pickDirectory : null;
@@ -49,13 +67,14 @@
 
 	function confirm() {
 		if (!args || !dir.trim()) return;
-		// startDownload returns synchronously after registering the row
-		// in the store; the SSE runs in the background. So there's no
-		// real "starting" state for us to gate the close on — just hand
-		// off and dismiss. (The previous version flipped `busy=true`
-		// before calling close(), but close() early-returns when busy,
-		// which trapped the modal in "Starting…" forever.)
-		startDownload({ ...args, download_dir: dir, destDir: dir });
+		// Build the episode arg as either "5" or "5-12" — ani-cli's
+		// -e accepts both and loops the range sequentially with -d.
+		startDownload({
+			...args,
+			episode: episodeArg,
+			download_dir: dir,
+			destDir: dir
+		});
 		open = false;
 		onClose();
 	}
@@ -86,12 +105,48 @@
 				<p class="dl-eyebrow">
 					<span class="dl-eyebrow-key">Download</span>
 					<span class="dl-eyebrow-rule" aria-hidden="true"></span>
-					<span class="dl-eyebrow-value">episode {args.episode}</span>
+					<span class="dl-eyebrow-value">
+						{isRange
+							? `episodes ${Math.floor(startEp)}–${Math.floor(endEp)}`
+							: `episode ${Math.floor(startEp)}`}
+					</span>
 				</p>
 				<h2 id="dl-confirm-title" class="dl-title">{args.title}</h2>
 			</header>
 
 			<div class="dl-body">
+				<label class="dl-label" for="dl-start-ep">Episodes</label>
+				<div class="dl-row dl-row-eps">
+					<input
+						id="dl-start-ep"
+						class="dl-input dl-input-num"
+						type="number"
+						min="1"
+						max={args.episode_count ?? undefined}
+						bind:value={startEp}
+						aria-label="From episode"
+					/>
+					<span class="dl-range-sep" aria-hidden="true">–</span>
+					<input
+						class="dl-input dl-input-num"
+						type="number"
+						min={Math.floor(startEp)}
+						max={args.episode_count ?? undefined}
+						bind:value={endEp}
+						aria-label="To episode"
+					/>
+					{#if args.episode_count}
+						<span class="dl-range-total">of {args.episode_count}</span>
+					{/if}
+				</div>
+				<p class="dl-hint">
+					{#if isRange}
+						Downloads {rangeCount} episodes sequentially via ani-cli's range mode.
+					{:else}
+						Single episode. Set "to" higher than "from" to download a range.
+					{/if}
+				</p>
+
 				<label class="dl-label" for="dl-dir-input">Save to</label>
 				<div class="dl-row">
 					<input
@@ -117,7 +172,7 @@
 					</button>
 				</div>
 				<p class="dl-hint">
-					File lands as <code>{args.title} Episode {args.episode}.mp4</code> (ani-cli's naming).
+					Files land as <code>{args.title} Episode N.mp4</code> per ani-cli's naming.
 				</p>
 			</div>
 
@@ -223,6 +278,30 @@
 	.dl-row {
 		display: flex;
 		gap: var(--space-2);
+	}
+	.dl-row-eps {
+		align-items: baseline;
+		gap: var(--space-3);
+	}
+	.dl-input-num {
+		flex: 0 0 5rem;
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+	}
+	.dl-input-num::-webkit-outer-spin-button,
+	.dl-input-num::-webkit-inner-spin-button {
+		appearance: auto;
+	}
+	.dl-range-sep {
+		color: var(--bone-300);
+		font-family: var(--font-mono);
+	}
+	.dl-range-total {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
+		color: var(--bone-300);
 	}
 	.dl-input {
 		flex: 1 1 auto;

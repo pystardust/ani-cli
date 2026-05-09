@@ -35,7 +35,15 @@
 				<span class="dl-bar-caption">
 					<span class="dl-bar-text">{item.title}</span>
 					<span class="dl-bar-sep" aria-hidden="true">·</span>
-					<span class="dl-bar-ep">Ep {item.episode}</span>
+					<span class="dl-bar-ep">
+						{#if item.rangeTotal && item.currentEp != null}
+							Ep {item.currentEp} of {item.rangeTotal}
+						{:else if item.rangeTotal}
+							Eps {item.episode}
+						{:else}
+							Ep {item.episode}
+						{/if}
+					</span>
 				</span>
 			</div>
 		{/each}

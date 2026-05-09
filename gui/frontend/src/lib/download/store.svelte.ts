@@ -24,6 +24,7 @@ export type DownloadStatus = 'pending' | 'active' | 'done' | 'error';
 export interface DownloadItem {
 	id: string;
 	title: string;
+	/** Episode arg as sent to ani-cli — `"5"` for single, `"5-12"` for range. */
 	episode: string;
 	mode: string;
 	quality: string;
@@ -37,6 +38,14 @@ export interface DownloadItem {
 	 *  wasn't looking at the dock. Cleared the next time the dock
 	 *  opens — drives the small completion badge on the topbar icon. */
 	unseen: boolean;
+	/** When the episode arg is `"M-N"`, the count of episodes in the
+	 *  range — drives the dock's "Episode N of M" annotation. Null
+	 *  for single-episode downloads. */
+	rangeTotal: number | null;
+	/** Last episode number ani-cli announced via `Playing episode N…`
+	 *  on stderr. Updated by setProgress as lines arrive. Null until
+	 *  the first such line is parsed. */
+	currentEp: number | null;
 }
 
 let nextId = 1;
@@ -64,6 +73,12 @@ class DownloadStore {
 		destDir: string;
 	}): string {
 		const id = `dl-${nextId++}`;
+		// Parse `"M-N"` to compute the range size up front so the dock
+		// can show "Episode K of N-M+1" before any progress arrives.
+		const rangeMatch = args.episode.match(/^(\d+)-(\d+)$/);
+		const rangeTotal = rangeMatch
+			? Math.max(1, Number.parseInt(rangeMatch[2], 10) - Number.parseInt(rangeMatch[1], 10) + 1)
+			: null;
 		this.items = [
 			{
 				id,
@@ -77,7 +92,9 @@ class DownloadStore {
 				error: null,
 				startedAt: Date.now(),
 				abort: null,
-				unseen: false
+				unseen: false,
+				rangeTotal,
+				currentEp: null
 			},
 			...this.items
 		];
@@ -91,7 +108,14 @@ class DownloadStore {
 	}
 
 	setProgress(id: string, line: string) {
-		this.items = this.items.map((i) => (i.id === id ? { ...i, progress: line } : i));
+		// ani-cli prints `Playing episode N...` on each iteration of a
+		// range download (line 448 of upstream). Parse it so the dock
+		// can show "Episode N of M" without surfacing the raw line.
+		const match = line.match(/^Playing episode\s+(\d+(?:\.\d+)?)/i);
+		const currentEp = match ? Number.parseFloat(match[1]) : null;
+		this.items = this.items.map((i) =>
+			i.id === id ? { ...i, progress: line, currentEp: currentEp ?? i.currentEp } : i
+		);
 	}
 
 	markDone(id: string, destDir: string) {

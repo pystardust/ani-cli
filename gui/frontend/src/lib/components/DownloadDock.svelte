@@ -98,7 +98,15 @@
 						<li class="dl-dock-item dl-{item.status}">
 							<div class="dl-dock-meta">
 								<span class="dl-dock-title">{item.title}</span>
-								<span class="dl-dock-ep">Ep {item.episode}</span>
+								<span class="dl-dock-ep">
+									{#if item.rangeTotal && item.currentEp != null}
+										Ep {item.currentEp} of {item.rangeTotal}
+									{:else if item.rangeTotal}
+										Eps {item.episode}
+									{:else}
+										Ep {item.episode}
+									{/if}
+								</span>
 							</div>
 							{#if item.status === 'active' || item.status === 'pending'}
 								<div class="dl-dock-line" title={item.progress ?? ''}>
