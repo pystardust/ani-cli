@@ -1023,12 +1023,22 @@
 					void goto(resolve('/anime/[id]', { id }), { replaceState: true });
 				}}
 			>
-				<span class="np-show">{detail?.canonical_title ?? 'Loading…'}</span>
+				<!-- title attrs surface the full string when the text is
+				     truncated by the row's no-wrap shrink. Native title
+				     fires after the OS hover delay (~600ms) — that's the
+				     conventional "wait then reveal" affordance the user
+				     asked for, not the immediate custom tooltip used on
+				     the disabled "All" button. -->
+				<span class="np-show" title={detail?.canonical_title ?? ''}
+					>{detail?.canonical_title ?? 'Loading…'}</span
+				>
 				<span class="np-sep" aria-hidden="true">·</span>
 				<span class="np-ep">Episode {episodeNum}</span>
 				{#if currentEpisodeMeta?.canonical_title}
 					<span class="np-em-dash" aria-hidden="true">—</span>
-					<span class="np-ep-title">{currentEpisodeMeta.canonical_title}</span>
+					<span class="np-ep-title" title={currentEpisodeMeta.canonical_title}
+						>{currentEpisodeMeta.canonical_title}</span
+					>
 				{/if}
 			</a>
 
