@@ -627,6 +627,61 @@ mod tests {
             proptest::prop_assert_eq!(m.max_integer_episode("sub"), want_sub);
             proptest::prop_assert_eq!(m.max_integer_episode("dub"), want_dub);
         }
+
+        // Picker invariants for `pick_by_ep_count`:
+        //
+        //   • Empty input → None.
+        //   • Non-empty input → Some(idx) with idx in 1..=len.
+        //   • The chosen candidate's distance to `expected` is
+        //     ≤ every other candidate's distance.
+        //   • Ties resolve to the earliest candidate (preserve
+        //     allanime's own ordering when ep_count signal is
+        //     ambiguous).
+        //
+        // Catches regressions in the disambiguator that drives
+        // both the play flow's `-S` selection and the availability
+        // probe's "is this on allmanga?" verdict.
+        #[test]
+        fn pick_by_ep_count_returns_index_with_minimum_distance(
+            counts in proptest::collection::vec(0u32..=10_000u32, 1..30),
+            expected in 0u32..=10_000u32,
+        ) {
+            let cands: Vec<Candidate> = counts
+                .iter()
+                .enumerate()
+                .map(|(i, &n)| Candidate {
+                    id: format!("c{i}"),
+                    name: format!("c{i}"),
+                    available_episodes: AvailableEpisodes { sub: n, dub: 0 },
+                })
+                .collect();
+            let pick = pick_by_ep_count(&cands, expected, "sub").expect("non-empty");
+            proptest::prop_assert!(pick >= 1);
+            proptest::prop_assert!(pick <= cands.len());
+
+            let chosen_dist = cands[pick - 1].available_episodes.sub.abs_diff(expected);
+            for (i, c) in cands.iter().enumerate() {
+                let d = c.available_episodes.sub.abs_diff(expected);
+                proptest::prop_assert!(
+                    chosen_dist <= d,
+                    "picker chose c{} with dist {} but c{} has dist {}",
+                    pick - 1,
+                    chosen_dist,
+                    i,
+                    d,
+                );
+            }
+            // Tie-break invariant: every earlier candidate must have
+            // a strictly larger distance (otherwise the picker
+            // should have chosen them).
+            for c in &cands[..pick - 1] {
+                let d = c.available_episodes.sub.abs_diff(expected);
+                proptest::prop_assert!(
+                    d > chosen_dist,
+                    "tie-break: earlier candidate had equal distance but wasn't chosen",
+                );
+            }
+        }
     }
 
     #[tokio::test]

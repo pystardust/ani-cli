@@ -318,4 +318,90 @@ mod tests {
         assert_eq!(pick, 1);
         assert_eq!(chosen.expect("candidate").id, "only");
     }
+
+    proptest::proptest! {
+        // Invariants for `select_first_with_hits_with_candidate`:
+        //
+        //   • If every candidate list is empty → return
+        //     `(primary, 1, None)`. This is the legacy fallback
+        //     ani-cli has always used.
+        //   • Otherwise the chosen title is the first non-empty
+        //     list's title, and the chosen candidate is from that
+        //     same list (never cross-pollinated from a later list).
+        //   • The 1-based pick index is in 1..=len of that list.
+        //
+        // The picker is the fusion point for play + availability +
+        // download — drift here would silently make all three
+        // disagree on which allmanga show "Naruto" maps to.
+        #[test]
+        fn picker_returns_primary_one_none_iff_every_list_is_empty(
+            list_count in 0usize..6,
+        ) {
+            let results: Vec<(String, Vec<Candidate>)> = (0..list_count)
+                .map(|i| (format!("title-{i}"), Vec::<Candidate>::new()))
+                .collect();
+            let (title, pick, chosen) =
+                select_first_with_hits_with_candidate("Primary", &results, Some(12), "sub");
+            proptest::prop_assert_eq!(title, "Primary");
+            proptest::prop_assert_eq!(pick, 1);
+            proptest::prop_assert!(chosen.is_none());
+        }
+
+        // Walk the results in order, drop the empty leaders, pin
+        // the picker on the first non-empty list, and assert it
+        // never picks something from a later list.
+        #[test]
+        fn picker_consumes_first_non_empty_list_only(
+            empty_prefix_len in 0usize..3,
+            tail_lens in proptest::collection::vec(1usize..6, 1..3),
+            ep_counts in proptest::collection::vec(0u32..=1_000u32, 1..18),
+            expected in 0u32..=1_000u32,
+        ) {
+            // Pre-flatten ep_counts into the first-non-empty list and
+            // any subsequent lists (each gets a slice of length
+            // tail_lens[i]). When ep_counts is shorter than the sum
+            // of tail_lens we trim — the proptest generators above
+            // make the totals usually small enough.
+            let mut iter = ep_counts.iter();
+            let mut lists: Vec<Vec<Candidate>> = Vec::new();
+            for &len in &tail_lens {
+                let mut group = Vec::new();
+                for _ in 0..len {
+                    if let Some(&n) = iter.next() {
+                        group.push(cand(&format!("c{}", group.len()), n));
+                    }
+                }
+                if !group.is_empty() {
+                    lists.push(group);
+                }
+            }
+            // Skip if tail_lens consumed nothing meaningful.
+            proptest::prop_assume!(!lists.is_empty());
+
+            let mut results: Vec<(String, Vec<Candidate>)> = Vec::new();
+            for i in 0..empty_prefix_len {
+                results.push((format!("empty-{i}"), Vec::new()));
+            }
+            for (i, group) in lists.into_iter().enumerate() {
+                results.push((format!("list-{i}"), group));
+            }
+
+            let (title, pick, chosen) = select_first_with_hits_with_candidate(
+                "Primary", &results, Some(expected), "sub",
+            );
+
+            // The chosen title must be the first non-empty list's
+            // title — never a later list, never the primary.
+            let first_non_empty_idx = empty_prefix_len;
+            proptest::prop_assert_eq!(&title, &results[first_non_empty_idx].0);
+            // pick is 1-based and within the chosen list.
+            let chosen_list = &results[first_non_empty_idx].1;
+            proptest::prop_assert!(pick >= 1);
+            proptest::prop_assert!(pick <= chosen_list.len());
+            // Chosen candidate must be from the chosen list (id
+            // matches one of the entries).
+            let chosen = chosen.expect("candidate");
+            proptest::prop_assert!(chosen_list.iter().any(|c| c.id == chosen.id));
+        }
+    }
 }

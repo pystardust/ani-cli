@@ -269,4 +269,133 @@ mod tests {
         let abs = resolve(&base, "https://other.example/x.m3u8").unwrap();
         assert_eq!(abs.as_str(), "https://other.example/x.m3u8");
     }
+
+    proptest::proptest! {
+        // Idempotency property for the master playlist rewrite. The
+        // hand-coded test above pins one input; this fuzzes over an
+        // arbitrary mix of variant counts + URI shapes so a future
+        // bug that survives the first pass but reorders / corrupts
+        // on the second is caught.
+        //
+        // Why it matters: hls.js reloads the master playlist on
+        // quality switches and on some recoverable errors. A
+        // non-idempotent rewrite would break the second load with
+        // "URL already proxied" double-encoding.
+        #[test]
+        fn rewrite_master_idempotent_for_arbitrary_variant_counts(
+            count in 1usize..8,
+            bandwidths in proptest::collection::vec(100_000u32..=10_000_000u32, 1..8),
+        ) {
+            let mut body = String::from("#EXTM3U\n#EXT-X-VERSION:3\n");
+            for (i, bw) in bandwidths.iter().take(count).enumerate() {
+                body.push_str(&format!(
+                    "#EXT-X-STREAM-INF:BANDWIDTH={bw},RESOLUTION=1920x1080\n\
+                     v/{i}/index.m3u8\n"
+                ));
+            }
+            let master_url = Url::parse("https://upstream.example/master.m3u8").unwrap();
+            let session = make_session();
+            let secret = AppSecret::random();
+            let origin = make_origin();
+
+            let first = rewrite_master(
+                body.as_bytes(),
+                &master_url,
+                &origin,
+                session,
+                &secret,
+            )
+            .expect("first pass");
+            let second = rewrite_master(
+                first.as_bytes(),
+                &master_url,
+                &origin,
+                session,
+                &secret,
+            )
+            .expect("second pass");
+            proptest::prop_assert_eq!(
+                &first,
+                &second,
+                "rewrite must be idempotent — second pass on already-rewritten manifest is a no-op"
+            );
+            // Every rewritten variant URI lives on the proxy origin.
+            // A URL leaking the upstream host through to the renderer
+            // would defeat the proxy's purpose (CORS / Referer
+            // injection happens server-side only).
+            for line in first.lines().filter(|l| !l.starts_with('#') && !l.is_empty()) {
+                proptest::prop_assert!(
+                    line.starts_with("http://127.0.0.1:42337/"),
+                    "variant URI escaped the proxy origin: {line:?}"
+                );
+            }
+        }
+
+        // Same idempotency property, this time on media playlists
+        // (segment + init + key URIs all flow through `build_proxy_uri`).
+        #[test]
+        fn rewrite_media_idempotent_for_arbitrary_segment_counts(
+            count in 1usize..16,
+        ) {
+            let mut body = String::from(
+                "#EXTM3U\n\
+                 #EXT-X-VERSION:7\n\
+                 #EXT-X-TARGETDURATION:6\n\
+                 #EXT-X-MEDIA-SEQUENCE:0\n\
+                 #EXT-X-MAP:URI=\"init.mp4\"\n",
+            );
+            for i in 0..count {
+                body.push_str(&format!(
+                    "#EXTINF:6.0,\n\
+                     seg{i}.m4s\n"
+                ));
+            }
+            body.push_str("#EXT-X-ENDLIST\n");
+
+            let media_url = Url::parse("https://upstream.example/v/1080/index.m3u8").unwrap();
+            let session = make_session();
+            let secret = AppSecret::random();
+            let origin = make_origin();
+
+            let first = rewrite_media(
+                body.as_bytes(),
+                &media_url,
+                &origin,
+                session,
+                &secret,
+            )
+            .expect("first pass");
+            let second = rewrite_media(
+                first.as_bytes(),
+                &media_url,
+                &origin,
+                session,
+                &secret,
+            )
+            .expect("second pass");
+            proptest::prop_assert_eq!(&first, &second, "media rewrite must be idempotent");
+            // Every segment / init / key URI lives on the proxy origin.
+            // EXT-X-MAP's URI is in an attribute, hence the "
+            // -delimited" shape; segment lines are bare.
+            for line in first.lines() {
+                if line.starts_with('#') {
+                    if let Some(uri_start) = line.find("URI=\"") {
+                        let after = &line[uri_start + 5..];
+                        if let Some(end) = after.find('"') {
+                            let uri = &after[..end];
+                            proptest::prop_assert!(
+                                uri.starts_with("http://127.0.0.1:42337/"),
+                                "EXT-X-MAP URI escaped the proxy: {uri:?}"
+                            );
+                        }
+                    }
+                } else if !line.is_empty() {
+                    proptest::prop_assert!(
+                        line.starts_with("http://127.0.0.1:42337/"),
+                        "segment URI escaped the proxy: {line:?}"
+                    );
+                }
+            }
+        }
+    }
 }
