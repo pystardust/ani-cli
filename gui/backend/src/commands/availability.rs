@@ -105,11 +105,18 @@ pub async fn check_availability(
     let mode = if args.mode == "dub" { "dub" } else { "sub" };
 
     // Cache short-circuit. Skipped when no kitsu_id is supplied.
+    // Legacy rows (available=true, episode_count=None) are treated
+    // as misses so they self-heal: the next visit re-probes and
+    // populates the count. False rows are kept as-is — episode_count
+    // is meaningless when there's no candidate.
     if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
         let key = cache_key(id, mode);
         if let Ok(Some(body)) = meta_cache_get(&state.cache_pool, &key) {
             if let Ok(parsed) = serde_json::from_str::<AvailabilityResponse>(&body) {
-                return Ok(parsed);
+                let needs_refresh = parsed.available && parsed.episode_count.is_none();
+                if !needs_refresh {
+                    return Ok(parsed);
+                }
             }
         }
     }
