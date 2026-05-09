@@ -1521,7 +1521,13 @@
 	.np-link {
 		display: inline-flex;
 		align-items: stretch;
-		flex: 1 1 0;
+		/* Don't grow — the link should only be as wide as its
+		   content (poster + title stack), so the empty space
+		   between the link and the np-actions cluster isn't a
+		   click-trap. .now-playing's justify-content: space-between
+		   pushes the actions to the inline-end while the link
+		   stays at the inline-start. */
+		flex: 0 1 auto;
 		min-inline-size: 0;
 		gap: var(--space-3);
 		color: inherit;
