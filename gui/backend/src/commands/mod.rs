@@ -5,6 +5,7 @@
 //! (see [`crate::i18n::keys`]). No command ever returns a localized
 //! string — the frontend owns user-facing copy.
 
+pub mod aniskip;
 pub mod app_info;
 pub mod availability;
 pub mod download;
