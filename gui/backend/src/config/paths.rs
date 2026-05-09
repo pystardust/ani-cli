@@ -82,11 +82,15 @@ pub fn ani_cli_history() -> Option<PathBuf> {
 ///
 /// The user can always override per-download via the folder picker
 /// before confirming — this is just the *default* the picker opens at.
-///
-/// STUB (red commit). Implementation lands in the green commit.
 #[must_use]
 pub fn download_dir() -> Option<PathBuf> {
-    None
+    if let Ok(xdg) = std::env::var("XDG_DOWNLOAD_DIR") {
+        if !xdg.is_empty() {
+            return Some(PathBuf::from(xdg).join("ani-gui"));
+        }
+    }
+    let home = std::env::var_os("HOME")?;
+    Some(PathBuf::from(home).join("Downloads").join("ani-gui"))
 }
 
 #[cfg(test)]
