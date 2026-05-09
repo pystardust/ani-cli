@@ -103,63 +103,101 @@
 				{:else}
 					<ul class="dl-dock-list">
 						{#each itemsView as item (item.id)}
-							<li class="dl-dock-item dl-{item.status}">
-								<div class="dl-dock-meta">
-									<span class="dl-dock-title">{item.title}</span>
-									<span class="dl-dock-ep">
-										{#if item.rangeTotal && item.currentEp != null}
-											Ep {item.currentEp} of {item.rangeTotal}
-										{:else if item.rangeTotal}
-											Eps {item.episode}
-										{:else}
-											Ep {item.episode}
-										{/if}
-									</span>
-								</div>
+							{@const epLabel =
+								item.rangeTotal && item.currentEp != null
+									? `Ep ${item.currentEp} of ${item.rangeTotal}`
+									: item.rangeTotal
+										? `Eps ${item.episode}`
+										: `Ep ${item.episode}`}
+							<li class="dl-row dl-row-{item.status}" title={item.title}>
+								<span class="dl-row-text">
+									<span class="dl-row-title">{item.title}</span>
+									<span class="dl-row-ep">{epLabel}</span>
+								</span>
+
+								<!-- Active/pending: thin indeterminate bar fills the
+								     remaining inline space + a single cancel (X). -->
 								{#if item.status === 'active' || item.status === 'pending'}
-									<div class="dl-dock-line" title={item.progress ?? ''}>
-										{item.progress ?? 'Resolving…'}
-									</div>
-									<div class="dl-dock-bar dl-dock-bar-indet" aria-hidden="true">
+									<span
+										class="dl-row-bar dl-row-bar-indet"
+										aria-hidden="true"
+										title={item.progress ?? ''}
+									>
 										<span></span>
-									</div>
+									</span>
+									<button
+										type="button"
+										class="dl-row-act"
+										onclick={() => downloadStore.cancel(item.id)}
+										aria-label="Cancel download"
+										title="Cancel"
+									>
+										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+											<path
+												d="M6 6l12 12M6 18L18 6"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</button>
 								{:else if item.status === 'done'}
-									<p class="dl-dock-done">
-										Saved to <code>{item.destDir}</code>
-									</p>
+									<button
+										type="button"
+										class="dl-row-act"
+										onclick={() => reveal(item.destDir)}
+										aria-label="Reveal in folder"
+										title="Reveal in folder"
+									>
+										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+											<path
+												d="M3 7h6l2 2h10v10H3z"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
+										</svg>
+									</button>
+									<button
+										type="button"
+										class="dl-row-act"
+										onclick={() => downloadStore.dismiss(item.id)}
+										aria-label="Dismiss"
+										title="Dismiss"
+									>
+										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+											<path
+												d="M6 6l12 12M6 18L18 6"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</button>
 								{:else}
-									<p class="dl-dock-error">{item.error ?? 'Failed'}</p>
+									<span class="dl-row-error" title={item.error ?? 'Failed'}>!</span>
+									<button
+										type="button"
+										class="dl-row-act"
+										onclick={() => downloadStore.dismiss(item.id)}
+										aria-label="Dismiss"
+										title="Dismiss"
+									>
+										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+											<path
+												d="M6 6l12 12M6 18L18 6"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</button>
 								{/if}
-								<div class="dl-dock-actions">
-									{#if item.status === 'active' || item.status === 'pending'}
-										<button
-											type="button"
-											class="dl-dock-btn"
-											onclick={() => downloadStore.cancel(item.id)}
-										>
-											Cancel
-										</button>
-									{:else if item.status === 'done'}
-										<button type="button" class="dl-dock-btn" onclick={() => reveal(item.destDir)}>
-											Reveal
-										</button>
-										<button
-											type="button"
-											class="dl-dock-btn dl-dock-btn-quiet"
-											onclick={() => downloadStore.dismiss(item.id)}
-										>
-											Dismiss
-										</button>
-									{:else}
-										<button
-											type="button"
-											class="dl-dock-btn dl-dock-btn-quiet"
-											onclick={() => downloadStore.dismiss(item.id)}
-										>
-											Dismiss
-										</button>
-									{/if}
-								</div>
 							</li>
 						{/each}
 					</ul>
@@ -230,18 +268,23 @@
 		align-items: center;
 		justify-content: center;
 	}
+	/* Popover matches the topbar's glassy translucent treatment so
+	   the dock reads as an extension of the chrome rather than a
+	   floating card on top of the page. */
 	.dl-dock-pop {
 		position: absolute;
 		inset-block-start: calc(100% + var(--space-2));
 		inset-inline-end: 0;
-		inline-size: 22rem;
+		inline-size: 24rem;
 		max-block-size: 28rem;
 		overflow-y: auto;
-		padding: var(--space-3);
-		background: color-mix(in oklab, var(--ink-050) 92%, var(--accent));
-		border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--bone-400));
-		border-radius: var(--radius-card);
-		box-shadow: var(--shadow-card-hover);
+		padding: var(--space-2);
+		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
+		backdrop-filter: blur(16px) saturate(1.3);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		border: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
+		border-radius: var(--radius-sm);
+		box-shadow: 0 10px 28px -8px rgb(0 0 0 / 0.55);
 		z-index: 50;
 	}
 	.dl-dock-empty {
@@ -258,67 +301,61 @@
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
 	}
-	.dl-dock-item {
+	/* One row per item — horizontal layout, browser-style. Title
+	   shrinks via ellipsis; trailing icon-only buttons sit at the
+	   inline-end. Active rows fill the gap between text and buttons
+	   with a thin indeterminate progress bar. */
+	.dl-row {
 		display: flex;
-		flex-direction: column;
+		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-3);
-		background: var(--ink-000);
+		padding: var(--space-2) var(--space-3);
 		border-radius: var(--radius-sm);
-		border-inline-start: 2px solid transparent;
+		transition: background var(--dur-fast) var(--ease-out-soft);
 	}
-	.dl-active,
-	.dl-pending {
-		border-inline-start-color: var(--accent);
+	.dl-row:hover {
+		background: color-mix(in oklab, var(--bone-100) 6%, transparent);
 	}
-	.dl-done {
-		border-inline-start-color: color-mix(in oklab, var(--accent) 50%, var(--bone-400));
+	.dl-row + .dl-row {
+		border-block-start: 1px solid color-mix(in oklab, var(--ink-200) 50%, transparent);
 	}
-	.dl-error {
-		border-inline-start-color: var(--oxblood, #b11a1a);
-	}
-	.dl-dock-meta {
-		display: flex;
-		justify-content: space-between;
+	.dl-row-text {
+		display: inline-flex;
+		flex: 0 1 auto;
+		min-inline-size: 0;
 		align-items: baseline;
-		gap: var(--space-3);
+		gap: var(--space-2);
+		overflow: hidden;
 	}
-	.dl-dock-title {
+	.dl-row-title {
 		font-family: var(--font-body);
 		font-size: var(--type-body-s);
-		font-weight: 600;
+		font-weight: 500;
 		color: var(--bone-100);
-		flex: 1 1 auto;
-		min-inline-size: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		max-inline-size: 14rem;
 	}
-	.dl-dock-ep {
+	.dl-row-ep {
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
 		color: var(--bone-300);
+		flex-shrink: 0;
 	}
-	.dl-dock-line {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		color: var(--bone-300);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.dl-dock-bar {
+	.dl-row-bar {
 		position: relative;
-		block-size: 3px;
-		background: var(--ink-200);
+		flex: 1 1 auto;
+		min-inline-size: 2rem;
+		block-size: 2px;
+		background: color-mix(in oklab, var(--ink-200) 60%, transparent);
 		border-radius: 999px;
 		overflow: hidden;
 	}
-	.dl-dock-bar-indet span {
+	.dl-row-bar-indet span {
 		position: absolute;
 		inset-block: 0;
 		inline-size: 30%;
@@ -333,43 +370,46 @@
 			inset-inline-start: 100%;
 		}
 	}
-	.dl-dock-done,
-	.dl-dock-error {
-		margin: 0;
-		font-family: var(--font-body);
-		font-size: var(--type-meta);
-		color: var(--bone-200);
-	}
-	.dl-dock-done code {
+	.dl-row-error {
+		margin-inline-start: auto;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 1.25rem;
+		block-size: 1.25rem;
+		background: color-mix(in oklab, var(--oxblood, #b11a1a) 25%, transparent);
+		border-radius: 50%;
+		color: var(--oxblood, #b11a1a);
 		font-family: var(--font-mono);
 		font-size: var(--type-micro);
-		color: var(--bone-300);
+		font-weight: 700;
+		flex-shrink: 0;
+		cursor: help;
 	}
-	.dl-dock-error {
-		color: var(--oxblood, #b11a1a);
+	/* For done rows, push the icon buttons to the inline-end (no
+	   progress bar to fill the space). */
+	.dl-row-done .dl-row-text {
+		flex: 1 1 auto;
 	}
-	.dl-dock-actions {
-		display: flex;
-		gap: var(--space-2);
-		justify-content: flex-end;
-	}
-	.dl-dock-btn {
-		padding: 2px var(--space-2);
+	.dl-row-act {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 1.75rem;
+		block-size: 1.75rem;
+		padding: 0;
 		background: transparent;
-		border: 1px solid var(--ink-200);
+		border: 0;
 		border-radius: var(--radius-sm);
-		color: var(--bone-200);
-		font-family: var(--font-body);
-		font-size: var(--type-micro);
-		cursor: pointer;
-		transition: background var(--dur-fast) var(--ease-out-soft);
-	}
-	.dl-dock-btn:hover {
-		background: color-mix(in oklab, var(--accent) 18%, transparent);
-		color: var(--bone-100);
-	}
-	.dl-dock-btn-quiet {
-		border-color: transparent;
 		color: var(--bone-300);
+		cursor: pointer;
+		flex-shrink: 0;
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft);
+	}
+	.dl-row-act:hover {
+		color: var(--bone-100);
+		background: color-mix(in oklab, var(--bone-100) 10%, transparent);
 	}
 </style>
