@@ -532,8 +532,13 @@
 		flex-direction: column;
 		align-items: stretch;
 		padding-block: var(--space-5) var(--space-4);
-		border-inline-end: 1px solid var(--ink-200);
-		background: var(--ink-000);
+		border-inline-end: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
+		/* Glassy translucent like the topbar — banners escape behind
+		   the rail (hero margin-inline-start: calc(-1 * (rail+gutter)))
+		   and the backdrop-filter frosts whatever shows through. */
+		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
+		backdrop-filter: blur(16px) saturate(1.3);
+		-webkit-backdrop-filter: blur(16px) saturate(1.3);
 		z-index: 20;
 	}
 	@media (max-inline-size: 720px) {

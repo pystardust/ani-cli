@@ -1196,12 +1196,14 @@
 		position: relative;
 		aspect-ratio: var(--hero-aspect);
 		overflow: hidden;
-		/* Escape the layout shell's inline gutters so the banner
-		   stays flush with the rail on the left and the window
-		   edge on the right; route content below keeps the
-		   gutter inset. */
-		margin-inline: calc(-1 * var(--space-7));
-		inline-size: calc(100% + 2 * var(--space-7));
+		/* Escape the layout's inline gutters AND the rail column on
+		   the left so the banner spreads behind the glassy rail too
+		   (the rail's backdrop-blur frosts whatever shows through).
+		   Right side just escapes the gutter — there's no chrome
+		   there to bleed behind. */
+		margin-inline-start: calc(-1 * (var(--space-7) + var(--rail-width)));
+		margin-inline-end: calc(-1 * var(--space-7));
+		inline-size: calc(100% + 2 * var(--space-7) + var(--rail-width));
 		/* Bleed under the glassy topbar: pull the banner up by the
 		   topbar's block size so it spreads behind the chrome and
 		   the topbar's backdrop-blur frosts the visible portion. */

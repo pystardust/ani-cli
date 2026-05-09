@@ -568,18 +568,22 @@
 		overflow: hidden;
 		background: var(--ink-050);
 		margin-block-end: var(--space-7);
-		/* Escape the layout shell's inline gutters — the banner
-		   stays flush with the rail on the left and the window
-		   edge on the right; only the strips below carry the
-		   gutter inset. */
-		margin-inline: calc(-1 * var(--space-7));
-		inline-size: calc(100% + 2 * var(--space-7));
+		/* Escape the layout's inline gutters AND the rail column on
+		   the left — the banner extends behind the glassy rail too
+		   so its backdrop-blur frosts the hero like the topbar's
+		   does. Right side just escapes the gutter (no rail there). */
+		margin-inline-start: calc(-1 * (var(--space-7) + var(--rail-width)));
+		margin-inline-end: calc(-1 * var(--space-7));
+		inline-size: calc(100% + 2 * var(--space-7) + var(--rail-width));
 		/* Bleed under the glassy topbar: pull the banner up by the
 		   topbar's height so the hero image spreads behind it; the
 		   topbar's backdrop-filter then frosts the visible portion.
 		   Padding compensates so hero text stays clear of the bar. */
 		margin-block-start: calc(-1 * var(--topbar-h));
 		padding-block-start: var(--topbar-h);
+		/* Inner padding pushes hero text past the rail so the title
+		   isn't read through frosted glass. */
+		padding-inline-start: var(--rail-width);
 	}
 
 	/* Each rotation tick mounts a new .hero-layer; the previous one
