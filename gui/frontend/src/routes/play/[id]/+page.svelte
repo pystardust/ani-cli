@@ -34,7 +34,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Hls from 'hls.js';
-	import { settle, settleOut } from '$lib/transitions/settle';
+	import { settle } from '$lib/transitions/settle';
 	import {
 		altTitlesFromKitsu,
 		evictPlayCache,
@@ -84,7 +84,12 @@
 	let episodesLoading = $state(false);
 	let episodesError = $state<string | null>(null);
 	let jumpInput = $state('');
-	const UI_PAGE_SIZE = 12;
+	// 5 cards per UI page = a single horizontal row under the player.
+	// On viewports too narrow to fit all 5, the headless Strip does
+	// the same drag-scroll / edge-fade / arrow-on-hover dance the home
+	// rows use. Static constant so resizing doesn't reshuffle items
+	// between pages.
+	const UI_PAGE_SIZE = 5;
 	const KITSU_PAGE_SIZE = 20;
 	const kitsuPageCache = new SvelteMap<number, KitsuEpisode[]>();
 	let theaterMode = $state(false);
@@ -286,29 +291,56 @@
 		void fetchEpisodesPage(next);
 	}
 
+	// Episode tile to scroll-to + briefly highlight after a Jump-to-ep
+	// submit. Mirrors the detail page's spotlight effect: targeted card
+	// pulses an accent ring; sibling cards dim to 0.35 then fade back as
+	// the highlight ends. Cleared on a 3.2s timeout once on screen.
+	let highlightEp = $state<number | null>(null);
+
 	function jumpToEpisode(event: SubmitEvent) {
 		event.preventDefault();
 		const n = parseInt(jumpInput, 10);
 		if (Number.isNaN(n) || n < 1) return;
 		const target = Math.ceil(n / UI_PAGE_SIZE);
+		// Set highlight first so the effect that watches it sees the
+		// target. If gotoPage triggers a fetch (different page), the
+		// effect re-runs once `episodes` updates; if same page, the
+		// effect runs on the next microtask.
+		highlightEp = n;
 		gotoPage(target);
 		jumpInput = '';
 	}
 
-	const showThumb = $derived(
-		imageProxyUrl(
-			// `original` last as defense — backend warms signed URLs
-			// at Kitsu cache-write time and stores bytes under a
-			// canonical hash, so the proxy serves cached bytes for
-			// stale signed URLs too. Placeholder still kicks in for
-			// shows with no posterImage at all.
-			detail?.poster_image?.small ??
-				detail?.poster_image?.medium ??
-				detail?.poster_image?.large ??
-				detail?.poster_image?.original ??
-				null
-		)
-	);
+	// Scroll-to + accent-ring pulse for the target episode tile. Watches
+	// `highlightEp` AND `episodes` so the effect re-runs after a page
+	// fetch completes — that's when the matching `<li data-ep-num=…>`
+	// tile is actually in the DOM. The 3.2s clear timer only starts on
+	// the run that successfully finds the tile (off-page targets wait
+	// silently for the next run).
+	$effect(() => {
+		const target = highlightEp;
+		if (target === null) return;
+		// Track `episodes` reactively so we re-run after the right page
+		// loads. Without this, jumping to an episode on a different
+		// page would scroll once before the data lands.
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		episodes;
+
+		let timerId: number | undefined;
+		const rafId = requestAnimationFrame(() => {
+			const el = document.querySelector(`[data-ep-num="${target}"]`);
+			if (!el) return;
+			el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			timerId = window.setTimeout(() => {
+				if (highlightEp === target) highlightEp = null;
+			}, 3200);
+		});
+
+		return () => {
+			cancelAnimationFrame(rafId);
+			if (timerId !== undefined) clearTimeout(timerId);
+		};
+	});
 
 	function teardown() {
 		if (hls) {
@@ -663,6 +695,11 @@
 	async function onOpenExternal() {
 		const title = detail?.canonical_title;
 		if (!title || !config) return;
+		// Pause the embedded video so the user isn't watching two
+		// instances simultaneously. The notice/launch flow continues
+		// regardless; if the external player fails to start the user
+		// can press space (or click the embedded player) to resume.
+		videoEl?.pause();
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
 		externalBusy = true;
@@ -687,8 +724,22 @@
 		}
 	}
 
-	// Keyboard shortcuts: `n` / `p` step episodes. Arrow keys are left
-	// to the <video> element for seek control.
+	// Download the current episode. Same backend chain as Play / Open
+	// in external — only the terminal action differs (ani-cli's `-d`
+	// flag invokes aria2c). Not yet wired; the toast keeps the button
+	// discoverable while the backend command lands.
+	function onDownload() {
+		externalNotice = `Download for episode ${episodeNum} — coming soon. The backend chain is the same.`;
+		setTimeout(() => {
+			externalNotice = null;
+		}, 4000);
+	}
+
+	// Keyboard shortcuts: `n` / `p` step episodes, `f` toggles
+	// fullscreen on the player frame. Arrow keys are left to the
+	// <video> element for seek control. Modifier presses (Ctrl/Cmd/
+	// Alt) are ignored so we don't shadow browser shortcuts like
+	// Ctrl+F (find).
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		const onKey = (e: KeyboardEvent) => {
@@ -696,12 +747,16 @@
 			const inField =
 				t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
 			if (inField) return;
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
 			if (e.key === 'n' || e.key === 'N') {
 				e.preventDefault();
 				onNext();
 			} else if (e.key === 'p' || e.key === 'P') {
 				e.preventDefault();
 				onPrev();
+			} else if (e.key === 'f' || e.key === 'F') {
+				e.preventDefault();
+				toggleFullscreen();
 			}
 		};
 		window.addEventListener('keydown', onKey);
@@ -718,49 +773,161 @@
 </svelte:head>
 
 <main class="page" class:theater={theaterMode} style:--accent={accent}>
+	<!-- Player extends to the page's full content width (Patreon-style):
+	     a black frame whose height is viewport-capped, with the <video>
+	     letterboxed inside via object-fit: contain. The watch-column
+	     below caps everything else (now-playing, episodes, similar) at
+	     a readable width. -->
+	<section class="player-frame" class:player-busy={switchBusy}>
+		{#if !sessionId}
+			<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
+		{:else if playerError}
+			<p class="player-empty">{playerError}</p>
+		{:else}
+			<video
+				bind:this={videoEl}
+				bind:currentTime
+				bind:duration
+				bind:paused={isPaused}
+				bind:volume={videoVolume}
+				bind:muted={isMuted}
+				autoplay
+				controls={!USE_CUSTOM_PLAYER_CONTROLS}
+				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
+			>
+				{#if subtitleUrl}
+					<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
+				{/if}
+			</video>
+
+			<!-- Custom controls overlay — toggled by the
+				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
+				     default). When on, replaces Chromium's native
+				     timeline so the progress bar can take the
+				     per-show accent color. -->
+			{#if USE_CUSTOM_PLAYER_CONTROLS}
+				<div class="player-controls" class:scrubber-hover={scrubberHover}>
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={togglePlay}
+						aria-label={isPaused ? 'Play' : 'Pause'}
+					>
+						{#if isPaused}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path d="M8 5v14l11-7z" fill="currentColor" />
+							</svg>
+						{:else}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<rect x="6" y="5" width="4" height="14" fill="currentColor" />
+								<rect x="14" y="5" width="4" height="14" fill="currentColor" />
+							</svg>
+						{/if}
+					</button>
+
+					<span class="pc-time" aria-label="Current time">
+						{formatTime(currentTime)} <span class="pc-time-sep">/</span>
+						{formatTime(duration)}
+					</span>
+
+					<div
+						class="pc-scrubber"
+						role="slider"
+						tabindex="0"
+						aria-label="Seek"
+						aria-valuemin="0"
+						aria-valuemax={Math.max(1, Math.floor(duration))}
+						aria-valuenow={Math.floor(currentTime)}
+						onclick={onScrubberClick}
+						onmouseenter={() => (scrubberHover = true)}
+						onmouseleave={() => (scrubberHover = false)}
+						onkeydown={(e) => {
+							if (e.key === 'ArrowRight') seekToFraction((currentTime + 5) / duration);
+							else if (e.key === 'ArrowLeft') seekToFraction((currentTime - 5) / duration);
+						}}
+					>
+						<div class="pc-scrubber-track">
+							<div
+								class="pc-scrubber-fill"
+								style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
+							></div>
+							<div
+								class="pc-scrubber-thumb"
+								style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
+							></div>
+						</div>
+					</div>
+
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={toggleMute}
+						aria-label={isMuted ? 'Unmute' : 'Mute'}
+					>
+						{#if isMuted || videoVolume === 0}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path
+									d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
+									fill="currentColor"
+								/>
+							</svg>
+						{:else}
+							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+								<path
+									d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
+									fill="currentColor"
+								/>
+							</svg>
+						{/if}
+					</button>
+
+					<button
+						type="button"
+						class="pc-btn"
+						onclick={toggleFullscreen}
+						aria-label="Toggle fullscreen"
+					>
+						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+							<path
+								d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
+								fill="currentColor"
+							/>
+						</svg>
+					</button>
+				</div>
+			{/if}
+		{/if}
+		{#if switchBusy}
+			<span class="player-spinner" aria-hidden="true">…</span>
+		{/if}
+	</section>
+
 	<div class="watch-column">
-		<!-- Hero panel: poster + (Now Playing / Title / Ep N — Title)
-		     on the left, controls cluster on the right. The episode
-		     nav is three separate pills (prev / current-active /
-		     next); the current pill carries an animated playing-bars
-		     icon. Below the nav row sits the secondary action row
-		     (Open in external). -->
-		<header class="player-header">
+		<!-- Now-playing row: compact breadcrumb under the player so the
+		     page hierarchy reads "video → context → more episodes →
+		     similar". Show title links back to the detail page; episode
+		     prev/next + external player live on the right. -->
+		<header class="now-playing">
 			<a
-				class="show-link"
+				class="np-link"
 				href={resolve('/anime/[id]', { id })}
 				onclick={(e) => {
-					// Treat poster → details as an "up" navigation:
-					// replace the player history entry rather than push.
+					// Replace, not push — treats poster → details as an "up"
+					// navigation rather than burying the player in history.
 					e.preventDefault();
 					void goto(resolve('/anime/[id]', { id }), { replaceState: true });
 				}}
 			>
-				<span class="show-thumb" aria-hidden="true">
-					{#if showThumb}
-						<img src={showThumb} alt="" loading="lazy" decoding="async" />
-					{:else if detail?.canonical_title}
-						<span class="show-thumb-placeholder">
-							{detail.canonical_title.slice(0, 2).toUpperCase()}
-						</span>
-					{/if}
-				</span>
-				<span class="show-meta">
-					<span class="eyebrow">
-						<span class="eyebrow-key">Now playing</span>
-					</span>
-					<span class="show-title">{detail?.canonical_title ?? 'Loading…'}</span>
-					{#if currentEpisodeMeta?.canonical_title}
-						<span class="show-episode">
-							<span class="show-episode-num">Episode {episodeNum}</span>
-							<span class="show-episode-rule" aria-hidden="true">—</span>
-							<span class="show-episode-title">{currentEpisodeMeta.canonical_title}</span>
-						</span>
-					{/if}
-				</span>
+				<span class="np-show">{detail?.canonical_title ?? 'Loading…'}</span>
+				<span class="np-sep" aria-hidden="true">·</span>
+				<span class="np-ep">Episode {episodeNum}</span>
+				{#if currentEpisodeMeta?.canonical_title}
+					<span class="np-em-dash" aria-hidden="true">—</span>
+					<span class="np-ep-title">{currentEpisodeMeta.canonical_title}</span>
+				{/if}
 			</a>
 
-			<div class="player-actions">
+			<div class="np-actions">
 				<div class="ep-nav" role="group" aria-label="Episode navigation">
 					<button
 						type="button"
@@ -769,7 +936,16 @@
 						disabled={!hasPrev || switchBusy}
 						aria-label="Previous episode"
 					>
-						<span aria-hidden="true">‹</span>
+						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+							<path
+								d="M15 5l-7 7 7 7"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.25"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
 						<span>Ep {episodeNum - 1}</span>
 					</button>
 					<button type="button" class="ep-btn ep-current-btn" disabled aria-current="true">
@@ -786,45 +962,60 @@
 						aria-label="Next episode"
 					>
 						<span>Ep {episodeNum + 1}</span>
-						<span aria-hidden="true">›</span>
-					</button>
-				</div>
-
-				<div class="action-row">
-					<button
-						type="button"
-						class="ep-btn external"
-						onclick={onOpenExternal}
-						disabled={switchBusy || externalBusy}
-						aria-label="Open this episode in your external player"
-						title="Open in external player"
-					>
-						<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-						<span aria-hidden="true">↗</span>
-					</button>
-
-					<button
-						type="button"
-						class="ep-btn icon-btn"
-						aria-label="Bookmark this show (coming soon)"
-						title="Bookmark — coming soon"
-						disabled
-					>
-						<svg
-							viewBox="0 0 24 24"
-							width="16"
-							height="16"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+							<path
+								d="M9 5l7 7-7 7"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.25"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 				</div>
+
+				<button
+					type="button"
+					class="ep-btn external"
+					onclick={onOpenExternal}
+					disabled={switchBusy || externalBusy}
+					aria-label="Open this episode in your external player"
+					title="Open in external player"
+				>
+					<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+						<path
+							d="M14 5h5v5M19 5L10 14M5 9v10h10"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.25"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				</button>
+
+				<button
+					type="button"
+					class="ep-btn"
+					onclick={onDownload}
+					disabled={switchBusy}
+					aria-label="Download this episode"
+					title="Download episode {episodeNum}"
+				>
+					<span>Download</span>
+					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+						<path
+							d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.25"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				</button>
 			</div>
 		</header>
 
@@ -832,244 +1023,136 @@
 			<p class="external-notice" role="status">{externalNotice}</p>
 		{/if}
 
-		<!-- The player. video controls are intentionally native — full
-	     keyboard accessibility, no custom shell to maintain. Quality
-	     selection lives in hls.js's auto behavior for now; an explicit
-	     selector lands when the player chrome polish (M1.8 / follow-ups)
-	     does. -->
-		<section class="player-frame" class:player-busy={switchBusy}>
-			{#if !sessionId}
-				<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
-			{:else if playerError}
-				<p class="player-empty">{playerError}</p>
-			{:else}
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<video
-					bind:this={videoEl}
-					bind:currentTime
-					bind:duration
-					bind:paused={isPaused}
-					bind:volume={videoVolume}
-					bind:muted={isMuted}
-					autoplay
-					controls={!USE_CUSTOM_PLAYER_CONTROLS}
-					onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
-				>
-					{#if subtitleUrl}
-						<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
-					{/if}
-				</video>
-
-				<!-- Custom controls overlay — toggled by the
-				     USE_CUSTOM_PLAYER_CONTROLS feature flag (off by
-				     default). When on, replaces Chromium's native
-				     timeline so the progress bar can take the
-				     per-show accent color. -->
-				{#if USE_CUSTOM_PLAYER_CONTROLS}
-					<div class="player-controls" class:scrubber-hover={scrubberHover}>
-						<button
-							type="button"
-							class="pc-btn"
-							onclick={togglePlay}
-							aria-label={isPaused ? 'Play' : 'Pause'}
-						>
-							{#if isPaused}
-								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-									<path d="M8 5v14l11-7z" fill="currentColor" />
-								</svg>
-							{:else}
-								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-									<rect x="6" y="5" width="4" height="14" fill="currentColor" />
-									<rect x="14" y="5" width="4" height="14" fill="currentColor" />
-								</svg>
-							{/if}
-						</button>
-
-						<span class="pc-time" aria-label="Current time">
-							{formatTime(currentTime)} <span class="pc-time-sep">/</span>
-							{formatTime(duration)}
-						</span>
-
-						<div
-							class="pc-scrubber"
-							role="slider"
-							tabindex="0"
-							aria-label="Seek"
-							aria-valuemin="0"
-							aria-valuemax={Math.max(1, Math.floor(duration))}
-							aria-valuenow={Math.floor(currentTime)}
-							onclick={onScrubberClick}
-							onmouseenter={() => (scrubberHover = true)}
-							onmouseleave={() => (scrubberHover = false)}
-							onkeydown={(e) => {
-								if (e.key === 'ArrowRight') seekToFraction((currentTime + 5) / duration);
-								else if (e.key === 'ArrowLeft') seekToFraction((currentTime - 5) / duration);
-							}}
-						>
-							<div class="pc-scrubber-track">
-								<div
-									class="pc-scrubber-fill"
-									style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
-								></div>
-								<div
-									class="pc-scrubber-thumb"
-									style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
-								></div>
-							</div>
-						</div>
-
-						<button
-							type="button"
-							class="pc-btn"
-							onclick={toggleMute}
-							aria-label={isMuted ? 'Unmute' : 'Mute'}
-						>
-							{#if isMuted || videoVolume === 0}
-								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-									<path
-										d="M16.5 12L19 9.5l1.5 1.5L18 13.5l2.5 2.5-1.5 1.5L16.5 15l-2.5 2.5L12.5 16l2.5-2.5-2.5-2.5L14 9.5zM3 9v6h4l5 5V4L7 9z"
-										fill="currentColor"
-									/>
-								</svg>
-							{:else}
-								<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-									<path
-										d="M3 9v6h4l5 5V4L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"
-										fill="currentColor"
-									/>
-								</svg>
-							{/if}
-						</button>
-
-						<button
-							type="button"
-							class="pc-btn"
-							onclick={toggleFullscreen}
-							aria-label="Toggle fullscreen"
-						>
-							<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-								<path
-									d="M7 14H5v5h5v-2H7zm-2-4h2V7h3V5H5zm12 7h-3v2h5v-5h-2zm-3-12v2h3v3h2V5z"
-									fill="currentColor"
-								/>
-							</svg>
-						</button>
-					</div>
-				{/if}
-			{/if}
-			{#if switchBusy}
-				<span class="player-spinner" aria-hidden="true">…</span>
-			{/if}
-		</section>
-
 		{#if detailError}
 			<p class="player-empty">{detailError}</p>
 		{/if}
 
-		<!-- Episode section: display-face heading, pagination controls,
-	     and a wrapping grid of modern thumbnail cards. The thumb
-	     carries the ep number + title overlaid under a top fade
-	     gradient — same shape regardless of theater state (theater
-	     just enlarges the video above). -->
+		<!-- Episodes carousel — already a horizontal-scroll strip. Drives
+		     the same paginated data model as the detail page (toolbar
+		     above for jump/seek; cards below). -->
 		<section class="ep-section" aria-label="Episodes">
-			<header class="ep-section-header">
-				<h2 class="ep-section-heading">Episodes</h2>
-				<span class="ep-section-rule" aria-hidden="true"></span>
-				<span class="ep-section-counter">
-					{#if episodes && episodes.length > 0 && detail?.episode_count}
-						{#if totalEpisodePages !== null && totalEpisodePages > 1}
-							<!-- Multi-page show: surface the visible range so the
-						     user knows where they are in the season. -->
-							<span class="ep-section-counter-range">
-								<span class="num">{epStart}</span><span aria-hidden="true">–</span><span class="num"
-									>{epEnd}</span
-								>
-							</span>
-							<span class="ep-section-counter-of"
-								>of <span class="num">{detail.episode_count}</span></span
-							>
+			<!-- Single compact toolbar: heading + range on the left, jump
+			     pill + prev/next chevrons on the right. No scrubber here
+			     (the /play page should stay compact under the player —
+			     scrubber lives on the detail page where the user is
+			     browsing). -->
+			<div class="ep-toolbar">
+				<div class="ep-toolbar-left">
+					<h2 class="ep-section-heading">Episodes</h2>
+					<span class="ep-range">
+						{#if episodes && episodes.length > 0 && detail?.episode_count}
+							{#if totalEpisodePages !== null && totalEpisodePages > 1}
+								{epStart}–{epEnd} of {detail.episode_count}
+							{:else}
+								{detail.episode_count} episodes
+							{/if}
+						{:else if episodes && episodes.length > 0}
+							page {episodesPage}
+						{:else if episodesError}
+							unavailable
 						{:else}
-							<!-- Single-page show: range info is redundant; just say
-						     how many episodes there are. -->
-							<span class="ep-section-counter-range">
-								<span class="num">{detail.episode_count}</span> episodes
-							</span>
+							loading…
 						{/if}
-					{:else if episodes && episodes.length > 0}
-						<span class="ep-section-counter-range"
-							>page <span class="num">{episodesPage}</span></span
-						>
-					{:else if episodesError}
-						<span class="ep-section-counter-of">unavailable</span>
-					{:else}
-						<span class="ep-section-counter-of">loading…</span>
-					{/if}
-				</span>
-			</header>
-
-			{#if totalEpisodePages !== null ? totalEpisodePages > 1 : (episodes?.length ?? 0) >= UI_PAGE_SIZE}
-				<div class="ep-controls">
-					<form class="ep-jump" onsubmit={jumpToEpisode}>
-						<label class="ep-jump-label">
-							<span class="ep-jump-key">Jump</span>
-							<input
-								type="number"
-								min="1"
-								max={detail?.episode_count ?? 9999}
-								step="1"
-								placeholder="ep #"
-								aria-label="Jump to episode number"
-								bind:value={jumpInput}
-							/>
-						</label>
-						<button
-							type="submit"
-							class="ep-jump-go"
-							disabled={!jumpInput || episodesLoading}
-							aria-label="Go to episode"
-						>
-							↵
-						</button>
-					</form>
-					<div class="ep-pager" role="group" aria-label="Episode pagination">
-						<button
-							type="button"
-							class="ep-pager-btn"
-							onclick={() => gotoPage(episodesPage - 1)}
-							disabled={episodesPage <= 1 || episodesLoading}
-							aria-label="Previous page"
-						>
-							←
-						</button>
-						<span class="ep-pager-state">
-							{episodesPage}{#if totalEpisodePages}<span class="ep-pager-of">
-									/ {totalEpisodePages}</span
-								>{/if}
-						</span>
-						<button
-							type="button"
-							class="ep-pager-btn"
-							onclick={() => gotoPage(episodesPage + 1)}
-							disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
-								episodesLoading ||
-								(episodes !== null && episodes.length < UI_PAGE_SIZE)}
-							aria-label="Next page"
-						>
-							→
-						</button>
-					</div>
+					</span>
 				</div>
-			{/if}
+
+				{#if totalEpisodePages !== null ? totalEpisodePages > 1 : (episodes?.length ?? 0) >= UI_PAGE_SIZE}
+					<div class="ep-toolbar-right">
+						<form class="ep-jump" onsubmit={jumpToEpisode}>
+							<span class="ep-jump-key" aria-hidden="true">jump</span>
+							<span class="ep-jump-pill">
+								<input
+									class="jump-input"
+									type="number"
+									min="1"
+									max={detail?.episode_count ?? 9999}
+									step="1"
+									placeholder="ep #"
+									aria-label="Jump to episode number"
+									bind:value={jumpInput}
+								/>
+								<button
+									type="submit"
+									class="ep-jump-go"
+									disabled={!jumpInput || episodesLoading}
+									aria-label="Go to episode"
+								>
+									<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+										<path
+											d="M9 5l7 7-7 7"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								</button>
+							</span>
+						</form>
+						<div class="ep-pager-mini" role="group" aria-label="Episode pagination">
+							<button
+								type="button"
+								class="ep-pager-mini-btn"
+								onclick={() => gotoPage(episodesPage - 1)}
+								disabled={episodesPage <= 1 || episodesLoading}
+								aria-label="Previous page"
+							>
+								<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+									<path
+										d="M15 5l-7 7 7 7"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+							<button
+								type="button"
+								class="ep-pager-mini-btn"
+								onclick={() => gotoPage(episodesPage + 1)}
+								disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
+									episodesLoading ||
+									(episodes !== null && episodes.length < UI_PAGE_SIZE)}
+								aria-label="Next page"
+							>
+								<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+									<path
+										d="M9 5l7 7-7 7"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				{/if}
+			</div>
 
 			{#if episodes && episodes.length > 0}
-				<ol class="ep-list">
+				<!-- Single fluid row of 5 cards. No scroll: cards shrink/
+				     grow with the container so all 5 are always visible. -->
+				<ol class="ep-row" aria-label="Episodes">
 					{#each episodes as ep, i (ep.id)}
 						{@const n = ep.number ?? ep.relative_number ?? 0}
 						{@const isCurrent = n === episodeNum}
 						{@const epThumb = imageProxyUrl(ep.thumbnail?.original ?? null)}
+						<!-- in: only, no out:. With a 5-col grid, simultaneously
+						     mounting outgoing + incoming cards wraps to two
+						     rows for ~320ms during a page change, pushing the
+						     strip below down. Letting old cards unmount
+						     instantly keeps the row at one row's height; the
+						     staggered in: still gives the new cards a settle
+						     feel as they land. -->
 						<li
+							class:ep-highlight={n === highlightEp}
+							data-ep-num={n}
 							in:settle={{ duration: 620, delay: i * 45 }}
-							out:settleOut={{ duration: 320, delay: i * 18 }}
 						>
 							<button
 								type="button"
@@ -1086,12 +1169,6 @@
 											{n.toString().padStart(2, '0')}
 										</span>
 									{/if}
-									<span class="ep-card-overlay" aria-hidden="true">
-										<span class="ep-card-overlay-num">EP {n}</span>
-										<span class="ep-card-overlay-title">
-											{ep.canonical_title ?? `Episode ${n}`}
-										</span>
-									</span>
 									<span class="ep-card-thumb-play" aria-hidden="true">
 										<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 											<path d="M8 5v14l11-7z" fill="currentColor" />
@@ -1100,6 +1177,18 @@
 									{#if isCurrent}
 										<span class="ep-card-thumb-flag" aria-hidden="true">Now playing</span>
 									{/if}
+								</span>
+								<span class="ep-card-foot">
+									<span class="ep-card-foot-row">
+										<span class="ep-card-foot-num">EP {n}</span>
+										{#if ep.length}
+											<span class="ep-card-foot-dot" aria-hidden="true">·</span>
+											<span class="ep-card-foot-len">{ep.length}m</span>
+										{/if}
+									</span>
+									<span class="ep-card-foot-title">
+										{ep.canonical_title ?? `Episode ${n}`}
+									</span>
 								</span>
 							</button>
 						</li>
@@ -1117,7 +1206,7 @@
 	     align with the player + ep section above. -->
 		{#if similar && similar.length > 0}
 			<div class="similar-wrap">
-				<Strip eyebrow="More like this">
+				<Strip eyebrow="More like this" pad="0" cardWidth="11.25rem">
 					{#each similar as hit (hit.id)}
 						<PosterCard anime={hit} />
 					{/each}
@@ -1146,7 +1235,7 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		padding-block: var(--space-7) var(--space-9);
+		padding-block: var(--space-7) var(--space-8);
 		padding-inline: var(--space-6);
 		inline-size: 100%;
 		isolation: isolate;
@@ -1183,7 +1272,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-7);
-		inline-size: min(100%, 85rem, calc((100dvh - 320px) * 16 / 9));
+		/* Single source of truth for column width: same formula as the
+		   player frame. Every child below stretches to 100% of this
+		   column, so the now-playing row, the episodes toolbar/cards,
+		   and the similar-titles strip all share one left/right edge
+		   with the player above them. */
+		inline-size: min(100%, 1360px, calc((100dvh - var(--player-reserved-height)) * 16 / 9));
 		margin-inline: auto;
 	}
 
@@ -1192,151 +1286,71 @@
 	   same y. flex-wrap was letting the actions drop to a new
 	   line when the title got long, which broke the screenshot's
 	   layout. Below 900px it collapses to a single column. */
-	.player-header {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: var(--space-6);
-		align-items: center;
-	}
-	@media (max-inline-size: 900px) {
-		.player-header {
-			grid-template-columns: 1fr;
-		}
-	}
-
-	.show-link {
+	/* Now-playing row — compact breadcrumb under the player. Replaces the
+	   old multi-row hero (poster + meta + ep-nav + action-row) so the
+	   page hierarchy reads "video → context → carousel → similar". */
+	.now-playing {
 		display: flex;
 		align-items: center;
-		gap: var(--space-4);
+		justify-content: space-between;
+		gap: var(--space-5);
+		flex-wrap: wrap;
+		margin-block-start: var(--space-2);
+	}
+	.np-link {
+		display: inline-flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: 0 var(--space-3);
+		row-gap: 4px;
 		color: inherit;
 		text-decoration: none;
 		min-inline-size: 0;
 	}
-	.show-link:hover {
-		color: var(--bone-100);
-	}
-	.show-thumb {
-		flex: 0 0 auto;
-		/* Bumped from 4.5rem to 6rem (≈ 96px) so the poster anchors
-		   the hero properly next to the bigger show-title. 5:7
-		   aspect preserved. */
-		inline-size: 6rem;
-		block-size: 8.4rem;
-		border-radius: var(--radius-card);
-		overflow: hidden;
-		background: color-mix(in oklab, var(--accent) 18%, var(--ink-100));
-		box-shadow:
-			0 6px 18px -4px rgb(0 0 0 / 0.5),
-			inset 0 0 0 1px color-mix(in oklab, var(--accent) 40%, transparent);
-	}
-	.show-thumb img {
-		inline-size: 100%;
-		block-size: 100%;
-		object-fit: cover;
-	}
-	.show-thumb-placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		inline-size: 100%;
-		block-size: 100%;
+	.np-show {
 		font-family: var(--font-body);
+		font-size: var(--type-body-l);
 		font-weight: 600;
-		font-size: 1.4rem;
-		letter-spacing: 0.01em;
-		color: var(--bone-200);
-		background: linear-gradient(
-			145deg,
-			color-mix(in oklab, var(--accent) 28%, var(--ink-100)) 0%,
-			color-mix(in oklab, var(--accent) 12%, var(--ink-100)) 100%
-		);
+		color: var(--bone-100);
+		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
-	.show-meta {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-		min-inline-size: 0;
+	.np-link:hover .np-show {
+		color: var(--accent);
 	}
-	.eyebrow {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
+	.np-sep {
+		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
+	}
+	.np-ep {
+		font-family: var(--font-body);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.np-em-dash {
+		color: color-mix(in oklab, var(--bone-100) 30%, transparent);
+	}
+	.np-ep-title {
 		font-family: var(--font-body);
 		font-size: var(--type-meta);
-		color: var(--bone-300);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-	.eyebrow-key {
-		color: var(--accent);
-	}
-	.show-title {
-		font-family: var(--font-display);
-		font-style: italic;
-		/* Use the display-XL token (3.5rem ≈ 56px) so the show
-		   title carries the hero with confidence. The previous
-		   display-l (40px) read as a secondary label. */
-		font-size: var(--type-display-xl);
-		line-height: 1.02;
-		letter-spacing: var(--tracking-display);
-		color: var(--bone-100);
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.show-episode {
-		display: inline-flex;
-		align-items: baseline;
-		gap: var(--space-3);
-		margin-block-start: var(--space-3);
-		font-family: var(--font-body);
-		font-size: 0.9375rem; /* 15px */
-		color: color-mix(in oklab, var(--bone-100) 72%, transparent);
+		color: color-mix(in oklab, var(--bone-100) 78%, transparent);
 		min-inline-size: 0;
-	}
-	.show-episode-num {
-		color: var(--accent);
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-meta);
-	}
-	.show-episode-rule {
-		flex: 0 0 1.5rem;
-		block-size: 1px;
-		background: color-mix(in oklab, var(--accent) 50%, var(--ink-300));
-		align-self: center;
-	}
-	.show-episode-title {
-		color: var(--bone-100);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	/* Right cluster of the hero — episode nav row on top, action
-	   row below. Both rows share the same inline-size: the wrapper
-	   sits in the grid's auto column, ep-nav establishes the
-	   width with its 3 pills, and the action-row stretches to
-	   match. External grows to fill leftover space; bookmark
-	   stays fixed-square. */
-	.player-actions {
-		display: grid;
-		grid-auto-rows: auto;
+	.np-actions {
+		display: inline-flex;
+		align-items: center;
 		gap: var(--space-3);
-		justify-items: stretch;
+		flex-wrap: wrap;
 	}
 	.ep-nav {
-		display: flex;
+		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
-	}
-	.action-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.action-row .external {
-		flex: 1;
-		justify-content: center;
 	}
 	.ep-btn {
 		display: inline-flex;
@@ -1419,11 +1433,6 @@
 
 	/* Square icon-only button (bookmark slot) — visual companion
 	   to the external action button. */
-	.icon-btn {
-		inline-size: 2.5rem;
-		padding: 0;
-		justify-content: center;
-	}
 	.external-notice {
 		margin: var(--space-3) 0 0;
 		padding: var(--space-2) var(--space-3);
@@ -1434,18 +1443,29 @@
 	}
 	.player-frame {
 		position: relative;
-		inline-size: 100%;
-		aspect-ratio: 16 / 9;
+		/* Full-bleed Patreon-style player: escapes both .page's
+		   inline padding (--space-6 = 32px) AND the layout's
+		   .main-area inline padding (--space-7 = 48px), so the
+		   frame touches the rail on the left and the window edge
+		   on the right. Negative block-start margin pulls it up to
+		   touch the topbar's bottom edge (escaping .page's
+		   padding-block-start). */
+		--player-edge-escape: calc(var(--space-7) + var(--space-6));
+		inline-size: calc(100% + 2 * var(--player-edge-escape));
+		margin-inline: calc(-1 * var(--player-edge-escape));
+		margin-block-start: calc(-1 * var(--space-7));
+		block-size: clamp(20rem, calc(100dvh - var(--player-reserved-height)), 50rem);
 		background: #000;
-		/* Real accent border around the frame (not just glow), per
-		   the screenshot direction. Layered drop shadow + ambient
-		   accent glow lifts the player off the page. */
-		border: 1px solid color-mix(in oklab, var(--accent) 60%, transparent);
-		border-radius: 22px;
+		/* Margin under the player so the now-playing row gets
+		   breathing room. The watch-column gap normally handles
+		   that, but the player is now its sibling — gap doesn't
+		   apply. */
+		margin-block-end: var(--space-7);
+		/* No border / no radius / no glow — the frame is a true
+		   full-bleed black surface, the way the Patreon player
+		   reads. The ambient accent glow used to live on the
+		   `.page::before` gradient instead. */
 		overflow: hidden;
-		box-shadow:
-			0 40px 100px -20px rgb(0 0 0 / 0.7),
-			0 0 120px -10px color-mix(in oklab, var(--accent) 50%, transparent);
 	}
 	.page.theater .player-frame {
 		/* Sizes the 16:9 frame to fit the largest rectangle that
@@ -1476,6 +1496,11 @@
 		display: block;
 		background: #000;
 		cursor: pointer;
+		/* Letterbox: video stays at 16:9 aspect, centered inside the
+		   frame, with black bars on whichever axis has slack. Frame
+		   is wider than 16:9 of its height on most desktop windows,
+		   so the bars sit on the left + right. */
+		object-fit: contain;
 	}
 
 	/* Custom controls overlay — Chromium's native media controls
@@ -1605,38 +1630,29 @@
 		pointer-events: none;
 	}
 
-	/* Similar Titles strip wrapper — caps at --player-max and zeroes
-	   Strip's internal --strip-pad (via a :global pierce, since the
-	   .strip element redeclares the variable on itself). The strip's
-	   content now extends flush with the video edges above instead
-	   of sitting inside its own 4.5rem inset. */
+	/* Similar Titles wrapper — fills the watch-column (no per-section
+	   cap). Zeroes Strip's internal --strip-pad (via :global pierce,
+	   since the .strip element sets the variable on itself), so the
+	   strip aligns flush with the player + episodes above. */
 	.similar-wrap {
 		inline-size: 100%;
-		max-inline-size: var(--player-max);
-		margin-inline: auto;
 	}
-	.similar-wrap :global(.strip) {
-		/* Bigger poster cards in the recommendation strip — token
-		   default is 11.25rem; bump to 14rem so titles below the
-		   poster are readable and the section feels intentional
-		   instead of "we placed a horizontal list". */
-		--strip-pad: 0;
-		--strip-card: 17rem;
-	}
-	/* Match Episodes' section heading style on the Strip's eyebrow
-	   — display-l italic, white text, with the eyebrow-rule
-	   (Strip's built-in 2.5rem hairline) recolored to accent so
-	   both row labels read identically: bone-100 text + accent
-	   rule. */
+	/* "More like this" is demoted relative to the episodes above — it's
+	   a recommendation, not a primary action. Eyebrow scales down from
+	   the previous 28px display heading to a regular 20px section
+	   heading (matching the Episodes toolbar h2 above), so the row
+	   reads as supporting content, not a peer to the player. The
+	   accent rule + bone-300 caption stay so the editorial voice
+	   carries through. */
 	.similar-wrap :global(.strip-header) {
 		justify-content: flex-start;
 	}
 	.similar-wrap :global(.eyebrow) {
 		font-family: var(--font-body);
-		font-size: 1.75rem; /* 28px per type spec */
+		font-size: 1.25rem; /* 20px — matches Episodes toolbar h2 */
 		font-weight: 600;
 		line-height: 1.1;
-		letter-spacing: -0.02em;
+		letter-spacing: -0.01em;
 		color: var(--bone-100);
 		text-transform: none;
 	}
@@ -1670,164 +1686,276 @@
 		flex-direction: column;
 		gap: var(--space-4);
 		min-inline-size: 0;
+		/* Width comes from the watch-column above — no per-section cap
+		   so the toolbar + card row align with the player + similar
+		   strip on the same left/right edges. */
 		inline-size: 100%;
-		max-inline-size: var(--player-max);
-		margin-inline: auto;
 	}
-	.ep-section-header {
+	/* Single horizontal toolbar — heading + range on the left, jump
+	   pill + prev/next chevrons on the right. Same vocabulary as the
+	   detail page (jump pill, accent halo on focus, weighted SVG
+	   chevrons), minus the editorial scrubber — the /play page should
+	   stay compact under the player. */
+	.ep-toolbar {
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
+		justify-content: space-between;
+		gap: var(--space-4);
+		flex-wrap: wrap;
+		margin-block-end: var(--space-4);
 	}
-	.ep-section-heading {
-		margin: 0;
-		font-family: var(--font-body);
-		font-size: 2rem; /* 32px per type spec */
-		font-weight: 600;
-		line-height: 1.05;
-		color: var(--bone-100);
-		letter-spacing: -0.02em;
-	}
-	.ep-section-rule {
-		flex: 0 0 auto;
-		inline-size: 2.5rem;
-		block-size: 1px;
-		background: var(--accent);
-		align-self: center;
-	}
-	.ep-section-counter {
+	.ep-toolbar-left {
 		display: inline-flex;
 		align-items: baseline;
-		gap: var(--space-2);
-		font-family: var(--font-body);
-		font-size: 0.6875rem; /* 11px */
-		font-weight: 600;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: color-mix(in oklab, var(--bone-100) 55%, transparent);
-		font-variant-numeric: tabular-nums lining-nums;
+		gap: var(--space-4);
+		flex-wrap: wrap;
 	}
-	.ep-section-counter .num {
-		color: var(--bone-100);
-	}
-	.ep-section-counter-range {
-		color: var(--bone-200);
-	}
-	.ep-section-counter-of {
-		color: var(--bone-300);
-	}
-
-	/* Pagination controls — same widget pair /anime/[id] uses. */
-	.ep-controls {
-		display: flex;
-		justify-content: space-between;
+	.ep-toolbar-right {
+		display: inline-flex;
 		align-items: center;
 		gap: var(--space-3);
 		flex-wrap: wrap;
 	}
+	.ep-section-heading {
+		margin: 0;
+		font-family: var(--font-body);
+		font-size: 1.25rem; /* 20px — section, not display */
+		font-weight: 600;
+		line-height: 1.1;
+		color: var(--bone-100);
+		letter-spacing: -0.01em;
+	}
+	.ep-range {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-meta);
+		font-weight: 500;
+		letter-spacing: var(--tracking-meta);
+		color: var(--bone-300);
+	}
+
+	/* Jump pill — same shape as the detail page version. JUMP eyebrow
+	   outside, marquee numerals inside, accent halo on focus, embedded
+	   chevron submit. */
 	.ep-jump {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
-	}
-	.ep-jump-label {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: 4px var(--space-3);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
+		gap: var(--space-3);
 	}
 	.ep-jump-key {
 		font-family: var(--font-body);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--bone-300);
+		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
-	.ep-jump-label input {
-		inline-size: 4rem;
+	.ep-jump:focus-within .ep-jump-key {
+		color: var(--bone-200);
+	}
+	.ep-jump-pill {
+		display: inline-flex;
+		align-items: center;
+		inline-size: 8.25rem; /* 132px */
+		block-size: 2rem;
+		padding-inline-start: var(--space-3);
+		padding-inline-end: 4px;
+		border-radius: var(--radius-pill);
+		background: color-mix(in oklab, var(--bone-100) 7%, transparent);
+		border: 1px solid color-mix(in oklab, var(--bone-100) 28%, transparent);
+		transition:
+			border-color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-med) var(--ease-out-soft);
+	}
+	.ep-jump-pill:focus-within {
+		border-color: var(--accent);
+		background: color-mix(in oklab, var(--bone-100) 10%, transparent);
+		box-shadow:
+			0 0 8px color-mix(in oklab, var(--accent) 50%, transparent),
+			0 0 16px color-mix(in oklab, var(--accent) 25%, transparent);
+	}
+	.jump-input {
+		flex: 1;
+		min-inline-size: 0;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		outline: 0;
+		color: var(--bone-100);
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		font-size: var(--type-body);
+		font-weight: 600;
+	}
+	.jump-input::placeholder {
+		font-family: var(--font-body);
+		font-weight: 400;
+		font-size: var(--type-meta);
+		letter-spacing: 0;
+		color: color-mix(in oklab, var(--bone-100) 55%, transparent);
+	}
+	.jump-input::-webkit-inner-spin-button,
+	.jump-input::-webkit-outer-spin-button {
+		appearance: none;
+	}
+	.jump-input:focus,
+	.jump-input:focus-visible {
+		outline: 0;
+		box-shadow: none;
+	}
+	.ep-jump-go {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: 24px;
+		block-size: 24px;
 		padding: 0;
 		border: 0;
+		border-radius: var(--radius-pill);
 		background: transparent;
-		color: var(--bone-100);
-		font-family: var(--font-body);
-		font-size: var(--type-meta);
-		font-variant-numeric: tabular-nums lining-nums;
+		color: var(--bone-300);
+		cursor: pointer;
+		transition:
+			color var(--dur-fast) var(--ease-out-soft),
+			background var(--dur-fast) var(--ease-out-soft),
+			transform var(--dur-med) var(--ease-out-elastic);
 	}
-	.ep-jump-label input::placeholder {
-		color: var(--bone-400);
+	.ep-jump-go:hover:not(:disabled),
+	.ep-jump-go:focus-visible {
+		color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 14%, transparent);
+		transform: translateX(2px);
+		outline: 0;
 	}
-	.ep-jump-label input:focus-visible {
-		outline: none;
+	.ep-jump-go:disabled {
+		color: color-mix(in oklab, var(--bone-100) 24%, transparent);
+		cursor: not-allowed;
 	}
-	.ep-jump-go,
-	.ep-pager-btn {
+	.ep-jump-pill:has(.jump-input:not(:placeholder-shown)) .ep-jump-go:not(:disabled) {
+		color: var(--accent);
+	}
+
+	/* Prev/next chevrons — small bordered chips with weighted SVG
+	   arrows. Hover lifts to accent + halo; chevron slides in its
+	   pointing direction. */
+	.ep-pager-mini {
+		display: inline-flex;
+		gap: var(--space-1);
+	}
+	.ep-pager-mini-btn {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		inline-size: 2rem;
 		block-size: 2rem;
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-pill);
-		background: color-mix(in oklab, var(--ink-050) 70%, transparent);
-		color: var(--bone-200);
-		font-family: var(--font-body);
+		padding: 0;
+		border: 1px solid color-mix(in oklab, var(--bone-100) 22%, transparent);
+		border-radius: var(--radius-control);
+		background: transparent;
+		color: var(--bone-100);
 		cursor: pointer;
 		transition:
+			color var(--dur-fast) var(--ease-out-soft),
 			border-color var(--dur-fast) var(--ease-out-soft),
-			color var(--dur-fast) var(--ease-out-soft);
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft);
 	}
-	.ep-jump-go:hover:not(:disabled),
-	.ep-pager-btn:hover:not(:disabled) {
-		border-color: var(--accent);
-		color: var(--bone-100);
+	.ep-pager-mini-btn svg {
+		transition: transform var(--dur-med) var(--ease-out-elastic);
 	}
-	.ep-jump-go:disabled,
-	.ep-pager-btn:disabled {
-		opacity: 0.4;
+	.ep-pager-mini-btn:hover:not(:disabled) {
+		color: var(--accent);
+		border-color: color-mix(in oklab, var(--accent) 80%, transparent);
+		background: color-mix(in oklab, var(--accent) 10%, transparent);
+		box-shadow: 0 0 12px color-mix(in oklab, var(--accent) 30%, transparent);
+	}
+	.ep-pager-mini-btn:first-child:hover:not(:disabled) svg {
+		transform: translateX(-2px);
+	}
+	.ep-pager-mini-btn:last-child:hover:not(:disabled) svg {
+		transform: translateX(2px);
+	}
+	.ep-pager-mini-btn:disabled {
+		color: var(--bone-400);
+		border-color: color-mix(in oklab, var(--bone-100) 8%, transparent);
 		cursor: not-allowed;
-	}
-	.ep-pager {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.ep-pager-state {
-		font-family: var(--font-body);
-		font-size: var(--type-meta);
-		font-variant-numeric: tabular-nums lining-nums;
-		color: var(--bone-100);
-		min-inline-size: 3.5rem;
-		text-align: center;
-	}
-	.ep-pager-of {
-		color: var(--bone-300);
 	}
 
 	/* Horizontal scrolling episode strip — single row that slides
 	   sideways. Each card is a fixed width so the row reads as a
 	   strip of tiles, not a wrap-grid. Snap-stop on each card so
 	   a flick lands cleanly. */
-	.ep-list {
-		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: minmax(15rem, 16rem);
-		gap: var(--space-4);
+	/* Single fluid row of 5 cards. `repeat(5, 1fr)` keeps the count
+	   fixed regardless of viewport; cards shrink/grow with the
+	   container so all 5 always fit. Block padding gives breathing
+	   room so the active card's accent ring isn't shaved. */
+	.ep-row {
 		list-style: none;
 		margin: 0;
-		padding: 0 var(--space-1) var(--space-2) 0;
-		overflow-x: auto;
-		overflow-y: visible;
-		scroll-snap-type: x mandatory;
-		scrollbar-width: thin;
+		/* Zero ALL padding (the user agent's default
+		   `padding-inline-start: 40px` on <ol> was pushing the first
+		   card right while the last sat flush with the row's right
+		   edge). Block-axis padding is restored selectively below
+		   for the active card's accent ring + hover lift. */
+		padding: var(--space-2) 0;
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: var(--space-3);
 	}
-	.ep-list li {
+	.ep-row > li {
 		display: block;
 		min-inline-size: 0;
-		scroll-snap-align: start;
 	}
+
+	/* Spotlight after a Jump-to-ep submit — same vocabulary as the
+	   detail page. Targeted card pulses an accent ring; sibling
+	   cards dim to 0.35 with asymmetric timing (fast dim-in, slow
+	   restore-out) so the spotlight engages decisively and unwinds
+	   gracefully as the highlight ends. Reduced-motion users see a
+	   static accent ring with no dim. */
+	.ep-row:has(li.ep-highlight) > li:not(.ep-highlight) .ep-card {
+		opacity: 0.35;
+		transition: opacity 0.4s var(--ease-out-soft);
+	}
+	.ep-card {
+		transition:
+			transform var(--dur-fast) var(--ease-out-soft),
+			opacity 1.4s var(--ease-out-soft);
+	}
+	.ep-row > li.ep-highlight .ep-card-thumb {
+		box-shadow:
+			0 0 0 2px var(--accent),
+			0 14px 36px -6px color-mix(in oklab, var(--accent) 55%, transparent);
+		animation: ep-jump-pulse 1.6s var(--ease-out-soft) 2;
+	}
+	@keyframes ep-jump-pulse {
+		0% {
+			box-shadow:
+				0 0 0 0 color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 0 0 color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+		35% {
+			box-shadow:
+				0 0 0 4px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 0 24px 4px color-mix(in oklab, var(--accent) 35%, transparent);
+		}
+		100% {
+			box-shadow:
+				0 0 0 2px color-mix(in oklab, var(--accent) 70%, transparent),
+				0 16px 32px -8px color-mix(in oklab, var(--accent) 30%, transparent);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ep-row > li.ep-highlight .ep-card-thumb {
+			animation: none;
+		}
+		.ep-row:has(li.ep-highlight) > li:not(.ep-highlight) .ep-card {
+			opacity: 1;
+		}
+	}
+
 	.ep-list-empty {
 		margin: 0;
 		padding: var(--space-4);
@@ -1921,49 +2049,52 @@
 		color: var(--bone-300);
 	}
 
-	/* Top-fade overlay carrying ep number + title — stronger gradient
-	   and a slight extra ink-stop in the middle so the title stays
-	   readable on bright frames (sky / sand / sea backgrounds). */
-	.ep-card-overlay {
-		position: absolute;
-		inset-block-start: 0;
-		inset-inline: 0;
+	/* Card foot — sits BELOW the 16:9 thumb. EP number + duration on
+	   one row (mono, dense), short title clamped to 2 lines below. No
+	   description, no large metadata — the row's job is "what is the
+	   next/nearby episode", not "browse the catalogue". */
+	.ep-card-foot {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding: var(--space-3) var(--space-4) var(--space-8);
-		background: linear-gradient(
-			180deg,
-			rgb(0 0 0 / 0.92) 0%,
-			rgb(0 0 0 / 0.7) 40%,
-			rgb(0 0 0 / 0.35) 70%,
-			transparent 100%
-		);
-		pointer-events: none;
+		gap: 2px;
+		padding: var(--space-2) var(--space-2) 0;
 	}
-	.ep-card-overlay-num {
+	.ep-card-foot-row {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
 		font-family: var(--font-body);
 		font-size: 0.6875rem; /* 11px */
 		font-weight: 600;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: color-mix(in oklab, var(--bone-100) 65%, transparent);
-		text-shadow: 0 1px 4px rgb(0 0 0 / 0.8);
+		color: var(--bone-300);
 	}
-	.ep-card-overlay-title {
+	.ep-card-foot-num {
+		font-variant-numeric: tabular-nums lining-nums;
+	}
+	.ep-card-foot-dot {
+		color: color-mix(in oklab, var(--bone-100) 24%, transparent);
+	}
+	.ep-card-foot-len {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums lining-nums;
+		letter-spacing: 0;
+		text-transform: none;
+	}
+	.ep-card-foot-title {
 		font-family: var(--font-body);
-		font-size: 0.9375rem; /* 15px */
+		font-size: 0.875rem; /* 14px */
 		font-weight: 500;
-		line-height: 1.25;
+		line-height: 1.3;
 		color: var(--bone-100);
-		text-shadow: 0 1px 4px rgb(0 0 0 / 0.85);
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
-	.ep-card-current .ep-card-overlay-num {
+	.ep-card-current .ep-card-foot-num {
 		color: var(--accent);
 	}
 
@@ -1992,18 +2123,25 @@
 		transform: scale(1);
 	}
 
-	/* "Now playing" pill on the active episode (top-right corner) */
+	/* "Now playing" pill on the active episode (top-right corner).
+	   The ::before dot is a "live" indicator that pulses opacity +
+	   scale; the pill itself breathes via a subtle accent halo so
+	   the row reads as actively playing rather than statically
+	   labelled. Both animations stop under reduced-motion. */
 	.ep-card-thumb-flag {
 		position: absolute;
 		inset-block-start: var(--space-2);
 		inset-inline-end: var(--space-2);
-		padding: 4px 10px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px 4px 8px;
 		font-family: var(--font-body);
 		font-size: var(--type-micro);
 		font-weight: 600;
 		letter-spacing: var(--tracking-micro);
 		text-transform: uppercase;
-		color: var(--ink-000);
+		color: var(--bone-100);
 		background: linear-gradient(
 			135deg,
 			var(--accent),
@@ -2013,5 +2151,48 @@
 		box-shadow:
 			0 4px 14px color-mix(in oklab, var(--accent) 50%, transparent),
 			0 1px 2px rgb(0 0 0 / 0.4);
+		animation: now-playing-breathe 2.4s var(--ease-in-out) infinite;
+	}
+	.ep-card-thumb-flag::before {
+		content: '';
+		display: inline-block;
+		inline-size: 7px;
+		block-size: 7px;
+		border-radius: 50%;
+		background: var(--bone-100);
+		flex: 0 0 auto;
+		animation: now-playing-pulse 1.4s var(--ease-in-out) infinite;
+	}
+	@keyframes now-playing-pulse {
+		0%,
+		100% {
+			opacity: 0.55;
+			transform: scale(0.9);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.15);
+		}
+	}
+	@keyframes now-playing-breathe {
+		0%,
+		100% {
+			box-shadow:
+				0 4px 14px color-mix(in oklab, var(--accent) 50%, transparent),
+				0 1px 2px rgb(0 0 0 / 0.4),
+				0 0 0 0 color-mix(in oklab, var(--accent) 60%, transparent);
+		}
+		50% {
+			box-shadow:
+				0 4px 14px color-mix(in oklab, var(--accent) 50%, transparent),
+				0 1px 2px rgb(0 0 0 / 0.4),
+				0 0 0 6px color-mix(in oklab, var(--accent) 0%, transparent);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ep-card-thumb-flag,
+		.ep-card-thumb-flag::before {
+			animation: none;
+		}
 	}
 </style>
