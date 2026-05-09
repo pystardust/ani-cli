@@ -212,6 +212,50 @@
 		videoEl.currentTime = activeSkip.end_time + 0.05;
 	}
 
+	// Pixel padding between the video element's bounding box and the
+	// actual rendered (letterboxed) video. With object-fit:contain on
+	// a widescreen monitor, the .player-frame is wider than 16:9 and
+	// the video sits centered with horizontal black bars — anchoring
+	// the skip button to .player-frame's right edge places it in
+	// those bars, far outside the user's gaze. We compute the bar
+	// width and feed it as a CSS variable so the button hugs the
+	// real video edge instead.
+	let letterboxX = $state(0);
+	let letterboxY = $state(0);
+
+	function recomputeLetterbox() {
+		if (!videoEl) return;
+		const w = videoEl.videoWidth;
+		const h = videoEl.videoHeight;
+		const rect = videoEl.getBoundingClientRect();
+		if (!w || !h || !rect.width || !rect.height) {
+			letterboxX = 0;
+			letterboxY = 0;
+			return;
+		}
+		const ar = w / h;
+		const fitWidth = Math.min(rect.width, rect.height * ar);
+		const fitHeight = Math.min(rect.height, rect.width / ar);
+		letterboxX = Math.max(0, (rect.width - fitWidth) / 2);
+		letterboxY = Math.max(0, (rect.height - fitHeight) / 2);
+	}
+
+	$effect(() => {
+		if (!videoEl) return;
+		recomputeLetterbox();
+		const onResize = () => recomputeLetterbox();
+		const onMeta = () => recomputeLetterbox();
+		window.addEventListener('resize', onResize);
+		videoEl.addEventListener('loadedmetadata', onMeta);
+		const ro = new ResizeObserver(() => recomputeLetterbox());
+		ro.observe(videoEl);
+		return () => {
+			window.removeEventListener('resize', onResize);
+			videoEl?.removeEventListener('loadedmetadata', onMeta);
+			ro.disconnect();
+		};
+	});
+
 	function skipLabel(skipType: string): string {
 		if (skipType === 'op') return 'Skip Opening';
 		if (skipType === 'ed') return 'Skip Ending';
@@ -1051,7 +1095,12 @@
 	     letterboxed inside via object-fit: contain. The watch-column
 	     below caps everything else (now-playing, episodes, similar) at
 	     a readable width. -->
-	<section class="player-frame" class:player-busy={switchBusy}>
+	<section
+		class="player-frame"
+		class:player-busy={switchBusy}
+		style:--player-letterbox-x="{letterboxX}px"
+		style:--player-letterbox-y="{letterboxY}px"
+	>
 		{#if !sessionId}
 			<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
 		{:else if playerError}
@@ -1087,8 +1136,8 @@
 					onclick={onSkipClick}
 					transition:settle={{ duration: 200 }}
 				>
+					<span class="player-skip-icon" aria-hidden="true">⏭</span>
 					{skipLabel(activeSkip.skip_type)}
-					<span class="player-skip-arrow" aria-hidden="true">→</span>
 				</button>
 			{/if}
 
@@ -2025,8 +2074,13 @@
 	   style affordance: clearly tappable, not "subtle UI". */
 	.player-skip-btn {
 		position: absolute;
-		inset-inline-end: 1.5rem;
-		inset-block-end: 5rem;
+		/* Hug the actual letterboxed video edge, not the .player-frame
+		   bounding box — on widescreen monitors the frame is wider
+		   than 16:9 so the right edge sits in the black bars where
+		   the user isn't looking. The CSS vars are JS-fed from the
+		   video's bounding rect (recomputed on resize + metadata). */
+		inset-inline-end: calc(1.5rem + var(--player-letterbox-x, 0px));
+		inset-block-end: calc(5rem + var(--player-letterbox-y, 0px));
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -2065,12 +2119,11 @@
 	.player-skip-btn:active {
 		transform: translateY(0);
 	}
-	.player-skip-arrow {
-		font-size: 1.05rem;
-		transition: transform 160ms ease;
-	}
-	.player-skip-btn:hover .player-skip-arrow {
-		transform: translateX(2px);
+	.player-skip-icon {
+		font-size: 1rem;
+		line-height: 1;
+		display: inline-flex;
+		opacity: 0.95;
 	}
 
 	/* Custom controls overlay — Chromium's native media controls
