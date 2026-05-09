@@ -105,6 +105,10 @@
 		if (!cfg) return;
 		void persist({ ...cfg, auto_play_next: value });
 	}
+	function setDownloadBottomBar(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, download_bottom_bar_enabled: value });
+	}
 
 	async function clearHistory() {
 		clearing = true;
@@ -260,6 +264,28 @@
 						<span class="switch-thumb"></span>
 					</span>
 					<span class="switch-state">{cfg.auto_play_next ? 'On' : 'Off'}</span>
+				</label>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">Show download progress strip</span>
+					<span class="field-hint">
+						Slim accent strip across the bottom while downloads run. Disabled = downloads still
+						work, but progress is only visible from the topbar download icon.
+					</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.download_bottom_bar_enabled}
+						onchange={(e) => setDownloadBottomBar((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Show download progress strip"
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state">{cfg.download_bottom_bar_enabled ? 'On' : 'Off'}</span>
 				</label>
 			</div>
 		</section>

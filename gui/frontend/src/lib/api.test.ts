@@ -926,7 +926,8 @@ describe('settingsGet', () => {
 			quality: 'best',
 			external_player: 'mpv',
 			image_cache_cap_mb: 500,
-			auto_play_next: false
+			auto_play_next: false,
+			download_bottom_bar_enabled: true
 		};
 		const fetchMock = mockFetchOnce(cfg);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -944,7 +945,8 @@ describe('settingsPut', () => {
 			quality: '1080',
 			external_player: 'vlc',
 			image_cache_cap_mb: 1000,
-			auto_play_next: true
+			auto_play_next: true,
+			download_bottom_bar_enabled: false
 		};
 		const fetchMock = mockFetchOnce(null, 204);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;

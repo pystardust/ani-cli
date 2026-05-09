@@ -223,6 +223,7 @@ export interface Config {
 	external_player: string;
 	image_cache_cap_mb: number;
 	auto_play_next: boolean;
+	download_bottom_bar_enabled: boolean;
 }
 
 /** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */

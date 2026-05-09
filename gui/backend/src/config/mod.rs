@@ -31,6 +31,11 @@ pub struct Config {
     /// `ended`. Opt-in — defaults to `false` so the existing behaviour
     /// (stop at end of episode) is preserved.
     pub auto_play_next: bool,
+    /// When `true`, the bottom-of-screen progress strip renders while
+    /// any downloads are active. Defaults to `true`. The topbar
+    /// download icon + popover dock remain available either way; this
+    /// setting only governs the persistent bottom-of-screen surface.
+    pub download_bottom_bar_enabled: bool,
 }
 
 impl Default for Config {
@@ -42,6 +47,7 @@ impl Default for Config {
             external_player: "mpv".into(),
             image_cache_cap_mb: 500,
             auto_play_next: false,
+            download_bottom_bar_enabled: true,
         }
     }
 }
