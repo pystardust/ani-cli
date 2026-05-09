@@ -192,13 +192,16 @@
 		<section class="controls" aria-label="Sort and filter results">
 			<div class="control-group">
 				<span class="control-label">Sort</span>
-				<div class="seg" role="group" aria-label="Sort">
+				<!-- Single-select radio behaviour via aria-pressed; same
+				     chip style as Type for visual consistency. -->
+				<div class="chips" role="radiogroup" aria-label="Sort">
 					{#each Object.entries(SORT_LABELS) as [key, label] (key)}
 						<button
 							type="button"
-							class="seg-btn"
+							class="chip"
 							class:active={sortKey === key}
-							aria-pressed={sortKey === key}
+							role="radio"
+							aria-checked={sortKey === key}
 							onclick={() => (sortKey = key as SortKey)}
 						>
 							{label}
@@ -624,50 +627,26 @@
 		font-weight: 500;
 		color: var(--bone-100);
 	}
-	.seg {
-		display: inline-flex;
-		gap: 1px;
-		padding: 2px;
-		/* Bumped from ink-050 to ink-100 for visible contrast against
-		   the page background — earlier the inactive segment track
-		   blended with the surrounding ink-000 page surface. */
-		background: var(--ink-100);
-		border: 1px solid var(--ink-300);
-		border-radius: var(--radius-card);
-	}
-	.seg-btn {
-		padding: 4px var(--space-3);
-		background: transparent;
-		border: 0;
-		border-radius: calc(var(--radius-card) - 2px);
-		font-family: var(--font-body);
-		font-size: var(--type-body-s);
-		color: var(--bone-200);
-		cursor: pointer;
-		transition: background var(--dur-fast) var(--ease-out-soft);
-	}
-	.seg-btn:hover:not(.active) {
-		background: color-mix(in oklab, var(--bone-100) 6%, transparent);
-		color: var(--bone-100);
-	}
-	.seg-btn.active {
-		background: var(--accent-persimmon);
-		color: var(--ink-000);
-	}
+	/* Both Sort + Type use the same outlined-chip vocabulary. Sort
+	   behaves as a radiogroup (single-select); Type as a multi-
+	   select group. Same visual result so the two rows feel like
+	   one control system. */
 	.chips {
 		display: inline-flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
 	}
 	.chip {
-		padding: 4px var(--space-3);
+		padding: 6px var(--space-3);
 		background: transparent;
-		border: 1px solid var(--ink-200);
+		/* Stronger inactive border (ink-400) so chips read clearly
+		   against the page's ink-000 surface. */
+		border: 1px solid var(--ink-400);
 		border-radius: var(--radius-pill);
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		color: var(--bone-300);
+		font-family: var(--font-body);
+		font-size: var(--type-body-s);
+		font-weight: 500;
+		color: var(--bone-200);
 		cursor: pointer;
 		transition:
 			background var(--dur-fast) var(--ease-out-soft),
@@ -676,16 +655,14 @@
 	}
 	.chip:hover:not(.active) {
 		color: var(--bone-100);
-		border-color: var(--ink-300);
+		border-color: var(--bone-300);
 	}
 	.chip.active {
-		background: color-mix(in oklab, var(--accent-persimmon) 22%, var(--ink-050));
-		color: var(--bone-100);
+		background: var(--accent-persimmon);
+		color: var(--ink-000);
 		border-color: var(--accent-persimmon);
 	}
 	.chip-clear {
 		border-style: dashed;
-		text-transform: none;
-		letter-spacing: normal;
 	}
 </style>
