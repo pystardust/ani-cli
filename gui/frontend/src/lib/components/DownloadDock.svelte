@@ -69,6 +69,7 @@
 			class="dl-dock-trigger"
 			class:has-active={activeCount > 0}
 			class:has-unseen={activeCount === 0 && unseenCount > 0}
+			class:open
 			onclick={() => (open = !open)}
 			aria-haspopup="menu"
 			aria-expanded={open}
@@ -79,7 +80,7 @@
 					: 'Downloads'}
 			title="Downloads"
 		>
-			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 				<path
 					d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
 					fill="none"
@@ -216,8 +217,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		inline-size: 2.25rem;
-		block-size: 2.25rem;
+		inline-size: 2.5rem;
+		block-size: 2.5rem;
 		background: transparent;
 		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
@@ -225,7 +226,8 @@
 		cursor: pointer;
 		transition:
 			color var(--dur-fast) var(--ease-out-soft),
-			background var(--dur-fast) var(--ease-out-soft);
+			background var(--dur-fast) var(--ease-out-soft),
+			border-color var(--dur-fast) var(--ease-out-soft);
 	}
 	.dl-dock-trigger:hover {
 		color: var(--bone-100);
@@ -235,6 +237,14 @@
 		color: var(--accent);
 	}
 	.dl-dock-trigger.has-unseen {
+		color: var(--bone-100);
+	}
+	/* Open state — same surface as the popover so the trigger
+	   reads as the popover's anchor handle rather than a separate
+	   chip floating in the topbar. */
+	.dl-dock-trigger.open {
+		background: var(--ink-050);
+		border-color: var(--ink-300);
 		color: var(--bone-100);
 	}
 	/* Notification dot for completed/errored downloads the user
@@ -268,10 +278,9 @@
 		align-items: center;
 		justify-content: center;
 	}
-	/* Popover matches the topbar search-preview's shape (radius +
-	   border + shadow) — same family of dropdowns. Background stays
-	   slightly more transparent than search since it's anchored to
-	   the chrome rather than to a search field. */
+	/* Popover — opaque surface so list contents read clearly without
+	   page imagery bleeding through the rows. Same radius/border/
+	   shadow vocabulary as the topbar search-preview. */
 	.dl-dock-pop {
 		position: absolute;
 		inset-block-start: calc(100% + var(--space-2));
@@ -280,9 +289,7 @@
 		max-block-size: 28rem;
 		overflow-y: auto;
 		padding: var(--space-2);
-		background: color-mix(in oklab, var(--ink-050) 92%, transparent);
-		backdrop-filter: blur(16px) saturate(1.3);
-		-webkit-backdrop-filter: blur(16px) saturate(1.3);
+		background: var(--ink-050);
 		border: 1px solid var(--ink-300);
 		border-radius: var(--radius-card);
 		box-shadow: 0 18px 36px -12px rgb(0 0 0 / 0.6);
