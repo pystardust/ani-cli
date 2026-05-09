@@ -268,9 +268,10 @@
 		align-items: center;
 		justify-content: center;
 	}
-	/* Popover matches the topbar's glassy translucent treatment so
-	   the dock reads as an extension of the chrome rather than a
-	   floating card on top of the page. */
+	/* Popover matches the topbar search-preview's shape (radius +
+	   border + shadow) — same family of dropdowns. Background stays
+	   slightly more transparent than search since it's anchored to
+	   the chrome rather than to a search field. */
 	.dl-dock-pop {
 		position: absolute;
 		inset-block-start: calc(100% + var(--space-2));
@@ -279,12 +280,12 @@
 		max-block-size: 28rem;
 		overflow-y: auto;
 		padding: var(--space-2);
-		background: color-mix(in oklab, var(--ink-000) 65%, transparent);
+		background: color-mix(in oklab, var(--ink-050) 92%, transparent);
 		backdrop-filter: blur(16px) saturate(1.3);
 		-webkit-backdrop-filter: blur(16px) saturate(1.3);
-		border: 1px solid color-mix(in oklab, var(--ink-200) 80%, transparent);
-		border-radius: var(--radius-sm);
-		box-shadow: 0 10px 28px -8px rgb(0 0 0 / 0.55);
+		border: 1px solid var(--ink-300);
+		border-radius: var(--radius-card);
+		box-shadow: 0 18px 36px -12px rgb(0 0 0 / 0.6);
 		z-index: 50;
 	}
 	.dl-dock-empty {
