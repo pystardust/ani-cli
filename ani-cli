@@ -598,6 +598,14 @@ case "$player_function" in
     *) dep_ch "$player_function" ;;
 esac
 
+# show last watched anime from history
+_last_hist=$(tail -n1 "$histfile" 2>/dev/null)
+if [ -n "$_last_hist" ]; then
+    _last_ep=$(printf "%s" "$_last_hist" | cut -f1)
+    _last_title=$(printf "%s" "$_last_hist" | cut -f3)
+    printf "\33[2K\r\033[1;36mYou were watching: %s - episode %s\033[0m\n" "$_last_title" "$_last_ep"
+fi
+
 # searching
 case "$search" in
     history)
