@@ -617,12 +617,15 @@
 		gap: var(--space-3);
 		flex-wrap: wrap;
 	}
+	/* Match settings' .field-key — body sans at medium weight reads
+	   as a proper field label, not the faint mono micro-eyebrow we
+	   were using elsewhere. */
 	.control-label {
-		font-family: var(--font-mono);
-		font-size: var(--type-micro);
-		letter-spacing: var(--tracking-micro);
-		text-transform: uppercase;
-		color: var(--bone-300);
+		font-family: var(--font-body);
+		font-size: var(--type-body);
+		font-weight: 500;
+		color: var(--bone-100);
+		min-inline-size: 4rem;
 	}
 	.seg {
 		display: inline-flex;
