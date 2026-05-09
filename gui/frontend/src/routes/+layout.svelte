@@ -488,6 +488,11 @@
 		display: grid;
 		grid-template-columns: var(--rail-width) 1fr;
 		min-block-size: 100dvh;
+		/* Approximate topbar block size — exposed so route hero/banner
+		   blocks can pull up under it (margin-block-start: calc(-1 *
+		   var(--topbar-h))) for the bleed-through effect. Matches the
+		   computed height of .topbar (padding-block + control row). */
+		--topbar-h: 4.5rem;
 	}
 	@media (max-inline-size: 720px) {
 		.shell {

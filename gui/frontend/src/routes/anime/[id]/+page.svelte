@@ -1202,6 +1202,10 @@
 		   gutter inset. */
 		margin-inline: calc(-1 * var(--space-7));
 		inline-size: calc(100% + 2 * var(--space-7));
+		/* Bleed under the glassy topbar: pull the banner up by the
+		   topbar's block size so it spreads behind the chrome and
+		   the topbar's backdrop-blur frosts the visible portion. */
+		margin-block-start: calc(-1 * var(--topbar-h));
 		/* Per-anime accent gradient shows through when Kitsu has no
 		   cover, no poster, and no episode thumbnail — the show
 		   still gets a branded backdrop instead of dead grey. The

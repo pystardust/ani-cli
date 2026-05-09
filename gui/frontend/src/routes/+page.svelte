@@ -574,6 +574,12 @@
 		   gutter inset. */
 		margin-inline: calc(-1 * var(--space-7));
 		inline-size: calc(100% + 2 * var(--space-7));
+		/* Bleed under the glassy topbar: pull the banner up by the
+		   topbar's height so the hero image spreads behind it; the
+		   topbar's backdrop-filter then frosts the visible portion.
+		   Padding compensates so hero text stays clear of the bar. */
+		margin-block-start: calc(-1 * var(--topbar-h));
+		padding-block-start: var(--topbar-h);
 	}
 
 	/* Each rotation tick mounts a new .hero-layer; the previous one
