@@ -1389,7 +1389,7 @@
 													stroke-linejoin="round"
 												/>
 											</svg>
-											<span>Playback speed</span>
+											<span>Speed</span>
 										</button>
 										{#each PLAYBACK_SPEEDS as rate (rate)}
 											<button
@@ -1452,7 +1452,7 @@
 													stroke-linecap="round"
 												/>
 											</svg>
-											<span>Playback speed</span>
+											<span>Speed</span>
 											<span class="pc-menu-current">
 												{playbackRate === 1 ? 'Normal' : `${playbackRate}×`}
 											</span>
