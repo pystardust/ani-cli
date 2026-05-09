@@ -503,6 +503,120 @@ export function playStream(
 	);
 }
 
+/** Wire payload for {@link downloadStream}. Mirrors PlayArgs but with
+ *  an explicit `download_dir` chosen by the user via the folder picker.
+ *  When omitted, the backend falls back to `paths::download_dir()`. */
+export interface DownloadArgs {
+	title: string;
+	episode: string;
+	mode: string;
+	quality?: string;
+	episode_count?: number;
+	alt_titles?: string[];
+	kitsu_id?: string;
+	download_dir?: string;
+}
+
+/** SSE progress event body — one raw stderr line from aria2c / yt-dlp /
+ *  ffmpeg. The renderer stores the latest line and the dock surfaces it
+ *  under the active row. */
+export interface DownloadProgress {
+	line: string;
+}
+
+/** SSE final event body — the directory the file landed in, suitable
+ *  for the completion toast's "reveal in folder" intent. */
+export interface DownloadResponse {
+	dest_dir: string;
+}
+
+/** Streaming download. Same shape as {@link playStream}: opens an SSE
+ *  connection to GET /api/download/stream, fires `onProgress` for every
+ *  forwarded ani-cli stderr line, resolves with the destination dir on
+ *  the `done` event, rejects on `error` or close-before-done. The
+ *  `signal` lets callers cancel mid-download — closing the SSE drops
+ *  the spawned ani-cli child via Tokio's `kill_on_drop(true)`. */
+export function downloadStream(
+	args: DownloadArgs,
+	onProgress: (p: DownloadProgress) => void,
+	signal?: AbortSignal
+): Promise<DownloadResponse> {
+	if (typeof EventSource === 'undefined') {
+		return Promise.reject(new Error('downloadStream: EventSource unavailable'));
+	}
+	const params = new URLSearchParams();
+	params.set('title', args.title);
+	params.set('episode', args.episode);
+	params.set('mode', args.mode);
+	if (args.quality) params.set('quality', args.quality);
+	if (typeof args.episode_count === 'number')
+		params.set('episode_count', String(args.episode_count));
+	if (args.alt_titles && args.alt_titles.length > 0)
+		params.set('alt_titles', args.alt_titles.join('\n'));
+	if (args.kitsu_id) params.set('kitsu_id', args.kitsu_id);
+	if (args.download_dir) params.set('download_dir', args.download_dir);
+
+	return apiBase().then(
+		(base) =>
+			new Promise<DownloadResponse>((resolve, reject) => {
+				const url = `${base.replace(/\/+$/, '')}/api/download/stream?${params.toString()}`;
+				const es = new EventSource(url);
+				let settled = false;
+				const finish = (fn: () => void) => {
+					if (settled) return;
+					settled = true;
+					es.close();
+					fn();
+				};
+				if (signal) {
+					const onAbort = () => finish(() => reject(new Error('downloadStream: aborted')));
+					if (signal.aborted) onAbort();
+					else signal.addEventListener('abort', onAbort, { once: true });
+				}
+				es.addEventListener('progress', (ev) => {
+					try {
+						onProgress(JSON.parse((ev as MessageEvent).data) as DownloadProgress);
+					} catch {
+						// Malformed payloads only stall the dock, not the download.
+					}
+				});
+				es.addEventListener('done', (ev) => {
+					try {
+						const resp = JSON.parse((ev as MessageEvent).data) as DownloadResponse;
+						finish(() => resolve(resp));
+					} catch (e) {
+						finish(() => reject(e));
+					}
+				});
+				es.addEventListener('error', (ev) => {
+					const data = (ev as MessageEvent).data;
+					let payload: unknown;
+					let parsed = false;
+					if (typeof data === 'string' && data.length > 0) {
+						try {
+							payload = JSON.parse(data);
+							parsed = true;
+						} catch {
+							/* fall through */
+						}
+					}
+					finish(() => {
+						if (parsed) reject(payload);
+						else reject(new Error('Download stream closed before completion.'));
+					});
+				});
+			})
+	);
+}
+
+/** Default destination directory the download confirm modal opens at.
+ *  Returns null when neither $XDG_DOWNLOAD_DIR nor $HOME is available
+ *  on the backend — the modal then asks the user to pick a path
+ *  explicitly. */
+export function downloadDefaultDir(): Promise<string | null> {
+	return getJson<string | null>('/api/download/default-dir');
+}
+
 export function kitsuSearch(query: string): Promise<KitsuAnimeRef[]> {
 	return postJson<KitsuAnimeRef[]>('/api/kitsu/search', { query });
 }

@@ -24,7 +24,15 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { breadcrumb, defaultTrailFor } from '$lib/breadcrumb';
-	import { imageProxyUrl, kitsuSearch, type KitsuAnimeRef } from '$lib/api';
+	import {
+		imageProxyUrl,
+		kitsuSearch,
+		settingsGet,
+		type Config,
+		type KitsuAnimeRef
+	} from '$lib/api';
+	import DownloadDock from '$lib/components/DownloadDock.svelte';
+	import DownloadBar from '$lib/components/DownloadBar.svelte';
 	import { nextDepth, shouldShowBackButton, type NavType } from '$lib/history/nav-depth';
 	import {
 		RECENT_LIMIT,
@@ -85,6 +93,14 @@
 
 	let topbarQuery = $state('');
 	let topbarInputEl: HTMLInputElement | undefined = $state();
+
+	// User settings — loaded once at layout mount; the only field the
+	// layout itself reads is `download_bottom_bar_enabled`, gating
+	// whether the bottom progress strip mounts.
+	let config = $state<Config | null>(null);
+	void settingsGet()
+		.then((c) => (config = c))
+		.catch(() => {});
 
 	// — Live-results dropdown + recent searches + Cmd/Ctrl+K. —————————
 	// Bundled together so a single `git revert HEAD` rolls them back if
@@ -455,12 +471,17 @@
 					</div>
 				{/if}
 			</form>
+			<DownloadDock />
 		</header>
 		<main class="content">
 			{@render children()}
 		</main>
 	</div>
 </div>
+
+{#if config?.download_bottom_bar_enabled !== false}
+	<DownloadBar />
+{/if}
 
 <style>
 	.shell {

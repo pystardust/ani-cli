@@ -37,6 +37,7 @@
 	import { settle } from '$lib/transitions/settle';
 	import {
 		altTitlesFromKitsu,
+		downloadDefaultDir as downloadDefaultDirApi,
 		evictPlayCache,
 		imageProxyUrl,
 		kitsuAnimeDetail,
@@ -48,6 +49,7 @@
 		settingsGet,
 		settingsPut,
 		type Config,
+		type DownloadArgs,
 		type KitsuAnimeRef,
 		type KitsuEpisode,
 		type MediaKind
@@ -58,6 +60,7 @@
 	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { breadcrumb } from '$lib/breadcrumb';
+	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -805,15 +808,35 @@
 		}
 	}
 
-	// Download the current episode. Same backend chain as Play / Open
-	// in external — only the terminal action differs (ani-cli's `-d`
-	// flag invokes aria2c). Not yet wired; the toast keeps the button
-	// discoverable while the backend command lands.
+	// Download flow — opens the DownloadConfirm modal. The modal lets
+	// the user pick a destination folder (defaulting to the backend's
+	// download_dir resolver) before kicking off ani-cli -d. Once
+	// confirmed, the download lives in the global download store and
+	// surfaces in the topbar dock + bottom progress strip.
+	let downloadModalOpen = $state(false);
+	let downloadArgs = $state<DownloadArgs | null>(null);
+	let downloadDefaultDir = $state('');
+
+	void downloadDefaultDirApi()
+		.then((d) => {
+			if (d) downloadDefaultDir = d;
+		})
+		.catch(() => {});
+
 	function onDownload() {
-		externalNotice = `Download for episode ${episodeNum} — coming soon. The backend chain is the same.`;
-		setTimeout(() => {
-			externalNotice = null;
-		}, 4000);
+		if (!detail) return;
+		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config?.quality ?? 'best';
+		downloadArgs = {
+			title: detail.canonical_title,
+			episode: String(episodeNum),
+			mode,
+			quality,
+			episode_count: detail.episode_count ?? undefined,
+			alt_titles: altTitlesFromKitsu(detail),
+			kitsu_id: id
+		};
+		downloadModalOpen = true;
 	}
 
 	// Keyboard shortcuts: `n` / `p` step episodes, `f` toggles
@@ -1384,6 +1407,13 @@
 		onDismiss={() => (playFailure = null)}
 	/>
 {/if}
+
+<DownloadConfirm
+	bind:open={downloadModalOpen}
+	args={downloadArgs}
+	defaultDir={downloadDefaultDir}
+	onClose={() => (downloadModalOpen = false)}
+/>
 
 <style>
 	/* Page is full content area; the inner .watch-column carries

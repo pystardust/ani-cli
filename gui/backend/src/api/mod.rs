@@ -90,6 +90,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
         .route("/api/download/stream", get(get_download_stream))
+        .route("/api/download/default-dir", get(get_download_default_dir))
         .route("/api/play/external", post(post_play_external))
         .route("/api/play/cache/evict", post(post_play_cache_evict))
         .route("/api/play/mark-watched", post(post_play_mark_watched))
@@ -391,6 +392,15 @@ async fn get_download_stream(
     });
 
     Sse::new(UnboundedReceiverStream::new(rx)).keep_alive(KeepAlive::default())
+}
+
+/// Returns the default download directory the modal should open at —
+/// `$XDG_DOWNLOAD_DIR/ani-gui/` when the env var is set, else
+/// `$HOME/Downloads/ani-gui/`. `null` only if neither is available
+/// (the modal then asks the user to pick one explicitly).
+async fn get_download_default_dir() -> Json<Option<String>> {
+    let dir = crate::config::paths::download_dir().map(|p| p.to_string_lossy().into_owned());
+    Json(dir)
 }
 
 /// Same resolution chain as `post_play`, but hands the upstream URL
