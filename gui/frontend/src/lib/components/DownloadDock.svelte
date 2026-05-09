@@ -12,7 +12,7 @@
       item with progress / status / per-row actions.
 -->
 <script lang="ts">
-	import { downloadStore, type DownloadItem } from '$lib/download/store';
+	import { downloadStore, type DownloadItem } from '$lib/download/store.svelte';
 
 	let open = $state(false);
 	let trigger = $state<HTMLButtonElement | null>(null);

@@ -9,7 +9,7 @@
   we can swap to a true progress fill.
 -->
 <script lang="ts">
-	import { downloadStore } from '$lib/download/store';
+	import { downloadStore } from '$lib/download/store.svelte';
 
 	const active = $derived(downloadStore.active);
 	const visible = $derived(active.length > 0);

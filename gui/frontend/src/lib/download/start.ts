@@ -7,7 +7,7 @@
  */
 
 import { downloadStream, type DownloadArgs } from '$lib/api';
-import { downloadStore } from './store';
+import { downloadStore } from './store.svelte';
 
 export function startDownload(args: DownloadArgs & { destDir: string }): string {
 	const id = downloadStore.add({
