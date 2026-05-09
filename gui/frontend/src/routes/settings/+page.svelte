@@ -101,6 +101,10 @@
 		if (Number.isNaN(n) || n < 0) return;
 		persistDebounced({ ...cfg, image_cache_cap_mb: n });
 	}
+	function setAutoPlayNext(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, auto_play_next: value });
+	}
 
 	async function clearHistory() {
 		clearing = true;
@@ -235,6 +239,28 @@
 					autocomplete="off"
 					aria-label="External player command"
 				/>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">Auto-play next episode</span>
+					<span class="field-hint">
+						When the current episode ends, advance to the next one automatically. Stops at the last
+						episode of the series.
+					</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.auto_play_next}
+						onchange={(e) => setAutoPlayNext((e.currentTarget as HTMLInputElement).checked)}
+						aria-label="Auto-play next episode"
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state">{cfg.auto_play_next ? 'On' : 'Off'}</span>
+				</label>
 			</div>
 		</section>
 
@@ -711,6 +737,56 @@
 		margin: 0;
 		font-family: var(--font-mono);
 		font-size: var(--type-meta);
+		color: var(--bone-300);
+	}
+
+	.switch {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		cursor: pointer;
+		user-select: none;
+	}
+	.switch input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.switch-track {
+		position: relative;
+		display: inline-block;
+		inline-size: 2.5rem;
+		block-size: 1.375rem;
+		background: var(--ink-200);
+		border-radius: 999px;
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			box-shadow var(--dur-fast) var(--ease-out-soft);
+	}
+	.switch-thumb {
+		position: absolute;
+		inset-block-start: 2px;
+		inset-inline-start: 2px;
+		inline-size: calc(1.375rem - 4px);
+		block-size: calc(1.375rem - 4px);
+		background: var(--bone-100);
+		border-radius: 999px;
+		transition: inset-inline-start var(--dur-fast) var(--ease-out-soft);
+	}
+	.switch input:checked + .switch-track {
+		background: var(--accent);
+	}
+	.switch input:checked + .switch-track .switch-thumb {
+		inset-inline-start: calc(2.5rem - (1.375rem - 4px) - 2px);
+	}
+	.switch input:focus-visible + .switch-track {
+		box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 60%, transparent);
+	}
+	.switch-state {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		text-transform: uppercase;
 		color: var(--bone-300);
 	}
 </style>

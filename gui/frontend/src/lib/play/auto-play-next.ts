@@ -20,11 +20,12 @@ export interface AutoPlayInput {
 
 export type AutoPlayDecision = { advance: true; target: number } | { advance: false };
 
-/**
- * STUB (red commit). Implementation lands in the green commit; tests
- * in this module's `.test.ts` file assert the contract.
- */
-export function decideAutoPlayNext(input: AutoPlayInput): AutoPlayDecision {
-	void input;
-	return { advance: false };
+export function decideAutoPlayNext({
+	enabled,
+	episodeNum,
+	totalEpisodes
+}: AutoPlayInput): AutoPlayDecision {
+	if (!enabled) return { advance: false };
+	if (totalEpisodes !== null && episodeNum >= totalEpisodes) return { advance: false };
+	return { advance: true, target: episodeNum + 1 };
 }

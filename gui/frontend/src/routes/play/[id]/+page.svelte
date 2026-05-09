@@ -46,6 +46,7 @@
 		playStream,
 		playExternal,
 		settingsGet,
+		settingsPut,
 		type Config,
 		type KitsuAnimeRef,
 		type KitsuEpisode,
@@ -54,6 +55,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import { buildMediaUrl } from '$lib/play/media-url';
 	import { buildPlayQuery } from '$lib/play/play-url';
+	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
@@ -208,6 +210,14 @@
 	const totalEpisodes = $derived(detail?.episode_count ?? null);
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
+
+	// Auto-play next: persisted in Config.auto_play_next; mirrored as a
+	// local boolean so the inline toggle on the player can flip the
+	// state instantly while the persist call goes out async.
+	let autoPlayNext = $state(false);
+	$effect(() => {
+		if (config) autoPlayNext = config.auto_play_next;
+	});
 
 	// Scan every cached page so the meta resolves even when the user
 	// has paginated away from the page that contains their current ep.
@@ -685,6 +695,38 @@
 		void switchToEpisode(n);
 	}
 
+	/** Inline toggle handler for the "Auto-play on/off" button next to
+	 *  the episode-nav cluster. Updates local state immediately, then
+	 *  persists to settings so the choice carries across sessions and
+	 *  is reflected on the Settings page. */
+	function toggleAutoPlayNext() {
+		if (!config) return;
+		const next = !autoPlayNext;
+		autoPlayNext = next;
+		const merged: Config = { ...config, auto_play_next: next };
+		config = merged;
+		void settingsPut(merged).catch(() => {
+			// Persist failure doesn't undo the local toggle — the user
+			// asked for it now, and the next play action still runs the
+			// updated decision. The settings file will be re-attempted
+			// on the next change.
+		});
+	}
+
+	/** Wired to <video onended>. Consults the pure decision function
+	 *  with the current toggle + episode position; if the answer is
+	 *  "advance," reuses the prev/next switchToEpisode pipeline. */
+	function onVideoEnded() {
+		const decision = decideAutoPlayNext({
+			enabled: autoPlayNext,
+			episodeNum,
+			totalEpisodes
+		});
+		if (decision.advance) {
+			void switchToEpisode(decision.target);
+		}
+	}
+
 	// Hand the currently-playing episode off to the user's mpv (or
 	// whichever player they configured). The backend resolves the same
 	// upstream URL it would for the embedded path; only the terminal
@@ -794,6 +836,7 @@
 				autoplay
 				controls={!USE_CUSTOM_PLAYER_CONTROLS}
 				onclick={USE_CUSTOM_PLAYER_CONTROLS ? togglePlay : undefined}
+				onended={onVideoEnded}
 			>
 				{#if subtitleUrl}
 					<track kind="subtitles" label="Subtitles" srclang="en" src={subtitleUrl} default />
@@ -974,6 +1017,29 @@
 						</svg>
 					</button>
 				</div>
+
+				<button
+					type="button"
+					class="ep-btn ep-toggle"
+					onclick={toggleAutoPlayNext}
+					aria-pressed={autoPlayNext}
+					aria-label="Auto-play next episode"
+					title={autoPlayNext
+						? 'Auto-play is on — episodes advance automatically'
+						: 'Auto-play is off — playback stops at the end of the episode'}
+				>
+					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+						<path
+							d="M5 4l9 8-9 8V4zm12 0v16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.25"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+					<span>Auto-play {autoPlayNext ? 'on' : 'off'}</span>
+				</button>
 
 				<button
 					type="button"
@@ -1389,6 +1455,16 @@
 	.ep-current-btn:disabled {
 		opacity: 1;
 		cursor: default;
+	}
+	/* aria-pressed=true paints the toggle button accent so the on
+	   state reads at a glance without opening a tooltip. */
+	.ep-toggle[aria-pressed='true'] {
+		background: color-mix(in oklab, var(--accent) 28%, var(--ink-050));
+		border-color: color-mix(in oklab, var(--accent) 60%, var(--bone-400));
+		color: var(--bone-100);
+	}
+	.ep-toggle[aria-pressed='true']:hover:not(:disabled) {
+		background: color-mix(in oklab, var(--accent) 38%, var(--ink-050));
 	}
 	.bars {
 		display: inline-flex;

@@ -211,6 +211,7 @@ export interface Config {
 	quality: string; // "best" | "worst" | "1080" | "720" | "480"
 	external_player: string;
 	image_cache_cap_mb: number;
+	auto_play_next: boolean;
 }
 
 /** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */

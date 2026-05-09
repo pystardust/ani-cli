@@ -27,6 +27,10 @@ pub struct Config {
     pub external_player: String,
     /// Hard cap on the on-disk image cache, in megabytes.
     pub image_cache_cap_mb: u64,
+    /// When `true`, the player auto-advances to the next episode at
+    /// `ended`. Opt-in — defaults to `false` so the existing behaviour
+    /// (stop at end of episode) is preserved.
+    pub auto_play_next: bool,
 }
 
 impl Default for Config {
@@ -37,6 +41,7 @@ impl Default for Config {
             quality: "best".into(),
             external_player: "mpv".into(),
             image_cache_cap_mb: 500,
+            auto_play_next: false,
         }
     }
 }

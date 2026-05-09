@@ -925,7 +925,8 @@ describe('settingsGet', () => {
 			mode: 'sub',
 			quality: 'best',
 			external_player: 'mpv',
-			image_cache_cap_mb: 500
+			image_cache_cap_mb: 500,
+			auto_play_next: false
 		};
 		const fetchMock = mockFetchOnce(cfg);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -942,7 +943,8 @@ describe('settingsPut', () => {
 			mode: 'dub',
 			quality: '1080',
 			external_player: 'vlc',
-			image_cache_cap_mb: 1000
+			image_cache_cap_mb: 1000,
+			auto_play_next: true
 		};
 		const fetchMock = mockFetchOnce(null, 204);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
