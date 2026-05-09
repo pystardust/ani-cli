@@ -734,6 +734,45 @@
 	// rather than the LoadingOverlay so the playing video keeps going.
 	let externalNotice = $state<string | null>(null);
 	let externalBusy = $state(false);
+
+	// Overflow menu (the "..." button) housing the secondary actions
+	// Open in external + Download. They were demoted from the np-actions
+	// row to declutter — the primary controls are now ep-nav +
+	// auto-play, with everything else one click deeper.
+	let moreOpen = $state(false);
+	let moreAnchor = $state<HTMLButtonElement | null>(null);
+	function toggleMore() {
+		moreOpen = !moreOpen;
+	}
+	function closeMore() {
+		moreOpen = false;
+	}
+	$effect(() => {
+		if (!moreOpen) return;
+		// Click outside the menu OR its trigger closes it; Escape closes
+		// it and returns focus to the trigger so keyboard users don't
+		// lose their place.
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Node | null;
+			if (!target) return;
+			if (moreAnchor?.contains(target)) return;
+			const menu = document.getElementById('np-more-menu');
+			if (menu?.contains(target)) return;
+			closeMore();
+		};
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				closeMore();
+				moreAnchor?.focus();
+			}
+		};
+		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('keydown', onKey);
+		};
+	});
 	async function onOpenExternal() {
 		const title = detail?.canonical_title;
 		if (!title || !config) return;
@@ -1020,68 +1059,122 @@
 
 				<button
 					type="button"
-					class="ep-btn ep-toggle"
+					class="ep-btn ep-icon-btn ep-toggle"
 					onclick={toggleAutoPlayNext}
 					aria-pressed={autoPlayNext}
-					aria-label="Auto-play next episode"
+					aria-label={autoPlayNext ? 'Auto-play next episode (on)' : 'Auto-play next episode (off)'}
 					title={autoPlayNext
 						? 'Auto-play is on — episodes advance automatically'
-						: 'Auto-play is off — playback stops at the end of the episode'}
+						: 'Auto-play is off — click to enable'}
 				>
+					<!-- Filled play+forward-bar when on, outlined when off.
+					     The accent-tinted background plus the filled icon
+					     gives a clear "active" read at a glance; outlined
+					     icon plus transparent background reads as "off". -->
 					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-						<path
-							d="M5 4l9 8-9 8V4zm12 0v16"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.25"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-					<span>Auto-play {autoPlayNext ? 'on' : 'off'}</span>
-				</button>
-
-				<button
-					type="button"
-					class="ep-btn external"
-					onclick={onOpenExternal}
-					disabled={switchBusy || externalBusy}
-					aria-label="Open this episode in your external player"
-					title="Open in external player"
-				>
-					<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
-					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-						<path
-							d="M14 5h5v5M19 5L10 14M5 9v10h10"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.25"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
+						{#if autoPlayNext}
+							<path d="M5 4l9 8-9 8V4z" fill="currentColor" />
+							<rect x="16" y="4" width="2.5" height="16" rx="1" fill="currentColor" />
+						{:else}
+							<path
+								d="M5 4l9 8-9 8V4zm12 0v16"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.25"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						{/if}
 					</svg>
 				</button>
 
-				<button
-					type="button"
-					class="ep-btn"
-					onclick={onDownload}
-					disabled={switchBusy}
-					aria-label="Download this episode"
-					title="Download episode {episodeNum}"
-				>
-					<span>Download</span>
-					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-						<path
-							d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.25"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				</button>
+				<div class="more-wrap">
+					<button
+						type="button"
+						class="ep-btn ep-icon-btn"
+						bind:this={moreAnchor}
+						onclick={toggleMore}
+						aria-haspopup="menu"
+						aria-expanded={moreOpen}
+						aria-controls="np-more-menu"
+						aria-label="More actions"
+						title="More actions"
+					>
+						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+							<circle cx="5" cy="12" r="1.7" fill="currentColor" />
+							<circle cx="12" cy="12" r="1.7" fill="currentColor" />
+							<circle cx="19" cy="12" r="1.7" fill="currentColor" />
+						</svg>
+					</button>
+
+					{#if moreOpen}
+						<div
+							id="np-more-menu"
+							class="more-menu"
+							role="menu"
+							aria-label="More actions"
+							transition:settle={{ duration: 120 }}
+						>
+							<button
+								type="button"
+								class="more-item"
+								role="menuitem"
+								onclick={() => {
+									closeMore();
+									void onOpenExternal();
+								}}
+								disabled={switchBusy || externalBusy}
+							>
+								<svg
+									class="more-icon"
+									viewBox="0 0 24 24"
+									width="18"
+									height="18"
+									aria-hidden="true"
+								>
+									<path
+										d="M14 5h5v5M19 5L10 14M5 9v10h10"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+							</button>
+
+							<button
+								type="button"
+								class="more-item"
+								role="menuitem"
+								onclick={() => {
+									closeMore();
+									onDownload();
+								}}
+								disabled={switchBusy}
+							>
+								<svg
+									class="more-icon"
+									viewBox="0 0 24 24"
+									width="18"
+									height="18"
+									aria-hidden="true"
+								>
+									<path
+										d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+								<span>Download</span>
+							</button>
+						</div>
+					{/if}
+				</div>
 			</div>
 		</header>
 
@@ -1456,15 +1549,78 @@
 		opacity: 1;
 		cursor: default;
 	}
+	/* Icon-only buttons (auto-play toggle, kebab) — drop the textual
+	   label's horizontal padding so they render as squares with the
+	   18px icon centred. Width matches block-size so the hit target
+	   stays comfortably tappable. */
+	.ep-icon-btn {
+		padding-inline: var(--space-2);
+		min-inline-size: 2.25rem;
+		justify-content: center;
+	}
+	/* Auto-play in the off state reads as a low-contrast outlined
+	   icon — no accent, slightly faded. */
+	.ep-toggle[aria-pressed='false'] {
+		color: color-mix(in oklab, var(--bone-100) 60%, transparent);
+	}
 	/* aria-pressed=true paints the toggle button accent so the on
-	   state reads at a glance without opening a tooltip. */
+	   state reads at a glance — accent fill + filled icon (rendered
+	   in markup) instead of an outlined glyph. */
 	.ep-toggle[aria-pressed='true'] {
-		background: color-mix(in oklab, var(--accent) 28%, var(--ink-050));
-		border-color: color-mix(in oklab, var(--accent) 60%, var(--bone-400));
-		color: var(--bone-100);
+		background: color-mix(in oklab, var(--accent) 32%, var(--ink-050));
+		border-color: color-mix(in oklab, var(--accent) 70%, var(--bone-400));
+		color: var(--accent);
 	}
 	.ep-toggle[aria-pressed='true']:hover:not(:disabled) {
-		background: color-mix(in oklab, var(--accent) 38%, var(--ink-050));
+		background: color-mix(in oklab, var(--accent) 42%, var(--ink-050));
+	}
+
+	/* "..." overflow menu — anchored absolute relative to the wrapper
+	   so the popover sits under the trigger without disturbing the
+	   np-actions row's flexbox flow. */
+	.more-wrap {
+		position: relative;
+	}
+	.more-menu {
+		position: absolute;
+		inset-block-start: calc(100% + var(--space-2));
+		inset-inline-end: 0;
+		display: flex;
+		flex-direction: column;
+		min-inline-size: 12rem;
+		padding: var(--space-2);
+		background: color-mix(in oklab, var(--ink-050) 92%, var(--accent));
+		border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--bone-400));
+		border-radius: var(--radius-card);
+		box-shadow: var(--shadow-card-hover);
+		z-index: 10;
+	}
+	.more-item {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		background: transparent;
+		border: 0;
+		color: var(--bone-100);
+		font-family: var(--font-body);
+		font-size: var(--type-body-s);
+		text-align: start;
+		border-radius: calc(var(--radius-card) - var(--space-1));
+		cursor: pointer;
+		transition: background var(--dur-fast) var(--ease-out-soft);
+	}
+	.more-item:hover:not(:disabled),
+	.more-item:focus-visible {
+		background: color-mix(in oklab, var(--accent) 18%, transparent);
+		outline: none;
+	}
+	.more-item:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.more-icon {
+		flex-shrink: 0;
 	}
 	.bars {
 		display: inline-flex;
