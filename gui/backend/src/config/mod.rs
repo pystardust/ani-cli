@@ -51,6 +51,12 @@ pub struct Config {
     /// during fullscreen — at the cost of losing the native PiP
     /// menu and caption picker. Default `false` (native).
     pub use_custom_player_controls: bool,
+    /// When `true`, navigating away from the player while a video
+    /// is playing automatically enters Picture-in-Picture so the
+    /// user keeps watching while they browse. Off by default —
+    /// many users prefer to pause on navigation; opt in via
+    /// settings.
+    pub auto_pip_on_leave: bool,
 }
 
 impl Default for Config {
@@ -66,6 +72,7 @@ impl Default for Config {
             auto_skip_op: false,
             auto_skip_ed: false,
             use_custom_player_controls: false,
+            auto_pip_on_leave: false,
         }
     }
 }

@@ -227,6 +227,7 @@ export interface Config {
 	auto_skip_op: boolean;
 	auto_skip_ed: boolean;
 	use_custom_player_controls: boolean;
+	auto_pip_on_leave: boolean;
 }
 
 /** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */

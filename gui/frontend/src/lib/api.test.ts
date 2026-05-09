@@ -930,7 +930,8 @@ describe('settingsGet', () => {
 			download_bottom_bar_enabled: true,
 			auto_skip_op: false,
 			auto_skip_ed: false,
-			use_custom_player_controls: false
+			use_custom_player_controls: false,
+			auto_pip_on_leave: false
 		};
 		const fetchMock = mockFetchOnce(cfg);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -952,7 +953,8 @@ describe('settingsPut', () => {
 			download_bottom_bar_enabled: false,
 			auto_skip_op: true,
 			auto_skip_ed: true,
-			use_custom_player_controls: true
+			use_custom_player_controls: true,
+			auto_pip_on_leave: true
 		};
 		const fetchMock = mockFetchOnce(null, 204);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;

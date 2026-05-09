@@ -42,6 +42,7 @@
 	import { accentFor } from '$lib/design/accent';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { buildPlayQuery } from '$lib/play/play-url';
+	import { reuseSessionIfMatching } from '$lib/play/global-video';
 	import { downloadDefaultDir as downloadDefaultDirApi } from '$lib/api';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import type { DownloadArgs } from '$lib/api';
@@ -735,6 +736,25 @@
 		const title = playTitle();
 		if (!title) {
 			notify('No title available for playback yet.');
+			return;
+		}
+		// Persistent-PiP short-circuit: if the singleton video is
+		// already loaded for this exact (show, ep), bypass the
+		// ani-cli respawn + new session creation and navigate
+		// straight to the existing /play URL. Without this, a
+		// re-click on the episode the user is watching in PiP
+		// would tear down and restart playback at zero.
+		const cached = reuseSessionIfMatching(id, ep);
+		if (cached) {
+			const parts = [
+				`session=${encodeURIComponent(cached.session_id)}`,
+				`episode=${cached.episode}`,
+				`kind=${cached.media_kind}`
+			];
+			if (cached.subtitle_url) parts.push('sub=1');
+			/* eslint-disable svelte/no-navigation-without-resolve */
+			void goto(resolve('/play/[id]', { id }) + `?${parts.join('&')}`);
+			/* eslint-enable svelte/no-navigation-without-resolve */
 			return;
 		}
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';

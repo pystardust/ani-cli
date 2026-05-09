@@ -37,6 +37,7 @@
 	import { nextHeroIndex, shouldRunHeroRotation } from '$lib/hero-rotation';
 	import { getOrFire, makeKey } from '$lib/play/play-cache';
 	import { buildPlayQuery } from '$lib/play/play-url';
+	import { reuseSessionIfMatching } from '$lib/play/global-video';
 	import { filterAvailable } from '$lib/availability/filter';
 	import Strip from '$lib/components/Strip.svelte';
 	import PosterCard from '$lib/components/PosterCard.svelte';
@@ -248,6 +249,25 @@
 		if (resumeBusy) return;
 		const title = match.canonical_title;
 		if (!title) return;
+		// Persistent-PiP short-circuit: if the singleton is still
+		// loaded for this exact (show, ep), skip the ani-cli
+		// respawn and navigate using the cached session — keeps
+		// playback at its current timestamp instead of starting
+		// over when the user clicks back to a Continue Watching
+		// card they're already watching in PiP.
+		const cached = reuseSessionIfMatching(match.id, ep);
+		if (cached) {
+			const parts = [
+				`session=${encodeURIComponent(cached.session_id)}`,
+				`episode=${cached.episode}`,
+				`kind=${cached.media_kind}`
+			];
+			if (cached.subtitle_url) parts.push('sub=1');
+			/* eslint-disable svelte/no-navigation-without-resolve */
+			void goto(resolve('/play/[id]', { id: match.id }) + `?${parts.join('&')}`);
+			/* eslint-enable svelte/no-navigation-without-resolve */
+			return;
+		}
 		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config?.quality ?? 'best';
 		resumeBusy = match.id;

@@ -879,20 +879,19 @@
 	});
 
 	// Auto-PiP on leaving /play to another section of the app, so
-	// the user keeps watching while they browse. Skipped when the
-	// target is another /play/[id] route — that's just a session
-	// swap and the singleton's src changes in place. Also skipped
-	// when video is paused or already in PiP.
+	// the user keeps watching while they browse. Off by default —
+	// opt in via Settings → Playback → "Auto Picture-in-Picture
+	// when leaving the player". Skipped when the target is another
+	// /play/[id] route (episode swap is just a session change and
+	// the singleton's src updates in place), when paused, or when
+	// already in PiP.
 	beforeNavigate(({ to }) => {
 		if (!videoEl) return;
+		if (!config?.auto_pip_on_leave) return;
 		const targetId = to?.route?.id ?? '';
 		if (targetId === '/play/[id]') return;
 		if (videoEl.paused) return;
 		if (document.pictureInPictureElement) return;
-		// Fire-and-forget — request returns a Promise but the
-		// navigation can't be awaited; if PiP fails the worst case
-		// is the user loses the video, which is what would have
-		// happened pre-feature anyway.
 		void videoEl.requestPictureInPicture().catch(() => {});
 	});
 

@@ -107,6 +107,23 @@ export function setCurrentSession(s: VideoSession | null): void {
 	currentSession = s;
 }
 
+/** Returns the current singleton session iff it matches the
+ *  requested `(kitsu_id, episode)` and the video is in a state
+ *  that's worth resuming (has a src loaded, isn't ended). Used
+ *  by play call sites to short-circuit a redundant ani-cli spawn
+ *  when the user clicks an episode they're already watching in
+ *  PiP — navigating with the cached session keeps playback at
+ *  its current timestamp instead of restarting from zero. */
+export function reuseSessionIfMatching(kitsuId: string, episode: number): VideoSession | null {
+	if (!currentSession) return null;
+	if (currentSession.kitsu_id !== kitsuId) return null;
+	if (currentSession.episode !== episode) return null;
+	if (!videoEl) return null;
+	if (!videoEl.src && !videoEl.currentSrc) return null;
+	if (videoEl.ended) return null;
+	return currentSession;
+}
+
 /** Replace the subtitle track on the singleton. Removes any
  *  existing `<track>` children and adds a fresh one when `url` is
  *  non-null. The play page's effect calls this when the session's
