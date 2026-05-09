@@ -74,12 +74,35 @@ pub fn ani_cli_history() -> Option<PathBuf> {
     )
 }
 
+/// Default destination for episode downloads:
+/// `$XDG_DOWNLOAD_DIR/ani-gui/`, falling back to `$HOME/Downloads/ani-gui/`
+/// when XDG isn't set (the same fallback chain the user-dirs spec
+/// recommends). Returns `None` only when neither var is available, in
+/// which case the renderer should ask for a path explicitly.
+///
+/// The user can always override per-download via the folder picker
+/// before confirming — this is just the *default* the picker opens at.
+///
+/// STUB (red commit). Implementation lands in the green commit.
+#[must_use]
+pub fn download_dir() -> Option<PathBuf> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Serializes tests that mutate process-global env vars so they
+    /// don't clobber each other under cargo test's default parallelism.
+    /// Multiple env vars share one lock; the granularity is "any test
+    /// that touches env" rather than per-var, which is fine for the
+    /// handful of tests here.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn ani_cli_history_honors_override() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let saved = std::env::var_os("ANI_CLI_HIST_DIR");
         std::env::set_var("ANI_CLI_HIST_DIR", "/tmp/test-ani-hsts-dir");
         let p = ani_cli_history().expect("history path resolves");
@@ -90,5 +113,53 @@ mod tests {
         }
         assert!(p.ends_with("ani-hsts"));
         assert!(p.starts_with("/tmp/test-ani-hsts-dir"));
+    }
+
+    #[test]
+    fn download_dir_honors_xdg_download_dir() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved = std::env::var_os("XDG_DOWNLOAD_DIR");
+        std::env::set_var("XDG_DOWNLOAD_DIR", "/tmp/test-xdg-downloads");
+        let p = download_dir().expect("download path resolves");
+        if let Some(s) = saved {
+            std::env::set_var("XDG_DOWNLOAD_DIR", s);
+        } else {
+            std::env::remove_var("XDG_DOWNLOAD_DIR");
+        }
+        assert_eq!(p, PathBuf::from("/tmp/test-xdg-downloads/ani-gui"));
+    }
+
+    #[test]
+    fn download_dir_falls_back_to_home_downloads_without_xdg() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved_xdg = std::env::var_os("XDG_DOWNLOAD_DIR");
+        let saved_home = std::env::var_os("HOME");
+        std::env::remove_var("XDG_DOWNLOAD_DIR");
+        std::env::set_var("HOME", "/tmp/test-fake-home");
+        let p = download_dir().expect("download path resolves");
+        if let Some(s) = saved_xdg {
+            std::env::set_var("XDG_DOWNLOAD_DIR", s);
+        }
+        if let Some(s) = saved_home {
+            std::env::set_var("HOME", s);
+        }
+        assert_eq!(p, PathBuf::from("/tmp/test-fake-home/Downloads/ani-gui"));
+    }
+
+    #[test]
+    fn download_dir_returns_none_when_no_home_no_xdg() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved_xdg = std::env::var_os("XDG_DOWNLOAD_DIR");
+        let saved_home = std::env::var_os("HOME");
+        std::env::remove_var("XDG_DOWNLOAD_DIR");
+        std::env::remove_var("HOME");
+        let p = download_dir();
+        if let Some(s) = saved_xdg {
+            std::env::set_var("XDG_DOWNLOAD_DIR", s);
+        }
+        if let Some(s) = saved_home {
+            std::env::set_var("HOME", s);
+        }
+        assert!(p.is_none(), "expected None without HOME/XDG, got {p:?}");
     }
 }
