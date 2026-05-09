@@ -913,10 +913,21 @@
 							<span class="ep-range">
 								{#if episodes && episodes.length > 0 && detail.episode_count}
 									{#if knownAvailableEpisodes !== null && knownAvailableEpisodes < detail.episode_count}
-										<!-- Kitsu indexed fewer episodes than the show announces;
-										     state the gap explicitly so "1–5 of 19" doesn't read
-										     like a stuck pagination. -->
-										{knownAvailableEpisodes} of {detail.episode_count} listed
+										<!-- Currently-airing shows: phrase the gap as
+										     "{N} aired so far · {M} expected" so the count is
+										     read as a release-progress indicator. Other gaps
+										     (Kitsu missing data on a finished show) read as
+										     "{N} of {M} listed". -->
+										{#if detail.status === 'current'}
+											{knownAvailableEpisodes} aired so far
+											<span class="ep-range-faint"> · {detail.episode_count} expected</span>
+										{:else if detail.status === 'upcoming'}
+											{knownAvailableEpisodes} aired
+											<span class="ep-range-faint"> · {detail.episode_count} announced</span>
+										{:else}
+											{knownAvailableEpisodes} of {detail.episode_count}
+											<span class="ep-range-faint"> listed</span>
+										{/if}
 									{:else if totalEpisodePages !== null && totalEpisodePages > 1}
 										{epStart}–{epEnd} of {detail.episode_count}
 									{:else}
@@ -2070,7 +2081,10 @@
 		font-size: var(--type-meta);
 		font-weight: 500;
 		letter-spacing: var(--tracking-meta);
-		color: var(--bone-300);
+		color: var(--bone-200);
+	}
+	.ep-range-faint {
+		color: color-mix(in oklab, var(--bone-300) 70%, transparent);
 	}
 
 	/* Prev/next chevron mini-buttons — small bordered chips with
