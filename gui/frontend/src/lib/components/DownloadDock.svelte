@@ -19,6 +19,13 @@
 
 	const itemsView = $derived(downloadStore.items as DownloadItem[]);
 	const activeCount = $derived(downloadStore.active.length);
+	const unseenCount = $derived(downloadStore.unseenCount);
+
+	// Clear the unseen flag whenever the dock opens — opening the
+	// popover counts as the user seeing the latest completions.
+	$effect(() => {
+		if (open) downloadStore.markAllSeen();
+	});
 
 	$effect(() => {
 		if (!open) return;
@@ -53,10 +60,15 @@
 		type="button"
 		class="dl-dock-trigger"
 		class:has-active={activeCount > 0}
+		class:has-unseen={activeCount === 0 && unseenCount > 0}
 		onclick={() => (open = !open)}
 		aria-haspopup="menu"
 		aria-expanded={open}
-		aria-label={activeCount > 0 ? `${activeCount} download(s) in progress` : 'Downloads'}
+		aria-label={activeCount > 0
+			? `${activeCount} download(s) in progress`
+			: unseenCount > 0
+				? `${unseenCount} download(s) finished`
+				: 'Downloads'}
 		title="Downloads"
 	>
 		<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -71,6 +83,8 @@
 		</svg>
 		{#if activeCount > 0}
 			<span class="dl-badge" aria-hidden="true">{activeCount}</span>
+		{:else if unseenCount > 0}
+			<span class="dl-dot" aria-hidden="true"></span>
 		{/if}
 	</button>
 
@@ -164,6 +178,23 @@
 	}
 	.dl-dock-trigger.has-active {
 		color: var(--accent);
+	}
+	.dl-dock-trigger.has-unseen {
+		color: var(--bone-100);
+	}
+	/* Notification dot for completed/errored downloads the user
+	   hasn't seen yet. Smaller than the active-count badge so the
+	   two states are visually distinct: badge = "in progress",
+	   dot = "ready for you". */
+	.dl-dot {
+		position: absolute;
+		inset-block-start: 4px;
+		inset-inline-end: 4px;
+		inline-size: 8px;
+		block-size: 8px;
+		background: var(--accent);
+		border-radius: 50%;
+		box-shadow: 0 0 0 2px var(--ink-000);
 	}
 	.dl-badge {
 		position: absolute;

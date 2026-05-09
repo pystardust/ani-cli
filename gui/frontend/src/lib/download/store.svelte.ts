@@ -33,6 +33,10 @@ export interface DownloadItem {
 	error: string | null;
 	startedAt: number;
 	abort: AbortController | null;
+	/** True when status flipped to "done" or "error" while the user
+	 *  wasn't looking at the dock. Cleared the next time the dock
+	 *  opens — drives the small completion badge on the topbar icon. */
+	unseen: boolean;
 }
 
 let nextId = 1;
@@ -45,6 +49,11 @@ class DownloadStore {
 	}
 	get hasActive(): boolean {
 		return this.active.length > 0;
+	}
+	/** Items the dock hasn't surfaced yet — drives the small completion
+	 *  badge on the topbar download icon. Cleared by `markAllSeen()`. */
+	get unseenCount(): number {
+		return this.items.reduce((n, i) => n + (i.unseen ? 1 : 0), 0);
 	}
 
 	add(args: {
@@ -67,7 +76,8 @@ class DownloadStore {
 				progress: null,
 				error: null,
 				startedAt: Date.now(),
-				abort: null
+				abort: null,
+				unseen: false
 			},
 			...this.items
 		];
@@ -86,14 +96,21 @@ class DownloadStore {
 
 	markDone(id: string, destDir: string) {
 		this.items = this.items.map((i) =>
-			i.id === id ? { ...i, status: 'done', destDir, abort: null } : i
+			i.id === id ? { ...i, status: 'done', destDir, abort: null, unseen: true } : i
 		);
 	}
 
 	markError(id: string, message: string) {
 		this.items = this.items.map((i) =>
-			i.id === id ? { ...i, status: 'error', error: message, abort: null } : i
+			i.id === id ? { ...i, status: 'error', error: message, abort: null, unseen: true } : i
 		);
+	}
+
+	/** Called when the dock opens — clears the unseen flag on every
+	 *  done/errored item so the topbar dot fades. */
+	markAllSeen() {
+		if (this.items.every((i) => !i.unseen)) return;
+		this.items = this.items.map((i) => (i.unseen ? { ...i, unseen: false } : i));
 	}
 
 	cancel(id: string) {

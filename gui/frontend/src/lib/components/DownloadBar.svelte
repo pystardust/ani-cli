@@ -9,6 +9,8 @@
   downloads run.
 -->
 <script lang="ts">
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { downloadStore } from '$lib/download/store.svelte';
 
 	const active = $derived(downloadStore.active);
@@ -16,9 +18,17 @@
 </script>
 
 {#if visible}
-	<aside class="dl-bar" aria-label="Active downloads">
+	<aside
+		class="dl-bar"
+		aria-label="Active downloads"
+		transition:fly={{ y: 16, duration: 220, easing: cubicOut }}
+	>
 		{#each active as item (item.id)}
-			<div class="dl-bar-row" title={item.progress ?? ''}>
+			<div
+				class="dl-bar-row"
+				title={item.progress ?? ''}
+				transition:fly={{ y: 8, duration: 180, easing: cubicOut }}
+			>
 				<span class="dl-bar-progress" aria-hidden="true">
 					<span></span>
 				</span>
@@ -42,23 +52,17 @@
 		gap: var(--space-2);
 		z-index: 40;
 		pointer-events: none;
-		animation: dl-bar-rise var(--dur-med) var(--ease-out-soft) both;
-	}
-	@keyframes dl-bar-rise {
-		from {
-			transform: translateY(8px);
-			opacity: 0;
-		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
 	}
 	.dl-bar-row {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
 		gap: 4px;
+		padding: var(--space-2) var(--space-3);
+		background: var(--ink-050);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-sm);
+		box-shadow: 0 4px 14px -4px rgb(0 0 0 / 0.4);
 	}
 	.dl-bar-progress {
 		position: relative;
