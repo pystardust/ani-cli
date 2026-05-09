@@ -100,12 +100,15 @@ pub struct AvailabilityBatchResponse {
 }
 
 fn cache_key(kitsu_id: &str, mode: &str) -> String {
+    // v3: SHOW_GQL fix — availableEpisodesDetail is a scalar, not
+    //     an object; the v2-rollout query subselected `{ sub dub }`
+    //     and got empty lists back, so episode_count fell through
+    //     to the buggy COUNT path. Bumping again so v2 rows
+    //     (already-poisoned with the count) get superseded.
     // v2: episode_count switched from "len of availableEpisodes list"
-    // (off-by-one for shows with half-episodes like One Piece's
-    // 1061.5) to "max integer episode" via fetch_show. Old rows are
-    // wrong; bumping the key auto-supersedes them.
+    //     to "max integer episode" via fetch_show.
     let m = if mode == "dub" { "dub" } else { "sub" };
-    format!("availability:v2:{kitsu_id}:{m}")
+    format!("availability:v3:{kitsu_id}:{m}")
 }
 
 /// Reuses the play path's `pick_title_and_index` so the cache

@@ -177,8 +177,13 @@ impl ShowMetadata {
     }
 }
 
+// `availableEpisodesDetail` is a custom scalar (free-form JSON),
+// NOT an object — subselecting `{ sub dub }` makes allanime return
+// it empty (ani-cli's `episodes_list_gql` agrees: no subselection).
+// The serde deserializer reads the embedded JSON object's `sub` /
+// `dub` fields directly.
 const SHOW_GQL: &str =
-    "query Show($showId: String!){ show(_id: $showId){ name englishName nativeName altNames availableEpisodesDetail{ sub dub }}}";
+    "query Show($showId: String!){ show(_id: $showId){ name englishName nativeName altNames availableEpisodesDetail }}";
 
 /// Fetch allanime's per-show metadata (title aliases) for a given
 /// `show_id`. Returns the parsed [`ShowMetadata`] on a 2xx response
