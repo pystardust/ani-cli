@@ -237,16 +237,21 @@
 						>
 							Range
 						</button>
+						<!-- aria-disabled (vs disabled) keeps the button hoverable
+						     so the native title tooltip fires when "All" is
+						     unavailable. The click handler short-circuits when
+						     not allowed. -->
 						<button
 							type="button"
 							class="dl-mode-btn"
 							class:active={mode === 'all'}
+							class:dl-mode-btn-disabled={!maxEpisode}
 							aria-pressed={mode === 'all'}
-							disabled={!maxEpisode}
+							aria-disabled={!maxEpisode}
 							title={!maxEpisode
 								? 'Downloading all episodes is disabled for this show.'
 								: undefined}
-							onclick={() => (mode = 'all')}
+							onclick={() => maxEpisode && (mode = 'all')}
 						>
 							All
 							{#if maxEpisode}
@@ -254,16 +259,21 @@
 							{/if}
 						</button>
 					{:else}
+						<!-- aria-disabled (vs disabled) keeps the button hoverable
+						     so the native title tooltip fires when "All" is
+						     unavailable. The click handler short-circuits when
+						     not allowed. -->
 						<button
 							type="button"
 							class="dl-mode-btn"
 							class:active={mode === 'all'}
+							class:dl-mode-btn-disabled={!maxEpisode}
 							aria-pressed={mode === 'all'}
-							disabled={!maxEpisode}
+							aria-disabled={!maxEpisode}
 							title={!maxEpisode
 								? 'Downloading all episodes is disabled for this show.'
 								: undefined}
-							onclick={() => (mode = 'all')}
+							onclick={() => maxEpisode && (mode = 'all')}
 						>
 							All
 							{#if maxEpisode}
@@ -515,9 +525,16 @@
 		color: var(--bone-100);
 		border-color: color-mix(in oklab, var(--accent) 50%, var(--bone-400));
 	}
-	.dl-mode-btn:disabled {
+	.dl-mode-btn:disabled,
+	.dl-mode-btn-disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
+	}
+	/* aria-disabled buttons stay hover-target so their title fires; the
+	   visual disabled state and hover suppression match :disabled. */
+	.dl-mode-btn-disabled:hover:not(.active) {
+		background: transparent;
+		color: var(--bone-200);
 	}
 	.dl-mode-num {
 		font-family: var(--font-mono);
