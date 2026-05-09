@@ -1155,6 +1155,7 @@
 	args={downloadArgs}
 	defaultDir={downloadDefaultDir}
 	availableEpisodes={knownAvailableEpisodes}
+	showThisEpisode={false}
 	onClose={() => (downloadModalOpen = false)}
 />
 

@@ -23,9 +23,22 @@
 		 *  but only 5 aired). Detail page passes its
 		 *  knownAvailableEpisodes; otherwise null. */
 		availableEpisodes?: number | null;
+		/** Whether to offer the "This episode" segment. The /play page
+		 *  passes true (the playing episode is the obvious default);
+		 *  the detail page passes false — there's no current episode
+		 *  there, so Range with equal start/end covers the single-ep
+		 *  case. When false, default mode is "range". */
+		showThisEpisode?: boolean;
 		onClose: () => void;
 	}
-	let { open = $bindable(), args, defaultDir, availableEpisodes = null, onClose }: Props = $props();
+	let {
+		open = $bindable(),
+		args,
+		defaultDir,
+		availableEpisodes = null,
+		showThisEpisode = true,
+		onClose
+	}: Props = $props();
 
 	// Effective max — what "All" actually targets and what Range
 	// inputs clamp to. Falls back to the announced count when we
@@ -54,7 +67,7 @@
 			const initial = args ? Number.parseInt(args.episode, 10) : 1;
 			startEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
 			endEp = startEp;
-			mode = 'this';
+			mode = showThisEpisode ? 'this' : 'range';
 		}
 	});
 
@@ -150,16 +163,18 @@
 			<div class="dl-body">
 				<span class="dl-label">Episodes</span>
 				<div class="dl-mode" role="group" aria-label="Episode selection">
-					<button
-						type="button"
-						class="dl-mode-btn"
-						class:active={mode === 'this'}
-						aria-pressed={mode === 'this'}
-						onclick={() => (mode = 'this')}
-					>
-						This episode
-						<span class="dl-mode-num">{args.episode}</span>
-					</button>
+					{#if showThisEpisode}
+						<button
+							type="button"
+							class="dl-mode-btn"
+							class:active={mode === 'this'}
+							aria-pressed={mode === 'this'}
+							onclick={() => (mode = 'this')}
+						>
+							This episode
+							<span class="dl-mode-num">{args.episode}</span>
+						</button>
+					{/if}
 					<button
 						type="button"
 						class="dl-mode-btn"
