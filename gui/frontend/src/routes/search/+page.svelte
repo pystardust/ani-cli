@@ -603,29 +603,26 @@
 		max-inline-size: 60ch;
 	}
 
-	/* Sort + filter controls — sit between the eyebrow and the grid.
-	   Stacked: Sort on its own row, Type on the next. */
+	/* Sort + filter controls — match settings' .field grouping so
+	   the label and its control read as a single unit. Each row is
+	   a vertical stack of (label, control) with tight 6px gap;
+	   rows separated by space-4 vertical rhythm. */
 	.controls {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
+		gap: var(--space-4);
 		margin-block-end: var(--space-5);
 	}
 	.control-group {
 		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
+		flex-direction: column;
+		gap: 6px;
 	}
-	/* Match settings' .field-key — body sans at medium weight reads
-	   as a proper field label, not the faint mono micro-eyebrow we
-	   were using elsewhere. */
 	.control-label {
 		font-family: var(--font-body);
 		font-size: var(--type-body);
 		font-weight: 500;
 		color: var(--bone-100);
-		min-inline-size: 4rem;
 	}
 	.seg {
 		display: inline-flex;
