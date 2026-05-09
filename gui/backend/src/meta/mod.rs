@@ -6,5 +6,6 @@
 //! Implementation lands in M2 (Kitsu) and M3 (AniList).
 
 pub mod anilist;
+pub mod aniskip;
 pub mod images;
 pub mod kitsu;
