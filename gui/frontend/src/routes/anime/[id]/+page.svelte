@@ -1302,11 +1302,12 @@
 		grid-template-columns: minmax(12rem, 16rem) 1fr;
 		gap: var(--space-7);
 		padding-inline: var(--space-6);
-		/* Pull further up — the hero's mask-image fades its bottom
-		   30% to transparent, and the masthead sits inside that
-		   faded zone so the banner appears to bleed behind the
-		   metadata. */
-		margin-block-start: calc(-1 * var(--space-10, 6rem));
+		/* Pull deep into the hero's faded zone — the bottom ~30% of
+		   the banner fades via mask-image, and the masthead text
+		   should sit inside that fade so the banner reads as
+		   continuing behind the metadata, not just stopping above
+		   it. ~10rem matches the fade region at typical viewports. */
+		margin-block-start: -10rem;
 		align-items: end;
 		position: relative;
 	}
