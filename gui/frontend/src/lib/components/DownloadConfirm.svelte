@@ -49,9 +49,15 @@
 
 	function confirm() {
 		if (!args || !dir.trim()) return;
-		busy = true;
+		// startDownload returns synchronously after registering the row
+		// in the store; the SSE runs in the background. So there's no
+		// real "starting" state for us to gate the close on — just hand
+		// off and dismiss. (The previous version flipped `busy=true`
+		// before calling close(), but close() early-returns when busy,
+		// which trapped the modal in "Starting…" forever.)
 		startDownload({ ...args, download_dir: dir, destDir: dir });
-		close();
+		open = false;
+		onClose();
 	}
 
 	function onBackdropKey(e: KeyboardEvent) {
