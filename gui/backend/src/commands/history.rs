@@ -61,6 +61,67 @@ mod tests {
     }
 
     #[test]
+    fn by_kitsu_returns_the_matching_entry() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("ani-hsts");
+        let s = make_state(path.clone());
+
+        write_atomic(
+            &path,
+            &[
+                HistoryEntry {
+                    ep_no: "5".into(),
+                    id: "amA".into(),
+                    title: "Show A (10 episodes)".into(),
+                },
+                HistoryEntry {
+                    ep_no: "12".into(),
+                    id: "amB".into(),
+                    title: "Show B (24 episodes)".into(),
+                },
+            ],
+        )
+        .unwrap();
+
+        // Prime the (allmanga show_id → kitsu_id) reverse mapping
+        // the play path stamps after a successful play.
+        crate::commands::kitsu::allmanga_kitsu_put(&s, "amA", "K1").unwrap();
+        crate::commands::kitsu::allmanga_kitsu_put(&s, "amB", "K2").unwrap();
+
+        let hit = history_by_kitsu(&s, "K2").unwrap().expect("match");
+        assert_eq!(hit.id, "amB");
+        assert_eq!(hit.ep_no, "12");
+    }
+
+    #[test]
+    fn by_kitsu_returns_none_when_no_history_entry_maps_to_id() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("ani-hsts");
+        let s = make_state(path.clone());
+
+        write_atomic(
+            &path,
+            &[HistoryEntry {
+                ep_no: "5".into(),
+                id: "amA".into(),
+                title: "Show A (10 episodes)".into(),
+            }],
+        )
+        .unwrap();
+        crate::commands::kitsu::allmanga_kitsu_put(&s, "amA", "K1").unwrap();
+
+        // No history entry maps to K-other.
+        assert!(history_by_kitsu(&s, "K-other").unwrap().is_none());
+    }
+
+    #[test]
+    fn by_kitsu_returns_none_when_history_is_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let s = make_state(tmp.path().join("nope"));
+        assert!(history_by_kitsu(&s, "K1").unwrap().is_none());
+    }
+
+    #[test]
     fn list_then_clear_round_trip() {
         let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("ani-hsts");
