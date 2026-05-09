@@ -362,7 +362,7 @@
 					{/if}
 					<div class="hero-actions">
 						<a class="btn btn-glass" href={resolve('/anime/[id]', { id: featured.id })}>
-							<span>View</span>
+							<span>See more</span>
 							<span aria-hidden="true">→</span>
 						</a>
 						<a class="btn btn-ghost" href={resolve('/search')}>
