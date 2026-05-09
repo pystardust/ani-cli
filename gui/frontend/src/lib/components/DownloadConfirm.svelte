@@ -102,14 +102,15 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div class="dl-card" onclick={(e) => e.stopPropagation()}>
 			<header class="dl-head">
+				<!-- Eyebrow is purely a label here. The earlier "episode N"
+				     value made the modal read as fixed-on-one-episode even
+				     though the body's From/To inputs let the user pick a
+				     range; the body's hint line surfaces the live count
+				     and is the source of truth. -->
 				<p class="dl-eyebrow">
 					<span class="dl-eyebrow-key">Download</span>
 					<span class="dl-eyebrow-rule" aria-hidden="true"></span>
-					<span class="dl-eyebrow-value">
-						{isRange
-							? `episodes ${Math.floor(startEp)}–${Math.floor(endEp)}`
-							: `episode ${Math.floor(startEp)}`}
-					</span>
+					<span class="dl-eyebrow-value">single or range</span>
 				</p>
 				<h2 id="dl-confirm-title" class="dl-title">{args.title}</h2>
 			</header>
