@@ -17,11 +17,13 @@ use crate::cache::{meta_cache_get, meta_cache_put};
 use crate::commands::play::{pick_title_and_index, PlayArgs};
 use crate::error::Result;
 
-/// Cache TTL for availability results — 7 days. allmanga's catalog
-/// changes slowly, and a stale "available" hit just adds one wasted
-/// click; a stale "unavailable" still self-heals when the cache
-/// expires and the user revisits a detail page.
-const AVAILABILITY_TTL_SECS: u64 = 7 * 24 * 60 * 60;
+/// Cache TTL for positive results — 30 days. Once a show is on
+/// allmanga it stays on allmanga; re-probing weekly is wasted work.
+const AVAILABILITY_TTL_POSITIVE_SECS: u64 = 30 * 24 * 60 * 60;
+/// Cache TTL for negative results — 7 days. Catalog adds are rarer
+/// than removals but still happen (late-season uploads, region
+/// availability shifts), so refresh negatives more often.
+const AVAILABILITY_TTL_NEGATIVE_SECS: u64 = 7 * 24 * 60 * 60;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AvailabilityArgs {
@@ -135,8 +137,13 @@ pub fn write_cache(state: &AppState, kitsu_id: &str, mode: &str, available: bool
         return;
     }
     let key = cache_key(kitsu_id, mode);
+    let ttl = if available {
+        AVAILABILITY_TTL_POSITIVE_SECS
+    } else {
+        AVAILABILITY_TTL_NEGATIVE_SECS
+    };
     if let Ok(body) = serde_json::to_string(&AvailabilityResponse { available }) {
-        let _ = meta_cache_put(&state.cache_pool, &key, &body, AVAILABILITY_TTL_SECS);
+        let _ = meta_cache_put(&state.cache_pool, &key, &body, ttl);
     }
 }
 
