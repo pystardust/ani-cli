@@ -139,10 +139,14 @@ class DownloadStore {
 
 	cancel(id: string) {
 		const item = this.items.find((i) => i.id === id);
-		if (item?.abort) item.abort.abort();
-		// markError will be called by the stream handler on abort; if
-		// the abort fired before SSE wired up, drop the row directly.
-		if (item?.status === 'pending') this.dismiss(id);
+		if (!item) return;
+		if (item.abort) item.abort.abort();
+		// User-initiated cancel — drop the row immediately. The catch
+		// handler in start.ts will fire after the abort signal
+		// propagates, but markError's .map finds no item by id at
+		// that point and the call is a no-op. (Prevents the row
+		// briefly flashing the error/red state on cancel.)
+		this.dismiss(id);
 	}
 
 	dismiss(id: string) {

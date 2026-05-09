@@ -59,6 +59,16 @@
 		const open = typeof window !== 'undefined' ? window.aniGui?.revealInFolder : null;
 		if (open) void open(dir);
 	}
+
+	function confirmCancel(item: DownloadItem) {
+		// Native confirm — minimal but unambiguous. Dock has no
+		// other modal pattern yet; can be swapped for an inline
+		// "Confirm? [yes][no]" later if multiple destructive
+		// affordances accumulate.
+		const ok =
+			typeof window !== 'undefined' ? window.confirm(`Cancel download of "${item.title}"?`) : true;
+		if (ok) downloadStore.cancel(item.id);
+	}
 </script>
 
 {#if hasItems}
@@ -129,7 +139,7 @@
 									<button
 										type="button"
 										class="dl-row-act"
-										onclick={() => downloadStore.cancel(item.id)}
+										onclick={() => confirmCancel(item)}
 										aria-label="Cancel download"
 										title="Cancel"
 									>
@@ -287,6 +297,7 @@
 		inset-inline-end: 0;
 		inline-size: 24rem;
 		max-block-size: 28rem;
+		overflow-x: hidden;
 		overflow-y: auto;
 		padding: var(--space-2);
 		background: var(--ink-050);
@@ -321,6 +332,8 @@
 		padding: var(--space-2) var(--space-3);
 		border-radius: var(--radius-sm);
 		transition: background var(--dur-fast) var(--ease-out-soft);
+		min-inline-size: 0;
+		overflow: hidden;
 	}
 	.dl-row:hover {
 		background: color-mix(in oklab, var(--bone-100) 6%, transparent);
