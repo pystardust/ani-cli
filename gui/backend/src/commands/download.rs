@@ -96,7 +96,14 @@ where
     let dest = resolve_dest(args)?;
     std::fs::create_dir_all(&dest).map_err(|_| AniError::Io)?;
 
-    let opts = debug_options_for(state, None);
+    // Downloads run aria2c / yt-dlp / ffmpeg, which take minutes —
+    // the play path's 60s wall-clock timeout would kill the download
+    // mid-stream right after ani-cli finished link discovery (the
+    // tools also keep stderr quiet during transfer, so we'd see no
+    // progress to inform a longer timeout). Cap at one hour; user
+    // can abort via the dock's Cancel button anyway.
+    let mut opts = debug_options_for(state, None);
+    opts.timeout = std::time::Duration::from_secs(60 * 60);
     let quality = args.quality.as_deref().unwrap_or("best");
 
     // Reuse play's disambiguator so a download started from the player
