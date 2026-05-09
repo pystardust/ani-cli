@@ -26,8 +26,9 @@ use tower_http::cors::CorsLayer;
 
 use crate::app::AppState;
 use crate::commands::{
-    app_info, external_player, history as h_inner, kitsu as kitsu_inner, play as play_inner,
-    proxy_url, session as session_inner, settings as settings_inner,
+    app_info, download as download_inner, external_player, history as h_inner,
+    kitsu as kitsu_inner, play as play_inner, proxy_url, session as session_inner,
+    settings as settings_inner,
 };
 use crate::config::Config;
 use crate::error::AniError;
@@ -88,6 +89,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/image", get(get_image))
         .route("/api/play", post(post_play))
         .route("/api/play/stream", get(get_play_stream))
+        .route("/api/download/stream", get(get_download_stream))
         .route("/api/play/external", post(post_play_external))
         .route("/api/play/cache/evict", post(post_play_cache_evict))
         .route("/api/play/mark-watched", post(post_play_mark_watched))
@@ -348,6 +350,44 @@ async fn get_play_stream(
             let _ = tx.send(Ok(ev));
         }
         // tx drops here → channel closes → stream ends.
+    });
+
+    Sse::new(UnboundedReceiverStream::new(rx)).keep_alive(KeepAlive::default())
+}
+
+/// SSE entry point for the Download action. Mirrors get_play_stream:
+/// `progress` events for each ani-cli stderr line (aria2c / yt-dlp /
+/// ffmpeg progress), then a final `done` event with the destination
+/// directory, or an `error` event before close.
+///
+/// EventSource is GET-only, so DownloadArgs comes through query
+/// params; the frontend uses fetch + ReadableStream rather than the
+/// browser EventSource API to keep the connection cancellable.
+async fn get_download_stream(
+    State(state): State<Arc<AppState>>,
+    Query(args): Query<download_inner::DownloadArgs>,
+) -> Sse<impl Stream<Item = std::result::Result<Event, std::convert::Infallible>>> {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let tx_for_progress = tx.clone();
+
+    tokio::spawn(async move {
+        let result = download_inner::download_with_progress(&state, &args, move |progress| {
+            if let Ok(ev) = Event::default().event("progress").json_data(&progress) {
+                let _ = tx_for_progress.send(Ok(ev));
+            }
+        })
+        .await;
+
+        let final_event = match result {
+            Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(serde_json::json!({"error": format!("{e:?}")}))
+                .ok(),
+        };
+        if let Some(ev) = final_event {
+            let _ = tx.send(Ok(ev));
+        }
     });
 
     Sse::new(UnboundedReceiverStream::new(rx)).keep_alive(KeepAlive::default())

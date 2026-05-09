@@ -217,7 +217,7 @@ const RUN_DEBUG_TIMEOUT: Duration = Duration::from_secs(60);
 /// `pick_by_ep_count` over the winner. Falls through to
 /// `(args.title, 1)` (legacy behaviour) on every-list-empty or when
 /// `episode_count` is unknown.
-async fn pick_title_and_index(
+pub(super) async fn pick_title_and_index(
     state: &AppState,
     args: &PlayArgs,
 ) -> (String, usize, Option<Candidate>) {
@@ -272,7 +272,7 @@ async fn pick_title_and_index(
 /// `override_hist_dir` is `Some`, ani-cli writes its `ani-hsts` to that
 /// path instead of the user's real history file — used by the prefetch
 /// path to keep background warming out of Continue Watching.
-fn debug_options_for(
+pub(super) fn debug_options_for(
     state: &AppState,
     override_hist_dir: Option<&std::path::Path>,
 ) -> DebugOptions {

@@ -6,6 +6,7 @@
 //! string — the frontend owns user-facing copy.
 
 pub mod app_info;
+pub mod download;
 pub mod external_player;
 pub mod history;
 pub mod kitsu;
