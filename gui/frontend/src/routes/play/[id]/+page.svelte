@@ -789,6 +789,11 @@
 				media_kind: mediaKind,
 				subtitle_url: subtitleUrl
 			});
+			// User came back to a session that was paused on navigate-
+			// away (auto-PiP off path). Their click *was* a play
+			// gesture — resume rather than leaving them staring at a
+			// frozen frame.
+			if (videoEl.paused) void videoEl.play().catch(() => {});
 			return;
 		}
 		teardown();
@@ -878,21 +883,35 @@
 		// when a different mediaUrl arrives (the effect below).
 	});
 
-	// Auto-PiP on leaving /play to another section of the app, so
-	// the user keeps watching while they browse. Off by default —
-	// opt in via Settings → Playback → "Auto Picture-in-Picture
-	// when leaving the player". Skipped when the target is another
-	// /play/[id] route (episode swap is just a session change and
-	// the singleton's src updates in place), when paused, or when
-	// already in PiP.
+	// Navigation handler for the singleton. Two responsibilities:
+	//
+	//   • Same-show episode swap → leave the video alone. The
+	//     singleton stays attached to the play frame and the new
+	//     page's load effect will swap its src in place.
+	//
+	//   • Anything else (different show, /, /anime/[id], /search,
+	//     …) → either request PiP (if the user opted into
+	//     auto_pip_on_leave) or pause the singleton so its audio
+	//     doesn't keep streaming from the off-screen hidden host.
+	//     Without the explicit pause the element survives in the
+	//     1×1 hidden host and continues playing audio, which is
+	//     what users heard as "I exit the page and hear audio with
+	//     no video".
 	beforeNavigate(({ to }) => {
 		if (!videoEl) return;
-		if (!config?.auto_pip_on_leave) return;
-		const targetId = to?.route?.id ?? '';
-		if (targetId === '/play/[id]') return;
+		const targetRoute = to?.route?.id ?? '';
+		const targetShowId = to?.params?.id ?? '';
+		const sameShowSwap = targetRoute === '/play/[id]' && targetShowId === id;
+		if (sameShowSwap) return;
 		if (videoEl.paused) return;
 		if (document.pictureInPictureElement) return;
-		void videoEl.requestPictureInPicture().catch(() => {});
+		if (config?.auto_pip_on_leave) {
+			void videoEl.requestPictureInPicture().catch(() => {
+				if (videoEl) videoEl.pause();
+			});
+		} else {
+			videoEl.pause();
+		}
 	});
 
 	function describeError(e: unknown): string {
