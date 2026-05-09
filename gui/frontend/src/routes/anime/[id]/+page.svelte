@@ -65,6 +65,12 @@
 	// airing for ongoing shows (One Piece: Kitsu 1106, allmanga 1161).
 	let playableEpisodeCount = $state<number | null>(null);
 
+	// Non-integer episode tags allmanga has streamable (recap /
+	// special episodes — e.g. ["1061.5"] for One Piece). Spliced
+	// into the episode strip at their numeric position so the user
+	// can navigate to them. Empty when the show has no extras.
+	let extraEpisodes = $state<string[]>([]);
+
 	// The cap used for: resume button (defaultEpisode), Download All
 	// total, Download range max, episode-list tile count. Prefers
 	// allmanga's count; falls back to Kitsu's announced total when
@@ -182,6 +188,17 @@
 				const padTo = Math.min(end, cap);
 				for (let n = start; n <= padTo; n++) {
 					if (have.has(n)) continue;
+					windowed.push(placeholderEpisode(n));
+				}
+				// Splice in non-integer extras (recap / special tags
+				// like "1061.5") that fall in this page's range. The
+				// renderer reads `number` as the display value; the
+				// click handler sends `String(number)` to ani-cli —
+				// "1061.5" round-trips through Number → String fine.
+				for (const tag of extraEpisodes) {
+					const n = parseFloat(tag);
+					if (!Number.isFinite(n)) continue;
+					if (n < start || n > end) continue;
 					windowed.push(placeholderEpisode(n));
 				}
 				windowed.sort(
@@ -397,6 +414,7 @@
 		error = null;
 		availability = null;
 		playableEpisodeCount = null;
+		extraEpisodes = [];
 		resumeEntry = null;
 		void historyByKitsu(currentId)
 			.then((h) => {
@@ -428,6 +446,7 @@
 						if (id !== currentId) return;
 						availability = r.available;
 						playableEpisodeCount = r.episode_count;
+						extraEpisodes = r.extra_episodes;
 					})
 					.catch(() => {
 						// Leave null; lazy fallback in the click handler

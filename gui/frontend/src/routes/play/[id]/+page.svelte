@@ -228,6 +228,8 @@
 	// "what's streamable now" cap, ahead of Kitsu's announced number
 	// for ongoing shows. Falls back to Kitsu's count when null.
 	let playableEpisodeCount = $state<number | null>(null);
+	// Non-integer episode tags allmanga has streamable (recaps).
+	let extraEpisodes = $state<string[]>([]);
 	const episodeCap = $derived(playableEpisodeCount ?? detail?.episode_count ?? null);
 	const totalEpisodes = $derived(episodeCap);
 	const hasPrev = $derived(episodeNum > 1);
@@ -304,6 +306,24 @@
 				const padTo = Math.min(end, cap);
 				for (let n = start; n <= padTo; n++) {
 					if (have.has(n)) continue;
+					windowed.push({
+						id: `__placeholder__${n}`,
+						number: n,
+						relative_number: null,
+						season_number: null,
+						canonical_title: null,
+						synopsis: null,
+						airdate: null,
+						length: null,
+						thumbnail: null
+					});
+				}
+				// Splice non-integer tags (recaps like "1061.5") into
+				// the page when their floor lies in the page range.
+				for (const tag of extraEpisodes) {
+					const n = parseFloat(tag);
+					if (!Number.isFinite(n)) continue;
+					if (n < start || n > end) continue;
 					windowed.push({
 						id: `__placeholder__${n}`,
 						number: n,
@@ -548,6 +568,7 @@
 				})
 					.then((r) => {
 						playableEpisodeCount = r.episode_count;
+						extraEpisodes = r.extra_episodes;
 					})
 					.catch(() => {
 						// Cap falls back to Kitsu's count; nothing else to do.

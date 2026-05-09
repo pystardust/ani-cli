@@ -54,16 +54,19 @@ pub struct AvailabilityResponse {
     /// the queried titles. False = the show is not in allmanga's
     /// catalog (e.g. Western animation Kitsu happens to index).
     pub available: bool,
-    /// allmanga's `availableEpisodes.<mode>` for the chosen candidate.
-    /// Authoritative count of what's actually streamable RIGHT NOW —
-    /// detail page uses it to size the episode list and gate the
-    /// Download All affordance. None when:
-    ///   - available=false (no candidate to read).
-    ///   - The candidate has 0 episodes for this mode.
-    ///   - Legacy cache rows written before this field existed.
-    /// Frontend falls back to Kitsu's `episode_count` in those cases.
+    /// Highest INTEGER episode number streamable in the requested
+    /// mode (One Piece sub: 1160). Authoritative cap for resume
+    /// CTA, Download All / range max, episode-strip pagination.
+    /// Excludes half-episode tags like `"1061.5"` — those live in
+    /// `extra_episodes`. None when available=false or legacy cache.
     #[serde(default)]
     pub episode_count: Option<u32>,
+    /// Non-integer episode tags allmanga has streamable (recap /
+    /// special episodes — e.g. `["1061.5"]` for One Piece).
+    /// Frontend splices these into the episode strip at their
+    /// numeric position. Empty when there are no extras.
+    #[serde(default)]
+    pub extra_episodes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -83,8 +86,12 @@ pub struct AvailabilityBatchResponse {
 }
 
 fn cache_key(kitsu_id: &str, mode: &str) -> String {
+    // v2: episode_count switched from "len of availableEpisodes list"
+    // (off-by-one for shows with half-episodes like One Piece's
+    // 1061.5) to "max integer episode" via fetch_show. Old rows are
+    // wrong; bumping the key auto-supersedes them.
     let m = if mode == "dub" { "dub" } else { "sub" };
-    format!("availability:{kitsu_id}:{m}")
+    format!("availability:v2:{kitsu_id}:{m}")
 }
 
 /// Reuses the play path's `pick_title_and_index` so the cache
@@ -137,18 +144,55 @@ pub async fn check_availability(
     };
     let (_chosen_title, _select, chosen_candidate) = pick_title_and_index(state, &play_view).await;
     let available = chosen_candidate.is_some();
-    let episode_count = chosen_candidate
-        .as_ref()
-        .map(|c| c.available_episodes.for_mode(mode))
-        .filter(|&n| n > 0);
+
+    // For the cap we need the actual episode-tag list (allmanga's
+    // `availableEpisodes` is a COUNT that includes half-episodes,
+    // which makes it +1 too high for shows with recaps like One
+    // Piece). Fetch the show's `availableEpisodesDetail` and split
+    // into max-integer + non-integer extras. Failures fall back to
+    // the count, which is wrong by ±1 in rare cases but better
+    // than blocking the cache write.
+    let mut episode_count: Option<u32> = None;
+    let mut extra_episodes: Vec<String> = Vec::new();
+    if let Some(c) = chosen_candidate.as_ref() {
+        match crate::scraper::allanime::fetch_show(&state.proxy_http, &c.id, None).await {
+            Ok(detail) => {
+                episode_count = detail.max_integer_episode(mode);
+                extra_episodes = detail
+                    .available_episodes_detail
+                    .for_mode(mode)
+                    .iter()
+                    .filter(|t| t.parse::<u32>().is_err())
+                    .cloned()
+                    .collect();
+            }
+            Err(_) => {
+                // Show fetch failed — fall back to the count from the
+                // search hit. Off by one for shows with halves, but
+                // good enough for the cap until next probe.
+                let n = c.available_episodes.for_mode(mode);
+                if n > 0 {
+                    episode_count = Some(n);
+                }
+            }
+        }
+    }
 
     if let Some(id) = args.kitsu_id.as_deref().filter(|s| !s.is_empty()) {
-        write_cache_full(state, id, mode, available, episode_count);
+        write_cache_full(
+            state,
+            id,
+            mode,
+            available,
+            episode_count,
+            extra_episodes.clone(),
+        );
     }
 
     Ok(AvailabilityResponse {
         available,
         episode_count,
+        extra_episodes,
     })
 }
 
@@ -160,18 +204,20 @@ pub async fn check_availability(
 /// off the candidate), so the cache row stores None there; the next
 /// detail-page probe will fill it in.
 pub fn write_cache(state: &AppState, kitsu_id: &str, mode: &str, available: bool) {
-    write_cache_full(state, kitsu_id, mode, available, None);
+    write_cache_full(state, kitsu_id, mode, available, None, Vec::new());
 }
 
 /// Same as [`write_cache`] but lets the caller supply the episode
-/// count when it knows. Used by `check_availability` after running
-/// the play picker; everything else stays on the simpler entry point.
+/// count + extras when it knows. Used by `check_availability` after
+/// running the play picker; everything else stays on the simpler
+/// entry point.
 pub fn write_cache_full(
     state: &AppState,
     kitsu_id: &str,
     mode: &str,
     available: bool,
     episode_count: Option<u32>,
+    extra_episodes: Vec<String>,
 ) {
     if kitsu_id.is_empty() {
         return;
@@ -185,6 +231,7 @@ pub fn write_cache_full(
     let body = AvailabilityResponse {
         available,
         episode_count,
+        extra_episodes,
     };
     if let Ok(body) = serde_json::to_string(&body) {
         let _ = meta_cache_put(&state.cache_pool, &key, &body, ttl);
@@ -253,26 +300,30 @@ mod tests {
     /// episode_count field must round-trip — the detail page reads it
     /// to size the episode list and gate the Download All / range cap.
     #[test]
-    fn response_round_trips_with_episode_count() {
+    fn response_round_trips_with_episode_count_and_extras() {
         let r = AvailabilityResponse {
             available: true,
-            episode_count: Some(1161),
+            episode_count: Some(1160),
+            extra_episodes: vec!["1061.5".into()],
         };
         let json = serde_json::to_string(&r).expect("serialize");
         let back: AvailabilityResponse = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.available, true);
-        assert_eq!(back.episode_count, Some(1161));
+        assert_eq!(back.episode_count, Some(1160));
+        assert_eq!(back.extra_episodes, vec!["1061.5".to_string()]);
     }
 
-    /// Old cache rows (written before episode_count was added) must
+    /// Old cache rows (written before the new fields existed) must
     /// still parse — TTL hasn't expired them yet, so during the
-    /// rollout window we'll see them. They yield episode_count=None,
-    /// which the frontend treats as "fall back to Kitsu's count".
+    /// rollout window we'll see them. They yield episode_count=None
+    /// and extra_episodes=[], which the frontend treats as "fall back
+    /// to Kitsu's count, no recap tiles".
     #[test]
-    fn legacy_response_without_episode_count_parses_as_none() {
+    fn legacy_response_parses_with_defaults() {
         let legacy = r#"{"available":true}"#;
         let r: AvailabilityResponse = serde_json::from_str(legacy).expect("legacy parses");
         assert_eq!(r.available, true);
         assert_eq!(r.episode_count, None);
+        assert!(r.extra_episodes.is_empty());
     }
 }

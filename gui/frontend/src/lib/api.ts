@@ -640,14 +640,18 @@ export interface AvailabilityArgs {
 	kitsu_id?: string;
 }
 
-/** Response from {@link checkAvailability}. `episode_count` is allmanga's
- *  authoritative `availableEpisodes.<mode>` for the chosen candidate —
- *  null means either the show isn't available or the picker matched a
- *  candidate with zero episodes for this mode. The detail page uses it
- *  to size the episode list and gate Download All. */
+/** Response from {@link checkAvailability}. `episode_count` is the
+ *  highest INTEGER episode allmanga has streamable in the requested
+ *  mode — authoritative cap for the resume CTA, Download All, and
+ *  episode-strip pagination. `extra_episodes` is the list of
+ *  non-integer tags allmanga lists (recap / special episodes —
+ *  e.g. `["1061.5"]` for One Piece). The detail/play pages splice
+ *  these into the episode strip at their numeric position so the
+ *  user can navigate to them. */
 export interface AvailabilityResponse {
 	available: boolean;
 	episode_count: number | null;
+	extra_episodes: string[];
 }
 
 /** "Is this title in allmanga's catalog?" probe. The detail page hits

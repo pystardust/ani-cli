@@ -98,9 +98,60 @@ pub struct ShowMetadata {
     /// or contain non-Latin scripts; callers filter as needed.
     #[serde(default, rename = "altNames")]
     pub alt_names: Vec<String>,
+    /// Per-mode list of episode tags allmanga has streamable. Each
+    /// entry is the same string ani-cli's `-e` accepts — usually an
+    /// integer like `"1160"`, but may include half-episodes like
+    /// `"1061.5"` (recaps / specials). The COUNT in
+    /// `availableEpisodes` includes these halves, so taking it as
+    /// the cap proposes a phantom max episode (One Piece: count=1161
+    /// but max integer is 1160 because 1061.5 occupies one slot).
+    /// Use [`Self::max_integer_episode`] to get the cap that the
+    /// player CTA + episode strip should use.
+    #[serde(default, rename = "availableEpisodesDetail")]
+    pub available_episodes_detail: AvailableEpisodesDetail,
+}
+
+/// `availableEpisodesDetail` object — episode TAG lists per mode.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct AvailableEpisodesDetail {
+    #[serde(default)]
+    pub sub: Vec<String>,
+    #[serde(default)]
+    pub dub: Vec<String>,
+}
+
+impl AvailableEpisodesDetail {
+    /// Per-mode episode list.
+    #[must_use]
+    pub fn for_mode(&self, mode: &str) -> &[String] {
+        if mode == "dub" {
+            &self.dub
+        } else {
+            &self.sub
+        }
+    }
 }
 
 impl ShowMetadata {
+    /// Highest integer episode number streamable in `mode`, ignoring
+    /// half-episode entries (`"1061.5"` etc.). Returns `None` when
+    /// the list is empty or contains only non-integer tags.
+    ///
+    /// allmanga's `availableEpisodes.<mode>` field returns a COUNT
+    /// that includes halves, so a show with episodes 1..1160 plus
+    /// one `1061.5` reports 1161. Taking that count as the cap
+    /// proposes episode 1161 as the next playable, which doesn't
+    /// exist. Walking the actual tag list and dropping non-integers
+    /// gives the truthful upper bound.
+    #[must_use]
+    pub fn max_integer_episode(&self, mode: &str) -> Option<u32> {
+        self.available_episodes_detail
+            .for_mode(mode)
+            .iter()
+            .filter_map(|tag| tag.parse::<u32>().ok())
+            .max()
+    }
+
     /// Ordered list of search terms to feed to a downstream fuzzy
     /// matcher (Kitsu text search). `english_name` first because Kitsu
     /// indexes by transliterated English titles; `native_name` second
@@ -127,7 +178,7 @@ impl ShowMetadata {
 }
 
 const SHOW_GQL: &str =
-    "query Show($showId: String!){ show(_id: $showId){ name englishName nativeName altNames }}";
+    "query Show($showId: String!){ show(_id: $showId){ name englishName nativeName altNames availableEpisodesDetail{ sub dub }}}";
 
 /// Fetch allanime's per-show metadata (title aliases) for a given
 /// `show_id`. Returns the parsed [`ShowMetadata`] on a 2xx response
@@ -470,6 +521,40 @@ mod tests {
         );
     }
 
+    #[test]
+    fn max_integer_episode_drops_half_episode_tags() {
+        // Real shape from allmanga's response for One Piece — the
+        // sub list is integers 1..1160 plus one "1061.5" recap.
+        // Total len is 1161, but the playable cap is 1160; using
+        // the COUNT (which `availableEpisodes.sub` reports) would
+        // propose phantom episode 1161 as next-resumable.
+        let mut sub: Vec<String> = (1..=1160).map(|n| n.to_string()).collect();
+        sub.insert(900, "1061.5".to_string());
+        let m = ShowMetadata {
+            available_episodes_detail: AvailableEpisodesDetail {
+                sub,
+                dub: Vec::new(),
+            },
+            ..Default::default()
+        };
+        assert_eq!(m.max_integer_episode("sub"), Some(1160));
+    }
+
+    #[test]
+    fn max_integer_episode_returns_none_for_empty_or_all_halves() {
+        let m = ShowMetadata::default();
+        assert_eq!(m.max_integer_episode("sub"), None);
+
+        let m = ShowMetadata {
+            available_episodes_detail: AvailableEpisodesDetail {
+                sub: vec!["1.5".into(), "2.5".into()],
+                dub: Vec::new(),
+            },
+            ..Default::default()
+        };
+        assert_eq!(m.max_integer_episode("sub"), None);
+    }
+
     #[tokio::test]
     async fn fetch_show_returns_upstream_error_on_5xx() {
         let server = wiremock::MockServer::start().await;
@@ -511,6 +596,7 @@ mod tests {
             english_name: Some("One Piece".into()),
             native_name: Some("ONE PIECE".into()),
             alt_names: vec!["One Piece".into(), "海贼王".into()],
+            available_episodes_detail: AvailableEpisodesDetail::default(),
         };
         // english_name first, native_name second, then alt_names —
         // dedupe so the duplicate "One Piece" doesn't appear twice.
@@ -532,6 +618,7 @@ mod tests {
             english_name: Some("".into()),
             native_name: Some("   ".into()),
             alt_names: vec!["".into(), "Real Title".into()],
+            available_episodes_detail: AvailableEpisodesDetail::default(),
         };
         assert_eq!(show.search_terms(), vec!["Real Title".to_string()]);
     }
