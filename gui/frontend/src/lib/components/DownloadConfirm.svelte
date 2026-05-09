@@ -23,11 +23,12 @@
 
 	let dir = $state('');
 	let busy = $state(false);
-	// Range fields. start defaults to args.episode (the episode the
-	// user clicked from); end defaults to start so a fresh open reads
-	// as "single-episode download" until the user opts in. ani-cli's
-	// `-e M-N` loops sequentially so the range can be arbitrary; we
-	// just clamp to args.episode_count when known.
+	// Mode picker — three explicit choices instead of asking the user
+	// to derive "I want all episodes" from typing 1..N into From/To.
+	// "this" defaults to args.episode (the episode the user clicked
+	// from); "range" surfaces From/To inputs; "all" expands 1..episode_count.
+	type Mode = 'this' | 'all' | 'range';
+	let mode = $state<Mode>('this');
 	let startEp = $state(1);
 	let endEp = $state(1);
 
@@ -38,16 +39,26 @@
 			const initial = args ? Number.parseInt(args.episode, 10) : 1;
 			startEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
 			endEp = startEp;
+			mode = 'this';
 		}
 	});
 
 	const episodeArg = $derived.by(() => {
+		if (mode === 'this') return args ? args.episode : '1';
+		if (mode === 'all') {
+			const last = args?.episode_count ?? Math.floor(endEp);
+			return `1-${Math.max(1, last)}`;
+		}
+		// range
 		const s = Math.max(1, Math.floor(startEp));
 		const e = Math.max(s, Math.floor(endEp));
 		return s === e ? String(s) : `${s}-${e}`;
 	});
-	const isRange = $derived(Math.floor(endEp) > Math.floor(startEp));
-	const rangeCount = $derived(Math.max(1, Math.floor(endEp) - Math.floor(startEp) + 1));
+	const rangeCount = $derived.by(() => {
+		if (mode === 'this') return 1;
+		if (mode === 'all') return Math.max(1, args?.episode_count ?? 1);
+		return Math.max(1, Math.floor(endEp) - Math.floor(startEp) + 1);
+	});
 
 	async function browse() {
 		const picker = typeof window !== 'undefined' ? window.aniGui?.pickDirectory : null;
@@ -110,41 +121,91 @@
 				<p class="dl-eyebrow">
 					<span class="dl-eyebrow-key">Download</span>
 					<span class="dl-eyebrow-rule" aria-hidden="true"></span>
-					<span class="dl-eyebrow-value">single or range</span>
+					<span class="dl-eyebrow-value">
+						{mode === 'this'
+							? `episode ${args.episode}`
+							: mode === 'all'
+								? `all ${args.episode_count ?? '?'} episodes`
+								: `episodes ${Math.floor(startEp)}–${Math.floor(endEp)}`}
+					</span>
 				</p>
 				<h2 id="dl-confirm-title" class="dl-title">{args.title}</h2>
 			</header>
 
 			<div class="dl-body">
-				<label class="dl-label" for="dl-start-ep">Episodes</label>
-				<div class="dl-row dl-row-eps">
-					<input
-						id="dl-start-ep"
-						class="dl-input dl-input-num"
-						type="number"
-						min="1"
-						max={args.episode_count ?? undefined}
-						bind:value={startEp}
-						aria-label="From episode"
-					/>
-					<span class="dl-range-sep" aria-hidden="true">–</span>
-					<input
-						class="dl-input dl-input-num"
-						type="number"
-						min={Math.floor(startEp)}
-						max={args.episode_count ?? undefined}
-						bind:value={endEp}
-						aria-label="To episode"
-					/>
-					{#if args.episode_count}
-						<span class="dl-range-total">of {args.episode_count}</span>
-					{/if}
+				<span class="dl-label">Episodes</span>
+				<div class="dl-mode" role="group" aria-label="Episode selection">
+					<button
+						type="button"
+						class="dl-mode-btn"
+						class:active={mode === 'this'}
+						aria-pressed={mode === 'this'}
+						onclick={() => (mode = 'this')}
+					>
+						This episode
+						<span class="dl-mode-num">{args.episode}</span>
+					</button>
+					<button
+						type="button"
+						class="dl-mode-btn"
+						class:active={mode === 'range'}
+						aria-pressed={mode === 'range'}
+						onclick={() => (mode = 'range')}
+					>
+						Range
+					</button>
+					<button
+						type="button"
+						class="dl-mode-btn"
+						class:active={mode === 'all'}
+						aria-pressed={mode === 'all'}
+						disabled={!args.episode_count}
+						onclick={() => (mode = 'all')}
+					>
+						All
+						{#if args.episode_count}
+							<span class="dl-mode-num">{args.episode_count}</span>
+						{/if}
+					</button>
 				</div>
+
+				{#if mode === 'range'}
+					<div class="dl-row dl-row-eps">
+						<input
+							id="dl-start-ep"
+							class="dl-input dl-input-num"
+							type="number"
+							min="1"
+							max={args.episode_count ?? undefined}
+							bind:value={startEp}
+							aria-label="From episode"
+						/>
+						<span class="dl-range-sep" aria-hidden="true">–</span>
+						<input
+							class="dl-input dl-input-num"
+							type="number"
+							min={Math.floor(startEp)}
+							max={args.episode_count ?? undefined}
+							bind:value={endEp}
+							aria-label="To episode"
+						/>
+						{#if args.episode_count}
+							<span class="dl-range-total">of {args.episode_count}</span>
+						{/if}
+					</div>
+				{/if}
+
 				<p class="dl-hint">
-					{#if isRange}
-						Downloads {rangeCount} episodes sequentially via ani-cli's range mode.
+					{#if mode === 'this'}
+						Downloads episode {args.episode} only.
+					{:else if mode === 'all'}
+						{#if args.episode_count}
+							Downloads all {args.episode_count} episodes sequentially.
+						{:else}
+							Episode count unknown — use Range to specify.
+						{/if}
 					{:else}
-						Single episode. Set "to" higher than "from" to download a range.
+						Downloads {rangeCount} episodes sequentially.
 					{/if}
 				</p>
 
@@ -283,6 +344,57 @@
 	.dl-row-eps {
 		align-items: baseline;
 		gap: var(--space-3);
+		margin-block-start: var(--space-2);
+	}
+	.dl-mode {
+		display: flex;
+		gap: 1px;
+		padding: 2px;
+		background: var(--ink-000);
+		border: 1px solid var(--ink-200);
+		border-radius: var(--radius-sm);
+		margin-block-start: var(--space-2);
+	}
+	.dl-mode-btn {
+		flex: 1 1 0;
+		display: inline-flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: calc(var(--radius-sm) - 2px);
+		color: var(--bone-200);
+		font-family: var(--font-body);
+		font-size: var(--type-body-s);
+		font-weight: 500;
+		cursor: pointer;
+		transition:
+			background var(--dur-fast) var(--ease-out-soft),
+			color var(--dur-fast) var(--ease-out-soft);
+	}
+	.dl-mode-btn:hover:not(:disabled):not(.active) {
+		background: color-mix(in oklab, var(--bone-100) 4%, transparent);
+		color: var(--bone-100);
+	}
+	.dl-mode-btn.active {
+		background: color-mix(in oklab, var(--accent) 22%, var(--ink-050));
+		color: var(--bone-100);
+		border-color: color-mix(in oklab, var(--accent) 50%, var(--bone-400));
+	}
+	.dl-mode-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	.dl-mode-num {
+		font-family: var(--font-mono);
+		font-size: var(--type-micro);
+		letter-spacing: var(--tracking-micro);
+		color: var(--bone-300);
+	}
+	.dl-mode-btn.active .dl-mode-num {
+		color: color-mix(in oklab, var(--accent) 80%, var(--bone-100));
 	}
 	.dl-input-num {
 		flex: 0 0 5rem;
