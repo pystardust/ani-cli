@@ -85,7 +85,12 @@
 	const accent = $derived(id ? accentFor(id) : 'var(--accent-ink)');
 
 	let detail = $state<KitsuAnimeRef | null>(null);
-	let episodes = $state<KitsuEpisode[] | null>(null);
+	// Raw Kitsu data for the current page, before padding. Initial
+	// fetch can land BEFORE episodeCap (which depends on detail +
+	// availability) — using a derived `episodes` lets the strip
+	// re-pad once the cap arrives instead of getting stuck on the
+	// pre-cap empty array.
+	let rawWindowed = $state<KitsuEpisode[] | null>(null);
 	let episodesPage = $state(1);
 	let episodesLoading = $state(false);
 	let episodesError = $state<string | null>(null);
@@ -231,6 +236,55 @@
 	// Non-integer episode tags allmanga has streamable (recaps).
 	let extraEpisodes = $state<string[]>([]);
 	const episodeCap = $derived(playableEpisodeCount ?? detail?.episode_count ?? null);
+
+	/** Padded view of `rawWindowed` for the current page. Re-runs
+	 *  whenever the raw fetch lands OR the cap/extras change so a
+	 *  fetch that completed before detail/availability still gets
+	 *  padded once those land. */
+	const episodes: KitsuEpisode[] | null = $derived.by(() => {
+		if (rawWindowed === null) return null;
+		const out = rawWindowed.slice();
+		const cap = episodeCap;
+		if (cap !== null) {
+			const start = (episodesPage - 1) * UI_PAGE_SIZE + 1;
+			const end = episodesPage * UI_PAGE_SIZE;
+			const have = new Set(out.map((ep) => ep.number ?? ep.relative_number ?? -1));
+			const padTo = Math.min(end, cap);
+			for (let n = start; n <= padTo; n++) {
+				if (have.has(n)) continue;
+				out.push({
+					id: `__placeholder__${n}`,
+					number: n,
+					relative_number: null,
+					season_number: null,
+					canonical_title: null,
+					synopsis: null,
+					airdate: null,
+					length: null,
+					thumbnail: null
+				});
+			}
+			for (const tag of extraEpisodes) {
+				const n = parseFloat(tag);
+				if (!Number.isFinite(n) || n < start || n > end) continue;
+				out.push({
+					id: `__placeholder__${n}`,
+					number: n,
+					relative_number: null,
+					season_number: null,
+					canonical_title: null,
+					synopsis: null,
+					airdate: null,
+					length: null,
+					thumbnail: null
+				});
+			}
+			out.sort(
+				(a, b) => (a.number ?? a.relative_number ?? 0) - (b.number ?? b.relative_number ?? 0)
+			);
+		}
+		return out;
+	});
 	const totalEpisodes = $derived(episodeCap);
 	const hasPrev = $derived(episodeNum > 1);
 	const hasNext = $derived(totalEpisodes === null || episodeNum < totalEpisodes);
@@ -291,61 +345,15 @@
 			const start = (wantPage - 1) * UI_PAGE_SIZE + 1;
 			const end = wantPage * UI_PAGE_SIZE;
 			const merged = (await Promise.all(kitsuPagesForUiPage(wantPage).map(getKitsuPage))).flat();
-			const windowed = merged.filter((ep) => {
+			rawWindowed = merged.filter((ep) => {
 				const n = ep.number ?? ep.relative_number ?? -1;
 				return n >= start && n <= end;
 			});
-			// Pad placeholder tiles for the gap between Kitsu's
-			// catalogued episodes and allmanga's count (ongoing
-			// shows). Mirrors the detail-page logic so the player's
-			// episode strip can navigate to playable-but-uncatalogued
-			// episodes (One Piece 1107+).
-			const cap = episodeCap;
-			if (cap !== null) {
-				const have = new Set(windowed.map((ep) => ep.number ?? ep.relative_number ?? -1));
-				const padTo = Math.min(end, cap);
-				for (let n = start; n <= padTo; n++) {
-					if (have.has(n)) continue;
-					windowed.push({
-						id: `__placeholder__${n}`,
-						number: n,
-						relative_number: null,
-						season_number: null,
-						canonical_title: null,
-						synopsis: null,
-						airdate: null,
-						length: null,
-						thumbnail: null
-					});
-				}
-				// Splice non-integer tags (recaps like "1061.5") into
-				// the page when their floor lies in the page range.
-				for (const tag of extraEpisodes) {
-					const n = parseFloat(tag);
-					if (!Number.isFinite(n)) continue;
-					if (n < start || n > end) continue;
-					windowed.push({
-						id: `__placeholder__${n}`,
-						number: n,
-						relative_number: null,
-						season_number: null,
-						canonical_title: null,
-						synopsis: null,
-						airdate: null,
-						length: null,
-						thumbnail: null
-					});
-				}
-				windowed.sort(
-					(a, b) => (a.number ?? a.relative_number ?? 0) - (b.number ?? b.relative_number ?? 0)
-				);
-			}
-			episodes = windowed;
 			episodesPage = wantPage;
 			episodesError = null;
 			void prefetchAdjacent(wantPage);
 		} catch (e) {
-			if (opts.initial) episodes = [];
+			if (opts.initial) rawWindowed = [];
 			episodesError = describeError(e);
 		} finally {
 			episodesLoading = false;
