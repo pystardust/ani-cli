@@ -65,7 +65,10 @@ pub struct PlayArgs {
     /// - Newline-joined string (SSE GET /api/play/stream query): `"a\nb"`.
     ///   Required because EventSource is GET-only and serde_urlencoded
     ///   doesn't handle repeated keys.
-    #[serde(default, deserialize_with = "deserialize_alt_titles")]
+    #[serde(
+        default,
+        deserialize_with = "crate::commands::play_select::deserialize_alt_titles"
+    )]
     pub alt_titles: Vec<String>,
     /// `true` when this call is a background prefetch (warming the
     /// cache for an episode the user hasn't clicked yet). Prefetches
@@ -77,7 +80,10 @@ pub struct PlayArgs {
     ///     ani-cli's own `update_history` writes to a throwaway file
     ///
     /// Frontend prefetch loops set it; click handlers leave it false.
-    #[serde(default, deserialize_with = "deserialize_loose_bool")]
+    #[serde(
+        default,
+        deserialize_with = "crate::commands::play_select::deserialize_loose_bool"
+    )]
     pub prefetch: bool,
     /// Kitsu id of the anime the user is playing. The frontend knows
     /// it (the user came from `/anime/[kitsu_id]`); we don't, until
@@ -92,118 +98,15 @@ pub struct PlayArgs {
     pub kitsu_id: Option<String>,
 }
 
-/// Accept either a JSON array of strings or a single newline-joined
-/// string for `alt_titles`. The string form is the SSE-query path —
-/// serde_urlencoded can't decode `alt_titles=a&alt_titles=b` as a Vec.
-fn deserialize_alt_titles<'de, D>(d: D) -> std::result::Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Wire {
-        List(Vec<String>),
-        Joined(String),
-    }
-    Option::<Wire>::deserialize(d).map(|opt| match opt {
-        None => Vec::new(),
-        Some(Wire::List(v)) => v,
-        Some(Wire::Joined(s)) => s
-            .split('\n')
-            .filter(|p| !p.is_empty())
-            .map(String::from)
-            .collect(),
-    })
-}
-
-/// Accept JSON bool OR `"1"` / `"true"` / `"0"` / `"false"` strings —
-/// the SSE GET path goes through serde_urlencoded which only knows
-/// strings, so a plain `bool` field would reject `?prefetch=1`.
-fn deserialize_loose_bool<'de, D>(d: D) -> std::result::Result<bool, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Wire {
-        Bool(bool),
-        Str(String),
-    }
-    Option::<Wire>::deserialize(d).map(|opt| match opt {
-        None => false,
-        Some(Wire::Bool(b)) => b,
-        Some(Wire::Str(s)) => matches!(s.as_str(), "1" | "true" | "yes"),
-    })
-}
-
-/// Choose which `(title, candidate_index)` to feed `ani-cli -S`. Walks
-/// the supplied `(title, candidates)` results in order and returns
-/// the first one whose candidate list is non-empty, paired with the
-/// 1-based index from [`scraper::pick_by_ep_count`] (closest match by
-/// episode count to `expected`).
-///
-/// When every list is empty (or the slice is empty), returns
-/// `(primary, 1)` — the legacy `-S 1` behaviour callers used before
-/// disambiguation existed. The play flow falls through to ani-cli
-/// with the primary title; ani-cli's own search will likely fail too,
-/// but the user sees a real error instead of a fake "we picked
-/// candidate 1" silent miss.
-#[must_use]
-pub fn select_first_with_hits(
-    primary: &str,
-    results: &[(String, Vec<Candidate>)],
-    expected: u32,
-    mode: &str,
-) -> (String, usize) {
-    select_first_with_hits_opt(primary, results, Some(expected), mode)
-}
-
-/// `select_first_with_hits` variant where `expected` may be unknown.
-/// When `expected` is `None`, returns the first non-empty list with
-/// candidate index 1 (allanime's own ranking — same as ani-cli's
-/// default `-S 1`). When `Some`, behaves identically to the v1 helper.
-///
-/// This is the path Stone Ocean Part 6 needs: Kitsu's episode_count
-/// is null for that entry, so we can't disambiguate by ep count, but
-/// we still need to walk alt_titles to find one allmanga indexes.
-#[must_use]
-pub fn select_first_with_hits_opt(
-    primary: &str,
-    results: &[(String, Vec<Candidate>)],
-    expected: Option<u32>,
-    mode: &str,
-) -> (String, usize) {
-    let (title, idx, _) = select_first_with_hits_with_candidate(primary, results, expected, mode);
-    (title, idx)
-}
-
-/// Like [`select_first_with_hits_opt`] but also returns a clone of the
-/// chosen [`Candidate`] (the row whose `id` + `name` we'll cache for
-/// the history-write feedback path). `None` for the candidate when no
-/// list had hits — the caller falls back to writing nothing.
-#[must_use]
-pub fn select_first_with_hits_with_candidate(
-    primary: &str,
-    results: &[(String, Vec<Candidate>)],
-    expected: Option<u32>,
-    mode: &str,
-) -> (String, usize, Option<Candidate>) {
-    for (title, cands) in results {
-        if cands.is_empty() {
-            continue;
-        }
-        let pick = match expected {
-            Some(n) => scraper::pick_by_ep_count(cands, n, mode).unwrap_or(1),
-            None => 1,
-        };
-        // `pick` is 1-based; clamp into the slice in case
-        // pick_by_ep_count ever returns out-of-bounds (defence in
-        // depth — its current contract is 1..=len).
-        let idx0 = pick.saturating_sub(1).min(cands.len() - 1);
-        return (title.clone(), pick, Some(cands[idx0].clone()));
-    }
-    (primary.to_string(), 1, None)
-}
+// `deserialize_alt_titles`, `deserialize_loose_bool`, and the
+// `select_first_with_hits*` family live in `commands::play_select`
+// so this module's cyclomatic complexity stays manageable. The
+// PlayArgs serde derive uses fully-qualified paths above, and the
+// rest of the play flow imports them via the `use` line at the top
+// of the file.
+pub use crate::commands::play_select::{
+    select_first_with_hits, select_first_with_hits_opt, select_first_with_hits_with_candidate,
+};
 
 /// Spawn timeout for the ani-cli search+resolve step. Real-world
 /// allanime queries take 5-30s; 60s is a comfortable upper bound

@@ -15,6 +15,7 @@ pub mod kitsu;
 pub mod kitsu_warm;
 pub mod play;
 pub mod play_resolution_cache;
+pub mod play_select;
 pub mod proxy_url;
 pub mod session;
 pub mod settings;
