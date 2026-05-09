@@ -295,10 +295,45 @@ pub fn parse_anime_response(body: &[u8]) -> Result<KitsuAnimeRef> {
 /// # Errors
 /// Returns [`AniError::ParseFailed`] when the body isn't valid
 /// JSON:API.
-pub fn parse_mappings_response(_body: &[u8]) -> Result<Option<KitsuAnimeRef>> {
-    Err(AniError::ParseFailed {
-        detail: "kitsu::parse_mappings_response not implemented yet".into(),
-    })
+pub fn parse_mappings_response(body: &[u8]) -> Result<Option<KitsuAnimeRef>> {
+    #[derive(Deserialize)]
+    struct Wrap {
+        data: Vec<Mapping>,
+        #[serde(default)]
+        included: Vec<AnimeResource>,
+    }
+    #[derive(Deserialize)]
+    struct Mapping {
+        #[serde(default)]
+        relationships: Option<MappingRelationships>,
+    }
+    #[derive(Deserialize)]
+    struct MappingRelationships {
+        #[serde(default)]
+        item: Option<Item>,
+    }
+    #[derive(Deserialize)]
+    struct Item {
+        #[serde(default)]
+        data: Option<ItemRef>,
+    }
+    #[derive(Deserialize)]
+    struct ItemRef {
+        id: String,
+    }
+
+    let parsed: Wrap = serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+        detail: format!("kitsu mappings parse: {e}"),
+    })?;
+    let target_id = parsed
+        .data
+        .into_iter()
+        .find_map(|m| m.relationships?.item?.data.map(|r| r.id));
+    let Some(target_id) = target_id else {
+        return Ok(None);
+    };
+    let anime = parsed.included.into_iter().find(|r| r.id == target_id);
+    Ok(anime.map(into_ref))
 }
 
 /// Parse `{ "data": [...] }` into a list of episodes. Used for
@@ -425,10 +460,26 @@ impl KitsuClient {
     /// - [`AniError::Upstream`] on non-2xx HTTP.
     /// - [`AniError::Network`] on transport failure.
     /// - [`AniError::ParseFailed`] on malformed JSON:API.
-    pub async fn lookup_by_mal_id(&self, _mal_id: u32) -> Result<Option<KitsuAnimeRef>> {
-        Err(AniError::ParseFailed {
-            detail: "kitsu::lookup_by_mal_id not implemented yet".into(),
-        })
+    pub async fn lookup_by_mal_id(&self, mal_id: u32) -> Result<Option<KitsuAnimeRef>> {
+        let resp = self
+            .http
+            .get(format!("{}/mappings", self.base))
+            .header(reqwest::header::ACCEPT, "application/vnd.api+json")
+            .query(&[
+                ("filter[externalSite]", "myanimelist/anime".to_string()),
+                ("filter[externalId]", mal_id.to_string()),
+                ("include", "item".to_string()),
+            ])
+            .send()
+            .await
+            .map_err(|_| AniError::Network)?;
+        if !resp.status().is_success() {
+            return Err(AniError::Upstream {
+                status: resp.status().as_u16(),
+            });
+        }
+        let body = resp.bytes().await.map_err(|_| AniError::Network)?;
+        parse_mappings_response(&body)
     }
 
     /// Top-rated anime above the noise floor (averageRating ≥ 70/100).
