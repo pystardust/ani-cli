@@ -39,6 +39,9 @@
 	import { accentFor } from '$lib/design/accent';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import { buildPlayQuery } from '$lib/play/play-url';
+	import { downloadDefaultDir as downloadDefaultDirApi } from '$lib/api';
+	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
+	import type { DownloadArgs } from '$lib/api';
 	import { decideEpisodeFetchAction, parsePageParam } from '$lib/history/url-deeplink';
 	import { breadcrumb } from '$lib/breadcrumb';
 
@@ -641,12 +644,33 @@
 	function onPlay() {
 		void startPlay(defaultEpisode());
 	}
+	// Download flow — opens DownloadConfirm modal. The dialog lets the
+	// user pick a folder (defaulting to the backend's download_dir
+	// resolver) before kicking off ani-cli -d. Active downloads then
+	// surface in the global topbar dock + bottom progress strip.
+	let downloadModalOpen = $state(false);
+	let downloadArgs = $state<DownloadArgs | null>(null);
+	let downloadDefaultDir = $state('');
+	void downloadDefaultDirApi()
+		.then((d) => {
+			if (d) downloadDefaultDir = d;
+		})
+		.catch(() => {});
+
 	function onDownload() {
-		// Download is a separate flow (-d) that's not part of this M2
-		// slice — the upstream URL resolution path is the same, but
-		// the terminal action would invoke aria2c via ani-cli. Tracked
-		// as a follow-up; the toast keeps the button discoverable.
-		notify('Downloads land in a follow-up — the backend chain is the same.');
+		if (!detail) return;
+		const mode = (config?.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config?.quality ?? 'best';
+		downloadArgs = {
+			title: detail.canonical_title,
+			episode: String(defaultEpisode()),
+			mode,
+			quality,
+			episode_count: detail.episode_count ?? undefined,
+			alt_titles: altTitlesFromKitsu(detail),
+			kitsu_id: id
+		};
+		downloadModalOpen = true;
 	}
 	function onPickEpisode(n: number) {
 		void startPlay(n);
@@ -1085,6 +1109,13 @@
 		onDismiss={() => (playFailure = null)}
 	/>
 {/if}
+
+<DownloadConfirm
+	bind:open={downloadModalOpen}
+	args={downloadArgs}
+	defaultDir={downloadDefaultDir}
+	onClose={() => (downloadModalOpen = false)}
+/>
 
 <style>
 	.page {
