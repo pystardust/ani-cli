@@ -1059,18 +1059,17 @@
 
 				<button
 					type="button"
-					class="ep-btn ep-icon-btn ep-toggle"
+					class="ep-btn ep-toggle"
 					onclick={toggleAutoPlayNext}
 					aria-pressed={autoPlayNext}
-					aria-label={autoPlayNext ? 'Auto-play next episode (on)' : 'Auto-play next episode (off)'}
+					aria-label="Auto-play next episode"
 					title={autoPlayNext
 						? 'Auto-play is on — episodes advance automatically'
 						: 'Auto-play is off — click to enable'}
 				>
-					<!-- Filled play+forward-bar when on, outlined when off.
-					     The accent-tinted background plus the filled icon
-					     gives a clear "active" read at a glance; outlined
-					     icon plus transparent background reads as "off". -->
+					<!-- The "Auto-play" label disambiguates from a skip/next
+					     control. Filled play+forward-bar when on (accent
+					     background); outlined and faded when off. -->
 					<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
 						{#if autoPlayNext}
 							<path d="M5 4l9 8-9 8V4z" fill="currentColor" />
@@ -1086,6 +1085,7 @@
 							/>
 						{/if}
 					</svg>
+					<span>Auto-play</span>
 				</button>
 
 				<div class="more-wrap">
