@@ -12,6 +12,8 @@
       item with progress / status / per-row actions.
 -->
 <script lang="ts">
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { downloadStore, type DownloadItem } from '$lib/download/store.svelte';
 
 	let open = $state(false);
@@ -20,6 +22,11 @@
 	const itemsView = $derived(downloadStore.items as DownloadItem[]);
 	const activeCount = $derived(downloadStore.active.length);
 	const unseenCount = $derived(downloadStore.unseenCount);
+	// Hide the dock entirely when there are no downloads — the icon
+	// only earns space in the topbar when there's something to surface.
+	// Slide transition animates the inline-size, so the topbar's search
+	// flex sibling expands/contracts smoothly as the dock enters/leaves.
+	const hasItems = $derived(itemsView.length > 0);
 
 	// Clear the unseen flag whenever the dock opens — opening the
 	// popover counts as the user seeing the latest completions.
@@ -54,111 +61,113 @@
 	}
 </script>
 
-<div class="dl-dock-wrap">
-	<button
-		bind:this={trigger}
-		type="button"
-		class="dl-dock-trigger"
-		class:has-active={activeCount > 0}
-		class:has-unseen={activeCount === 0 && unseenCount > 0}
-		onclick={() => (open = !open)}
-		aria-haspopup="menu"
-		aria-expanded={open}
-		aria-label={activeCount > 0
-			? `${activeCount} download(s) in progress`
-			: unseenCount > 0
-				? `${unseenCount} download(s) finished`
-				: 'Downloads'}
-		title="Downloads"
-	>
-		<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-			<path
-				d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2.25"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			/>
-		</svg>
-		{#if activeCount > 0}
-			<span class="dl-badge" aria-hidden="true">{activeCount}</span>
-		{:else if unseenCount > 0}
-			<span class="dl-dot" aria-hidden="true"></span>
-		{/if}
-	</button>
-
-	{#if open}
-		<div id="dl-dock-pop" class="dl-dock-pop" role="menu" aria-label="Downloads">
-			{#if itemsView.length === 0}
-				<p class="dl-dock-empty">No downloads yet.</p>
-			{:else}
-				<ul class="dl-dock-list">
-					{#each itemsView as item (item.id)}
-						<li class="dl-dock-item dl-{item.status}">
-							<div class="dl-dock-meta">
-								<span class="dl-dock-title">{item.title}</span>
-								<span class="dl-dock-ep">
-									{#if item.rangeTotal && item.currentEp != null}
-										Ep {item.currentEp} of {item.rangeTotal}
-									{:else if item.rangeTotal}
-										Eps {item.episode}
-									{:else}
-										Ep {item.episode}
-									{/if}
-								</span>
-							</div>
-							{#if item.status === 'active' || item.status === 'pending'}
-								<div class="dl-dock-line" title={item.progress ?? ''}>
-									{item.progress ?? 'Resolving…'}
-								</div>
-								<div class="dl-dock-bar dl-dock-bar-indet" aria-hidden="true">
-									<span></span>
-								</div>
-							{:else if item.status === 'done'}
-								<p class="dl-dock-done">
-									Saved to <code>{item.destDir}</code>
-								</p>
-							{:else}
-								<p class="dl-dock-error">{item.error ?? 'Failed'}</p>
-							{/if}
-							<div class="dl-dock-actions">
-								{#if item.status === 'active' || item.status === 'pending'}
-									<button
-										type="button"
-										class="dl-dock-btn"
-										onclick={() => downloadStore.cancel(item.id)}
-									>
-										Cancel
-									</button>
-								{:else if item.status === 'done'}
-									<button type="button" class="dl-dock-btn" onclick={() => reveal(item.destDir)}>
-										Reveal
-									</button>
-									<button
-										type="button"
-										class="dl-dock-btn dl-dock-btn-quiet"
-										onclick={() => downloadStore.dismiss(item.id)}
-									>
-										Dismiss
-									</button>
-								{:else}
-									<button
-										type="button"
-										class="dl-dock-btn dl-dock-btn-quiet"
-										onclick={() => downloadStore.dismiss(item.id)}
-									>
-										Dismiss
-									</button>
-								{/if}
-							</div>
-						</li>
-					{/each}
-				</ul>
+{#if hasItems}
+	<div class="dl-dock-wrap" transition:slide={{ axis: 'x', duration: 220, easing: cubicOut }}>
+		<button
+			bind:this={trigger}
+			type="button"
+			class="dl-dock-trigger"
+			class:has-active={activeCount > 0}
+			class:has-unseen={activeCount === 0 && unseenCount > 0}
+			onclick={() => (open = !open)}
+			aria-haspopup="menu"
+			aria-expanded={open}
+			aria-label={activeCount > 0
+				? `${activeCount} download(s) in progress`
+				: unseenCount > 0
+					? `${unseenCount} download(s) finished`
+					: 'Downloads'}
+			title="Downloads"
+		>
+			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+				<path
+					d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.25"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				/>
+			</svg>
+			{#if activeCount > 0}
+				<span class="dl-badge" aria-hidden="true">{activeCount}</span>
+			{:else if unseenCount > 0}
+				<span class="dl-dot" aria-hidden="true"></span>
 			{/if}
-		</div>
-	{/if}
-</div>
+		</button>
+
+		{#if open}
+			<div id="dl-dock-pop" class="dl-dock-pop" role="menu" aria-label="Downloads">
+				{#if itemsView.length === 0}
+					<p class="dl-dock-empty">No downloads yet.</p>
+				{:else}
+					<ul class="dl-dock-list">
+						{#each itemsView as item (item.id)}
+							<li class="dl-dock-item dl-{item.status}">
+								<div class="dl-dock-meta">
+									<span class="dl-dock-title">{item.title}</span>
+									<span class="dl-dock-ep">
+										{#if item.rangeTotal && item.currentEp != null}
+											Ep {item.currentEp} of {item.rangeTotal}
+										{:else if item.rangeTotal}
+											Eps {item.episode}
+										{:else}
+											Ep {item.episode}
+										{/if}
+									</span>
+								</div>
+								{#if item.status === 'active' || item.status === 'pending'}
+									<div class="dl-dock-line" title={item.progress ?? ''}>
+										{item.progress ?? 'Resolving…'}
+									</div>
+									<div class="dl-dock-bar dl-dock-bar-indet" aria-hidden="true">
+										<span></span>
+									</div>
+								{:else if item.status === 'done'}
+									<p class="dl-dock-done">
+										Saved to <code>{item.destDir}</code>
+									</p>
+								{:else}
+									<p class="dl-dock-error">{item.error ?? 'Failed'}</p>
+								{/if}
+								<div class="dl-dock-actions">
+									{#if item.status === 'active' || item.status === 'pending'}
+										<button
+											type="button"
+											class="dl-dock-btn"
+											onclick={() => downloadStore.cancel(item.id)}
+										>
+											Cancel
+										</button>
+									{:else if item.status === 'done'}
+										<button type="button" class="dl-dock-btn" onclick={() => reveal(item.destDir)}>
+											Reveal
+										</button>
+										<button
+											type="button"
+											class="dl-dock-btn dl-dock-btn-quiet"
+											onclick={() => downloadStore.dismiss(item.id)}
+										>
+											Dismiss
+										</button>
+									{:else}
+										<button
+											type="button"
+											class="dl-dock-btn dl-dock-btn-quiet"
+											onclick={() => downloadStore.dismiss(item.id)}
+										>
+											Dismiss
+										</button>
+									{/if}
+								</div>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.dl-dock-wrap {
