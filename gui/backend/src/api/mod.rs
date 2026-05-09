@@ -95,6 +95,10 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/api/allmanga-kitsu-map/:show_id",
             get(get_allmanga_kitsu_map),
         )
+        .route(
+            "/api/kitsu/resolve-allmanga/:show_id",
+            get(get_kitsu_resolve_allmanga),
+        )
         .route("/api/watched-at", get(get_watched_at_all))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
@@ -440,6 +444,21 @@ async fn get_allmanga_kitsu_map(
     Path(show_id): Path<String>,
 ) -> Result<Json<Option<String>>, AniError> {
     Ok(Json(kitsu_inner::allmanga_kitsu_get(&state, &show_id)?))
+}
+
+/// Resolve a history-recorded allmanga show_id to its full
+/// [`KitsuAnimeRef`] by walking allmanga's `Show` aliases through
+/// Kitsu's text search. Wraps
+/// [`kitsu_inner::resolve_allmanga_show_id`]; returns `null` JSON when
+/// no Kitsu match is found so the renderer can fall back to the raw
+/// allmanga label.
+async fn get_kitsu_resolve_allmanga(
+    State(state): State<Arc<AppState>>,
+    Path(show_id): Path<String>,
+) -> Result<Json<Option<crate::meta::kitsu::KitsuAnimeRef>>, AniError> {
+    Ok(Json(
+        kitsu_inner::resolve_allmanga_show_id(&state, &show_id).await?,
+    ))
 }
 
 async fn get_watched_at_all(

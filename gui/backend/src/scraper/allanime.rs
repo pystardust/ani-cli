@@ -73,6 +73,84 @@ pub fn pick_by_ep_count(candidates: &[Candidate], expected: u32, mode: &str) -> 
 const ALLANIME_API: &str = "https://api.allanime.day";
 const ALLANIME_REFERER: &str = "https://allmanga.to";
 
+/// Subset of allanime's `show(_id: …)` response — only the title fields
+/// our resolver consumes when bridging from a history-recorded
+/// allmanga show_id to a Kitsu entry.
+///
+/// The `name` field can be a stub (e.g. `"1P"` for One Piece, `"Nato:
+/// Shippuuden"` for Naruto Shippuuden) — those are the cases where
+/// title-text-search through Kitsu returns zero hits and the home
+/// page's Continue Watching card falls through to the bare allmanga
+/// label. `english_name` / `native_name` / `alt_names` are the
+/// recovery surface.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+pub struct ShowMetadata {
+    /// Primary catalogue name. Sometimes a stub.
+    #[serde(default)]
+    pub name: String,
+    /// Localised English title. `null` on shows that don't ship one.
+    #[serde(default, rename = "englishName")]
+    pub english_name: Option<String>,
+    /// Romanised native-language title. `null` on non-Japanese shows.
+    #[serde(default, rename = "nativeName")]
+    pub native_name: Option<String>,
+    /// Alternate titles allmanga keeps for fuzzy search. May be empty
+    /// or contain non-Latin scripts; callers filter as needed.
+    #[serde(default, rename = "altNames")]
+    pub alt_names: Vec<String>,
+}
+
+impl ShowMetadata {
+    /// Ordered list of search terms to feed to a downstream fuzzy
+    /// matcher (Kitsu text search). `english_name` first because Kitsu
+    /// indexes by transliterated English titles; `native_name` second
+    /// for shows whose English release is the alias; `alt_names` last
+    /// as a wide net. `name` is intentionally NOT included — it's the
+    /// stub that already failed the original search, so retrying it is
+    /// a no-op. Empty/whitespace-only strings are skipped.
+    #[must_use]
+    pub fn search_terms(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for raw in std::iter::once(self.english_name.as_deref())
+            .chain(std::iter::once(self.native_name.as_deref()))
+            .chain(self.alt_names.iter().map(|s| Some(s.as_str())))
+        {
+            if let Some(s) = raw {
+                let trimmed = s.trim();
+                if !trimmed.is_empty() && !out.iter().any(|prev| prev == trimmed) {
+                    out.push(trimmed.to_string());
+                }
+            }
+        }
+        out
+    }
+}
+
+const SHOW_GQL: &str =
+    "query Show($showId: String!){ show(_id: $showId){ name englishName nativeName altNames }}";
+
+/// Fetch allanime's per-show metadata (title aliases) for a given
+/// `show_id`. Returns the parsed [`ShowMetadata`] on a 2xx response
+/// with the expected shape.
+///
+/// `base_override` mirrors the `search()` parameter — `None` in prod,
+/// `Some(uri)` in tests pointing at wiremock.
+///
+/// # Errors
+/// - [`AniError::Network`] on connection failure.
+/// - [`AniError::Upstream`] on non-2xx HTTP.
+/// - [`AniError::ParseFailed`] when the JSON body doesn't shape into
+///   `{ data: { show: {...} } }`.
+pub async fn fetch_show(
+    _client: &reqwest::Client,
+    _show_id: &str,
+    _base_override: Option<&str>,
+) -> Result<ShowMetadata> {
+    // STUB (red commit). Real impl lands in the green commit; tests
+    // in this module assert the contract.
+    Ok(ShowMetadata::default())
+}
+
 /// Replace ASCII space with `+` to match ani-cli's `search_anime`
 /// pre-processing (line ~178: `printf '%s' "$1" | sed 's| |+|g'`).
 /// Allanime treats `+` as a literal character in the search query,
@@ -311,5 +389,115 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, AniError::Upstream { status: 503 }));
+    }
+
+    // — fetch_show: bridge from cryptic allmanga `name` (e.g. "1P" for
+    //   One Piece) to richer englishName/altNames the resolver feeds
+    //   to Kitsu's text search.
+
+    #[tokio::test]
+    async fn fetch_show_parses_name_english_native_and_alt_names() {
+        // Real shape lifted from allanime's response for One Piece
+        // (show_id ReooPAxPMsHM4KPMY). `name` is the stub the CLI
+        // writes to ani-hsts; the rest are recovery surfaces.
+        let server = wiremock::MockServer::start().await;
+        let body = serde_json::json!({
+            "data": {
+                "show": {
+                    "name": "1P",
+                    "englishName": "One Piece",
+                    "nativeName": "ONE PIECE",
+                    "altNames": ["One Piece", "海贼王", "ワンピース"]
+                }
+            }
+        });
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/api"))
+            .and(wiremock::matchers::header("referer", "https://allmanga.to"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let client = reqwest::Client::new();
+        let show = fetch_show(&client, "ReooPAxPMsHM4KPMY", Some(&server.uri()))
+            .await
+            .expect("fetch ok");
+        assert_eq!(show.name, "1P");
+        assert_eq!(show.english_name.as_deref(), Some("One Piece"));
+        assert_eq!(show.native_name.as_deref(), Some("ONE PIECE"));
+        assert_eq!(
+            show.alt_names,
+            vec![
+                "One Piece".to_string(),
+                "海贼王".to_string(),
+                "ワンピース".to_string()
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_show_returns_upstream_error_on_5xx() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(503))
+            .mount(&server)
+            .await;
+        let client = reqwest::Client::new();
+        let err = fetch_show(&client, "x", Some(&server.uri()))
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AniError::Upstream { status: 503 }));
+    }
+
+    #[tokio::test]
+    async fn fetch_show_handles_null_show_as_empty_metadata() {
+        // Allanime returns `data.show: null` for unknown ids. Treat as
+        // empty (no aliases to enrich) instead of erroring out — the
+        // caller will skip the enrichment and fall through.
+        let server = wiremock::MockServer::start().await;
+        let body = serde_json::json!({ "data": { "show": null } });
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+        let client = reqwest::Client::new();
+        let show = fetch_show(&client, "missing", Some(&server.uri()))
+            .await
+            .expect("ok");
+        assert_eq!(show.name, "");
+        assert_eq!(show.english_name, None);
+        assert!(show.alt_names.is_empty());
+    }
+
+    #[test]
+    fn search_terms_walks_english_then_native_then_alt_names() {
+        let show = ShowMetadata {
+            name: "1P".into(),
+            english_name: Some("One Piece".into()),
+            native_name: Some("ONE PIECE".into()),
+            alt_names: vec!["One Piece".into(), "海贼王".into()],
+        };
+        // english_name first, native_name second, then alt_names —
+        // dedupe so the duplicate "One Piece" doesn't appear twice.
+        // `name` is excluded (it already failed the original search).
+        assert_eq!(
+            show.search_terms(),
+            vec![
+                "One Piece".to_string(),
+                "ONE PIECE".to_string(),
+                "海贼王".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn search_terms_skips_empty_and_whitespace_strings() {
+        let show = ShowMetadata {
+            name: "stub".into(),
+            english_name: Some("".into()),
+            native_name: Some("   ".into()),
+            alt_names: vec!["".into(), "Real Title".into()],
+        };
+        assert_eq!(show.search_terms(), vec!["Real Title".to_string()]);
     }
 }

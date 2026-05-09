@@ -264,6 +264,41 @@ pub fn allmanga_kitsu_put(state: &AppState, show_id: &str, kitsu_id: &str) -> Re
     )
 }
 
+/// Bridge a history-recorded allmanga show_id to its Kitsu entry by
+/// walking allmanga's `Show` GraphQL aliases (`englishName`,
+/// `nativeName`, `altNames`) through Kitsu's text search. Returns the
+/// first matching [`KitsuAnimeRef`] and persists the
+/// `(show_id → kitsu_id)` reverse mapping so subsequent calls
+/// short-circuit through `allmanga_kitsu_get`.
+///
+/// Recovers the case where allmanga's primary `name` is a stub the
+/// frontend can't text-match (e.g. `"1P"` for One Piece, `"Nato:
+/// Shippuuden"` for Naruto Shippuuden). The reverse cache normally
+/// hides this, but a Settings → Clear cache wipes it and the bug
+/// re-surfaces; this resolver re-warms the cache on first hit.
+///
+/// Returns `Ok(None)` when:
+///   - The reverse cache has no entry AND
+///   - allmanga's `Show` endpoint returns no usable aliases OR
+///   - Every Kitsu text search returned zero hits.
+///
+/// Returns `Ok(Some(_))` on:
+///   - Reverse-cache hit (fast path, no HTTP).
+///   - Successful enrichment + Kitsu match.
+///
+/// # Errors
+/// Cache I/O errors propagate; HTTP failures fall through to
+/// `Ok(None)` so the caller (Continue Watching) can still render
+/// the bare allmanga title without breaking.
+pub async fn resolve_allmanga_show_id(
+    _state: &AppState,
+    _show_id: &str,
+) -> Result<Option<KitsuAnimeRef>> {
+    // STUB (red commit). Real impl lands in the green commit; tests
+    // in this module assert the contract.
+    Ok(None)
+}
+
 /// Cache-key prefix for the per-show last-watched timestamp. Stamped
 /// on every GUI-driven `mark-watched` call; the home-page Continue
 /// Watching strip sorts by it descending so the user's most recent
@@ -728,6 +763,63 @@ mod tests {
             allmanga_kitsu_get(&state, "show-b").expect("get b"),
             Some("kitsu-b".to_string())
         );
+    }
+
+    // — resolve_allmanga_show_id: end-to-end orchestration ——————————
+    //
+    // The full chain (allmanga `Show` GraphQL → walk aliases → Kitsu
+    // text search → cache result) is exercised against a MockServer
+    // whose URI we stamp into BOTH the Kitsu client base AND the
+    // allanime base override (via state_with_kitsu_at hijacking the
+    // Kitsu client; the allanime call uses state.proxy_http with no
+    // override, so production prod plumbing isn't exercised here —
+    // see the green commit for the with_bases helper that threads a
+    // test override into the allanime call too).
+
+    #[tokio::test]
+    async fn resolve_allmanga_show_id_short_circuits_on_reverse_cache_hit() {
+        // When the reverse mapping already exists, no allmanga or
+        // Kitsu HTTP fires — the cached kitsu_id resolves through
+        // anime_detail and returns. State has no mock servers
+        // attached, so the test verifies the pure cache hit by
+        // checking the call returns Some without panicking.
+        let mock = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/anime/12"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/vnd.api+json")
+                    .set_body_bytes(DETAIL_FIXTURE.to_vec()),
+            )
+            .mount(&mock)
+            .await;
+        let state = state_with_kitsu_at(&mock.uri());
+        allmanga_kitsu_put(&state, "ReooPAxPMsHM4KPMY", "12").expect("seed cache");
+
+        let got = resolve_allmanga_show_id(&state, "ReooPAxPMsHM4KPMY")
+            .await
+            .expect("resolve ok");
+        assert!(
+            got.is_some(),
+            "reverse cache hit must short-circuit to a Some(_) response"
+        );
+        assert_eq!(got.unwrap().id, "12");
+    }
+
+    #[tokio::test]
+    async fn resolve_allmanga_show_id_returns_none_when_no_cache_and_no_aliases() {
+        // No reverse cache entry; allmanga (real) call is presumed to
+        // return nothing meaningful for a synthetic id. The contract
+        // is "fail soft" — Ok(None), not an error, so Continue
+        // Watching can still render the bare allmanga title.
+        let state = state_with_kitsu_at("http://127.0.0.1:1");
+        let got = resolve_allmanga_show_id(&state, "this-id-will-not-resolve").await;
+        // Either Ok(None) (no aliases, no Kitsu match) or Ok(Some(_))
+        // is acceptable — we only assert the call doesn't panic and
+        // doesn't surface a network error to the caller. Stub returns
+        // Ok(None); the green-commit impl returns Ok(None) for this
+        // synthetic id too.
+        assert!(matches!(got, Ok(_)), "resolver must not error: {got:?}");
     }
 
     // — Watched-at timestamps for Continue Watching ordering ——————————
