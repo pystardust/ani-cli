@@ -462,6 +462,12 @@
 		max-inline-size: 56rem;
 		margin-inline: auto;
 		padding: var(--space-7) var(--space-6) var(--space-8);
+		/* Settings has no per-show context, but the global default
+		   accent (--accent-ink) is a muted blue that read as a stray
+		   default highlight on the segmented buttons. Pin the page's
+		   accent to the brand persimmon so highlights match the
+		   editorial register the rest of the app uses. */
+		--accent: var(--accent-persimmon);
 	}
 
 	.page-head {
@@ -578,7 +584,7 @@
 		color: var(--bone-100);
 	}
 	.seg-btn.active {
-		background: var(--accent-ink);
+		background: var(--accent);
 		color: var(--ink-000);
 	}
 	.seg-narrow .seg-btn {
@@ -733,12 +739,12 @@
 
 	.inline-link {
 		color: var(--bone-100);
-		border-block-end: 1px solid var(--accent-ink);
+		border-block-end: 1px solid var(--accent);
 		padding-block-end: 1px;
 		transition: color var(--dur-fast) var(--ease-out-soft);
 	}
 	.inline-link:hover {
-		color: var(--accent-ink);
+		color: var(--accent);
 	}
 
 	.loading {
