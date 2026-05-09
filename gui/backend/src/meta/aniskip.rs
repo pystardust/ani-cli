@@ -20,7 +20,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{AniError, Result};
 
-#[allow(dead_code)]
 const ANISKIP_API: &str = "https://api.aniskip.com";
 
 /// One skip interval — OP, ED, recap, or "mixed-op" / "mixed-ed".
@@ -49,15 +48,41 @@ pub struct SkipInterval {
 /// - [`AniError::Upstream`] on non-2xx HTTP that isn't 404.
 /// - [`AniError::ParseFailed`] on a malformed response shape.
 pub async fn fetch_skip_times(
-    _client: &reqwest::Client,
-    _mal_id: u32,
-    _episode: &str,
-    _episode_length: f32,
-    _base_override: Option<&str>,
+    client: &reqwest::Client,
+    mal_id: u32,
+    episode: &str,
+    episode_length: f32,
+    base_override: Option<&str>,
 ) -> Result<Vec<SkipInterval>> {
-    Err(AniError::ParseFailed {
-        detail: "aniskip::fetch_skip_times not implemented yet".into(),
-    })
+    let base = base_override.unwrap_or(ANISKIP_API);
+    let url = format!("{base}/v2/skip-times/{mal_id}/{episode}");
+    let resp = client
+        .get(&url)
+        .header("accept", "application/json")
+        .query(&[
+            ("types[]", "op".to_string()),
+            ("types[]", "ed".to_string()),
+            ("episodeLength", format!("{episode_length:.0}")),
+        ])
+        .send()
+        .await
+        .map_err(|_| AniError::Network)?;
+    let status = resp.status();
+    // 404 = "no skip times catalogued" — aniskip's documented
+    // semantic. The body is the same `{found: false, results: []}`
+    // envelope so we just feed it through the parser; the empty
+    // Vec is the correct frontend signal.
+    if status == reqwest::StatusCode::NOT_FOUND {
+        let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
+        return parse_skip_times(&bytes);
+    }
+    if !status.is_success() {
+        return Err(AniError::Upstream {
+            status: status.as_u16(),
+        });
+    }
+    let bytes = resp.bytes().await.map_err(|_| AniError::Network)?;
+    parse_skip_times(&bytes)
 }
 
 /// Parse the aniskip v2 response body. Tolerant of `found: false`
@@ -67,10 +92,37 @@ pub async fn fetch_skip_times(
 /// # Errors
 /// Returns [`AniError::ParseFailed`] when the body isn't the
 /// expected `{ found, results: [...] }` envelope.
-pub fn parse_skip_times(_body: &[u8]) -> Result<Vec<SkipInterval>> {
-    Err(AniError::ParseFailed {
-        detail: "aniskip::parse_skip_times not implemented yet".into(),
-    })
+pub fn parse_skip_times(body: &[u8]) -> Result<Vec<SkipInterval>> {
+    #[derive(Deserialize)]
+    struct Wrap {
+        #[serde(default)]
+        results: Vec<Result_>,
+    }
+    #[derive(Deserialize)]
+    struct Result_ {
+        interval: Interval,
+        #[serde(rename = "skipType")]
+        skip_type: String,
+    }
+    #[derive(Deserialize)]
+    struct Interval {
+        #[serde(rename = "startTime")]
+        start_time: f32,
+        #[serde(rename = "endTime")]
+        end_time: f32,
+    }
+    let parsed: Wrap = serde_json::from_slice(body).map_err(|e| AniError::ParseFailed {
+        detail: format!("aniskip response: {e}"),
+    })?;
+    Ok(parsed
+        .results
+        .into_iter()
+        .map(|r| SkipInterval {
+            skip_type: r.skip_type,
+            start_time: r.interval.start_time,
+            end_time: r.interval.end_time,
+        })
+        .collect())
 }
 
 #[cfg(test)]
