@@ -261,6 +261,7 @@
 	"play_more_title": "More actions",
 	"play_external_launching": "Launching…",
 	"play_external_label": "Open in external",
+	"play_external_spawn_failed_named": "Couldn't launch {binary}. Make sure it's installed and on PATH (or pick its full path in Settings).",
 	"play_episodes_section_heading": "Episodes",
 	"play_episodes_range_pagination": "{epStart}–{epEnd} of {total}",
 	"play_episodes_range_all": "{count} episodes",

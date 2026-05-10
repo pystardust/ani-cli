@@ -54,6 +54,18 @@ pub enum AniError {
     #[error("network error")]
     Network,
 
+    /// External-player binary couldn't be spawned (not on PATH, or
+    /// the configured path doesn't point at an executable). The
+    /// `binary` field carries the configured player name so the UI
+    /// can name the failed command in the error toast.
+    #[error("player spawn failed: {binary}")]
+    PlayerSpawnFailed {
+        /// The player command the user configured (e.g. `"vlc"`,
+        /// `"/usr/bin/mpv"`). Surfaced verbatim in the localized
+        /// error message via the `{binary}` placeholder.
+        binary: String,
+    },
+
     /// Cache (SQLite) operation failed.
     #[error("cache error")]
     Cache,
@@ -87,6 +99,7 @@ impl AniError {
             Self::NoResults => "error.search.no_results",
             Self::ParseFailed { .. } => "error.scraper.parse_failed",
             Self::MissingBinary => "error.scraper.missing_binary",
+            Self::PlayerSpawnFailed { .. } => "error.player.spawn_failed",
             Self::Upstream { .. } => "error.network.upstream",
             Self::Network => "error.network.unreachable",
             Self::Cache => "error.cache.generic",
@@ -147,6 +160,9 @@ mod tests {
             AniError::NoResults,
             AniError::ParseFailed { detail: "x".into() },
             AniError::MissingBinary,
+            AniError::PlayerSpawnFailed {
+                binary: "vlc".into(),
+            },
             AniError::Upstream { status: 503 },
             AniError::Network,
             AniError::Cache,

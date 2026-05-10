@@ -1324,7 +1324,20 @@
 			});
 			externalNotice = `Episode ${episodeNum} sent to external player.`;
 		} catch (e) {
-			externalNotice = `External player failed: ${describeError(e)}`;
+			// Surface the configured binary name when the spawn failed,
+			// so the user knows *which* command went missing instead
+			// of a generic "External player failed: player_spawn_failed".
+			const obj = typeof e === 'object' && e !== null ? (e as Record<string, unknown>) : null;
+			if (
+				obj &&
+				obj.kind === 'player_spawn_failed' &&
+				typeof obj.binary === 'string' &&
+				obj.binary.length > 0
+			) {
+				externalNotice = m.play_external_spawn_failed_named({ binary: obj.binary });
+			} else {
+				externalNotice = `External player failed: ${describeError(e)}`;
+			}
 		} finally {
 			externalBusy = false;
 			setTimeout(() => {

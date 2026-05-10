@@ -194,11 +194,15 @@ fn substitute_token(tok: &str, url: &str, referer: &str, title: &str, sub: &str)
 /// On Windows, `Command::spawn` without `Wait()` already detaches.
 ///
 /// # Errors
-/// - [`AniError::MissingBinary`] if the configured player command can't
-///   be spawned (usually means it's not on PATH).
+/// - [`AniError::PlayerSpawnFailed`] if the configured player command
+///   can't be spawned (usually means it's not on PATH or the path
+///   doesn't point at an executable). Carries the configured binary
+///   name so the UI can name it in the error toast.
 pub fn open_external_player(args: &LaunchArgs) -> Result<()> {
     if args.player_command.trim().is_empty() {
-        return Err(AniError::MissingBinary);
+        return Err(AniError::PlayerSpawnFailed {
+            binary: args.player_command.clone(),
+        });
     }
     let argv = build_argv(args);
     let mut cmd = std::process::Command::new(&args.player_command);
@@ -206,7 +210,11 @@ pub fn open_external_player(args: &LaunchArgs) -> Result<()> {
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
-    cmd.spawn().map(|_| ()).map_err(|_| AniError::MissingBinary)
+    cmd.spawn()
+        .map(|_| ())
+        .map_err(|_| AniError::PlayerSpawnFailed {
+            binary: args.player_command.clone(),
+        })
 }
 
 #[cfg(test)]

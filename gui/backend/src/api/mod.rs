@@ -50,6 +50,7 @@ impl IntoResponse for AniError {
             AniError::Timeout => StatusCode::GATEWAY_TIMEOUT,
             AniError::ParseFailed { .. }
             | AniError::MissingBinary
+            | AniError::PlayerSpawnFailed { .. }
             | AniError::Cache
             | AniError::Io
             | AniError::Config
@@ -1571,12 +1572,17 @@ mod tests {
 
     #[tokio::test]
     async fn ani_error_internal_variants_map_to_500() {
-        // ParseFailed / MissingBinary / Cache / Io / Config /
-        // Metadata / Scraper all collapse to the same 500 — they're
-        // backend-side bugs the frontend can't usefully discriminate.
+        // ParseFailed / MissingBinary / PlayerSpawnFailed / Cache / Io
+        // / Config / Metadata / Scraper all collapse to the same 500
+        // — they're backend-side bugs the frontend can't usefully
+        // discriminate at the HTTP layer (it still discriminates on
+        // the JSON body's kind/key for i18n).
         for err in [
             AniError::ParseFailed { detail: "x".into() },
             AniError::MissingBinary,
+            AniError::PlayerSpawnFailed {
+                binary: "vlc".into(),
+            },
             AniError::Cache,
             AniError::Io,
             AniError::Config,

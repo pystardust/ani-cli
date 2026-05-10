@@ -46,6 +46,7 @@
 	"more_title": "More actions",
 	"external_launching": "Launching…",
 	"external_label": "Open in external",
+	"external_spawn_failed_named": "Couldn't launch {binary}. Make sure it's installed and on PATH (or pick its full path in Settings).",
 	"episodes_section_heading": "Episodes",
 	"episodes_range_pagination": "{epStart}–{epEnd} of {total}",
 	"episodes_range_all": "{count} episodes",
