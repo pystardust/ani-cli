@@ -79,6 +79,7 @@
 		unregisterDeferredCancel
 	} from '$lib/play/prefetch-lifecycle';
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
+	import { clientXToFraction } from '$lib/play/scrubber';
 	import {
 		describeError,
 		describeExternalLaunchFailure,
@@ -452,11 +453,42 @@
 		videoEl.currentTime = Math.max(0, Math.min(duration, fraction * duration));
 	}
 
-	function onScrubberClick(event: MouseEvent) {
+	// Pointer-drag state for the custom scrubber. We track the bar's
+	// rect at pointerdown so the fraction math during pointermove
+	// stays cheap (no per-frame getBoundingClientRect) and consistent
+	// even if the bar reflows mid-drag.
+	let scrubberDragging = $state(false);
+	let scrubberDragRect: { left: number; width: number } | null = null;
+
+	function onScrubberPointerDown(event: PointerEvent) {
 		const target = event.currentTarget as HTMLElement;
 		const rect = target.getBoundingClientRect();
-		const fraction = (event.clientX - rect.left) / rect.width;
-		seekToFraction(fraction);
+		scrubberDragRect = { left: rect.left, width: rect.width };
+		scrubberDragging = true;
+		// Pointer capture keeps the move/up events on this element
+		// even when the user drags past the bar's edges, which is
+		// exactly the case the clientXToFraction clamp covers.
+		target.setPointerCapture(event.pointerId);
+		seekToFraction(clientXToFraction(event.clientX, scrubberDragRect));
+	}
+
+	function onScrubberPointerMove(event: PointerEvent) {
+		if (!scrubberDragging || !scrubberDragRect) return;
+		seekToFraction(clientXToFraction(event.clientX, scrubberDragRect));
+	}
+
+	function onScrubberPointerUp(event: PointerEvent) {
+		if (!scrubberDragging) return;
+		scrubberDragging = false;
+		scrubberDragRect = null;
+		const target = event.currentTarget as HTMLElement;
+		try {
+			target.releasePointerCapture(event.pointerId);
+		} catch {
+			// releasePointerCapture throws if the pointer was already
+			// released (e.g. browser-initiated cancel from a context
+			// menu). Safe to swallow — the state is already cleared.
+		}
 	}
 
 	function toggleFullscreen() {
@@ -1878,7 +1910,10 @@
 							aria-valuemin="0"
 							aria-valuemax={Math.max(1, Math.floor(duration))}
 							aria-valuenow={Math.floor(currentTime)}
-							onclick={onScrubberClick}
+							onpointerdown={onScrubberPointerDown}
+							onpointermove={onScrubberPointerMove}
+							onpointerup={onScrubberPointerUp}
+							onpointercancel={onScrubberPointerUp}
 							onmouseenter={() => (scrubberHover = true)}
 							onmouseleave={() => (scrubberHover = false)}
 							onkeydown={(e) => {
