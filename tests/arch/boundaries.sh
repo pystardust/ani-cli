@@ -39,11 +39,18 @@ if [ -n "$matches" ]; then
     failed=1
 fi
 
-# 2. __ANI_CLI_LIB__ guard outside tests/bash/.
+# 2. __ANI_CLI_LIB__ guard outside its two legitimate homes.
+#
+# The test seam lives in tests/bash/. The `update.rs` module re-applies
+# the guard after every `ani-cli -U` (the upstream `update_script`
+# clobbers it) and `app.rs` documents that responsibility. Any other
+# reference under gui/ would mean a layer started reading the guard
+# back out of the script, which it should never do.
 # shellcheck disable=SC2086
-matches=$(grep -rn $GREP_EXCLUDE '__ANI_CLI_LIB__' gui/ 2>/dev/null || true)
+matches=$(grep -rn $GREP_EXCLUDE '__ANI_CLI_LIB__' gui/ 2>/dev/null |
+    grep -vE 'gui/backend/src/anicli/update\.rs:|gui/backend/src/app\.rs:' || true)
 if [ -n "$matches" ]; then
-    printf 'arch/boundaries FAIL: __ANI_CLI_LIB__ appears in gui/ (test seam only):\n%s\n' "$matches" >&2
+    printf 'arch/boundaries FAIL: __ANI_CLI_LIB__ appears in gui/ outside the update module:\n%s\n' "$matches" >&2
     failed=1
 fi
 

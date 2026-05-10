@@ -16,9 +16,9 @@
 		"network_covered_min": 95
 	},
 	"crap": {
-		"_comment": "CRAP = ccn² × (1 − cov)² + ccn, per file. The CRAP score floors at ccn (perfect coverage gives CRAP == ccn), so a file with intrinsic ccn > 30 stays in the high-risk bucket no matter how thoroughly tested it is. max_le and p95_le are the meaningful gates; high_risk_le tracks codebase growth (new feature files with ccn > 30 add to the count) and gets refreshed when the count drifts up. Bumped from 17 → 20 in 2026-05 (new aniskip / availability / anilist / play_select / play_cache files) and 20 → 21 (proptest functions in play_select pushed the file's intrinsic ccn over 30 — the proptests add real value, accept the bookkeeping tick).",
+		"_comment": "CRAP = ccn² × (1 − cov)² + ccn, per file. The CRAP score floors at ccn (perfect coverage gives CRAP == ccn), so a file with intrinsic ccn > 30 stays in the high-risk bucket no matter how thoroughly tested it is. max_le and p95_le are the meaningful gates; high_risk_le tracks codebase growth (new feature files with ccn > 30 add to the count) and gets refreshed when the count drifts up. Bumped from 17 → 20 in 2026-05 (new aniskip / availability / anilist / play_select / play_cache files), 20 → 21 (proptest functions in play_select pushed the file's intrinsic ccn over 30 — the proptests add real value, accept the bookkeeping tick), 21 → 22 (anicli/update.rs lands the daily self-update flow plus an inline rfc3339 (de)serialiser; the file's intrinsic ccn just clears the threshold).",
 		"max_le": 280,
 		"p95_le": 175,
-		"high_risk_le": 21
+		"high_risk_le": 22
 	}
 }

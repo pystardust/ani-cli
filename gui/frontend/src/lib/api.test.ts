@@ -3,6 +3,7 @@ import {
 	__resetApiBaseForTests,
 	allmangaKitsuMapGet,
 	altTitlesFromKitsu,
+	anicliUpdateStatus,
 	aniskipGet,
 	appInfo,
 	availabilityBatch,
@@ -976,6 +977,30 @@ describe('settingsPut', () => {
 		expect(url).toBe(`${BASE}/api/settings`);
 		expect(init?.method).toBe('PUT');
 		expect(JSON.parse(init?.body as string)).toEqual(cfg);
+	});
+});
+
+describe('anicliUpdateStatus', () => {
+	it('GETs /api/anicli/update-status and returns the outcome', async () => {
+		const outcome = {
+			status: 'updated' as const,
+			stdout: 'Script has been updated\n',
+			stderr: '',
+			finished_at: '2026-05-10T05:00:00Z',
+			duration_ms: 1234
+		};
+		const fetchMock = mockFetchOnce(outcome);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await anicliUpdateStatus();
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/anicli/update-status`);
+		expect(got).toEqual(outcome);
+	});
+
+	it('passes through the null body when no run has happened yet', async () => {
+		const fetchMock = mockFetchOnce(null);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		const got = await anicliUpdateStatus();
+		expect(got).toBeNull();
 	});
 });
 
