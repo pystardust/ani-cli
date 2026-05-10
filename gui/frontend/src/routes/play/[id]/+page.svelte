@@ -71,6 +71,13 @@
 		setSubtitleTrack
 	} from '$lib/play/global-video';
 	import { decideNavigateAction } from '$lib/play/navigate-decision';
+	import {
+		decideOnDestroyPrefetch,
+		decideOnPipCloseOrphanedPrefetch,
+		fireDeferredCancelsExcept,
+		registerDeferredCancel,
+		unregisterDeferredCancel
+	} from '$lib/play/prefetch-lifecycle';
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
 	import { describeError, describePlayFailure } from '$lib/play/error-copy';
 	import { breadcrumb } from '$lib/breadcrumb';
@@ -930,16 +937,54 @@
 	});
 
 	onDestroy(() => {
-		// Cancel any in-flight prefetches for this show. Without this,
-		// abandoned ani-cli spawns keep streaming SSE events to a
-		// closed page and holding allmanga rate-limit slots. Note this
-		// runs on real component unmount only — episode switching keeps
-		// the component alive and prefetches remain valid.
-		if (id) clearForShow(id);
-		// Note: we deliberately DO NOT teardown() the singleton on
-		// destroy. The video element survives in $lib/play/global-video
-		// so PiP keeps playing across navigation. Teardown only runs
-		// when a different mediaUrl arrives (the effect below).
+		if (!id) return;
+		// Two paths for cancelling in-flight prefetches; see
+		// $lib/play/prefetch-lifecycle for the policy.
+		//
+		//   • PiP not active: cancel immediately like before. Without
+		//     this, abandoned ani-cli spawns keep streaming SSE events
+		//     to a closed page and holding allmanga rate-limit slots.
+		//
+		//   • PiP active: defer. The user is still engaged with this
+		//     show via the floating thumbnail; killing the prefetches
+		//     now would mean auto-play-next stutters at the episode
+		//     boundary. Register a deferred cancel that fires on
+		//     leavepictureinpicture (or earlier, if a different show's
+		//     play page mounts and flushes us via
+		//     fireDeferredCancelsExcept).
+		//
+		// We deliberately DO NOT teardown() the singleton on destroy.
+		// The video element survives in $lib/play/global-video so PiP
+		// keeps playing across navigation. Teardown only runs when a
+		// different mediaUrl arrives (the effect below).
+		const v = getGlobalVideo();
+		const isInPip = document.pictureInPictureElement === v;
+		const action = decideOnDestroyPrefetch({ videoIsInPip: isInPip });
+		const showId = id;
+		if (action === 'clear-now') {
+			clearForShow(showId);
+			return;
+		}
+		// Defer path. The cancel function is the canonical clear plus
+		// listener teardown; both fireDeferredCancelsExcept and the
+		// onLeave handler invoke it.
+		const cancel = () => {
+			v.removeEventListener('leavepictureinpicture', onLeave);
+			unregisterDeferredCancel(showId);
+			clearForShow(showId);
+		};
+		const onLeave = () => {
+			v.removeEventListener('leavepictureinpicture', onLeave);
+			unregisterDeferredCancel(showId);
+			const decision = decideOnPipCloseOrphanedPrefetch({
+				destroyedShowId: showId,
+				currentRouteId: page.route?.id ?? '',
+				currentShowId: page.params?.id ?? ''
+			});
+			if (decision === 'clear') clearForShow(showId);
+		};
+		v.addEventListener('leavepictureinpicture', onLeave);
+		registerDeferredCancel(showId, cancel);
 	});
 
 	// Navigation handler for the singleton. Two responsibilities:
@@ -989,6 +1034,14 @@
 			detailError = 'Missing show id in URL.';
 			return;
 		}
+		// If a previous play page deferred its prefetch cancel
+		// (because PiP was keeping its show alive) and the user is
+		// now mounting a *different* show's player, flush the old
+		// show's prefetches now. Otherwise we'd run two shows'
+		// prefetches concurrently against the allmanga rate limit
+		// until PiP eventually closes. Same-show remounts are kept;
+		// the new component will take ownership.
+		fireDeferredCancelsExcept(id);
 		void kitsuAnimeDetail(id)
 			.then((d) => {
 				detail = d;

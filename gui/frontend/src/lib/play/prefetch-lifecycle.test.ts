@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
+	__resetDeferredCancelsForTests,
 	decideOnDestroyPrefetch,
-	decideOnPipCloseOrphanedPrefetch
+	decideOnPipCloseOrphanedPrefetch,
+	fireDeferredCancelsExcept,
+	registerDeferredCancel,
+	unregisterDeferredCancel
 } from './prefetch-lifecycle';
 
 describe('decideOnDestroyPrefetch', () => {
@@ -56,5 +60,64 @@ describe('decideOnPipCloseOrphanedPrefetch', () => {
 				currentShowId: 'show-a'
 			})
 		).toBe('noop');
+	});
+});
+
+describe('deferred-cancel registry', () => {
+	beforeEach(() => {
+		__resetDeferredCancelsForTests();
+	});
+
+	it('fireDeferredCancelsExcept fires every entry whose id differs from the given one', () => {
+		const cancelA = vi.fn();
+		const cancelB = vi.fn();
+		const cancelC = vi.fn();
+		registerDeferredCancel('show-a', cancelA);
+		registerDeferredCancel('show-b', cancelB);
+		registerDeferredCancel('show-c', cancelC);
+
+		fireDeferredCancelsExcept('show-b');
+
+		expect(cancelA).toHaveBeenCalledOnce();
+		expect(cancelB).not.toHaveBeenCalled();
+		expect(cancelC).toHaveBeenCalledOnce();
+	});
+
+	it('fireDeferredCancelsExcept removes the fired entries (idempotent on repeat)', () => {
+		const cancelA = vi.fn();
+		registerDeferredCancel('show-a', cancelA);
+
+		fireDeferredCancelsExcept('show-other');
+		fireDeferredCancelsExcept('show-other');
+
+		expect(cancelA).toHaveBeenCalledOnce();
+	});
+
+	it('registering twice for the same id replaces the previous entry', () => {
+		// A second deferred-cancel for the same show (e.g. a second
+		// mount/unmount cycle while PiP is still active) supersedes
+		// the first — the older listener is no longer relevant.
+		const cancelOld = vi.fn();
+		const cancelNew = vi.fn();
+		registerDeferredCancel('show-a', cancelOld);
+		registerDeferredCancel('show-a', cancelNew);
+
+		fireDeferredCancelsExcept('show-other');
+
+		expect(cancelOld).not.toHaveBeenCalled();
+		expect(cancelNew).toHaveBeenCalledOnce();
+	});
+
+	it('unregisterDeferredCancel drops the entry without firing it', () => {
+		// When a deferred-cancel listener fires through its own path
+		// (PiP close), it should remove its entry rather than wait
+		// for fireDeferredCancelsExcept.
+		const cancelA = vi.fn();
+		registerDeferredCancel('show-a', cancelA);
+		unregisterDeferredCancel('show-a');
+
+		fireDeferredCancelsExcept('show-other');
+
+		expect(cancelA).not.toHaveBeenCalled();
 	});
 });
