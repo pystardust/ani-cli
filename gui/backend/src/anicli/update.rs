@@ -140,13 +140,38 @@ pub fn strip_lib_guard(script_path: &Path) -> std::io::Result<()> {
 /// hands its caller the captured stdout + stderr verbatim so the
 /// diagnostics page can render the user-facing log line.
 ///
+/// `bash_path` is required on Windows (resolved via
+/// [`crate::anicli::bash::locate_bash`] at startup) and ignored on
+/// Unix where bash is found on PATH naturally.
+///
 /// # Errors
 /// Never returns `Err`; spawn failures and non-zero exits are surfaced
 /// as `UpdateStatus::Failed` with the error in `stderr`.
-pub async fn run_update(script_path: &Path) -> UpdateOutcome {
+pub async fn run_update(script_path: &Path, bash_path: Option<&Path>) -> UpdateOutcome {
     let started = std::time::Instant::now();
-    let result = tokio::process::Command::new("bash")
-        .arg(script_path)
+    let mut cmd = match bash_path {
+        // Windows: bash.exe resolved at startup via locate_bash. Apply
+        // CREATE_NO_WINDOW so the spawn doesn't flash a console
+        // window every -U run.
+        Some(bash) => {
+            #[allow(unused_mut)] // mut needed only on Windows for creation_flags
+            let mut c = tokio::process::Command::new(bash);
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+                c.creation_flags(CREATE_NO_WINDOW);
+            }
+            c
+        }
+        // Unix: bash on PATH (today's behaviour). We deliberately
+        // invoke bash even though the script's shebang would
+        // resolve to /bin/sh — Ubuntu's /bin/sh is dash and has
+        // subtle string-handling differences from bash.
+        None => tokio::process::Command::new("bash"),
+    };
+    cmd.arg(script_path);
+    let result = cmd
         .arg("-U")
         // Don't carry forward the user's $TERM / colour env; -U writes
         // to stdout in plain ASCII.

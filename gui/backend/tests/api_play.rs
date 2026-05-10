@@ -100,6 +100,7 @@ fn build_state(tmp: &std::path::Path) -> AppState {
         proxy_http: reqwest::Client::new(),
         proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
         ani_cli_path: repo_root().join("ani-cli"),
+        bash_path: None,
         history_path: tmp.join("hist/ani-hsts"),
         scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
         image_cache_dir: tmp.join("images"),

@@ -47,6 +47,7 @@ mod tests {
             proxy_http: reqwest::Client::new(),
             proxy_origin: ProxyOrigin::new("127.0.0.1", 42_337),
             ani_cli_path: PathBuf::from("/usr/local/bin/ani-cli"),
+            bash_path: None,
             history_path: PathBuf::from("/home/u/.local/state/ani-cli/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(2)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),

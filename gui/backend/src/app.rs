@@ -42,6 +42,11 @@ pub struct AppState {
     pub proxy_origin: ProxyOrigin,
     /// Resolved path to the vendored `ani-cli` script.
     pub ani_cli_path: PathBuf,
+    /// Resolved path to `bash.exe` on Windows; `None` on Unix where
+    /// the script runs directly via shebang. Resolved once at startup
+    /// via [`crate::anicli::bash::locate_bash`] and threaded into
+    /// every spawn site via [`DebugOptions::bash_path`].
+    pub bash_path: Option<PathBuf>,
     /// Path of the shared history file.
     pub history_path: PathBuf,
     /// Concurrency limiter for ani-cli subprocess spawns.
@@ -93,6 +98,12 @@ impl AppState {
         if let Err(e) = update::strip_lib_guard(&ani_cli_path) {
             tracing::warn!(target: "anicli::boot", error = %e, "strip_lib_guard failed");
         }
+        // Windows: locate Git Bash so every ani-cli spawn (regular,
+        // search, `-U`) can wrap the POSIX script with bash. Surface
+        // BashMissing so the frontend can render an install-Git-for-
+        // Windows pointer instead of a generic missing-binary error.
+        // Unix: the field stays None — the script runs via shebang.
+        let bash_path = resolve_bash_path()?;
         let history_path = paths::ani_cli_history().ok_or(AniError::Io)?;
         let image_cache_dir = paths::image_cache_dir().ok_or(AniError::Io)?;
         std::fs::create_dir_all(&image_cache_dir).map_err(|_| AniError::Io)?;
@@ -110,6 +121,7 @@ impl AppState {
             proxy_http,
             proxy_origin,
             ani_cli_path,
+            bash_path,
             history_path,
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir,
@@ -131,10 +143,11 @@ impl AppState {
             return;
         }
         let script = self.ani_cli_path.clone();
+        let bash = self.bash_path.clone();
         let state_dir = self.state_dir.clone();
         tokio::spawn(async move {
             tracing::info!(target: "anicli::update", script = %script.display(), "running -U in background");
-            let outcome = update::run_update(&script).await;
+            let outcome = update::run_update(&script, bash.as_deref()).await;
             tracing::info!(
                 target: "anicli::update",
                 status = ?outcome.status,
@@ -154,10 +167,11 @@ impl AppState {
     }
 
     /// A fresh [`DebugOptions`] for an ani-cli invocation, picking up the
-    /// right script path and history dir from this state.
+    /// right script path, bash path, and history dir from this state.
     #[must_use]
     pub fn debug_options(&self) -> DebugOptions {
         let mut opts = DebugOptions::new(self.ani_cli_path.clone());
+        opts.bash_path = self.bash_path.clone();
         // history_path is `…/ani-cli/ani-hsts`; ANI_CLI_HIST_DIR wants the
         // directory containing the file.
         opts.hist_dir = self.history_path.parent().map(std::path::Path::to_path_buf);
@@ -187,6 +201,24 @@ impl AppState {
     }
 }
 
+/// Resolve `bash.exe` at startup on Windows; return `None` on Unix
+/// where the script runs via shebang. On Windows, `Err(BashMissing)`
+/// when no Git for Windows install is reachable so the frontend can
+/// render an install pointer.
+fn resolve_bash_path() -> Result<Option<PathBuf>> {
+    #[cfg(windows)]
+    {
+        match crate::anicli::bash::locate_bash() {
+            Some(p) => Ok(Some(p)),
+            None => Err(AniError::BashMissing),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(None)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,6 +230,7 @@ mod tests {
             proxy_http: reqwest::Client::new(),
             proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
             ani_cli_path: PathBuf::from("/tmp/ani-cli"),
+            bash_path: None,
             history_path: PathBuf::from("/tmp/ani-cli/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),

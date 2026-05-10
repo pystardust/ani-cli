@@ -121,6 +121,7 @@ async fn run_debug_resolves_wixmp_url_via_curl_shim() {
 
     let opts = DebugOptions {
         ani_cli_path,
+        bash_path: None,
         hist_dir: Some(hist),
         timeout: std::time::Duration::from_secs(60),
         path_override: Some(path),
@@ -184,6 +185,7 @@ async fn run_debug_streaming_forwards_stderr_lines_in_order() {
 
     let opts = DebugOptions {
         ani_cli_path,
+        bash_path: None,
         hist_dir: Some(hist),
         timeout: std::time::Duration::from_secs(60),
         path_override: Some(path),

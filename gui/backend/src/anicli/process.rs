@@ -91,6 +91,11 @@ fn is_executable(p: &std::path::Path) -> bool {
 pub struct DebugOptions {
     /// Absolute path to the `ani-cli` script. Use [`locate_ani_cli`].
     pub ani_cli_path: PathBuf,
+    /// Absolute path to `bash.exe` on Windows; `None` on Unix where
+    /// the script runs directly via shebang. Resolved once at startup
+    /// in [`AppState::build`](crate::app::AppState::build) so every
+    /// spawn site uses the same bash. See [`crate::anicli::bash`].
+    pub bash_path: Option<PathBuf>,
     /// Optional override for the history directory (`ANI_CLI_HIST_DIR`).
     /// Defaults to the user's `$XDG_STATE_HOME/ani-cli/` per ani-cli.
     pub hist_dir: Option<PathBuf>,
@@ -107,6 +112,7 @@ impl DebugOptions {
     pub fn new(ani_cli_path: PathBuf) -> Self {
         Self {
             ani_cli_path,
+            bash_path: None,
             hist_dir: None,
             timeout: DEFAULT_TIMEOUT,
             path_override: None,
@@ -136,14 +142,13 @@ pub async fn run_debug(
     mode: &str,
     select_index: usize,
 ) -> Result<DebugOutput> {
-    use tokio::process::Command;
-
     // ani-cli's `-S` flag is 1-based; the caller passes 1 to keep the
     // legacy "first match" behaviour or a higher index after running
     // its own search disambiguation (see `crate::scraper::allanime`).
     let select_str = select_index.max(1).to_string();
 
-    let mut cmd = Command::new(&opts.ani_cli_path);
+    let mut cmd =
+        crate::anicli::bash::build_anicli_command(&opts.ani_cli_path, opts.bash_path.as_deref());
     cmd.arg("-S")
         .arg(&select_str)
         .arg("-e")
@@ -262,11 +267,11 @@ where
     F: FnMut(&str) + Send,
 {
     use tokio::io::{AsyncBufReadExt, BufReader};
-    use tokio::process::Command;
 
     let select_str = select_index.max(1).to_string();
 
-    let mut cmd = Command::new(&opts.ani_cli_path);
+    let mut cmd =
+        crate::anicli::bash::build_anicli_command(&opts.ani_cli_path, opts.bash_path.as_deref());
     cmd.arg("-S")
         .arg(&select_str)
         .arg("-e")
@@ -438,11 +443,11 @@ where
     F: FnMut(&str) + Send,
 {
     use tokio::io::{AsyncBufReadExt, BufReader};
-    use tokio::process::Command;
 
     let select_str = req.select_index.max(1).to_string();
 
-    let mut cmd = Command::new(&opts.ani_cli_path);
+    let mut cmd =
+        crate::anicli::bash::build_anicli_command(&opts.ani_cli_path, opts.bash_path.as_deref());
     cmd.arg("-S")
         .arg(&select_str)
         .arg("-d")
