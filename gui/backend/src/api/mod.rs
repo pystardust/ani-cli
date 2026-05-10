@@ -51,6 +51,7 @@ impl IntoResponse for AniError {
             AniError::ParseFailed { .. }
             | AniError::MissingBinary
             | AniError::BashMissing
+            | AniError::FfmpegMissing
             | AniError::PlayerSpawnFailed { .. }
             | AniError::Cache
             | AniError::Io

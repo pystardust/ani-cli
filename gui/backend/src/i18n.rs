@@ -24,6 +24,13 @@ pub mod keys {
     /// TOML parse or write failure.
     pub const CONFIG_PARSE: &str = "error.config.parse";
 
+    // --- error.download.* ---
+    /// Download mode requires `ffmpeg` (HLS → MP4 mux). The variant
+    /// surfaces it before the ani-cli spawn so the frontend can
+    /// render a clear modal pointing at ffmpeg.org/download instead
+    /// of a generic failure.
+    pub const DOWNLOAD_FFMPEG_MISSING: &str = "error.download.ffmpeg_missing";
+
     // --- error.io.* ---
     /// Generic filesystem error.
     pub const IO_GENERIC: &str = "error.io.generic";
@@ -67,6 +74,7 @@ mod tests {
         let all = [
             CACHE_GENERIC,
             CONFIG_PARSE,
+            DOWNLOAD_FFMPEG_MISSING,
             IO_GENERIC,
             METADATA_SOURCE,
             NETWORK_UNREACHABLE,
