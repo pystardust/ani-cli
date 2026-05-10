@@ -566,7 +566,26 @@
 		if (!scrubberDragging) return;
 		scrubberDragging = false;
 		scrubberDragRect = null;
-		dragPreviewFraction = null;
+		// Defer clearing dragPreviewFraction until the video reports
+		// the seek complete (`seeked`) — clearing synchronously
+		// briefly drops the visuals back to the bound `currentTime`,
+		// which still holds the pre-drag value until `timeupdate`
+		// catches up. The 500 ms safety timer keeps the preview from
+		// sticking forever if `seeked` never fires.
+		if (videoEl) {
+			const v = videoEl;
+			const safety = window.setTimeout(() => {
+				dragPreviewFraction = null;
+				v.removeEventListener('seeked', onSeeked);
+			}, 500);
+			const onSeeked = () => {
+				window.clearTimeout(safety);
+				dragPreviewFraction = null;
+			};
+			v.addEventListener('seeked', onSeeked, { once: true });
+		} else {
+			dragPreviewFraction = null;
+		}
 		const target = event.currentTarget as HTMLElement;
 		try {
 			target.releasePointerCapture(event.pointerId);
