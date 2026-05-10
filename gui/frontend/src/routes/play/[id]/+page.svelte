@@ -774,25 +774,18 @@
 			if (USE_CUSTOM_PLAYER_CONTROLS) togglePlay();
 		};
 
-		// Bump the textTracks reactivity ticker on every list-level
-		// change (track add / remove) and per-track mode change so
-		// the captions menu reflects the current state.
+		// Bump the textTracks reactivity ticker when the list shape
+		// or any track's mode changes — both fire `change` /
+		// `addtrack` / `removetrack` on the TextTrackList itself, so
+		// per-track listeners aren't needed. Avoid `cuechange`: it
+		// fires on every cue boundary during playback and would
+		// thrash availableTracks' derivation chain.
 		const onTextTracksMutate = () => {
 			textTracksTick++;
 		};
-		const wireTrackChange = (track: TextTrack) => {
-			track.addEventListener('cuechange', onTextTracksMutate); // mode flips fire 'cuechange' too
-			track.addEventListener('change' as keyof TextTrackEventMap, onTextTracksMutate);
-		};
-		for (let i = 0; i < v.textTracks.length; i++) wireTrackChange(v.textTracks[i]);
-		const onAddTrack = (e: TrackEvent) => {
-			if (e.track) wireTrackChange(e.track);
-			onTextTracksMutate();
-		};
-		v.textTracks.addEventListener('addtrack', onAddTrack);
+		v.textTracks.addEventListener('addtrack', onTextTracksMutate);
 		v.textTracks.addEventListener('removetrack', onTextTracksMutate);
 		v.textTracks.addEventListener('change', onTextTracksMutate);
-		onTextTracksMutate();
 
 		v.addEventListener('timeupdate', onTime);
 		v.addEventListener('timeupdate', onProg);
@@ -818,7 +811,7 @@
 			v.removeEventListener('ratechange', onRate);
 			v.removeEventListener('ended', onEnded);
 			v.removeEventListener('click', onClick);
-			v.textTracks.removeEventListener('addtrack', onAddTrack);
+			v.textTracks.removeEventListener('addtrack', onTextTracksMutate);
 			v.textTracks.removeEventListener('removetrack', onTextTracksMutate);
 			v.textTracks.removeEventListener('change', onTextTracksMutate);
 			detachGlobalVideo();
