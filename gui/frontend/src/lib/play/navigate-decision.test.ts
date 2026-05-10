@@ -34,8 +34,11 @@ describe('decideNavigateAction', () => {
 		).toBe('request-pip');
 	});
 
-	it('noops when the video is already paused', () => {
-		expect(decideNavigateAction({ ...base, videoPaused: true })).toBe('noop');
+	it('requests PiP even when the video is paused', () => {
+		// Previously paused → noop, but that meant a paused video silently
+		// disappeared on navigation. Now the user keeps the floating
+		// thumbnail (still paused) and can resume from there.
+		expect(decideNavigateAction({ ...base, videoPaused: true })).toBe('request-pip');
 	});
 
 	it('noops when the user is already in PiP (no duplicate request)', () => {
@@ -62,10 +65,10 @@ describe('decideNavigateAction', () => {
 		).toBe('request-pip');
 	});
 
-	it('disable flag does not override paused / in-PiP guards', () => {
+	it('disable flag does not override the in-PiP guard', () => {
 		// `pause` only kicks in when the video would otherwise be
-		// PiP'd. If it's already paused, there's nothing to pause.
-		expect(decideNavigateAction({ ...base, videoPaused: true, disableAutoPip: true })).toBe('noop');
+		// PiP'd. If we're already in PiP, there's no duplicate request
+		// to pause around.
 		expect(decideNavigateAction({ ...base, alreadyInPip: true, disableAutoPip: true })).toBe(
 			'noop'
 		);
