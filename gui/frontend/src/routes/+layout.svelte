@@ -135,48 +135,51 @@
 		// Persistent PiP — distinguish two ways the PiP window can
 		// close:
 		//
-		//   • X button: the W3C spec has the UA pause the video
-		//     synchronously before exiting, so a `pause` event
-		//     lands within ms of `leavepictureinpicture`. The user
-		//     dismissed the floating thumbnail; stay where they are
-		//     and let the singleton sit paused in the hidden host.
+		//   • X button: the W3C spec has the UA pause the video as
+		//     part of close. We see paused=true AND a `pause` event
+		//     fired within milliseconds of leave.
 		//
-		//   • Return-to-tab: the spec keeps playback state intact;
-		//     no UA-issued pause. The user explicitly asked to come
-		//     back to the player, so navigate to /play/[id].
+		//   • Return-to-tab: the spec keeps playback state intact.
+		//     Either the video is still playing, or it was paused
+		//     manually by the user well before clicking the button —
+		//     in which case the most recent pause event is far
+		//     older than the X-close window.
 		//
-		// The discriminator (decideLeavePipAction) is a tight time
-		// window after the most recent pause event. See the helper
-		// for the edge-case discussion.
+		// We defer one short tick before reading state so any UA
+		// pause has had a chance to settle. See decideLeavePipAction
+		// for the policy.
 		const v = getGlobalVideo();
-		let lastPauseAtMs = 0;
+		let lastPauseAtMs = Number.NEGATIVE_INFINITY;
 		const onPause = () => {
 			lastPauseAtMs = Date.now();
 		};
 		const onLeave = () => {
-			const action = decideLeavePipAction({
-				lastPauseAtMs,
-				leftAtMs: Date.now()
-			});
-			if (action === 'stay') return;
-			const sess = getCurrentSession();
-			if (!sess) return;
-			const onPlayPage = page.route?.id === '/play/[id]';
-			if (onPlayPage) return;
-			// Build the play URL inline — buildPlayQuery wants a
-			// full CreateSessionResponse and we only kept the
-			// load-bearing fields. The query shape is stable, so
-			// reproducing it here is fine.
-			const parts = [
-				`session=${encodeURIComponent(sess.session_id)}`,
-				`episode=${sess.episode}`,
-				`kind=${sess.media_kind}`
-			];
-			if (sess.subtitle_url) parts.push('sub=1');
-			const target = resolve('/play/[id]', { id: sess.kitsu_id }) + `?${parts.join('&')}`;
-			/* eslint-disable svelte/no-navigation-without-resolve */
-			void goto(target);
-			/* eslint-enable svelte/no-navigation-without-resolve */
+			setTimeout(() => {
+				const now = Date.now();
+				const action = decideLeavePipAction({
+					videoPaused: v.paused,
+					msSincePauseEvent: now - lastPauseAtMs
+				});
+				if (action === 'stay') return;
+				const sess = getCurrentSession();
+				if (!sess) return;
+				const onPlayPage = page.route?.id === '/play/[id]';
+				if (onPlayPage) return;
+				// Build the play URL inline — buildPlayQuery wants a
+				// full CreateSessionResponse and we only kept the
+				// load-bearing fields. The query shape is stable, so
+				// reproducing it here is fine.
+				const parts = [
+					`session=${encodeURIComponent(sess.session_id)}`,
+					`episode=${sess.episode}`,
+					`kind=${sess.media_kind}`
+				];
+				if (sess.subtitle_url) parts.push('sub=1');
+				const target = resolve('/play/[id]', { id: sess.kitsu_id }) + `?${parts.join('&')}`;
+				/* eslint-disable svelte/no-navigation-without-resolve */
+				void goto(target);
+				/* eslint-enable svelte/no-navigation-without-resolve */
+			}, 50);
 		};
 		v.addEventListener('pause', onPause);
 		v.addEventListener('leavepictureinpicture', onLeave);

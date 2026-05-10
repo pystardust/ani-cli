@@ -5,50 +5,48 @@
  * Two ways the user can close PiP:
  *
  *   • **X button** (close in place). The W3C PiP spec requires the
- *     UA to pause the video before exiting, so the `pause` event
- *     fires synchronously immediately before
- *     `leavepictureinpicture`. We want to leave the user where
- *     they are — they hit X to dismiss the floating thumbnail, not
- *     to be teleported back to the play page.
+ *     UA to pause the video synchronously as part of the close
+ *     path. The user dismissed the floating thumbnail — leave them
+ *     where they are.
  *
  *   • **Return-to-tab** (the icon in the centre of the PiP frame).
- *     The spec says the video keeps its current playing/paused
- *     state — no pause from the UA. The user explicitly asked to
- *     come back to the player, so we navigate to the play page.
+ *     The spec keeps playback state intact — no UA-issued pause.
+ *     The user explicitly asked to come back, so navigate to the
+ *     play page.
  *
- * The discriminator is the time delta between the most recent
- * `pause` event and the `leavepictureinpicture` event. Within a
- * tight window (< 100 ms) we treat the leave as X-close. Anything
- * older — including a manual pause earlier in the session — is
- * return-to-tab.
+ * `videoPaused` alone isn't enough: a user who paused the video
+ * mid-PiP and then clicks return-to-tab also has paused=true at
+ * leave time, but their intent is to navigate. The discriminator
+ * is the *recency* of the pause: an X-close pause lands within
+ * milliseconds of leave; a manual mid-PiP pause is typically
+ * seconds old.
  *
- * Edge case: user pauses manually then immediately clicks
- * return-to-tab within 100 ms. Misclassified as X-close. The
- * sequence is unusual; the alternative (no discrimination) breaks
- * the much more common "X means close, period."
+ * Edge case: user pauses manually, then clicks return-to-tab
+ * within the X-close window (~100 ms). Misclassified as X-close —
+ * unusual fast-fingers sequence, accepted as the price of getting
+ * the common cases right.
  */
 
 export interface LeavePipDecisionInput {
-	/** Time of the most recent `pause` event on the singleton video,
-	 *  in milliseconds since the epoch. 0 if no pause has fired in
-	 *  this PiP session. */
-	lastPauseAtMs: number;
-	/** Time the `leavepictureinpicture` event fired, in milliseconds
-	 *  since the epoch. */
-	leftAtMs: number;
+	/** `videoEl.paused` snapshot, read after a one-tick defer so any
+	 *  spec-mandated UA pause has had time to settle. */
+	videoPaused: boolean;
+	/** Milliseconds between the most recent `pause` event on the
+	 *  singleton video and the leave decision. `Number.POSITIVE_INFINITY`
+	 *  if no pause has fired in this PiP session. */
+	msSincePauseEvent: number;
 }
 
 export type LeavePipAction = 'stay' | 'navigate';
 
-/** Tight window after a pause event during which we attribute a
- *  subsequent leavepictureinpicture to the X button. */
-const X_CLOSE_PAUSE_WINDOW_MS = 100;
+/** Tight window during which a pause event is attributed to the UA's
+ *  X-close path rather than a user-initiated mid-PiP pause. */
+export const X_CLOSE_PAUSE_WINDOW_MS = 100;
 
 /** Compute whether the leave handler should keep the user in place
  *  (X-close) or navigate them back to the play page (return-to-tab). */
 export function decideLeavePipAction(input: LeavePipDecisionInput): LeavePipAction {
-	const sinceLastPause = input.leftAtMs - input.lastPauseAtMs;
-	if (sinceLastPause >= 0 && sinceLastPause < X_CLOSE_PAUSE_WINDOW_MS) {
+	if (input.videoPaused && input.msSincePauseEvent < X_CLOSE_PAUSE_WINDOW_MS) {
 		return 'stay';
 	}
 	return 'navigate';
