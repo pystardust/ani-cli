@@ -317,12 +317,29 @@ function registerAppProtocol() {
 }
 
 // IPC handlers for the renderer's preload bridge. Exposed as
-// window.aniGui.pickDirectory() / .revealInFolder(path).
+// window.aniGui.pickDirectory() / .pickFile() / .revealInFolder(path).
 ipcMain.handle("ani-gui:pick-directory", async (_event, options) => {
   const result = await dialog.showOpenDialog({
     properties: ["openDirectory", "createDirectory"],
     title: options?.title || "Choose download folder",
     defaultPath: options?.defaultPath || undefined,
+  });
+  if (result.canceled || !result.filePaths?.[0]) return null;
+  return result.filePaths[0];
+});
+
+// Native file picker — used by the settings page to let the user
+// point at an external-player executable that isn't on PATH (typical
+// on Windows where mpv.exe is often installed under
+// `C:\Program Files\mpv\` outside the system PATH). Mirrors
+// pick-directory: returns the absolute path or null on cancel.
+ipcMain.handle("ani-gui:pick-file", async (_event, options) => {
+  const filters = Array.isArray(options?.filters) ? options.filters : undefined;
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    title: options?.title || "Choose file",
+    defaultPath: options?.defaultPath || undefined,
+    filters,
   });
   if (result.canceled || !result.filePaths?.[0]) return null;
   return result.filePaths[0];

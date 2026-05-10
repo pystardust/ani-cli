@@ -32,6 +32,16 @@ contextBridge.exposeInMainWorld('aniGui', {
 		return ipcRenderer.invoke('ani-gui:pick-directory', options || {});
 	},
 
+	// Native file picker — same shape as pickDirectory but for a
+	// single file. The settings page uses this to let the user point
+	// at an external-player executable that isn't on PATH. `options`
+	// supports `{ title, defaultPath, filters }` where `filters` is
+	// the Electron OpenDialog filter shape:
+	//   [{ name: "Executables", extensions: ["exe"] }]
+	async pickFile(options) {
+		return ipcRenderer.invoke('ani-gui:pick-file', options || {});
+	},
+
 	// Open the OS file manager at the given directory. Used by the
 	// download dock and the completion toast's "Reveal in folder"
 	// button. Returns `true` on success, `false` if the path didn't

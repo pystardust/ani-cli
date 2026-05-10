@@ -36,6 +36,17 @@ declare global {
 				title?: string;
 				defaultPath?: string;
 			}) => Promise<string | null>;
+			/** Open a native file picker dialog. Used by the settings
+			 *  page to let the user point at an external-player
+			 *  executable that isn't on PATH. Returns the chosen
+			 *  absolute path or null on cancel. `filters` follows the
+			 *  Electron OpenDialog shape:
+			 *    [{ name: 'Executables', extensions: ['exe'] }] */
+			pickFile?: (options?: {
+				title?: string;
+				defaultPath?: string;
+				filters?: Array<{ name: string; extensions: string[] }>;
+			}) => Promise<string | null>;
 			/** Open the OS file manager at `dirPath`. Returns true on
 			 *  success. */
 			revealInFolder?: (dirPath: string) => Promise<boolean>;

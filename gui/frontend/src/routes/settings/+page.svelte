@@ -14,7 +14,8 @@
 		settingsGet,
 		settingsPut,
 		type AppInfo,
-		type Config
+		type Config,
+		type ExternalPlayerKind
 	} from '$lib/api';
 	import { m } from '$lib/paraglide/messages';
 	import { setLocale as paraglideSetLocale } from '$lib/paraglide/runtime';
@@ -110,6 +111,43 @@
 	function setExternalPlayer(value: string) {
 		if (!cfg) return;
 		persistDebounced({ ...cfg, external_player: value });
+	}
+	const PLAYER_KINDS: Array<{ key: ExternalPlayerKind }> = [
+		{ key: 'mpv' },
+		{ key: 'vlc' },
+		{ key: 'iina' },
+		{ key: 'custom' }
+	];
+	function setExternalPlayerKind(kind: ExternalPlayerKind) {
+		if (!cfg) return;
+		void persist({ ...cfg, external_player_kind: kind });
+	}
+	function setExternalPlayerCustomArgs(value: string) {
+		if (!cfg) return;
+		persistDebounced({ ...cfg, external_player_custom_args: value });
+	}
+	async function browseExternalPlayer() {
+		// Native file picker provided by the Electron preload (main.js
+		// `ani-gui:pick-file`). Useful on Windows where mpv.exe is
+		// often installed outside %PATH%, but also handy on Linux for
+		// pointing at a specific build under /opt or /usr/local/bin.
+		const picker = typeof window !== 'undefined' ? window.aniGui?.pickFile : null;
+		if (!picker || !cfg) return;
+		const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+		const filters = isWin
+			? [
+					{ name: 'Executables', extensions: ['exe'] },
+					{ name: 'All files', extensions: ['*'] }
+				]
+			: [{ name: 'All files', extensions: ['*'] }];
+		const picked = await picker({
+			title: m.settings_field_external_player_browse_dialog_title(),
+			defaultPath: cfg.external_player || undefined,
+			filters
+		});
+		if (picked) {
+			void persist({ ...cfg, external_player: picked });
+		}
 	}
 	function setCacheCap(valueRaw: string) {
 		if (!cfg) return;
@@ -262,6 +300,30 @@
 
 			<div class="field">
 				<div class="field-label">
+					<span class="field-key">{m.settings_field_external_player_kind_key()}</span>
+					<span class="field-hint">{m.settings_field_external_player_kind_hint()}</span>
+				</div>
+				<div
+					class="seg seg-narrow"
+					role="group"
+					aria-label={m.settings_external_player_kind_aria_label()}
+				>
+					{#each PLAYER_KINDS as k (k.key)}
+						<button
+							type="button"
+							class="seg-btn"
+							class:active={cfg.external_player_kind === k.key}
+							aria-pressed={cfg.external_player_kind === k.key}
+							onclick={() => setExternalPlayerKind(k.key)}
+						>
+							{#if k.key === 'mpv'}{m.settings_external_player_kind_mpv()}{:else if k.key === 'vlc'}{m.settings_external_player_kind_vlc()}{:else if k.key === 'iina'}{m.settings_external_player_kind_iina()}{:else}{m.settings_external_player_kind_custom()}{/if}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
 					<span class="field-key">{m.settings_field_external_player_key()}</span>
 					<span class="field-hint">
 						{m.settings_field_external_player_hint_prefix()}<code
@@ -269,17 +331,53 @@
 						>{m.settings_field_external_player_hint_suffix()}
 					</span>
 				</div>
-				<input
-					class="text-input"
-					type="text"
-					value={cfg.external_player}
-					oninput={(e) => setExternalPlayer((e.currentTarget as HTMLInputElement).value)}
-					placeholder={m.settings_field_external_player_default()}
-					spellcheck="false"
-					autocomplete="off"
-					aria-label={m.settings_field_external_player_key()}
-				/>
+				<div class="player-binary-row">
+					<input
+						class="text-input"
+						type="text"
+						value={cfg.external_player}
+						oninput={(e) => setExternalPlayer((e.currentTarget as HTMLInputElement).value)}
+						placeholder={m.settings_field_external_player_default()}
+						spellcheck="false"
+						autocomplete="off"
+						aria-label={m.settings_field_external_player_key()}
+					/>
+					<button
+						type="button"
+						class="seg-btn browse-btn"
+						onclick={browseExternalPlayer}
+						aria-label={m.settings_field_external_player_browse_aria_label()}
+					>
+						{m.settings_field_external_player_browse_button()}
+					</button>
+				</div>
 			</div>
+
+			{#if cfg.external_player_kind === 'custom'}
+				<div class="field field-stack">
+					<div class="field-label">
+						<span class="field-key">{m.settings_field_external_player_custom_args_key()}</span>
+						<span class="field-hint">
+							{m.settings_field_external_player_custom_args_hint_prefix()}<code
+								>{'{url}, {referer}, {title}, {sub}'}</code
+							>{m.settings_field_external_player_custom_args_hint_suffix()}<code
+								>{'--no-config --referer={referer} {url}'}</code
+							>
+						</span>
+					</div>
+					<input
+						class="text-input custom-args-input"
+						type="text"
+						value={cfg.external_player_custom_args}
+						oninput={(e) =>
+							setExternalPlayerCustomArgs((e.currentTarget as HTMLInputElement).value)}
+						placeholder={'--no-config --referer={referer} {url}'}
+						spellcheck="false"
+						autocomplete="off"
+						aria-label={m.settings_field_external_player_custom_args_aria_label()}
+					/>
+				</div>
+			{/if}
 
 			<div class="field">
 				<div class="field-label">
@@ -767,6 +865,40 @@
 	}
 	.text-input::placeholder {
 		color: var(--bone-400);
+	}
+
+	/* Binary command + Browse button row. The text input flexes to
+	   fill available space; the Browse button is fixed-width and
+	   never shrinks so it can't get clipped against the right edge of
+	   the field's auto grid column. */
+	.player-binary-row {
+		display: flex;
+		align-items: stretch;
+		gap: var(--space-2);
+		min-inline-size: 0;
+	}
+	.player-binary-row .text-input {
+		flex: 1 1 auto;
+		min-inline-size: 0;
+	}
+	/* The .seg-btn:last-child rule strips border-inline-end so the
+	   segmented control reads as one bordered group. The browse
+	   button isn't part of a group, so re-assert its own right
+	   border with a parent-prefixed selector to win the cascade. */
+	.player-binary-row .browse-btn {
+		flex: 0 0 auto;
+		border: 1px solid var(--ink-300);
+		border-radius: 2px;
+		padding-inline: var(--space-3);
+		cursor: pointer;
+	}
+	.player-binary-row .browse-btn:hover {
+		color: var(--bone-100);
+	}
+	/* Custom args template — full-width on its own row when visible. */
+	.custom-args-input {
+		min-inline-size: 28rem;
+		inline-size: 100%;
 	}
 
 	/* Number + MB suffix. */
