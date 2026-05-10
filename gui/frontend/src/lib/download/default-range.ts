@@ -20,7 +20,6 @@ export function defaultRangeOnEnter(
 	maxEpisode: number | null,
 	rangeFallbackCap: number
 ): { start: number; end: number } {
-	void maxEpisode;
-	void rangeFallbackCap;
-	throw new Error('test(red): defaultRangeOnEnter() lands in the paired feat(green) commit');
+	const end = maxEpisode ?? rangeFallbackCap;
+	return { start: 1, end: Math.max(1, end) };
 }

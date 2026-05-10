@@ -11,6 +11,7 @@
 -->
 <script lang="ts">
 	import { startDownload } from '$lib/download/start';
+	import { defaultRangeOnEnter } from '$lib/download/default-range';
 	import type { DownloadArgs } from '$lib/api';
 	import { m } from '$lib/paraglide/messages';
 
@@ -78,6 +79,14 @@
 			// the count (most common intent — grab the season); fall
 			// back to Range when count is unknown.
 			mode = showThisEpisode ? 'this' : maxEpisode ? 'all' : 'range';
+			// If we're starting in Range mode, seed with the full known
+			// range (or 1..rangeMax fallback) so the user lands on a
+			// useful default rather than clicked-ep..clicked-ep.
+			if (mode === 'range') {
+				const r = defaultRangeOnEnter(maxEpisode, RANGE_FALLBACK_CAP);
+				startEp = r.start;
+				endEp = r.end;
+			}
 		}
 	});
 
@@ -237,7 +246,20 @@
 							class="dl-mode-btn"
 							class:active={mode === 'range'}
 							aria-pressed={mode === 'range'}
-							onclick={() => (mode = 'range')}
+							onclick={() => {
+								// Entering Range from another mode: seed with a
+								// useful default so the user doesn't land on
+								// clicked-ep..clicked-ep (e.g. 13..13 on the
+								// last episode of a 13-episode show). Re-clicks
+								// while already in Range are a no-op for the
+								// inputs — don't blow away mid-edit values.
+								if (mode !== 'range') {
+									const r = defaultRangeOnEnter(maxEpisode, RANGE_FALLBACK_CAP);
+									startEp = r.start;
+									endEp = r.end;
+								}
+								mode = 'range';
+							}}
 						>
 							{m.download_mode_range()}
 						</button>
@@ -297,7 +319,20 @@
 							class="dl-mode-btn"
 							class:active={mode === 'range'}
 							aria-pressed={mode === 'range'}
-							onclick={() => (mode = 'range')}
+							onclick={() => {
+								// Entering Range from another mode: seed with a
+								// useful default so the user doesn't land on
+								// clicked-ep..clicked-ep (e.g. 13..13 on the
+								// last episode of a 13-episode show). Re-clicks
+								// while already in Range are a no-op for the
+								// inputs — don't blow away mid-edit values.
+								if (mode !== 'range') {
+									const r = defaultRangeOnEnter(maxEpisode, RANGE_FALLBACK_CAP);
+									startEp = r.start;
+									endEp = r.end;
+								}
+								mode = 'range';
+							}}
 						>
 							{m.download_mode_range()}
 						</button>
