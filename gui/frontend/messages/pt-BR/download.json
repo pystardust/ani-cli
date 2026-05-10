@@ -48,5 +48,7 @@
 	"dock_reveal_aria_label": "Mostrar na pasta",
 	"dock_reveal_title": "Mostrar na pasta",
 	"dock_dismiss_aria_label": "Dispensar",
-	"dock_dismiss_title": "Dispensar"
+	"dock_dismiss_title": "Dispensar",
+	"dock_ffmpeg_missing_help": "ffmpeg é necessário para downloads. Instale a versão oficial para Windows e tente novamente.",
+	"dock_ffmpeg_install_link": "Instalar ffmpeg"
 }

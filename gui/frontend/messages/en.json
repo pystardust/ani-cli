@@ -188,6 +188,8 @@
 	"download_dock_reveal_title": "Reveal in folder",
 	"download_dock_dismiss_aria_label": "Dismiss",
 	"download_dock_dismiss_title": "Dismiss",
+	"download_dock_ffmpeg_missing_help": "ffmpeg is required for downloads. Install the official Windows build, then retry.",
+	"download_dock_ffmpeg_install_link": "Install ffmpeg",
 	"errors_dismiss_default_label": "Got it",
 	"errors_failed_default": "Failed",
 	"home_hero_aria_label": "Featured",

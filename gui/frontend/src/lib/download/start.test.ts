@@ -5,7 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // imports inside `start.ts` resolve to these stubs at load time.
 
 const apiMock = vi.hoisted(() => ({
-	downloadStream: vi.fn()
+	downloadStream: vi.fn(),
+	// Re-export the real type guard so start.ts's typed-error branch
+	// observes a payload exactly when the test rejection has the
+	// {kind, key} shape — matches production semantics without
+	// dragging the rest of api.ts (and its EventSource transitive
+	// imports) into the test sandbox.
+	isApiErrorPayload: (value: unknown): boolean =>
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { kind?: unknown }).kind === 'string' &&
+		typeof (value as { key?: unknown }).key === 'string'
 }));
 vi.mock('$lib/api', () => apiMock);
 
@@ -142,5 +152,26 @@ describe('startDownload', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(storeMock.downloadStore.markError).toHaveBeenCalledWith('dl-1', 'Download failed');
+	});
+
+	it('forwards a typed AniError payload as markError(id, key, kind)', async () => {
+		// Backend now serializes AniError directly on SSE error events,
+		// so the rejection is `{kind, key, ...}` instead of an Error.
+		// The dock keys off `kind` to render error-specific UI (the
+		// ffmpeg-missing CTA), so the kind must round-trip into the
+		// store, and the message must be the i18n `key` (not the
+		// debug-formatted Rust string).
+		apiMock.downloadStream.mockRejectedValueOnce({
+			kind: 'ffmpeg_missing',
+			key: 'error.download.ffmpeg_missing'
+		});
+		startDownload(baseArgs);
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(storeMock.downloadStore.markError).toHaveBeenCalledWith(
+			'dl-1',
+			'error.download.ffmpeg_missing',
+			'ffmpeg_missing'
+		);
 	});
 });
