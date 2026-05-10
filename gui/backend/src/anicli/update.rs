@@ -77,6 +77,28 @@ pub enum UpdateStatus {
     Failed,
 }
 
+/// Pick the staleness anchor [`should_update_now`] should compare
+/// against. Returns the *later* of the persisted outcome's
+/// `finished_at` and the script file's mtime — both are tracked
+/// because they cover different scenarios:
+///
+/// - **Fresh install**: no outcome has been written yet, so we fall
+///   back to the script mtime (set when the seed was copied to cache
+///   on first boot). This stops a brand-new install from immediately
+///   running `-U` while the seed is still warm.
+/// - **NoChange-after-update**: `-U` exits without writing the
+///   script, so its mtime stays old; without the outcome timestamp
+///   we'd re-curl GitHub on every reopen for the rest of the day.
+///   The outcome is written on every run (including NoChange) and
+///   makes the TTL gate stick.
+#[must_use]
+pub fn last_run_anchor(
+    outcome_finished_at: Option<SystemTime>,
+    script_mtime: Option<SystemTime>,
+) -> Option<SystemTime> {
+    todo!("green commit")
+}
+
 /// Decide whether to spawn an `-U` run on backend boot.
 ///
 /// `last` is the script's mtime (or `None` if never updated); `ttl` is
@@ -477,6 +499,47 @@ mod tests {
     }
 
     // ── UpdateOutcome (de)serialisation ─────────────────────────────────
+
+    // ── last_run_anchor ────────────────────────────────────────────────
+
+    #[test]
+    fn last_run_anchor_returns_none_when_both_missing() {
+        assert_eq!(last_run_anchor(None, None), None);
+    }
+
+    #[test]
+    fn last_run_anchor_falls_back_to_mtime_when_no_outcome() {
+        // Fresh-install case: only the script's mtime is known
+        // because no `-U` has run yet.
+        let mtime = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        assert_eq!(last_run_anchor(None, Some(mtime)), Some(mtime));
+    }
+
+    #[test]
+    fn last_run_anchor_uses_outcome_when_newer_than_mtime() {
+        // NoChange-after-update case: `-U` ran, wrote the outcome,
+        // but didn't touch the script. The outcome timestamp is the
+        // authoritative "last attempt".
+        let old_mtime = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let recent_outcome = UNIX_EPOCH + Duration::from_secs(1_700_086_400);
+        assert_eq!(
+            last_run_anchor(Some(recent_outcome), Some(old_mtime)),
+            Some(recent_outcome)
+        );
+    }
+
+    #[test]
+    fn last_run_anchor_uses_mtime_when_newer_than_outcome() {
+        // Defensive: a manual `bash ani-cli -U` outside our binary
+        // could touch the file later than our last persisted run.
+        // Pick the genuinely-most-recent timestamp.
+        let old_outcome = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let recent_mtime = UNIX_EPOCH + Duration::from_secs(1_700_086_400);
+        assert_eq!(
+            last_run_anchor(Some(old_outcome), Some(recent_mtime)),
+            Some(recent_mtime)
+        );
+    }
 
     // ── persistence ────────────────────────────────────────────────────
 
