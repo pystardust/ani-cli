@@ -16,8 +16,10 @@
 		"build:frontend": "cd ../frontend && pnpm build",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
 		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
+		"package:win": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:win",
 		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
 		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
+		"dist:win": "electron-builder --win nsis",
 		"repack-appimage": "node scripts/repack-appimage.mjs",
 		"e2e": "pnpm run package && playwright test",
 		"e2e:fast": "playwright test"
@@ -78,6 +80,39 @@
 				"grep",
 				"coreutils"
 			]
+		},
+		"win": {
+			"target": [
+				{
+					"target": "nsis",
+					"arch": [
+						"x64"
+					]
+				}
+			],
+			"artifactName": "${productName}-${version}-${arch}-setup.${ext}",
+			"extraResources": [
+				{
+					"from": "../frontend/build",
+					"to": "frontend/build"
+				},
+				{
+					"from": "../backend/target/release/ani-gui-backend.exe",
+					"to": "ani-gui-backend.exe"
+				},
+				{
+					"from": "../../ani-cli",
+					"to": "ani-cli"
+				}
+			]
+		},
+		"nsis": {
+			"oneClick": false,
+			"perMachine": false,
+			"allowToChangeInstallationDirectory": true,
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"shortcutName": "ani-gui"
 		}
 	}
 }

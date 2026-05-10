@@ -78,6 +78,12 @@ protocol.registerSchemesAsPrivileged([
  * `package.json:build`. Throws with a clear message if missing.
  */
 function resolveBackendBinary() {
+  // Windows binaries carry the .exe suffix; the rest of the platforms
+  // ship the bare binary name. Cargo writes the suffix automatically
+  // when targeting a Windows triple, and electron-builder copies
+  // whichever shape it finds.
+  const exeSuffix = process.platform === "win32" ? ".exe" : "";
+  const binaryName = `ani-gui-backend${exeSuffix}`;
   if (IS_DEV) {
     const repoRoot = path.resolve(__dirname, "..", "..");
     // Debug first in dev: cargo's debug profile is what `cargo
@@ -88,35 +94,21 @@ function resolveBackendBinary() {
     // `pnpm dev` would silently pick up a stale release binary
     // from a packaging run hours earlier.
     const candidates = [
-      path.join(
-        repoRoot,
-        "gui",
-        "backend",
-        "target",
-        "debug",
-        "ani-gui-backend",
-      ),
-      path.join(
-        repoRoot,
-        "gui",
-        "backend",
-        "target",
-        "release",
-        "ani-gui-backend",
-      ),
+      path.join(repoRoot, "gui", "backend", "target", "debug", binaryName),
+      path.join(repoRoot, "gui", "backend", "target", "release", binaryName),
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) return p;
     }
     throw new Error(
-      `ani-gui-backend not found. Build it first:\n  ` +
+      `${binaryName} not found. Build it first:\n  ` +
         `cd gui/backend && cargo build --bin ani-gui-backend`,
     );
   }
-  const packaged = path.join(process.resourcesPath, "ani-gui-backend");
+  const packaged = path.join(process.resourcesPath, binaryName);
   if (!fs.existsSync(packaged)) {
     throw new Error(
-      `ani-gui-backend not found in packaged resources at ${packaged}. ` +
+      `${binaryName} not found in packaged resources at ${packaged}. ` +
         `The electron-builder \`extraResources\` rule may be misconfigured.`,
     );
   }
