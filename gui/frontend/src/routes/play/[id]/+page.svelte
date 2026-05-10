@@ -567,19 +567,22 @@
 		scrubberDragging = false;
 		scrubberDragRect = null;
 		// Defer clearing dragPreviewFraction until the video reports
-		// the seek complete (`seeked`) — clearing synchronously
-		// briefly drops the visuals back to the bound `currentTime`,
-		// which still holds the pre-drag value until `timeupdate`
-		// catches up. The 500 ms safety timer keeps the preview from
+		// the seek complete (`seeked`). Also sync `currentTime` from
+		// the video in the same step — `timeupdate` lags `seeked`
+		// (especially on backward seeks) so without this the bound
+		// fallback briefly shows the pre-drag time before catching
+		// up. The 500 ms safety timer keeps the preview from
 		// sticking forever if `seeked` never fires.
 		if (videoEl) {
 			const v = videoEl;
 			const safety = window.setTimeout(() => {
+				currentTime = v.currentTime;
 				dragPreviewFraction = null;
 				v.removeEventListener('seeked', onSeeked);
 			}, 500);
 			const onSeeked = () => {
 				window.clearTimeout(safety);
+				currentTime = v.currentTime;
 				dragPreviewFraction = null;
 			};
 			v.addEventListener('seeked', onSeeked, { once: true });
