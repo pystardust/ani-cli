@@ -27,6 +27,19 @@ export default ts.config(
 		}
 	},
 	{
-		ignores: ['.svelte-kit/', 'build/', 'coverage/', 'dist/', 'node_modules/', 'src/lib/bindings/']
+		// `src/lib/paraglide/` is the typed-TS output of the Paraglide
+		// compiler — it ships with `/* eslint-disable */` headers
+		// per file but recent eslint flags those as unused-disable
+		// when there's nothing to disable. Skip the directory wholesale
+		// so paraglide-js upgrades don't churn lint output.
+		ignores: [
+			'.svelte-kit/',
+			'build/',
+			'coverage/',
+			'dist/',
+			'node_modules/',
+			'src/lib/bindings/',
+			'src/lib/paraglide/'
+		]
 	}
 );

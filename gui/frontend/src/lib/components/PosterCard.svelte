@@ -7,6 +7,7 @@
 	import { resolve } from '$app/paths';
 	import { imageProxyUrl, type KitsuAnimeRef } from '$lib/api';
 	import { accentFor } from '$lib/design/accent';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		anime: KitsuAnimeRef;
@@ -48,11 +49,11 @@
 		<span class="card-meta">
 			{#if anime.episode_count}
 				<span class="num">{anime.episode_count}</span>
-				<span class="card-meta-word">ep</span>
+				<span class="card-meta-word">{m.strip_card_episodes_suffix()}</span>
 			{:else if anime.start_date}
 				<span class="num">{anime.start_date.slice(0, 4)}</span>
 			{:else}
-				<span class="card-meta-word">—</span>
+				<span class="card-meta-word">{m.strip_card_no_date()}</span>
 			{/if}
 		</span>
 	</span>

@@ -7,15 +7,20 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
-		/** Label after the arrow. Defaults to "Back". */
+		/** Label after the arrow. When omitted, falls back to the
+		 *  localized `app.back` message ("Back" in `en`). */
 		label?: string;
 		/** Fallback href when there's no history to pop. Defaults to "/". */
 		fallback?: string;
 	}
 
-	let { label = 'Back', fallback = '/' }: Props = $props();
+	let { label, fallback = '/' }: Props = $props();
+	// `$derived` re-runs the message lookup on locale change so the
+	// label updates if the user switches UI language without a reload.
+	const displayLabel = $derived(label ?? m.app_back());
 
 	// Visibility is decided upstream (in +layout.svelte's nav-depth
 	// tracker) — by the time this component is rendered, the user is
@@ -28,7 +33,7 @@
 	}
 </script>
 
-<a class="back" href={resolve(fallback as '/')} onclick={onClick} aria-label={label}>
+<a class="back" href={resolve(fallback as '/')} onclick={onClick} aria-label={displayLabel}>
 	<svg class="back-arrow" viewBox="0 0 16 16" aria-hidden="true">
 		<path
 			d="M10.5 3.5 6 8l4.5 4.5"
@@ -39,7 +44,7 @@
 			stroke-linejoin="round"
 		/>
 	</svg>
-	<span class="back-label">{label}</span>
+	<span class="back-label">{displayLabel}</span>
 </a>
 
 <style>

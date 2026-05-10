@@ -1,0 +1,23 @@
+{
+	"hero_eyebrow_key": "Tonight's marquee",
+	"hero_eyebrow_value": "via AniList · trending",
+	"hero_cta_details": "See more",
+	"hero_cta_browse": "Browse the catalogue",
+	"hero_pager_dot_label": "Show {title}",
+	"hero_error_eyebrow_key": "Off-air",
+	"hero_error_title": "The catalogue is unreachable.",
+	"hero_error_body": "Kitsu didn't answer. Search still works locally — type a title.",
+	"hero_error_cta": "Open Search",
+	"hero_skeleton_eyebrow_key": "Loading",
+	"strip_continue_eyebrow": "Continue watching",
+	"strip_continue_caption": "resume from history",
+	"resume_ep_key": "EP",
+	"resume_episode_label": "Episode {episode}",
+	"error_resume_headline": "Couldn't resume {title}",
+	"strip_trending_eyebrow": "Trending now",
+	"strip_trending_caption_loading": "loading",
+	"strip_trending_caption": "this week · via AniList",
+	"strip_top_rated_eyebrow": "Top rated",
+	"strip_top_rated_caption_loading": "loading",
+	"strip_top_rated_caption": "all-time · via Kitsu"
+}

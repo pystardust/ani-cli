@@ -17,3 +17,9 @@ src/lib/paraglide/
 # compile, no value in committing.
 project.inlang/cache/
 project.inlang/.meta.json
+
+# Per-locale merged bundles. Source of truth lives in
+# `messages/<locale>/<namespace>.json`; `tools/build-messages.mjs`
+# stitches those into the single `messages/<locale>.json` file
+# Paraglide reads. Regenerated on every i18n:compile.
+messages/*.json

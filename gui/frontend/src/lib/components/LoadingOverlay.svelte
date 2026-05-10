@@ -14,6 +14,7 @@
 	import { onDestroy } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import loadingJson from '$lib/anim/loading.json';
+	import { m } from '$lib/paraglide/messages';
 
 	let { visible = false, progress = null } = $props<{
 		visible?: boolean;
@@ -59,7 +60,12 @@
 </script>
 
 {#if visible}
-	<div class="backdrop" role="status" aria-live="polite" aria-label="Loading">
+	<div
+		class="backdrop"
+		role="status"
+		aria-live="polite"
+		aria-label={m.loading_overlay_aria_label()}
+	>
 		<div class="band">
 			<div bind:this={container} class="anim"></div>
 			<div class="progress-row" aria-live="polite">

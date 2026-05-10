@@ -10,5 +10,12 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler"
-	}
+	},
+	"exclude": [
+		"node_modules/**",
+		".svelte-kit/[!ti]**",
+		"build/**",
+		"dist/**",
+		"src/lib/paraglide/**"
+	]
 }

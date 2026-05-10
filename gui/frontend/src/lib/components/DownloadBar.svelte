@@ -12,6 +12,7 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { downloadStore } from '$lib/download/store.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	const active = $derived(downloadStore.active);
 	const visible = $derived(active.length > 0);
@@ -37,11 +38,14 @@
 					<span class="dl-bar-sep" aria-hidden="true">·</span>
 					<span class="dl-bar-ep">
 						{#if item.rangeTotal && item.currentEp != null}
-							Ep {item.currentEp} of {item.rangeTotal}
+							{m.download_bar_ep_label_range_progress({
+								current: item.currentEp,
+								total: item.rangeTotal
+							})}
 						{:else if item.rangeTotal}
-							Eps {item.episode}
+							{m.download_bar_ep_label_range_static({ episode: item.episode })}
 						{:else}
-							Ep {item.episode}
+							{m.download_bar_ep_label_single({ episode: item.episode })}
 						{/if}
 					</span>
 				</span>

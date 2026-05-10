@@ -14,6 +14,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import type { BreadcrumbSegment } from '$lib/breadcrumb';
+	import { m } from '$lib/paraglide/messages';
 
 	let { segments }: { segments: BreadcrumbSegment[] } = $props();
 
@@ -38,7 +39,7 @@
 		     by the contributing route), so the no-resolve rule's
 		     pattern matcher trips on the dynamic value. -->
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a class="up" href={upHref} onclick={goUp} aria-label="Go up one level">
+		<a class="up" href={upHref} onclick={goUp} aria-label={m.breadcrumb_up_aria_label()}>
 			<svg viewBox="0 0 16 16" aria-hidden="true">
 				<path
 					d="M10.5 3.5 6 8l4.5 4.5"

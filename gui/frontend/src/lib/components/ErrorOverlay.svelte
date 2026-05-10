@@ -14,25 +14,24 @@
   the same handler.
 -->
 <script lang="ts">
-	let {
-		headline,
-		body,
-		dismissLabel = 'Got it',
-		onDismiss
-	} = $props<{
+	import { m } from '$lib/paraglide/messages';
+
+	let { headline, body, dismissLabel, onDismiss } = $props<{
 		/** Short eyebrow line — `Couldn't play episode N` style. */
 		headline: string;
 		/** Full sentence the user reads. Should suggest what to try
 		 *  next ("try again in a few minutes", "check connection"). */
 		body: string;
 		/** Override the default dismiss label. Useful if a future
-		 *  variant wants "Try external player" or similar. */
+		 *  variant wants "Try external player" or similar. When
+		 *  omitted, falls back to the localized `errors.dismiss_default_label`. */
 		dismissLabel?: string;
 		/** Called when the user clicks the button, presses Escape, or
 		 *  clicks the dim backdrop. Parent should reset the error
 		 *  state in the handler. */
 		onDismiss: () => void;
 	}>();
+	const displayDismissLabel = $derived(dismissLabel ?? m.errors_dismiss_default_label());
 
 	function onBackdropClick(e: MouseEvent) {
 		// Only fire when the click hit the backdrop itself, not the
@@ -65,7 +64,7 @@
 	<div class="card" role="document">
 		<p id="error-headline" class="headline">{headline}</p>
 		<p class="body">{body}</p>
-		<button type="button" class="dismiss" onclick={onDismiss}>{dismissLabel}</button>
+		<button type="button" class="dismiss" onclick={onDismiss}>{displayDismissLabel}</button>
 	</div>
 </div>
 

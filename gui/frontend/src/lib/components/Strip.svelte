@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		eyebrow: string;
@@ -209,7 +210,7 @@
 			class="strip-arrow strip-arrow-start"
 			class:visible={canScrollLeft}
 			onclick={() => nudge(-1)}
-			aria-label="Previous"
+			aria-label={m.strip_arrow_previous_aria_label()}
 			tabindex="-1"
 		>
 			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -228,7 +229,7 @@
 			class="strip-arrow strip-arrow-end"
 			class:visible={canScrollRight}
 			onclick={() => nudge(1)}
-			aria-label="Next"
+			aria-label={m.strip_arrow_next_aria_label()}
 			tabindex="-1"
 		>
 			<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
