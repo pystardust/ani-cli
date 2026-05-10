@@ -253,31 +253,44 @@
 		}
 	});
 
+	// Identity of the (show, episode) we last issued an aniskip
+	// fetch for. Aniskip's API rejects requests whose
+	// episodeLength doesn't match the recorded length within a
+	// tolerance, so re-firing the fetch on every `duration` tick
+	// (initial estimate → final value, hls.js manifest updates,
+	// etc.) can flip a successful response into a 404 and clear a
+	// valid `skipIntervals`. Re-fetch only when the episode itself
+	// changes; ignore `duration` updates within the same episode.
+	let aniskipFetchedKey: string | null = null;
 	$effect(() => {
-		if (!id || !episodeNum || !Number.isFinite(duration) || duration <= 0) {
+		const showId = id;
+		const ep = episodeNum ? String(episodeNum) : '';
+		const key = showId && ep ? `${showId}|${ep}` : null;
+		if (!key) {
 			skipIntervals = [];
+			aniskipFetchedKey = null;
 			return;
 		}
-		const showId = id;
-		const ep = String(episodeNum);
-		const len = duration;
+		if (!Number.isFinite(duration) || duration <= 0) {
+			return;
+		}
+		if (key === aniskipFetchedKey) return;
+		aniskipFetchedKey = key;
 		// Clear stale data before the fetch so a previous episode's
 		// intervals can't briefly drive `activeSkip` against the new
-		// episode's currentTime — that produced a quick button flash
-		// when navigating to a show with no aniskip data.
+		// episode's currentTime.
 		skipIntervals = [];
+		const len = duration;
 		void aniskipGet(showId, ep, len)
 			.then((v) => {
-				// Guard against the user navigating to a different
-				// episode mid-fetch — ignore stale results.
-				if (showId === id && ep === String(episodeNum)) {
+				if (aniskipFetchedKey === key) {
 					skipIntervals = v;
 				}
 			})
 			.catch(() => {
-				// Soft fail — no skip button just means no overlay
-				// renders. The player still plays normally.
-				skipIntervals = [];
+				if (aniskipFetchedKey === key) {
+					skipIntervals = [];
+				}
 			});
 	});
 
