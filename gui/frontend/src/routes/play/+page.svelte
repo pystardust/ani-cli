@@ -9,6 +9,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import Hls from 'hls.js';
+	import { m } from '$lib/paraglide/messages';
 
 	let url = $state('');
 	let videoEl = $state<HTMLVideoElement | null>(null);
@@ -60,16 +61,15 @@
 </script>
 
 <svelte:head>
-	<title>Test stream · ani-gui</title>
+	<title>{m.play_test_title()} · {m.app_brand_title()}</title>
 </svelte:head>
 
 <main class="page">
 	<header>
-		<p class="eyebrow">Diagnostics</p>
-		<h1>Test stream</h1>
+		<p class="eyebrow">{m.play_test_section_title()}</p>
+		<h1>{m.play_test_title()}</h1>
 		<p class="hint">
-			Paste a public HLS (<code>.m3u8</code>) or MP4 URL to verify hls.js + the streaming proxy
-			path. Bypasses the search → session resolution chain.
+			{m.play_test_hint()}
 		</p>
 	</header>
 
@@ -77,11 +77,12 @@
 		<input
 			type="text"
 			bind:value={url}
-			placeholder="https://… .m3u8 or .mp4"
+			placeholder={m.play_test_url_placeholder()}
 			autocomplete="off"
 			spellcheck="false"
+			aria-label={m.play_test_label()}
 		/>
-		<button type="submit" disabled={!url.trim()}>Play</button>
+		<button type="submit" disabled={!url.trim()}>{m.play_test_submit_button()}</button>
 	</form>
 
 	{#if error}
@@ -119,7 +120,11 @@
 		color: var(--bone-300);
 		font-size: var(--type-body-s);
 	}
-	.hint code {
+	/* The `<code>` formerly inlined in the hint copy now lives inside
+	   the localized `play_test_hint` message, so Svelte's CSS
+	   scoping no longer sees it during static analysis. Keep the
+	   rule but qualify with :global so it still applies. */
+	.hint :global(code) {
 		font-family: var(--font-mono);
 		color: var(--bone-200);
 	}

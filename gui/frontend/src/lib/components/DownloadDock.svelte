@@ -15,6 +15,7 @@
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { downloadStore, type DownloadItem } from '$lib/download/store.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let open = $state(false);
 	let trigger = $state<HTMLButtonElement | null>(null);
@@ -84,11 +85,11 @@
 			aria-haspopup="menu"
 			aria-expanded={open}
 			aria-label={activeCount > 0
-				? `${activeCount} download(s) in progress`
+				? m.download_dock_active_label({ count: activeCount })
 				: unseenCount > 0
-					? `${unseenCount} download(s) finished`
-					: 'Downloads'}
-			title="Downloads"
+					? m.download_dock_unseen_label({ count: unseenCount })
+					: m.download_dock_idle_label()}
+			title={m.download_dock_title()}
 		>
 			<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
 				<path
@@ -108,18 +109,21 @@
 		</button>
 
 		{#if open}
-			<div id="dl-dock-pop" class="dl-dock-pop" role="menu" aria-label="Downloads">
+			<div id="dl-dock-pop" class="dl-dock-pop" role="menu" aria-label={m.download_dock_title()}>
 				{#if itemsView.length === 0}
-					<p class="dl-dock-empty">No downloads yet.</p>
+					<p class="dl-dock-empty">{m.download_dock_empty()}</p>
 				{:else}
 					<ul class="dl-dock-list">
 						{#each itemsView as item (item.id)}
 							{@const epLabel =
 								item.rangeTotal && item.currentEp != null
-									? `Ep ${item.currentEp} of ${item.rangeTotal}`
+									? m.download_dock_ep_label_range_progress({
+											current: item.currentEp,
+											total: item.rangeTotal
+										})
 									: item.rangeTotal
-										? `Eps ${item.episode}`
-										: `Ep ${item.episode}`}
+										? m.download_dock_ep_label_range_static({ episode: item.episode })
+										: m.download_dock_ep_label_single({ episode: item.episode })}
 							<li class="dl-row dl-row-{item.status}" title={item.title}>
 								<span class="dl-row-text">
 									<span class="dl-row-title">{item.title}</span>
@@ -140,8 +144,8 @@
 										type="button"
 										class="dl-row-act"
 										onclick={() => confirmCancel(item)}
-										aria-label="Cancel download"
-										title="Cancel"
+										aria-label={m.download_dock_cancel_aria_label()}
+										title={m.download_dock_cancel_title()}
 									>
 										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
 											<path
@@ -158,8 +162,8 @@
 										type="button"
 										class="dl-row-act"
 										onclick={() => reveal(item.destDir)}
-										aria-label="Reveal in folder"
-										title="Reveal in folder"
+										aria-label={m.download_dock_reveal_aria_label()}
+										title={m.download_dock_reveal_title()}
 									>
 										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
 											<path
@@ -176,8 +180,8 @@
 										type="button"
 										class="dl-row-act"
 										onclick={() => downloadStore.dismiss(item.id)}
-										aria-label="Dismiss"
-										title="Dismiss"
+										aria-label={m.download_dock_dismiss_aria_label()}
+										title={m.download_dock_dismiss_title()}
 									>
 										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
 											<path
@@ -190,13 +194,14 @@
 										</svg>
 									</button>
 								{:else}
-									<span class="dl-row-error" title={item.error ?? 'Failed'}>!</span>
+									<span class="dl-row-error" title={item.error ?? m.errors_failed_default()}>!</span
+									>
 									<button
 										type="button"
 										class="dl-row-act"
 										onclick={() => downloadStore.dismiss(item.id)}
-										aria-label="Dismiss"
-										title="Dismiss"
+										aria-label={m.download_dock_dismiss_aria_label()}
+										title={m.download_dock_dismiss_title()}
 									>
 										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
 											<path

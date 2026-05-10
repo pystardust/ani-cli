@@ -1,7 +1,7 @@
 {
 	"eyebrow_key": "Download",
-	"eyebrow_value_this": "this episode",
-	"eyebrow_value_all": "all episodes",
+	"eyebrow_value_this": "episode {episode}",
+	"eyebrow_value_all": "all {count} episodes",
 	"eyebrow_value_range": "{start}–{end}",
 	"label_episodes": "Episodes",
 	"mode_this_episode": "This episode",
@@ -17,7 +17,7 @@
 	"range_unknown_suffix": " · episode count unknown",
 	"hint_this": "Downloads episode {episode} only.",
 	"hint_all_prefix_total": "Downloads all {count}",
-	"hint_all_aired": "aired",
+	"hint_all_aired": " aired",
 	"hint_all_episodes_suffix": " episodes sequentially",
 	"hint_all_gap_suffix": " — {announced} are announced but only {available} have been released so far.",
 	"hint_all_nogap_suffix": ".",

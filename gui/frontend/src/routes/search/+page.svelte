@@ -19,6 +19,7 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import Strip from '$lib/components/Strip.svelte';
 	import { filterAvailable, filterAvailableStrict } from '$lib/availability/filter';
+	import { m } from '$lib/paraglide/messages';
 
 	let submitted = $state(''); // the query whose results are on screen.
 	let results = $state<KitsuAnimeRef[] | null>(null);
@@ -158,50 +159,52 @@
 </script>
 
 <svelte:head>
-	<title>Search · ani-gui</title>
+	<title>{m.app_page_title_search()}</title>
 </svelte:head>
 
 <div class="page">
 	<header class="page-header">
-		<h1 class="page-title">Search</h1>
+		<h1 class="page-title">{m.search_title()}</h1>
 		{#if !submitted}
-			<p class="page-sub">Refine your search above. Results are grouped by source.</p>
+			<p class="page-sub">{m.search_subtitle_empty()}</p>
 		{/if}
 	</header>
 
 	<section class="results-meta" aria-live="polite">
 		{#if submitted}
 			<p class="eyebrow">
-				<span class="eyebrow-key">Query</span>
+				<span class="eyebrow-key">{m.search_eyebrow_key()}</span>
 				<span class="eyebrow-rule" aria-hidden="true"></span>
 				<span class="eyebrow-value">{submitted}</span>
 				<span class="eyebrow-sep" aria-hidden="true">·</span>
 				{#if busy}
-					<span class="eyebrow-count">searching…</span>
+					<span class="eyebrow-count">{m.search_status_searching()}</span>
 				{:else}
 					<span class="eyebrow-count">
 						<span class="num">{count}</span>
-						<span class="word">{count === 1 ? 'result' : 'results'}</span>
+						<span class="word"
+							>{count === 1 ? m.search_count_singular() : m.search_count_plural()}</span
+						>
 					</span>
 				{/if}
 			</p>
 		{:else}
 			<p class="eyebrow">
-				<span class="eyebrow-key">Catalogue</span>
+				<span class="eyebrow-key">{m.search_eyebrow_key_empty()}</span>
 				<span class="eyebrow-rule" aria-hidden="true"></span>
-				<span class="eyebrow-value">via Kitsu</span>
+				<span class="eyebrow-value">{m.search_eyebrow_value_empty()}</span>
 			</p>
-			<p class="eyebrow-caption">Trending now · Currently airing · Top&nbsp;20</p>
+			<p class="eyebrow-caption">{m.search_empty_caption()}</p>
 		{/if}
 	</section>
 
 	{#if submitted && results !== null && results.length > 0}
-		<section class="controls" aria-label="Sort and filter results">
+		<section class="controls" aria-label={m.search_controls_aria_label()}>
 			<div class="control-group">
-				<span class="control-label">Sort</span>
+				<span class="control-label">{m.search_control_sort_label()}</span>
 				<!-- Single-select radio behaviour via aria-pressed; same
 				     chip style as Type for visual consistency. -->
-				<div class="chips" role="radiogroup" aria-label="Sort">
+				<div class="chips" role="radiogroup" aria-label={m.search_chips_sort_aria_label()}>
 					{#each Object.entries(SORT_LABELS) as [key, label] (key)}
 						<button
 							type="button"
@@ -217,8 +220,8 @@
 				</div>
 			</div>
 			<div class="control-group">
-				<span class="control-label">Type</span>
-				<div class="chips" role="group" aria-label="Filter by subtype">
+				<span class="control-label">{m.search_control_type_label()}</span>
+				<div class="chips" role="group" aria-label={m.search_chips_type_aria_label()}>
 					{#each SUBTYPES as s (s)}
 						<button
 							type="button"
@@ -235,9 +238,9 @@
 							type="button"
 							class="chip chip-clear"
 							onclick={() => activeSubtypes.clear()}
-							aria-label="Clear type filters"
+							aria-label={m.search_chips_clear_button_aria_label()}
 						>
-							Clear
+							{m.search_chips_clear_button_aria_label()}
 						</button>
 					{/if}
 				</div>
@@ -251,7 +254,7 @@
 			{#if error.detail}<p class="state-detail">{error.detail}</p>{/if}
 		</div>
 	{:else if busy && !results}
-		<ul class="grid" aria-busy="true" aria-label="Loading results">
+		<ul class="grid" aria-busy="true" aria-label={m.search_skeleton_aria_label()}>
 			{#each Array.from({ length: 12 }, (_, k) => k) as i (i)}
 				<li class="card card-skeleton" style="--i: {i}">
 					<div class="poster poster-skeleton"></div>
@@ -263,24 +266,31 @@
 	{:else if results !== null && results.length === 0}
 		<div class="state state-empty">
 			<p class="state-headline">
-				Nothing matched <em>“{submitted}”</em>.
+				<!-- Inline <em> markup ships in the localized string so each
+				     locale can position it according to its grammar. -->
+				{@html m.search_empty_headline({ query: submitted ?? '' })}
 			</p>
 			<p class="state-detail">
-				Kitsu's catalogue can be sparse for season-only or aliased titles. Try the romaji form, or a
-				shorter prefix.
+				{m.search_empty_detail()}
 			</p>
 		</div>
 	{:else if !submitted}
 		<!-- No query yet: surface the same discovery rows the home page uses. -->
 		{#if trending && trending.length > 0}
-			<Strip eyebrow="Trending now" caption="currently airing · top 20">
+			<Strip
+				eyebrow={m.search_discovery_trending_eyebrow()}
+				caption={m.search_discovery_trending_caption()}
+			>
 				{#each trending as hit (hit.id)}
 					<PosterCard anime={hit} />
 				{/each}
 			</Strip>
 		{/if}
 		{#if topRated && topRated.length > 0}
-			<Strip eyebrow="Top rated" caption="all-time · via Kitsu">
+			<Strip
+				eyebrow={m.search_discovery_top_rated_eyebrow()}
+				caption={m.search_discovery_top_rated_caption()}
+			>
 				{#each topRated as hit (hit.id)}
 					<PosterCard anime={hit} />
 				{/each}
@@ -288,8 +298,8 @@
 		{/if}
 	{:else if displayed !== null && displayed.length === 0 && results !== null && results.length > 0}
 		<div class="state state-empty">
-			<p class="state-headline">No matches in the current filter.</p>
-			<p class="state-detail">Clear or change the type filter above to see more results.</p>
+			<p class="state-headline">{m.search_filtered_empty_headline()}</p>
+			<p class="state-detail">{m.search_filtered_empty_detail()}</p>
 		</div>
 	{:else if displayed !== null}
 		<ul class="grid">
@@ -329,7 +339,7 @@
 								{/if}
 								{#if hit.episode_count}
 									<span class="card-meta-sep" aria-hidden="true">·</span>
-									<span>{hit.episode_count} eps</span>
+									<span>{hit.episode_count} {m.search_card_eps_suffix()}</span>
 								{/if}
 								{#if rating}
 									<span class="card-meta-sep" aria-hidden="true">·</span>
@@ -600,7 +610,11 @@
 		color: var(--bone-100);
 		letter-spacing: -0.01em;
 	}
-	.state-headline em {
+	/* The <em> wrapper around the user's query lives inside the
+	   localized `search_empty_headline` message, so Svelte's CSS
+	   scoping can't see it. :global keeps the rule applied without
+	   the dead-selector warning. */
+	.state-headline :global(em) {
 		font-style: normal;
 		font-weight: 600;
 		color: var(--bone-200);

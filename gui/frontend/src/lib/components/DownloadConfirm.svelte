@@ -12,6 +12,7 @@
 <script lang="ts">
 	import { startDownload } from '$lib/download/start';
 	import type { DownloadArgs } from '$lib/api';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open: boolean;
@@ -195,28 +196,31 @@
 				     range; the body's hint line surfaces the live count
 				     and is the source of truth. -->
 				<p class="dl-eyebrow">
-					<span class="dl-eyebrow-key">Download</span>
+					<span class="dl-eyebrow-key">{m.download_eyebrow_key()}</span>
 					<span class="dl-eyebrow-rule" aria-hidden="true"></span>
 					<span class="dl-eyebrow-value">
 						{mode === 'this'
-							? `episode ${args.episode}`
+							? m.download_eyebrow_value_this({ episode: args.episode })
 							: mode === 'all'
-								? `all ${maxEpisode ?? '?'} episodes`
-								: `episodes ${Math.floor(startEp)}–${Math.floor(endEp)}`}
+								? m.download_eyebrow_value_all({ count: maxEpisode ?? '?' })
+								: m.download_eyebrow_value_range({
+										start: Math.floor(startEp),
+										end: Math.floor(endEp)
+									})}
 					</span>
 				</p>
 				<h2 id="dl-confirm-title" class="dl-title">{args.title}</h2>
 			</header>
 
 			<div class="dl-body">
-				<span class="dl-label">Episodes</span>
+				<span class="dl-label">{m.download_label_episodes()}</span>
 				<!-- Order varies by surface: /play has a clear "current"
 				     episode so This → Range → All keeps the obvious
 				     default first. The detail page has no current
 				     referent and the user is more likely to grab the
 				     whole season than to dial in a range, so put All
 				     ahead of Range there. -->
-				<div class="dl-mode" role="group" aria-label="Episode selection">
+				<div class="dl-mode" role="group" aria-label={m.download_label_episodes()}>
 					{#if showThisEpisode}
 						<button
 							type="button"
@@ -225,7 +229,7 @@
 							aria-pressed={mode === 'this'}
 							onclick={() => (mode = 'this')}
 						>
-							This episode
+							{m.download_mode_this_episode()}
 							<span class="dl-mode-num">{args.episode}</span>
 						</button>
 						<button
@@ -235,7 +239,7 @@
 							aria-pressed={mode === 'range'}
 							onclick={() => (mode = 'range')}
 						>
-							Range
+							{m.download_mode_range()}
 						</button>
 						<!-- aria-disabled keeps the button hoverable so the
 						     custom tooltip fires immediately on hover. The
@@ -251,14 +255,14 @@
 								aria-disabled={!maxEpisode}
 								onclick={() => maxEpisode && (mode = 'all')}
 							>
-								All
+								{m.download_mode_all()}
 								{#if maxEpisode}
 									<span class="dl-mode-num">{maxEpisode}</span>
 								{/if}
 							</button>
 							{#if !maxEpisode}
 								<span class="dl-tip" role="tooltip">
-									Downloading all episodes is disabled for this show.
+									{m.download_disabled_all_tooltip()}
 								</span>
 							{/if}
 						</span>
@@ -277,14 +281,14 @@
 								aria-disabled={!maxEpisode}
 								onclick={() => maxEpisode && (mode = 'all')}
 							>
-								All
+								{m.download_mode_all()}
 								{#if maxEpisode}
 									<span class="dl-mode-num">{maxEpisode}</span>
 								{/if}
 							</button>
 							{#if !maxEpisode}
 								<span class="dl-tip" role="tooltip">
-									Downloading all episodes is disabled for this show.
+									{m.download_disabled_all_tooltip()}
 								</span>
 							{/if}
 						</span>
@@ -295,7 +299,7 @@
 							aria-pressed={mode === 'range'}
 							onclick={() => (mode = 'range')}
 						>
-							Range
+							{m.download_mode_range()}
 						</button>
 					{/if}
 				</div>
@@ -310,10 +314,10 @@
 							min="1"
 							max={rangeMax}
 							bind:value={startEp}
-							aria-label="From episode"
+							aria-label={m.download_range_from_aria_label()}
 							aria-invalid={startInvalid}
 						/>
-						<span class="dl-range-sep" aria-hidden="true">–</span>
+						<span class="dl-range-sep" aria-hidden="true">{m.download_range_separator()}</span>
 						<input
 							class="dl-input dl-input-num"
 							class:dl-input-error={endInvalid}
@@ -321,20 +325,22 @@
 							min={Math.floor(startEp)}
 							max={rangeMax}
 							bind:value={endEp}
-							aria-label="To episode"
+							aria-label={m.download_range_to_aria_label()}
 							aria-invalid={endInvalid}
 						/>
 						{#if maxEpisode}
 							<span class="dl-range-total">
-								of {maxEpisode}
-								{#if hasGap}
-									<span class="dl-range-faint">· {announcedEpisode} announced</span>
+								{m.download_range_of({ total: maxEpisode })}
+								{#if hasGap && announcedEpisode != null}
+									<span class="dl-range-faint"
+										>{m.download_range_announced_suffix({ count: announcedEpisode })}</span
+									>
 								{/if}
 							</span>
 						{:else}
 							<span class="dl-range-total">
-								max {rangeMax}
-								<span class="dl-range-faint">· episode count unknown</span>
+								{m.download_range_max_prefix({ max: rangeMax })}
+								<span class="dl-range-faint">{m.download_range_unknown_suffix()}</span>
 							</span>
 						{/if}
 					</div>
@@ -345,21 +351,25 @@
 
 				<p class="dl-hint">
 					{#if mode === 'this'}
-						Downloads episode {args.episode} only.
+						{m.download_hint_this({ episode: args.episode })}
 					{:else if mode === 'all'}
 						{#if maxEpisode}
-							Downloads all {maxEpisode}
-							{hasGap ? 'aired' : ''} episodes sequentially{#if hasGap}
-								— {announcedEpisode} are announced but only {maxEpisode} have been released so far.{:else}.{/if}
+							{m.download_hint_all_prefix_total({ count: maxEpisode })}
+							{hasGap ? m.download_hint_all_aired() : ''}{m.download_hint_all_episodes_suffix()}{#if hasGap && announcedEpisode != null}{m.download_hint_all_gap_suffix(
+									{
+										announced: announcedEpisode,
+										available: maxEpisode
+									}
+								)}{:else}{m.download_hint_all_nogap_suffix()}{/if}
 						{:else}
-							Episode count unknown — use Range to specify.
+							{m.download_hint_all_unknown()}
 						{/if}
 					{:else}
-						Downloads {rangeCount} episodes sequentially.
+						{m.download_hint_range({ count: rangeCount })}
 					{/if}
 				</p>
 
-				<label class="dl-label" for="dl-dir-input">Save to</label>
+				<label class="dl-label" for="dl-dir-input">{m.download_label_directory()}</label>
 				<div class="dl-row">
 					<input
 						id="dl-dir-input"
@@ -380,17 +390,19 @@
 								stroke-linejoin="round"
 							/>
 						</svg>
-						<span>Browse…</span>
+						<span>{m.download_button_browse()}</span>
 					</button>
 				</div>
 				<p class="dl-hint">
-					Files land as <code>{args.title} Episode N.mp4</code> per ani-cli's naming.
+					{@html m.download_hint_filename({
+						filename: `<code>${args.title} Episode N.mp4</code>`
+					})}
 				</p>
 			</div>
 
 			<footer class="dl-foot">
 				<button type="button" class="dl-btn dl-btn-quiet" onclick={close} disabled={busy}>
-					Cancel
+					{m.download_button_cancel()}
 				</button>
 				<button
 					type="button"
@@ -398,7 +410,7 @@
 					onclick={confirm}
 					disabled={busy || !dir.trim() || rangeError !== null}
 				>
-					{busy ? 'Starting…' : 'Start download'}
+					{busy ? m.download_button_confirming() : m.download_button_confirm()}
 				</button>
 			</footer>
 		</div>
@@ -664,7 +676,12 @@
 		font-size: var(--type-meta);
 		color: var(--bone-300);
 	}
-	.dl-hint code {
+	/* `:global(code)` because the <code> element is rendered via
+	   {@html} from a Paraglide message — Svelte's CSS scoping can't
+	   tag injected HTML, and a plain selector here would compile to
+	   the dead-code warning. The qualifier scopes the rule to <code>
+	   children of .dl-hint specifically. */
+	.dl-hint :global(code) {
 		font-family: var(--font-mono);
 		color: var(--bone-200);
 	}

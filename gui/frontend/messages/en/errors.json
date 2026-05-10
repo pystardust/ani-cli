@@ -1,3 +1,4 @@
 {
-	"dismiss_default_label": "Got it"
+	"dismiss_default_label": "Got it",
+	"failed_default": "Failed"
 }

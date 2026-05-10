@@ -15,7 +15,7 @@
 	"chips_type_aria_label": "Filter by subtype",
 	"chips_clear_button_aria_label": "Clear",
 	"skeleton_aria_label": "Loading results",
-	"empty_headline": "Nothing matched \"{query}\".",
+	"empty_headline": "Nothing matched <em>“{query}”</em>.",
 	"empty_detail": "Kitsu's catalogue can be sparse for season-only or aliased titles. Try the romaji form, or a shorter prefix.",
 	"discovery_trending_eyebrow": "Trending now",
 	"discovery_trending_caption": "currently airing · top 20",

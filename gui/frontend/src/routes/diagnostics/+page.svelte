@@ -14,6 +14,7 @@
 		type AppInfo,
 		type HistoryEntry
 	} from '$lib/api';
+	import { m } from '$lib/paraglide/messages';
 
 	let info = $state<AppInfo | null>(null);
 	let history = $state<HistoryEntry[] | null>(null);
@@ -56,7 +57,7 @@
 		cacheError = null;
 		try {
 			await metaCacheClear();
-			cacheStatus = 'Metadata cache cleared.';
+			cacheStatus = m.diagnostics_cache_clear_success();
 		} catch (e) {
 			cacheError = describeError(e);
 		} finally {
@@ -76,36 +77,42 @@
 </script>
 
 <main class="page">
-	<h1>ani-gui — Backend Status</h1>
+	<h1>{m.diagnostics_title()}</h1>
 
 	<section>
-		<h2>App info</h2>
+		<h2>{m.diagnostics_section_app_info()}</h2>
 		{#if infoError}
-			<p>Error: {infoError}</p>
+			<p>{m.diagnostics_app_info_error()} {infoError}</p>
 		{:else if info}
 			<dl>
-				<dt>Version</dt>
+				<dt>{m.diagnostics_app_info_version()}</dt>
 				<dd>{info.version}</dd>
-				<dt>ani-cli script</dt>
+				<dt>{m.diagnostics_app_info_ani_cli()}</dt>
 				<dd>{info.ani_cli_path}</dd>
-				<dt>History file</dt>
+				<dt>{m.diagnostics_app_info_history_file()}</dt>
 				<dd>{info.history_path}</dd>
-				<dt>Proxy base URL</dt>
+				<dt>{m.diagnostics_app_info_proxy_base()}</dt>
 				<dd>{info.proxy_base_url}</dd>
 			</dl>
 		{:else}
-			<p>Loading…</p>
+			<p>{m.diagnostics_app_info_loading()}</p>
 		{/if}
 	</section>
 
 	<section>
-		<h2>Continue Watching ({history?.length ?? '…'})</h2>
+		<h2>
+			{#if history === null}
+				{m.diagnostics_section_history_title_loading()}
+			{:else}
+				{m.diagnostics_section_history_title({ count: history.length })}
+			{/if}
+		</h2>
 		{#if historyError}
-			<p>Error: {historyError}</p>
+			<p>{m.diagnostics_history_error()} {historyError}</p>
 		{:else if history === null}
-			<p>Loading…</p>
+			<p>{m.diagnostics_history_loading()}</p>
 		{:else if history.length === 0}
-			<p>No entries yet. Watch something to populate ani-hsts.</p>
+			<p>{m.diagnostics_history_empty()}</p>
 		{:else}
 			<ul>
 				{#each history as entry (entry.id)}
@@ -114,38 +121,42 @@
 			</ul>
 		{/if}
 		<p>
-			<button type="button" onclick={refresh} disabled={busy}>Refresh</button>
+			<button type="button" onclick={refresh} disabled={busy}
+				>{m.diagnostics_refresh_button()}</button
+			>
 			<button type="button" onclick={clearHistory} disabled={busy || history?.length === 0}>
-				Clear history
+				{m.diagnostics_clear_history_button()}
 			</button>
 		</p>
 	</section>
 
 	<section>
-		<h2>Metadata cache</h2>
+		<h2>{m.diagnostics_section_metadata_cache()}</h2>
 		<p>
-			Wipes the SQLite cache that holds Kitsu search results, anime details, episode lists, and
-			title→id mappings. The ani-cli history file and your settings are not affected.
+			{m.diagnostics_metadata_cache_description()}
 		</p>
 		<p>
-			<button type="button" onclick={clearMetaCache} disabled={busy}>Clear metadata cache</button>
+			<button type="button" onclick={clearMetaCache} disabled={busy}
+				>{m.diagnostics_clear_metadata_cache_button()}</button
+			>
 		</p>
 		{#if cacheStatus}<p>{cacheStatus}</p>{/if}
-		{#if cacheError}<p>Error: {cacheError}</p>{/if}
+		{#if cacheError}<p>{m.diagnostics_cache_clear_error()} {cacheError}</p>{/if}
 	</section>
 
 	<section>
-		<h2>Search Kitsu</h2>
+		<h2>{m.diagnostics_section_search_kitsu()}</h2>
 		<p>
-			<a href={resolve('/search')}>Open Kitsu search</a> — find anime by title, browse posters and metadata.
+			<a href={resolve('/search')}>{m.diagnostics_open_search_link_text()}</a
+			>{m.diagnostics_open_search_link_hint()}
 		</p>
 	</section>
 
 	<section>
-		<h2>Test Stream</h2>
+		<h2>{m.diagnostics_section_test_stream()}</h2>
 		<p>
-			<a href={resolve('/play')}>Open Test Stream</a> — paste a public HLS URL to verify the streaming
-			proxy + hls.js wiring end-to-end.
+			<a href={resolve('/play')}>{m.diagnostics_open_test_stream_link_text()}</a
+			>{m.diagnostics_open_test_stream_link_hint()}
 		</p>
 	</section>
 </main>
