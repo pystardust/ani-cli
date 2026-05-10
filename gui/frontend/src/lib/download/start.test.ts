@@ -15,10 +15,19 @@ const storeMock = vi.hoisted(() => ({
 		markActive: vi.fn(),
 		setProgress: vi.fn(),
 		markDone: vi.fn(),
-		markError: vi.fn()
+		markError: vi.fn(),
+		dismiss: vi.fn()
 	}
 }));
 vi.mock('./store.svelte', () => storeMock);
+
+const failureStoreMock = vi.hoisted(() => ({
+	downloadFailureStore: {
+		show: vi.fn(),
+		dismiss: vi.fn()
+	}
+}));
+vi.mock('./failure-store.svelte', () => failureStoreMock);
 
 import { startDownload } from './start';
 
@@ -37,6 +46,9 @@ describe('startDownload', () => {
 		storeMock.downloadStore.setProgress.mockReset();
 		storeMock.downloadStore.markDone.mockReset();
 		storeMock.downloadStore.markError.mockReset();
+		storeMock.downloadStore.dismiss.mockReset();
+		failureStoreMock.downloadFailureStore.show.mockReset();
+		failureStoreMock.downloadFailureStore.dismiss.mockReset();
 		apiMock.downloadStream.mockReset();
 		// add() returns the new id; default to a known one so each
 		// test can assert the lifecycle calls happened against it.
@@ -142,5 +154,28 @@ describe('startDownload', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(storeMock.downloadStore.markError).toHaveBeenCalledWith('dl-1', 'Download failed');
+	});
+
+	it('routes a typed ffmpeg_missing payload to the failure store and dismisses the dock row', async () => {
+		// Backend SSE error event for a download started without
+		// ffmpeg on PATH: the typed payload carries kind +
+		// i18n key. The dock's bare "!" tooltip wouldn't help the
+		// user; instead, hand the failure to the layout-level modal
+		// (failure store) and clear the broken dock row so the user
+		// sees one clear surface.
+		apiMock.downloadStream.mockRejectedValueOnce({
+			kind: 'ffmpeg_missing',
+			key: 'error.download.ffmpeg_missing'
+		});
+		startDownload(baseArgs);
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(failureStoreMock.downloadFailureStore.show).toHaveBeenCalledWith({
+			kind: 'ffmpeg_missing'
+		});
+		expect(storeMock.downloadStore.dismiss).toHaveBeenCalledWith('dl-1');
+		// The broken-view path must NOT also fire — we don't want
+		// the user seeing a half-closed dock row plus the modal.
+		expect(storeMock.downloadStore.markError).not.toHaveBeenCalled();
 	});
 });
