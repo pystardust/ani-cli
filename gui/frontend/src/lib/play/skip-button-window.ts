@@ -3,32 +3,31 @@
  * was sticking around for the entire OP/ED interval, which
  * cluttered the chrome long after the user had a fair chance to
  * see and click it. Spec: visible for the first 5 seconds of the
- * interval, hidden after.
- *
- * Stubbed; real impl lands with the green commit.
+ * interval, hidden after. Auto-skip is unaffected — it binds to
+ * `pickActiveSkip` so users with the matching toggle still jump
+ * past the interval the moment they enter it.
  */
 import type { SkipInterval } from '$lib/api';
 
-/** Default visibility window for the Skip button, in seconds.
- *  Stubbed at 0 so the const-pin test fails red. Green sets it
- *  to the intended 5. */
-export const SKIP_BUTTON_WINDOW_SEC = 0;
+/** Default visibility window for the Skip button, in seconds. */
+export const SKIP_BUTTON_WINDOW_SEC = 5;
 
 /**
  * Whether to render the Skip OP / Skip Outro button at the
  * given playback time for the given active interval.
  *
- * Stub throws; the green commit replaces the body with the real
- * boundary math (`elapsed = currentTime - skip.start_time`,
- * inclusive at 0, exclusive at `windowSec`).
+ * Inclusive at `start_time` (no 1-frame blink as `pickActiveSkip`
+ * flips on); exclusive at `start_time + windowSec` (clean fade-out
+ * boundary). Returns false when `skip` is null or the playhead is
+ * somehow before the interval start (defensive against
+ * out-of-sync $derived recomputations during a seek).
  */
 export function shouldShowSkipButton(
 	skip: SkipInterval | null,
 	currentTime: number,
 	windowSec: number = SKIP_BUTTON_WINDOW_SEC
 ): boolean {
-	void skip;
-	void currentTime;
-	void windowSec;
-	throw new Error('not yet implemented — green commit fills this in');
+	if (!skip) return false;
+	const elapsed = currentTime - skip.start_time;
+	return elapsed >= 0 && elapsed < windowSec;
 }

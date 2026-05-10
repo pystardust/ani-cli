@@ -62,6 +62,7 @@
 	import { buildPlayQuery } from '$lib/play/play-url';
 	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
 	import { pickActiveSkip } from '$lib/play/aniskip-active';
+	import { shouldShowSkipButton } from '$lib/play/skip-button-window';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import {
 		attachGlobalVideoTo,
@@ -1544,7 +1545,7 @@
 			     seeks just past `end_time`. Positioned bottom-right
 			     above native + custom controls so it never overlaps
 			     the timeline. -->
-			{#if activeSkip}
+			{#if activeSkip && shouldShowSkipButton(activeSkip, currentTime)}
 				<button
 					type="button"
 					class="player-skip-btn"
