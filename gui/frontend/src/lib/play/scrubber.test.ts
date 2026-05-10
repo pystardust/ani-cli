@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { clientXToFraction } from './scrubber';
+import { clientXToFraction, displayedScrubFraction } from './scrubber';
 
 describe('clientXToFraction', () => {
 	const rect = { left: 100, width: 200 } as const;
@@ -74,5 +74,54 @@ describe('clientXToFraction', () => {
 			expect(f).toBeGreaterThanOrEqual(0);
 			expect(f).toBeLessThanOrEqual(1);
 		}
+	});
+});
+
+describe('displayedScrubFraction', () => {
+	// Why this helper exists: setting `videoEl.currentTime = X` doesn't
+	// emit `timeupdate` at every keyframe boundary (especially during
+	// rapid seeks on a paused video), so a thumb/fill bound straight
+	// to currentTime/duration appears frozen during a drag and only
+	// snaps to the new spot on release. This helper lets the
+	// component show a `dragPreviewFraction` (updated synchronously
+	// on every pointermove) until the drag ends, then fall through
+	// to the live currentTime/duration.
+
+	it('uses dragPreviewFraction verbatim when supplied', () => {
+		// Drag wins — the user is actively scrubbing and they expect
+		// the thumb to track their pointer 1:1, not the underlying
+		// video's seek progress.
+		expect(displayedScrubFraction(0.42, 30, 100)).toBe(0.42);
+	});
+
+	it('falls back to currentTime/duration when no drag is active', () => {
+		// Normal playback path: dragPreviewFraction is null because
+		// the user isn't holding the thumb. The live time wins.
+		expect(displayedScrubFraction(null, 30, 100)).toBe(0.3);
+	});
+
+	it('returns 0 when duration is zero or non-finite', () => {
+		// Pre-loadedmetadata: `duration === NaN` or 0. Don't divide
+		// by zero — surface 0 so the bar renders empty, not infinite.
+		expect(displayedScrubFraction(null, 0, 0)).toBe(0);
+		expect(displayedScrubFraction(null, 30, NaN)).toBe(0);
+		expect(displayedScrubFraction(null, 30, -5)).toBe(0);
+	});
+
+	it('clamps the fallback to [0, 1] when currentTime exceeds duration', () => {
+		// Defensive: the player can briefly report currentTime past
+		// duration during ended/seeking edges. A fill > 100% looks
+		// glitchy, so clamp at 1.
+		expect(displayedScrubFraction(null, 110, 100)).toBe(1);
+		expect(displayedScrubFraction(null, -5, 100)).toBe(0);
+	});
+
+	it('clamps an out-of-range drag preview too', () => {
+		// dragPreviewFraction *should* always be in [0, 1] from
+		// clientXToFraction, but this is the same belt-and-braces
+		// clamp as the fallback path — a future caller passing a
+		// raw value can't render a glitchy out-of-range bar.
+		expect(displayedScrubFraction(1.5, 30, 100)).toBe(1);
+		expect(displayedScrubFraction(-0.2, 30, 100)).toBe(0);
 	});
 });

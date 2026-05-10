@@ -18,3 +18,18 @@ export function clientXToFraction(clientX: number, rect: { left: number; width: 
 	if (raw >= 1) return 1;
 	return raw;
 }
+
+/**
+ * Decide the [0, 1] fraction the scrubber's thumb + fill should
+ * render at right now. Stub fails red.
+ */
+export function displayedScrubFraction(
+	dragPreviewFraction: number | null,
+	currentTime: number,
+	duration: number
+): number {
+	void dragPreviewFraction;
+	void currentTime;
+	void duration;
+	throw new Error('not yet implemented — green commit fills this in');
+}
