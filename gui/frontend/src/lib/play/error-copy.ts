@@ -14,6 +14,8 @@
  * runtime.
  */
 
+import { m } from '$lib/paraglide/messages';
+
 /** Flatten an arbitrary thrown value into a stable debug string.
  *  Recognises the AniError envelope shape (`{ kind, detail }`) and
  *  falls back to `String(e)` for anything else. */
@@ -35,16 +37,16 @@ export function describeError(e: unknown): string {
 export function describePlayFailure(e: unknown): string {
 	const raw = describeError(e).toLowerCase();
 	if (raw.includes('no_results')) {
-		return "Couldn't find this title on the streaming source. The episode may not be available — try again later.";
+		return m.play_play_failure_no_results();
 	}
 	if (raw.includes('scraper')) {
-		return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
+		return m.play_play_failure_scraper();
 	}
 	if (raw.includes('timeout')) {
-		return 'The streaming source took too long to respond. Try again in a few minutes.';
+		return m.play_play_failure_timeout();
 	}
 	if (raw.includes('network') || raw.includes('upstream')) {
-		return 'Network trouble reaching the streaming source. Check your connection and try again.';
+		return m.play_play_failure_network();
 	}
-	return "Couldn't start this episode right now. Try again in a few minutes.";
+	return m.play_play_failure_generic();
 }

@@ -74,6 +74,7 @@
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
 	import { describeError, describePlayFailure } from '$lib/play/error-copy';
 	import { breadcrumb } from '$lib/breadcrumb';
+	import { m } from '$lib/paraglide/messages';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
@@ -1311,8 +1312,8 @@
 <svelte:head>
 	<title>
 		{detail
-			? `Ep ${episodeNum}${currentEpisodeMeta?.canonical_title ? ` · ${currentEpisodeMeta.canonical_title}` : ''} · ${detail.canonical_title} · ani-gui`
-			: 'Player · ani-gui'}
+			? `${m.play_head_title_episode_prefix({ episode: String(episodeNum) })}${currentEpisodeMeta?.canonical_title ? ` · ${currentEpisodeMeta.canonical_title}` : ''} · ${detail.canonical_title} · ani-gui`
+			: m.play_head_title_loading()}
 	</title>
 </svelte:head>
 
@@ -1329,7 +1330,7 @@
 		style:--player-letterbox-y="{letterboxY}px"
 	>
 		{#if !sessionId}
-			<p class="player-empty">No session in URL — return to the show page and pick an episode.</p>
+			<p class="player-empty">{m.play_error_no_session()}</p>
 		{:else if playerError}
 			<p class="player-empty">{playerError}</p>
 		{:else}
@@ -1374,7 +1375,9 @@
 							type="button"
 							class="pc-btn"
 							onclick={togglePlay}
-							aria-label={isPaused ? 'Play' : 'Pause'}
+							aria-label={isPaused
+								? m.play_controls_play_aria_label()
+								: m.play_controls_pause_aria_label()}
 						>
 							{#if isPaused}
 								<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
@@ -1388,14 +1391,14 @@
 							{/if}
 						</button>
 
-						<span class="pc-time" aria-label="Current time">
+						<span class="pc-time" aria-label={m.play_controls_current_time_aria_label()}>
 							{formatTime(currentTime)} <span class="pc-time-sep">/</span>
 							{formatTime(duration)}
 						</span>
 
 						<span class="pc-spacer"></span>
 
-						<div class="pc-volume" role="group" aria-label="Volume">
+						<div class="pc-volume" role="group" aria-label={m.play_controls_volume_aria_label()}>
 							<!-- Native-style: slider on the left of the icon,
 							     both wrapped in a rounded pill that only
 							     appears on hover/focus. The slider is hidden
@@ -1421,14 +1424,16 @@
 									value={isMuted ? 0 : videoVolume}
 									oninput={(e) =>
 										setVolume(parseFloat((e.currentTarget as HTMLInputElement).value))}
-									aria-label="Volume"
+									aria-label={m.play_controls_volume_input_aria_label()}
 								/>
 							</div>
 							<button
 								type="button"
 								class="pc-btn"
 								onclick={toggleMute}
-								aria-label={isMuted ? 'Unmute' : 'Mute'}
+								aria-label={isMuted
+									? m.play_controls_unmute_aria_label()
+									: m.play_controls_mute_aria_label()}
 							>
 								{#if isMuted || videoVolume === 0}
 									<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
@@ -1452,7 +1457,7 @@
 							type="button"
 							class="pc-btn"
 							onclick={toggleFullscreen}
-							aria-label="Toggle fullscreen"
+							aria-label={m.play_controls_fullscreen_aria_label()}
 						>
 							<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 								<path
@@ -1473,7 +1478,7 @@
 								onclick={togglePcMenu}
 								aria-haspopup="menu"
 								aria-expanded={pcMenuOpen}
-								aria-label="More"
+								aria-label={m.play_controls_menu_aria_label()}
 							>
 								<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
 									<circle cx="12" cy="5.5" r="1.7" fill="currentColor" />
@@ -1500,7 +1505,7 @@
 													stroke-linejoin="round"
 												/>
 											</svg>
-											<span>Speed</span>
+											<span>{m.play_controls_menu_speed_label()}</span>
 										</button>
 										{#each PLAYBACK_SPEEDS as rate (rate)}
 											<button
@@ -1514,7 +1519,11 @@
 												<span class="pc-menu-check" aria-hidden="true">
 													{#if playbackRate === rate}✓{/if}
 												</span>
-												<span>{rate === 1 ? 'Normal' : `${rate}×`}</span>
+												<span
+													>{rate === 1
+														? m.play_controls_speed_normal()
+														: m.play_controls_speed_custom({ rate: String(rate) })}</span
+												>
 											</button>
 										{/each}
 									{:else}
@@ -1537,7 +1546,7 @@
 													stroke-linejoin="round"
 												/>
 											</svg>
-											<span>Download</span>
+											<span>{m.play_controls_menu_download()}</span>
 										</button>
 										<button
 											type="button"
@@ -1563,9 +1572,11 @@
 													stroke-linecap="round"
 												/>
 											</svg>
-											<span>Speed</span>
+											<span>{m.play_controls_menu_speed_label()}</span>
 											<span class="pc-menu-current">
-												{playbackRate === 1 ? 'Normal' : `${playbackRate}×`}
+												{playbackRate === 1
+													? m.play_controls_speed_normal()
+													: m.play_controls_speed_custom({ rate: String(playbackRate) })}
 											</span>
 											<svg
 												class="pc-menu-arrow"
@@ -1598,7 +1609,7 @@
 												/>
 												<rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" />
 											</svg>
-											<span>Picture in picture</span>
+											<span>{m.play_controls_menu_pip()}</span>
 										</button>
 									{/if}
 								</div>
@@ -1613,7 +1624,7 @@
 							class="pc-scrubber"
 							role="slider"
 							tabindex="0"
-							aria-label="Seek"
+							aria-label={m.play_controls_scrubber_aria_label()}
 							aria-valuemin="0"
 							aria-valuemax={Math.max(1, Math.floor(duration))}
 							aria-valuenow={Math.floor(currentTime)}
@@ -1677,10 +1688,12 @@
 					<!-- title attrs surface the full string when the text is
 					     truncated by the row's no-wrap shrink. -->
 					<span class="np-show" title={detail?.canonical_title ?? ''}
-						>{detail?.canonical_title ?? 'Loading…'}</span
+						>{detail?.canonical_title ?? m.play_now_playing_show_loading()}</span
 					>
 					<span class="np-meta">
-						<span class="np-ep">Episode {episodeNum}</span>
+						<span class="np-ep"
+							>{m.play_now_playing_episode_label({ episode: String(episodeNum) })}</span
+						>
 						{#if currentEpisodeMeta?.canonical_title}
 							<span class="np-em-dash" aria-hidden="true">—</span>
 							<span class="np-ep-title" title={currentEpisodeMeta.canonical_title}
@@ -1692,13 +1705,13 @@
 			</a>
 
 			<div class="np-actions">
-				<div class="ep-nav" role="group" aria-label="Episode navigation">
+				<div class="ep-nav" role="group" aria-label={m.play_episode_nav_aria_label()}>
 					<button
 						type="button"
 						class="ep-btn"
 						onclick={onPrev}
 						disabled={!hasPrev || switchBusy}
-						aria-label="Previous episode"
+						aria-label={m.play_episode_nav_previous_aria_label()}
 					>
 						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
 							<path
@@ -1710,10 +1723,10 @@
 								stroke-linejoin="round"
 							/>
 						</svg>
-						<span>Ep {episodeNum - 1}</span>
+						<span>{m.play_episode_nav_prev_label({ episode: String(episodeNum - 1) })}</span>
 					</button>
 					<button type="button" class="ep-btn ep-current-btn" disabled aria-current="true">
-						<span>Ep {episodeNum}</span>
+						<span>{m.play_episode_nav_current_label({ episode: String(episodeNum) })}</span>
 						<span class="bars" aria-hidden="true">
 							<span></span><span></span><span></span>
 						</span>
@@ -1723,9 +1736,9 @@
 						class="ep-btn"
 						onclick={onNext}
 						disabled={!hasNext || switchBusy}
-						aria-label="Next episode"
+						aria-label={m.play_episode_nav_next_aria_label()}
 					>
-						<span>Ep {episodeNum + 1}</span>
+						<span>{m.play_episode_nav_next_label({ episode: String(episodeNum + 1) })}</span>
 						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
 							<path
 								d="M9 5l7 7-7 7"
@@ -1744,10 +1757,8 @@
 					class="ep-btn ep-toggle"
 					onclick={toggleAutoPlayNext}
 					aria-pressed={autoPlayNext}
-					aria-label="Auto-play next episode"
-					title={autoPlayNext
-						? 'Auto-play is on — episodes advance automatically'
-						: 'Auto-play is off — click to enable'}
+					aria-label={m.play_auto_play_aria_label()}
+					title={autoPlayNext ? m.play_auto_play_on_title() : m.play_auto_play_off_title()}
 				>
 					<!-- The "Auto-play" label disambiguates from a skip/next
 					     control. Filled play+forward-bar when on (accent
@@ -1767,7 +1778,7 @@
 							/>
 						{/if}
 					</svg>
-					<span>Auto-play</span>
+					<span>{m.play_auto_play_label()}</span>
 				</button>
 
 				<div class="more-wrap">
@@ -1779,8 +1790,8 @@
 						aria-haspopup="menu"
 						aria-expanded={moreOpen}
 						aria-controls="np-more-menu"
-						aria-label="More actions"
-						title="More actions"
+						aria-label={m.play_more_aria_label()}
+						title={m.play_more_title()}
 					>
 						<svg class="ep-btn-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
 							<circle cx="5" cy="12" r="1.7" fill="currentColor" />
@@ -1794,7 +1805,7 @@
 							id="np-more-menu"
 							class="more-menu"
 							role="menu"
-							aria-label="More actions"
+							aria-label={m.play_more_aria_label()}
 							transition:settle={{ duration: 120 }}
 						>
 							<button
@@ -1823,7 +1834,7 @@
 										stroke-linejoin="round"
 									/>
 								</svg>
-								<span>{externalBusy ? 'Launching…' : 'Open in external'}</span>
+								<span>{externalBusy ? m.play_external_launching() : m.play_external_label()}</span>
 							</button>
 
 							<button
@@ -1852,7 +1863,7 @@
 										stroke-linejoin="round"
 									/>
 								</svg>
-								<span>Download</span>
+								<span>{m.play_controls_menu_download()}</span>
 							</button>
 						</div>
 					{/if}
@@ -1871,7 +1882,7 @@
 		<!-- Episodes carousel — already a horizontal-scroll strip. Drives
 		     the same paginated data model as the detail page (toolbar
 		     above for jump/seek; cards below). -->
-		<section class="ep-section" aria-label="Episodes">
+		<section class="ep-section" aria-label={m.play_episodes_section_aria_label()}>
 			<!-- Single compact toolbar: heading + range on the left, jump
 			     pill + prev/next chevrons on the right. No scrubber here
 			     (the /play page should stay compact under the player —
@@ -1879,20 +1890,24 @@
 			     browsing). -->
 			<div class="ep-toolbar">
 				<div class="ep-toolbar-left">
-					<h2 class="ep-section-heading">Episodes</h2>
+					<h2 class="ep-section-heading">{m.play_episodes_section_heading()}</h2>
 					<span class="ep-range">
 						{#if episodes && episodes.length > 0 && detail?.episode_count}
 							{#if totalEpisodePages !== null && totalEpisodePages > 1}
-								{epStart}–{epEnd} of {detail.episode_count}
+								{m.play_episodes_range_pagination({
+									epStart: String(epStart),
+									epEnd: String(epEnd),
+									total: String(detail.episode_count)
+								})}
 							{:else}
-								{detail.episode_count} episodes
+								{m.play_episodes_range_all({ count: String(detail.episode_count) })}
 							{/if}
 						{:else if episodes && episodes.length > 0}
-							page {episodesPage}
+							{m.play_episodes_range_page({ page: String(episodesPage) })}
 						{:else if episodesError}
-							unavailable
+							{m.play_episodes_range_unavailable()}
 						{:else}
-							loading…
+							{m.play_episodes_range_loading()}
 						{/if}
 					</span>
 				</div>
@@ -1900,7 +1915,7 @@
 				{#if totalEpisodePages !== null ? totalEpisodePages > 1 : (episodes?.length ?? 0) >= UI_PAGE_SIZE}
 					<div class="ep-toolbar-right">
 						<form class="ep-jump" onsubmit={jumpToEpisode}>
-							<span class="ep-jump-key" aria-hidden="true">jump</span>
+							<span class="ep-jump-key" aria-hidden="true">{m.play_episodes_jump_label()}</span>
 							<span class="ep-jump-pill">
 								<input
 									class="jump-input"
@@ -1908,15 +1923,15 @@
 									min="1"
 									max={detail?.episode_count ?? 9999}
 									step="1"
-									placeholder="ep #"
-									aria-label="Jump to episode number"
+									placeholder={m.play_episodes_jump_placeholder()}
+									aria-label={m.play_episodes_jump_placeholder()}
 									bind:value={jumpInput}
 								/>
 								<button
 									type="submit"
 									class="ep-jump-go"
 									disabled={!jumpInput || episodesLoading}
-									aria-label="Go to episode"
+									aria-label={m.play_episodes_jump_submit_aria_label()}
 								>
 									<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 										<path
@@ -1931,13 +1946,13 @@
 								</button>
 							</span>
 						</form>
-						<div class="ep-pager-mini" role="group" aria-label="Episode pagination">
+						<div class="ep-pager-mini" role="group" aria-label={m.play_episodes_pager_aria_label()}>
 							<button
 								type="button"
 								class="ep-pager-mini-btn"
 								onclick={() => gotoPage(episodesPage - 1)}
 								disabled={episodesPage <= 1 || episodesLoading}
-								aria-label="Previous page"
+								aria-label={m.play_episodes_pager_previous_aria_label()}
 							>
 								<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 									<path
@@ -1957,7 +1972,7 @@
 								disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
 									episodesLoading ||
 									(episodes !== null && episodes.length < UI_PAGE_SIZE)}
-								aria-label="Next page"
+								aria-label={m.play_episodes_pager_next_aria_label()}
 							>
 								<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 									<path
@@ -1978,7 +1993,7 @@
 			{#if episodes && episodes.length > 0}
 				<!-- Single fluid row of 5 cards. No scroll: cards shrink/
 				     grow with the container so all 5 are always visible. -->
-				<ol class="ep-row" aria-label="Episodes">
+				<ol class="ep-row" aria-label={m.play_episodes_section_aria_label()}>
 					{#each episodes as ep, i (ep.id)}
 						{@const n = ep.number ?? ep.relative_number ?? 0}
 						{@const isCurrent = n === episodeNum}
@@ -2016,19 +2031,25 @@
 										</svg>
 									</span>
 									{#if isCurrent}
-										<span class="ep-card-thumb-flag" aria-hidden="true">Now playing</span>
+										<span class="ep-card-thumb-flag" aria-hidden="true"
+											>{m.play_episode_now_playing()}</span
+										>
 									{/if}
 								</span>
 								<span class="ep-card-foot">
 									<span class="ep-card-foot-row">
-										<span class="ep-card-foot-num">EP {n}</span>
+										<span class="ep-card-foot-num"
+											>{m.play_episode_card_num({ episode: String(n) })}</span
+										>
 										{#if ep.length}
 											<span class="ep-card-foot-dot" aria-hidden="true">·</span>
-											<span class="ep-card-foot-len">{ep.length}m</span>
+											<span class="ep-card-foot-len"
+												>{m.play_episode_card_length_minutes({ minutes: String(ep.length) })}</span
+											>
 										{/if}
 									</span>
 									<span class="ep-card-foot-title">
-										{ep.canonical_title ?? `Episode ${n}`}
+										{ep.canonical_title ?? m.play_episode_card_title_fallback({ num: String(n) })}
 									</span>
 								</span>
 							</button>
@@ -2036,9 +2057,9 @@
 					{/each}
 				</ol>
 			{:else if episodesError}
-				<p class="ep-list-empty">Couldn't load episodes ({episodesError}).</p>
+				<p class="ep-list-empty">{m.play_episodes_error_message({ detail: episodesError })}</p>
 			{:else}
-				<p class="ep-list-empty">Loading episodes…</p>
+				<p class="ep-list-empty">{m.play_episodes_loading_message()}</p>
 			{/if}
 		</section>
 
@@ -2047,7 +2068,7 @@
 	     align with the player + ep section above. -->
 		{#if similar && similar.length > 0}
 			<div class="similar-wrap">
-				<Strip eyebrow="More like this" pad="0" cardWidth="11.25rem">
+				<Strip eyebrow={m.play_similar_strip_eyebrow()} pad="0" cardWidth="11.25rem">
 					{#each similar as hit (hit.id)}
 						<PosterCard anime={hit} />
 					{/each}
@@ -2061,7 +2082,7 @@
 
 {#if playFailure}
 	<ErrorOverlay
-		headline={`Couldn't play episode ${playFailure.episode}`}
+		headline={m.play_error_play_headline({ episode: String(playFailure.episode) })}
 		body={playFailure.message}
 		onDismiss={() => (playFailure = null)}
 	/>

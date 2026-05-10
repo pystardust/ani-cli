@@ -6,6 +6,7 @@
  */
 
 import type { PlayProgress } from '$lib/api';
+import { m } from '$lib/paraglide/messages';
 
 /** Human-readable copy for one SSE progress event. The play page
  *  feeds this into the loading overlay. */
@@ -24,10 +25,10 @@ export function progressLabel(p: PlayProgress): string {
  *  back to a generic "Skip" so the button stays usable when aniskip
  *  surfaces a skip-type the UI hasn't seen before. */
 export function skipLabel(skipType: string): string {
-	if (skipType === 'op') return 'Skip Opening';
-	if (skipType === 'ed') return 'Skip Ending';
-	if (skipType === 'recap') return 'Skip Recap';
-	return 'Skip';
+	if (skipType === 'op') return m.play_skip_op();
+	if (skipType === 'ed') return m.play_skip_ed();
+	if (skipType === 'recap') return m.play_skip_recap();
+	return m.play_skip_default();
 }
 
 /** Render a media timestamp as `M:SS` or `H:MM:SS`. Negative or
