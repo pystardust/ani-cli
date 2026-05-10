@@ -228,6 +228,18 @@ export interface Config {
 	auto_skip_ed: boolean;
 	use_custom_player_controls: boolean;
 	disable_auto_pip_on_leave: boolean;
+	auto_update_anicli: boolean;
+}
+
+/** Outcome of the most recent ani-cli `-U` run. The backend writes
+ *  this to `$XDG_STATE_HOME/ani-gui/anicli-update.json` after every
+ *  attempt; the diagnostics page reads it via {@link anicliUpdateStatus}. */
+export interface AnicliUpdateOutcome {
+	status: 'no_change' | 'updated' | 'failed';
+	stdout: string;
+	stderr: string;
+	finished_at: string; // RFC3339 (Z-suffixed)
+	duration_ms: number;
 }
 
 /** Single-size thumbnail Kitsu exposes for episodes (no tiny/small variants). */
@@ -829,6 +841,13 @@ export function settingsGet(): Promise<Config> {
 
 export function settingsPut(cfg: Config): Promise<void> {
 	return putJson<void>('/api/settings', cfg);
+}
+
+/** Fetch the most recent ani-cli `-U` outcome the backend persisted
+ *  to disk. Returns `null` when no run has happened yet (first
+ *  launch, or auto-update was off the whole time). */
+export function anicliUpdateStatus(): Promise<AnicliUpdateOutcome | null> {
+	return getJson<AnicliUpdateOutcome | null>('/api/anicli/update-status');
 }
 
 /**

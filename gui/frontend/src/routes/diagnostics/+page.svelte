@@ -7,10 +7,12 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import {
+		anicliUpdateStatus,
 		appInfo,
 		historyClear,
 		historyList,
 		metaCacheClear,
+		type AnicliUpdateOutcome,
 		type AppInfo,
 		type HistoryEntry
 	} from '$lib/api';
@@ -23,6 +25,7 @@
 	let busy = $state(false);
 	let cacheStatus = $state<string | null>(null);
 	let cacheError = $state<string | null>(null);
+	let anicliUpdate = $state<AnicliUpdateOutcome | null>(null);
 
 	async function refresh() {
 		infoError = null;
@@ -36,6 +39,12 @@
 			history = await historyList();
 		} catch (e) {
 			historyError = describeError(e);
+		}
+		try {
+			anicliUpdate = await anicliUpdateStatus();
+		} catch {
+			// Soft-fail: the panel renders the "never run" hint.
+			anicliUpdate = null;
 		}
 	}
 
@@ -134,6 +143,40 @@
 				{m.diagnostics_clear_history_button()}
 			</button>
 		</p>
+	</section>
+
+	<section>
+		<h2>{m.diagnostics_section_anicli_update()}</h2>
+		{#if !anicliUpdate}
+			<p>{m.diagnostics_anicli_update_never()}</p>
+		{:else}
+			<dl>
+				<dt>{m.diagnostics_anicli_update_status_label()}</dt>
+				<dd>
+					{#if anicliUpdate.status === 'no_change'}
+						{m.diagnostics_anicli_update_status_no_change()}
+					{:else if anicliUpdate.status === 'updated'}
+						{m.diagnostics_anicli_update_status_updated()}
+					{:else}
+						{m.diagnostics_anicli_update_status_failed()}
+					{/if}
+				</dd>
+				<dt>{m.diagnostics_anicli_update_finished_at_label()}</dt>
+				<dd>{anicliUpdate.finished_at}</dd>
+				<dt>{m.diagnostics_anicli_update_duration_label()}</dt>
+				<dd>{m.diagnostics_anicli_update_duration_value({ ms: anicliUpdate.duration_ms })}</dd>
+				<dt>{m.diagnostics_anicli_update_stdout_label()}</dt>
+				<dd>
+					<pre>{anicliUpdate.stdout || m.diagnostics_anicli_update_empty_output()}</pre>
+				</dd>
+				{#if anicliUpdate.stderr}
+					<dt>{m.diagnostics_anicli_update_stderr_label()}</dt>
+					<dd>
+						<pre>{anicliUpdate.stderr}</pre>
+					</dd>
+				{/if}
+			</dl>
+		{/if}
 	</section>
 
 	<section>

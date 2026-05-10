@@ -942,7 +942,8 @@ describe('settingsGet', () => {
 			auto_skip_op: false,
 			auto_skip_ed: false,
 			use_custom_player_controls: false,
-			disable_auto_pip_on_leave: false
+			disable_auto_pip_on_leave: false,
+			auto_update_anicli: true
 		};
 		const fetchMock = mockFetchOnce(cfg);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -965,7 +966,8 @@ describe('settingsPut', () => {
 			auto_skip_op: true,
 			auto_skip_ed: true,
 			use_custom_player_controls: true,
-			disable_auto_pip_on_leave: true
+			disable_auto_pip_on_leave: true,
+			auto_update_anicli: false
 		};
 		const fetchMock = mockFetchOnce(null, 204);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;

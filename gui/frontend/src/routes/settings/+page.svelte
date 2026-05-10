@@ -141,6 +141,10 @@
 		if (!cfg) return;
 		void persist({ ...cfg, disable_auto_pip_on_leave: value });
 	}
+	function setAutoUpdateAnicli(value: boolean) {
+		if (!cfg) return;
+		void persist({ ...cfg, auto_update_anicli: value });
+	}
 
 	async function clearHistory() {
 		clearing = true;
@@ -407,6 +411,29 @@
 					</span>
 					<span class="switch-state"
 						>{cfg.disable_auto_pip_on_leave
+							? m.settings_switch_state_on()
+							: m.settings_switch_state_off()}</span
+					>
+				</label>
+			</div>
+
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">{m.settings_field_auto_update_anicli_key()}</span>
+					<span class="field-hint">{m.settings_field_auto_update_anicli_hint()}</span>
+				</div>
+				<label class="switch">
+					<input
+						type="checkbox"
+						checked={cfg.auto_update_anicli}
+						onchange={(e) => setAutoUpdateAnicli((e.currentTarget as HTMLInputElement).checked)}
+						aria-label={m.settings_auto_update_anicli_aria_label()}
+					/>
+					<span class="switch-track" aria-hidden="true">
+						<span class="switch-thumb"></span>
+					</span>
+					<span class="switch-state"
+						>{cfg.auto_update_anicli
 							? m.settings_switch_state_on()
 							: m.settings_switch_state_off()}</span
 					>
