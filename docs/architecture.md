@@ -114,10 +114,43 @@ The app sidesteps that by parking the `<video>` element in a hidden 1×1 host at
 Navigation away from the player branches three ways:
 
 1. **Episode swap on the same show** — the singleton stays attached to the play frame; the new page's load effect swaps its `src` in place. No PiP, no teardown.
-2. **Different route or different show**, auto-PiP enabled (default) — the page calls `requestPictureInPicture()` from the navigation hook, the floating window appears, the user keeps watching while they browse. Closing the PiP window navigates back to `/play/[id]` so the stream surfaces inline again.
+2. **Different route or different show**, auto-PiP enabled (default) — the page calls `requestPictureInPicture()` from the navigation hook, the floating window appears, the user keeps watching while they browse. A paused video also pops out into PiP so the user keeps the floating thumbnail and can resume from there.
 3. **Different route or different show**, auto-PiP disabled — the page pauses the singleton instead of requesting PiP. Without an explicit pause the off-screen element would keep streaming audio in the background.
 
+The PiP window itself has two close paths, and the app distinguishes them:
+
+- **X button (close in place)** — the platform's PiP UI pauses the video as part of the close path. The app reads this signal (a `pause` event lands within milliseconds of `leavepictureinpicture`) and does nothing else; the user dismissed the floating thumbnail and stays where they are.
+- **Return-to-tab** — the platform keeps playback state intact. The app interprets that as an explicit request to come back to the player and navigates to `/play/[id]` so the stream surfaces inline again.
+
+The discriminator is "did a `pause` event fire within ~100 ms of `leavepictureinpicture`?". The edge case (user manually pauses then immediately clicks return-to-tab inside the 100 ms window) misclassifies as X-close; this is accepted to keep the common cases right.
+
 Clicking back into the same episode reuses the live session: the play page's load effect detects that the singleton already has the right `src` loaded and skips re-attaching, so playback resumes at its current timestamp instead of restarting from zero.
+
+### Episode prefetching
+
+Two prefetch surfaces warm play data ahead of demand so episode boundaries don't stutter:
+
+- **Adjacent-episode warm.** When the play page mounts, it warms `episode + 1` (and on the detail page, `episode 1`) through the same play-resolution path the click would take. Hits land in the long-term resolution cache. If the current playback ends and auto-play-next is on, the next episode usually plays from cache instead of waiting on a fresh allmanga scrape.
+- **Visible-page warm.** The episode strip's currently-rendered Kitsu page is warmed in parallel so episode tiles get titles and thumbnails before the user scrolls.
+
+Both flow through `play-cache.getOrFire` — keyed by show id + episode + mode + quality — which dedupes concurrent calls and keeps a 4-hour TTL. Cancellation goes through `clearForShow(showId)`, which aborts every in-flight prefetch for that show.
+
+The cancellation policy is PiP-aware. On play-page destroy:
+
+| Situation                                        | Action                                                                                  |
+|--------------------------------------------------|-----------------------------------------------------------------------------------------|
+| No PiP active                                    | `clearForShow` immediately — the user truly left the show.                              |
+| PiP active                                       | **Defer.** Register a one-shot `leavepictureinpicture` listener and a deferred-cancel registry entry keyed on the show id. The user is still engaged with the show via the floating thumbnail. |
+
+The deferred entry can be discharged in three ways:
+
+1. **PiP closes elsewhere** — the listener fires `clearForShow(showId)` and self-removes. User truly disengaged.
+2. **PiP closes while the user is back on `/play/[id]` for the same show** — listener noops; the new mount has already taken ownership of the prefetches.
+3. **A different show's `/play/[id]` mounts during PiP** — the new mount calls `fireDeferredCancelsExcept(currentShowId)`, which flushes every deferred cancel whose id differs from the current one. Without this, two shows' prefetches would run concurrently against the allmanga rate limit until PiP eventually closed.
+
+Closing PiP via X **while still on `/play/[id]`** doesn't kill prefetch — the page never unmounted, no listener was registered, and `onDestroy` hasn't run.
+
+The pure decision helpers and the registry live in [`gui/frontend/src/lib/play/prefetch-lifecycle.ts`](../gui/frontend/src/lib/play/prefetch-lifecycle.ts) and are unit-tested next to the file.
 
 ## User settings
 
