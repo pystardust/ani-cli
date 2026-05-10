@@ -173,6 +173,26 @@ mod tests {
         assert!(s.contains("no_results"), "snake_case discriminant: {s}");
     }
 
+    #[test]
+    fn player_spawn_failed_carries_the_configured_binary_name() {
+        // The frontend toast should be able to name *which* player
+        // failed — generic "missing binary" wasn't actionable. Pin
+        // that the JSON the frontend receives includes the binary.
+        let err = AniError::PlayerSpawnFailed {
+            binary: "vlc".into(),
+        };
+        let s = serde_json::to_string(&err).expect("serializes");
+        assert!(
+            s.contains("\"binary\":\"vlc\""),
+            "serialized form has binary field: {s}"
+        );
+        assert!(
+            s.contains("\"kind\":\"player_spawn_failed\""),
+            "serialized form has snake_case kind: {s}"
+        );
+        assert_eq!(err.key(), "error.player.spawn_failed");
+    }
+
     /// Display impl drives `tracing::error!("{err}")` lines and the
     /// fallback message text in tests. Pin a representative subset
     /// so a stray `#[error("…")]` rewrite gets caught.

@@ -382,18 +382,28 @@ mod tests {
     }
 
     #[test]
-    fn open_external_player_with_blank_command_returns_missing_binary() {
+    fn open_external_player_with_blank_command_returns_player_spawn_failed() {
         let mut a = args("https://example.com/v.mp4");
         a.player_command = String::new();
         let r = open_external_player(&a);
-        assert!(matches!(r, Err(AniError::MissingBinary)));
+        match r {
+            Err(AniError::PlayerSpawnFailed { binary }) => assert!(binary.is_empty()),
+            other => panic!("expected PlayerSpawnFailed, got {other:?}"),
+        }
     }
 
     #[test]
-    fn open_external_player_with_unknown_command_returns_missing_binary() {
+    fn open_external_player_with_unknown_command_carries_binary_name() {
+        // The whole point of the new variant: the frontend can name
+        // which command failed in the toast.
         let mut a = args("https://example.com/v.mp4");
         a.player_command = "__definitely_not_a_real_player__".into();
         let r = open_external_player(&a);
-        assert!(matches!(r, Err(AniError::MissingBinary)));
+        match r {
+            Err(AniError::PlayerSpawnFailed { binary }) => {
+                assert_eq!(binary, "__definitely_not_a_real_player__");
+            }
+            other => panic!("expected PlayerSpawnFailed, got {other:?}"),
+        }
     }
 }
