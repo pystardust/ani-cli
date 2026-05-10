@@ -6,3 +6,14 @@ dist/
 .env.*
 !.env.example
 .vite/
+
+# Paraglide compiles `messages/<locale>.json` → typed TS in
+# `src/lib/paraglide/`. Generated; regenerated on dev / build /
+# test / CI via the `i18n:compile` script (also chained into
+# `check` and `test`).
+src/lib/paraglide/
+
+# Paraglide / inlang local cache + meta — regenerated on every
+# compile, no value in committing.
+project.inlang/cache/
+project.inlang/.meta.json

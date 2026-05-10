@@ -12,3 +12,10 @@ package-lock.json
 # Lottie animations — third-party JSON we don't author; formatting
 # would churn the diff and complicate future drop-ins from lottiefiles.
 src/lib/anim/*.json
+
+# Paraglide / inlang manages these files (settings.json is
+# hand-edited but kept in inlang's preferred shape; .meta + cache
+# are generated). Leaving them out of prettier prevents churn
+# against future paraglide-js upgrades.
+project.inlang/
+src/lib/paraglide/

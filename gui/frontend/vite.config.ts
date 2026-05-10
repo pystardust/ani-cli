@@ -1,8 +1,20 @@
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [
+		// Paraglide.js — compiles `messages/<locale>.json` into typed
+		// TS message helpers under `src/lib/paraglide/`. Watching the
+		// project + bundle dirs means edits to either get picked up
+		// without a manual `paraglide-js compile` step.
+		paraglideVitePlugin({
+			project: './project.inlang',
+			outdir: './src/lib/paraglide',
+			strategy: ['localStorage', 'preferredLanguage', 'baseLocale']
+		}),
+		sveltekit()
+	],
 	// Electron's main.js loads VITE_DEV_URL || http://localhost:5173 in dev,
 	// so this port has to be deterministic.
 	server: {
