@@ -266,9 +266,8 @@
 	{:else if results !== null && results.length === 0}
 		<div class="state state-empty">
 			<p class="state-headline">
-				<!-- Inline <em> markup ships in the localized string so each
-				     locale can position it according to its grammar. -->
-				{@html m.search_empty_headline({ query: submitted ?? '' })}
+				{m.search_empty_headline_prefix()}<em>{submitted ?? ''}</em
+				>{m.search_empty_headline_suffix()}
 			</p>
 			<p class="state-detail">
 				{m.search_empty_detail()}
@@ -610,11 +609,7 @@
 		color: var(--bone-100);
 		letter-spacing: -0.01em;
 	}
-	/* The <em> wrapper around the user's query lives inside the
-	   localized `search_empty_headline` message, so Svelte's CSS
-	   scoping can't see it. :global keeps the rule applied without
-	   the dead-selector warning. */
-	.state-headline :global(em) {
+	.state-headline em {
 		font-style: normal;
 		font-weight: 600;
 		color: var(--bone-200);

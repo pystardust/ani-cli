@@ -355,7 +355,9 @@
 					{:else if mode === 'all'}
 						{#if maxEpisode}
 							{m.download_hint_all_prefix_total({ count: maxEpisode })}
-							{hasGap ? m.download_hint_all_aired() : ''}{m.download_hint_all_episodes_suffix()}{#if hasGap && announcedEpisode != null}{m.download_hint_all_gap_suffix(
+							{hasGap
+								? m.download_hint_all_aired()
+								: ''}{m.download_hint_all_episodes_suffix()}{#if hasGap && announcedEpisode != null}{m.download_hint_all_gap_suffix(
 									{
 										announced: announcedEpisode,
 										available: maxEpisode
@@ -394,9 +396,9 @@
 					</button>
 				</div>
 				<p class="dl-hint">
-					{@html m.download_hint_filename({
-						filename: `<code>${args.title} Episode N.mp4</code>`
-					})}
+					{m.download_hint_filename_prefix()}<code
+						>{m.download_hint_filename_template({ title: args.title })}</code
+					>{m.download_hint_filename_suffix()}
 				</p>
 			</div>
 
@@ -676,12 +678,7 @@
 		font-size: var(--type-meta);
 		color: var(--bone-300);
 	}
-	/* `:global(code)` because the <code> element is rendered via
-	   {@html} from a Paraglide message — Svelte's CSS scoping can't
-	   tag injected HTML, and a plain selector here would compile to
-	   the dead-code warning. The qualifier scopes the rule to <code>
-	   children of .dl-hint specifically. */
-	.dl-hint :global(code) {
+	.dl-hint code {
 		font-family: var(--font-mono);
 		color: var(--bone-200);
 	}
