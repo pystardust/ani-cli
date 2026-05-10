@@ -13,6 +13,7 @@
 //!   that actually spawns the script.
 
 pub mod bash;
+pub mod env;
 pub mod parser;
 pub mod process;
 pub mod update;
