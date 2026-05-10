@@ -50,3 +50,20 @@ export function describePlayFailure(e: unknown): string {
 	}
 	return m.play_play_failure_generic();
 }
+
+/** User-facing copy for an "Open in external player" failure. The
+ *  common case is a `player_spawn_failed` payload — the configured
+ *  binary isn't on PATH or doesn't exist. Other resolve-step
+ *  failures (scraper / timeout / network) reuse `describePlayFailure`
+ *  so the user doesn't get a debug-y "External player failed:
+ *  scraper" string.
+ *
+ *  Returns the body text only — the surrounding modal's headline
+ *  comes from `play_error_external_headline` and is interpolated
+ *  with the episode number by the caller. */
+export function describeExternalLaunchFailure(e: unknown): string {
+	void e;
+	throw new Error(
+		'test(red): describeExternalLaunchFailure() lands in the paired feat(green) commit'
+	);
+}
