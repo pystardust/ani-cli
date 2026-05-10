@@ -54,7 +54,7 @@
 	// strip below. AGENTS.md §7 anti-pattern is "auto-rotating carousels"
 	// in the marketing-page sense; this is a programmed marquee.
 	const HERO_ROTATION_COUNT = 3;
-	const HERO_ROTATE_MS = 9000;
+	const HERO_ROTATE_MS = 6000;
 
 	let trending = $state<KitsuAnimeRef[] | null>(null);
 	let topRated = $state<KitsuAnimeRef[] | null>(null);
