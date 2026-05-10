@@ -176,29 +176,76 @@ export function deriveSlug(s: string): string {
 		.replace(/^-+|-+$/g, '');
 }
 
+/** Whether a Kitsu hit's `episode_count` is plausibly the same show
+ *  as the user's history record (which carries `courSize` from the
+ *  "(N episodes)" tail). Returns true when:
+ *  - `courSize` is null (legacy hsts row, no constraint to apply)
+ *  - the Kitsu hit's count is null (ongoing show, can't reject)
+ *  - the counts are within ±5 absolute (handles short-show drift —
+ *    12 vs 13 with one OVA)
+ *  - the counts are within ±25% (handles long-show drift — 220 vs
+ *    200 when Kitsu splits filler arcs).
+ *
+ *  Wide-net by design: false negatives lock the user onto a wrong
+ *  match permanently (cached in title-match), false positives just
+ *  let the existing slug/cour heuristics pick. */
+export function isEpisodeCountCompatible(
+	courSize: number | null,
+	kitsuEpisodeCount: number | null
+): boolean {
+	if (courSize == null) return true;
+	if (kitsuEpisodeCount == null) return true;
+	const diff = Math.abs(courSize - kitsuEpisodeCount);
+	if (diff <= 5) return true;
+	const ratio = diff / Math.max(courSize, 1);
+	return ratio <= 0.25;
+}
+
 export function pickKitsuMatch(
 	hits: KitsuAnimeRef[],
 	preliminary: ResumeTarget
 ): KitsuAnimeRef | null {
 	if (hits.length === 0) return null;
 
+	// Filter out hits whose episode_count is incompatible with the
+	// user's history record. Burichi (366 episodes) → "Burichi -"
+	// Kitsu search returns Doraemon Movie 14 (1 episode) first,
+	// fuzzy-matched on "Buriki"; the count filter rejects that
+	// before the slug/cour heuristics ever see it. If every hit
+	// fails the filter, fall through to the unfiltered list so the
+	// picker stays as permissive as before for incompatible-count
+	// cases.
+	const compatibleHits = hits.filter((h) =>
+		isEpisodeCountCompatible(preliminary.courSize, h.episode_count)
+	);
+	const candidates = compatibleHits.length > 0 ? compatibleHits : [];
+	if (preliminary.courSize != null && compatibleHits.length === 0) {
+		// Reject the entire result set when courSize is known but
+		// every hit is incompatible — the existing fallback would
+		// pick a wrong match (e.g. Doraemon for Burichi). Surfacing
+		// null lets resolveKitsuMatch fall through to the alias
+		// enrichment path, which retries with allmanga's
+		// englishName / nativeName / altNames.
+		return null;
+	}
+
 	const wantSlug = deriveSlug(preliminary.searchTitle);
 	if (wantSlug.length >= 4) {
-		const slugExact = hits.find((h) => h.slug === wantSlug);
+		const slugExact = candidates.find((h) => h.slug === wantSlug);
 		if (slugExact) return slugExact;
 	}
 
-	if (preliminary.cour <= 1) return hits[0];
+	if (preliminary.cour <= 1) return candidates[0];
 
 	const slugRe = new RegExp(`(?:^|-)(?:part|cour|season)-${preliminary.cour}(?:-|$)`, 'i');
-	const courInSlug = hits.find((h) => slugRe.test(h.slug ?? ''));
+	const courInSlug = candidates.find((h) => slugRe.test(h.slug ?? ''));
 	if (courInSlug) return courInSlug;
 
 	const titleRe = new RegExp(`\\b(?:part|cour|season)\\s+${preliminary.cour}\\b`, 'i');
-	const courInTitle = hits.find((h) => titleRe.test(h.canonical_title ?? ''));
+	const courInTitle = candidates.find((h) => titleRe.test(h.canonical_title ?? ''));
 	if (courInTitle) return courInTitle;
 
-	return hits[0];
+	return candidates[0];
 }
 
 /** Compose the query-string portion of a Resume URL — caller appends

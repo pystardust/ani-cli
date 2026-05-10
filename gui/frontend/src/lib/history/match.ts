@@ -20,7 +20,7 @@ import {
 	kitsuTitleMatchPut,
 	type KitsuAnimeRef
 } from '$lib/api';
-import { deriveSlug, pickKitsuMatch, type ResumeTarget } from './resolve';
+import { deriveSlug, isEpisodeCountCompatible, pickKitsuMatch, type ResumeTarget } from './resolve';
 
 export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<KitsuAnimeRef | null> {
 	// 0) Reverse-mapping lookup: allmanga show_id → kitsu_id. Recorded
@@ -29,12 +29,23 @@ export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<Kits
 	//    skip every other path. Wins over title-match because the
 	//    show_id is deterministic — the title is sometimes a typo
 	//    (allmanga's "Nato: Shippuuden" for Naruto Shippuuden).
+	//
+	//    Validate the cached detail's episode_count against the
+	//    user's history courSize before accepting — older sessions
+	//    may have persisted a wrong mapping (e.g. Burichi/Buriki
+	//    fuzzy-matched to Doraemon Movie 14). When the count is
+	//    incompatible, fall through to a fresh resolution path.
 	if (preliminary.allmangaShowId) {
 		try {
 			const kitsuId = await allmangaKitsuMapGet(preliminary.allmangaShowId);
 			if (kitsuId) {
 				try {
-					return await kitsuAnimeDetail(kitsuId);
+					const cached = await kitsuAnimeDetail(kitsuId);
+					if (isEpisodeCountCompatible(preliminary.courSize, cached.episode_count)) {
+						return cached;
+					}
+					// Count mismatch → cached mapping is wrong; fall
+					// through and let alias enrichment re-resolve.
 				} catch {
 					// Stale id — fall through to the title-search path.
 				}
@@ -53,12 +64,19 @@ export async function resolveKitsuMatch(preliminary: ResumeTarget): Promise<Kits
 	//    where the picker collapsed sequels onto Part 1) returns
 	//    Part 1's anime which fails the slug check; we fall through
 	//    to the slug-fetch path and let the resolution rebuild.
+	//
+	//    Same episode-count compatibility check as step 0: if a
+	//    poisoned title-match cache row points at an anime whose
+	//    count is incompatible with courSize, drop the cached hit
+	//    and force a fresh resolution.
 	try {
 		const cachedId = await kitsuTitleMatchGet(preliminary.searchTitle, preliminary.cour);
 		if (cachedId) {
 			try {
 				const cached = await kitsuAnimeDetail(cachedId);
-				if (preliminary.cour > 1) {
+				if (!isEpisodeCountCompatible(preliminary.courSize, cached.episode_count)) {
+					// Poisoned cache row — fall through and re-resolve.
+				} else if (preliminary.cour > 1) {
 					const courRe = new RegExp(`(?:^|-)(?:part|cour|season)-${preliminary.cour}(?:-|$)`, 'i');
 					if (cached.slug && courRe.test(cached.slug)) {
 						return cached;
