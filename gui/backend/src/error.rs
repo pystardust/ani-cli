@@ -118,9 +118,7 @@ impl AniError {
             Self::ParseFailed { .. } => "error.scraper.parse_failed",
             Self::MissingBinary => "error.scraper.missing_binary",
             Self::BashMissing => "error.bash.missing",
-            Self::FfmpegMissing => {
-                todo!("test(red): wire i18n::keys::DOWNLOAD_FFMPEG_MISSING in feat(green)")
-            }
+            Self::FfmpegMissing => crate::i18n::keys::DOWNLOAD_FFMPEG_MISSING,
             Self::PlayerSpawnFailed { .. } => "error.player.spawn_failed",
             Self::Upstream { .. } => "error.network.upstream",
             Self::Network => "error.network.unreachable",

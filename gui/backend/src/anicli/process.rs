@@ -69,7 +69,7 @@ pub(crate) fn find_in_path(name: &str) -> Option<PathBuf> {
 }
 
 #[cfg(unix)]
-fn is_executable(p: &std::path::Path) -> bool {
+pub(crate) fn is_executable(p: &std::path::Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     p.metadata()
         .map(|m| m.is_file() && (m.permissions().mode() & 0o111) != 0)
@@ -77,7 +77,7 @@ fn is_executable(p: &std::path::Path) -> bool {
 }
 
 #[cfg(windows)]
-fn is_executable(p: &std::path::Path) -> bool {
+pub(crate) fn is_executable(p: &std::path::Path) -> bool {
     p.is_file()
         && p.extension()
             .and_then(|e| e.to_str())
@@ -478,14 +478,20 @@ where
 
     cmd.env_clear();
     let inherited = std::env::var_os("PATH");
-    cmd.env(
-        "PATH",
-        crate::anicli::env::compose_anicli_path(
-            opts.bundled_bin.as_deref(),
-            opts.path_override.as_deref(),
-            inherited.as_deref(),
-        ),
+    let composed_path = crate::anicli::env::compose_anicli_path(
+        opts.bundled_bin.as_deref(),
+        opts.path_override.as_deref(),
+        inherited.as_deref(),
     );
+    // Pre-spawn check: ani-cli's `dep_ch "ffmpeg" "aria2c"` exits
+    // the shell instantly when either is missing, and the post-exit
+    // error mapping below would collapse that into a generic
+    // Scraper error. Catch ffmpeg up front so the SSE stream's
+    // first frame is the typed FfmpegMissing the layout can render
+    // a clear modal for. aria2c is bundled (commit d6c9992), so a
+    // missing aria2c falls through and is mapped post-exit below.
+    crate::anicli::env::ensure_ffmpeg_in_path(&composed_path, is_executable)?;
+    cmd.env("PATH", composed_path);
     if let Some(home) = std::env::var_os("HOME") {
         cmd.env("HOME", home);
     }
@@ -569,8 +575,18 @@ where
         if stderr_text.contains("No results found") {
             return Err(AniError::NoResults);
         }
+        // Defense in depth — the pre-spawn ensure_ffmpeg_in_path
+        // catches the common case before ani-cli runs, but if a
+        // user somehow has ffmpeg on PATH that isn't a real ffmpeg
+        // (corrupted, wrong arch), upstream's dep_ch fires this
+        // exact line and we still want the typed error so the
+        // layout can render the install modal. ani-cli's dep_ch
+        // formats the message via die: `Program "ffmpeg" not found.`.
+        if stderr_text.contains("Program \"ffmpeg\" not found") {
+            return Err(AniError::FfmpegMissing);
+        }
         return Err(AniError::Scraper {
-            key: "download_failed",
+            key: crate::i18n::keys::SCRAPER_PARSE_FAILED,
         });
     }
     Ok(())

@@ -79,9 +79,29 @@ pub fn ensure_ffmpeg_in_path(
     composed_path: &OsStr,
     is_executable: impl Fn(&Path) -> bool,
 ) -> Result<()> {
-    let _ = composed_path;
-    let _ = is_executable;
-    todo!("test(red): real impl lands in the paired feat(green) commit")
+    // Platform-correct binary name: Windows resolves bare names by
+    // appending PATHEXT, but our caller (the bash subprocess on
+    // Windows) walks PATH literally and only matches `ffmpeg.exe`.
+    // Match that behaviour exactly so the pre-check agrees with
+    // what the spawn would see.
+    let exe_name: &str = if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    };
+    for dir in std::env::split_paths(composed_path) {
+        // split_paths on Unix yields a single empty PathBuf for an
+        // empty input — that path joins to bare "ffmpeg" which would
+        // false-positive in any callback that accepts every path.
+        // bash's command -v likewise ignores empty PATH components.
+        if dir.as_os_str().is_empty() {
+            continue;
+        }
+        if is_executable(&dir.join(exe_name)) {
+            return Ok(());
+        }
+    }
+    Err(AniError::FfmpegMissing)
 }
 
 #[cfg(test)]
