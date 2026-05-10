@@ -96,7 +96,10 @@ pub fn last_run_anchor(
     outcome_finished_at: Option<SystemTime>,
     script_mtime: Option<SystemTime>,
 ) -> Option<SystemTime> {
-    todo!("green commit")
+    match (outcome_finished_at, script_mtime) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
+    }
 }
 
 /// Decide whether to spawn an `-U` run on backend boot.

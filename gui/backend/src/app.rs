@@ -125,9 +125,19 @@ impl AppState {
     pub fn maybe_spawn_anicli_update(self: &Arc<Self>) {
         const TTL: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
         let cfg = crate::config::read_config(&self.config_path).unwrap_or_default();
-        let last = std::fs::metadata(&self.ani_cli_path)
+        // Anchor the TTL on the latest of (persisted outcome timestamp,
+        // script mtime). The outcome is written on every run including
+        // NoChange, so a quiet upstream day doesn't cause every reopen
+        // to re-curl GitHub. mtime stays as a fallback for the first
+        // launch where no outcome has been persisted yet.
+        let outcome_finished_at = update::read_outcome(&self.state_dir)
+            .ok()
+            .flatten()
+            .map(|o| o.finished_at);
+        let script_mtime = std::fs::metadata(&self.ani_cli_path)
             .ok()
             .and_then(|m| m.modified().ok());
+        let last = update::last_run_anchor(outcome_finished_at, script_mtime);
         if !update::should_update_now(last, TTL, cfg.auto_update_anicli) {
             return;
         }
