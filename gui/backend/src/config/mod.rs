@@ -180,6 +180,21 @@ mod tests {
     }
 
     #[test]
+    fn disable_auto_pip_on_leave_defaults_to_true() {
+        // Auto-PiP-on-navigate is surprising default behaviour: the
+        // user clicks back, the video doesn't stop, and a small floating
+        // window follows them around the OS. The discoverability of
+        // PiP isn't worth the surprise — most users hit Back expecting
+        // playback to halt. Flip the default ON so a fresh install
+        // pauses on navigate; users who actively want PiP can toggle
+        // it back off in settings. Existing users who already wrote
+        // `disable_auto_pip_on_leave = false` keep that — serde's
+        // deserializer respects the file, this default only covers the
+        // absent-field case.
+        assert!(Config::default().disable_auto_pip_on_leave);
+    }
+
+    #[test]
     fn auto_play_next_round_trips_through_toml() {
         let c = Config {
             auto_play_next: true,
