@@ -63,6 +63,10 @@
 	import { decideAutoPlayNext } from '$lib/play/auto-play-next';
 	import { pickActiveSkip } from '$lib/play/aniskip-active';
 	import { shouldShowSkipButton } from '$lib/play/skip-button-window';
+	import {
+		shouldHideControlsInFullscreen,
+		FULLSCREEN_IDLE_HIDE_MS
+	} from '$lib/play/fullscreen-idle';
 	import { clearForShow, getOrFire, makeKey } from '$lib/play/play-cache';
 	import {
 		attachGlobalVideoTo,
@@ -460,6 +464,60 @@
 	// even if the bar reflows mid-drag.
 	let scrubberDragging = $state(false);
 	let scrubberDragRect: { left: number; width: number } | null = null;
+
+	// Fullscreen idle-hide for the controls + cursor. Outside
+	// fullscreen the CSS `.player-frame:hover` rule already hides
+	// the chrome when the cursor leaves the frame; in fullscreen the
+	// frame *is* the screen, so :hover stays true and we need a JS
+	// idle timer to drive a class that overrides the hover rule.
+	// See $lib/play/fullscreen-idle for the keep-alive matrix.
+	let isFullscreen = $state(false);
+	let mouseIdle = $state(false);
+	// `isPaused` already declared above (driven by the video's
+	// play/pause events) — reuse it as a keep-alive input.
+	let controlsFocusWithin = $state(false);
+	let idleTimer: ReturnType<typeof setTimeout> | null = null;
+	const fullscreenControlsHidden = $derived(
+		isFullscreen &&
+			shouldHideControlsInFullscreen({
+				mouseIdle,
+				paused: isPaused,
+				scrubberHover,
+				focusWithin: controlsFocusWithin
+			})
+	);
+
+	function resetIdleTimer() {
+		mouseIdle = false;
+		if (idleTimer) clearTimeout(idleTimer);
+		idleTimer = setTimeout(() => {
+			mouseIdle = true;
+		}, FULLSCREEN_IDLE_HIDE_MS);
+	}
+
+	function clearIdleTimer() {
+		if (idleTimer) {
+			clearTimeout(idleTimer);
+			idleTimer = null;
+		}
+		mouseIdle = false;
+	}
+
+	$effect(() => {
+		// Bind to the fullscreenchange event on the document. Switch
+		// to fullscreen → start the idle timer; leave → clear it so
+		// the inline path goes straight back to the CSS-hover rule.
+		function onFullscreenChange() {
+			isFullscreen = !!document.fullscreenElement;
+			if (isFullscreen) resetIdleTimer();
+			else clearIdleTimer();
+		}
+		document.addEventListener('fullscreenchange', onFullscreenChange);
+		return () => {
+			document.removeEventListener('fullscreenchange', onFullscreenChange);
+			if (idleTimer) clearTimeout(idleTimer);
+		};
+	});
 
 	function onScrubberPointerDown(event: PointerEvent) {
 		const target = event.currentTarget as HTMLElement;
@@ -1523,8 +1581,13 @@
 	<section
 		class="player-frame"
 		class:player-busy={switchBusy}
+		class:fs-controls-hidden={fullscreenControlsHidden}
 		style:--player-letterbox-x="{letterboxX}px"
 		style:--player-letterbox-y="{letterboxY}px"
+		aria-label={m.play_frame_aria_label()}
+		onmousemove={() => {
+			if (isFullscreen) resetIdleTimer();
+		}}
 	>
 		{#if !sessionId}
 			<p class="player-empty">{m.play_error_no_session()}</p>
@@ -1563,7 +1626,12 @@
 				     timeline so the progress bar can take the
 				     per-show accent color. -->
 			{#if USE_CUSTOM_PLAYER_CONTROLS}
-				<div class="player-controls" class:scrubber-hover={scrubberHover}>
+				<div
+					class="player-controls"
+					class:scrubber-hover={scrubberHover}
+					onfocusin={() => (controlsFocusWithin = true)}
+					onfocusout={() => (controlsFocusWithin = false)}
+				>
 					<!-- Top row: control icons + time readouts. Play +
 					     volume + time left, fullscreen pinned right.
 					     Mirrors YouTube / Chromium native layout. -->
@@ -2881,6 +2949,19 @@
 	.player-controls:focus-within,
 	.player-controls.scrubber-hover {
 		opacity: 1;
+	}
+	/* Fullscreen idle override: when the JS-side state machine
+	   decides the chrome should hide (mouse idle, not paused, no
+	   scrubber drag, no keyboard focus), beat the :hover rule and
+	   blank the cursor. The transition still inherits from
+	   .player-controls so the fade is consistent both ways. */
+	.player-frame.fs-controls-hidden .player-controls,
+	.player-frame.fs-controls-hidden:hover .player-controls {
+		opacity: 0;
+	}
+	.player-frame.fs-controls-hidden,
+	.player-frame.fs-controls-hidden :global(*) {
+		cursor: none;
 	}
 	/* Top row — full-width timeline flanked by current / total
 	   time. Tabular numerics so the digit jitter doesn't shift

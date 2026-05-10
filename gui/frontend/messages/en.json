@@ -228,6 +228,7 @@
 	"play_skip_ed": "Skip Ending",
 	"play_skip_recap": "Skip Recap",
 	"play_skip_default": "Skip",
+	"play_frame_aria_label": "Video player",
 	"play_controls_play_aria_label": "Play",
 	"play_controls_pause_aria_label": "Pause",
 	"play_controls_current_time_aria_label": "Current time",

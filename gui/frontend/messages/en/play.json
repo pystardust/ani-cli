@@ -10,6 +10,7 @@
 	"skip_ed": "Skip Ending",
 	"skip_recap": "Skip Recap",
 	"skip_default": "Skip",
+	"frame_aria_label": "Video player",
 	"controls_play_aria_label": "Play",
 	"controls_pause_aria_label": "Pause",
 	"controls_current_time_aria_label": "Current time",

@@ -10,6 +10,7 @@
 	"skip_ed": "Пропустить эндинг",
 	"skip_recap": "Пропустить рекап",
 	"skip_default": "Пропустить",
+	"frame_aria_label": "Видеоплеер",
 	"controls_play_aria_label": "Воспроизвести",
 	"controls_pause_aria_label": "Пауза",
 	"controls_current_time_aria_label": "Текущее время",

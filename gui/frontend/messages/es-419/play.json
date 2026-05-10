@@ -10,6 +10,7 @@
 	"skip_ed": "Saltar ending",
 	"skip_recap": "Saltar resumen",
 	"skip_default": "Saltar",
+	"frame_aria_label": "Reproductor de video",
 	"controls_play_aria_label": "Reproducir",
 	"controls_pause_aria_label": "Pausar",
 	"controls_current_time_aria_label": "Tiempo actual",

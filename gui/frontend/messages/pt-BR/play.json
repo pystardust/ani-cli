@@ -10,6 +10,7 @@
 	"skip_ed": "Pular encerramento",
 	"skip_recap": "Pular recapitulação",
 	"skip_default": "Pular",
+	"frame_aria_label": "Reprodutor de vídeo",
 	"controls_play_aria_label": "Reproduzir",
 	"controls_pause_aria_label": "Pausar",
 	"controls_current_time_aria_label": "Tempo atual",
