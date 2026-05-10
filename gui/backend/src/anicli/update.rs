@@ -158,7 +158,9 @@ pub async fn run_update(script_path: &Path, bash_path: Option<&Path>) -> UpdateO
             let mut c = tokio::process::Command::new(bash);
             #[cfg(windows)]
             {
-                use std::os::windows::process::CommandExt;
+                // creation_flags is a direct method on tokio's
+                // Command under cfg(windows); no extension trait
+                // import needed.
                 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
                 c.creation_flags(CREATE_NO_WINDOW);
             }

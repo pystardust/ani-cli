@@ -97,7 +97,8 @@ pub fn build_anicli_command(
 ) -> tokio::process::Command {
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
+        // creation_flags is a direct method on tokio::process::Command
+        // under cfg(windows); no extension trait import needed.
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         let bash = bash_path.expect(
             "bash_path is required on Windows — call locate_bash at startup and surface BashMissing if it returns None",

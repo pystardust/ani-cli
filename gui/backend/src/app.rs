@@ -266,6 +266,40 @@ mod tests {
     }
 
     #[test]
+    fn debug_options_threads_bash_path_from_state() {
+        // Windows-readiness: the AppState's resolved bash path must
+        // flow into every spawn site via DebugOptions. Linux fakes
+        // None; setting a path on the state proves the threading is
+        // wired through.
+        let mut app = fake_state();
+        app.bash_path = Some(PathBuf::from("/opt/git/bin/bash.exe"));
+        let opts = app.debug_options();
+        assert_eq!(
+            opts.bash_path.as_deref(),
+            Some(std::path::Path::new("/opt/git/bin/bash.exe"))
+        );
+    }
+
+    #[test]
+    fn debug_options_carries_none_bash_path_on_unix_default() {
+        // The default fake_state has no bash configured; debug_options
+        // must propagate that None so the spawn helper runs the
+        // script directly via shebang on Unix.
+        let app = fake_state();
+        assert!(app.debug_options().bash_path.is_none());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn resolve_bash_path_returns_ok_none_on_unix() {
+        // On Unix, no bash lookup happens — the script runs via
+        // shebang. The helper must return Ok(None) to keep the
+        // optional-field invariant.
+        let got = resolve_bash_path().expect("resolve_bash_path should not error on Unix");
+        assert!(got.is_none(), "Unix expects None, got {got:?}");
+    }
+
+    #[test]
     fn scraper_slots_starts_at_capacity() {
         let app = fake_state();
         assert_eq!(app.scraper_slots.available_permits(), SCRAPER_CONCURRENCY);
