@@ -84,7 +84,7 @@
 		unregisterDeferredCancel
 	} from '$lib/play/prefetch-lifecycle';
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
-	import { clientXToFraction } from '$lib/play/scrubber';
+	import { clientXToFraction, displayedScrubFraction } from '$lib/play/scrubber';
 	import {
 		describeError,
 		describeExternalLaunchFailure,
@@ -464,6 +464,17 @@
 	// even if the bar reflows mid-drag.
 	let scrubberDragging = $state(false);
 	let scrubberDragRect: { left: number; width: number } | null = null;
+	// `dragPreviewFraction` updates synchronously on every
+	// pointermove so the thumb + fill follow the pointer 1:1
+	// during a drag. videoEl.currentTime is also seeked live for
+	// preview, but its `timeupdate` doesn't fire fast enough on
+	// rapid seeks to drive the visuals — hence this separate
+	// state. Cleared to null on pointerup, after which the
+	// derived `currentTime / duration` takes over again.
+	let dragPreviewFraction = $state<number | null>(null);
+	const scrubberFraction = $derived(
+		displayedScrubFraction(dragPreviewFraction, currentTime, duration)
+	);
 
 	// Fullscreen idle-hide for the controls + cursor. Outside
 	// fullscreen the CSS `.player-frame:hover` rule already hides
@@ -509,8 +520,19 @@
 		// the inline path goes straight back to the CSS-hover rule.
 		function onFullscreenChange() {
 			isFullscreen = !!document.fullscreenElement;
-			if (isFullscreen) resetIdleTimer();
-			else clearIdleTimer();
+			if (isFullscreen) {
+				// Clear focus from inside .player-controls so the
+				// :focus-within keep-alive doesn't pin the chrome
+				// visible. Runs once at the fullscreen-enter boundary
+				// only.
+				const active = document.activeElement;
+				if (active instanceof HTMLElement && active.closest('.player-controls') !== null) {
+					active.blur();
+				}
+				resetIdleTimer();
+			} else {
+				clearIdleTimer();
+			}
 		}
 		document.addEventListener('fullscreenchange', onFullscreenChange);
 		return () => {
@@ -528,18 +550,23 @@
 		// even when the user drags past the bar's edges, which is
 		// exactly the case the clientXToFraction clamp covers.
 		target.setPointerCapture(event.pointerId);
-		seekToFraction(clientXToFraction(event.clientX, scrubberDragRect));
+		const f = clientXToFraction(event.clientX, scrubberDragRect);
+		dragPreviewFraction = f;
+		seekToFraction(f);
 	}
 
 	function onScrubberPointerMove(event: PointerEvent) {
 		if (!scrubberDragging || !scrubberDragRect) return;
-		seekToFraction(clientXToFraction(event.clientX, scrubberDragRect));
+		const f = clientXToFraction(event.clientX, scrubberDragRect);
+		dragPreviewFraction = f;
+		seekToFraction(f);
 	}
 
 	function onScrubberPointerUp(event: PointerEvent) {
 		if (!scrubberDragging) return;
 		scrubberDragging = false;
 		scrubberDragRect = null;
+		dragPreviewFraction = null;
 		const target = event.currentTarget as HTMLElement;
 		try {
 			target.releasePointerCapture(event.pointerId);
@@ -1995,13 +2022,10 @@
 									class="pc-scrubber-buffered"
 									style:inline-size="{duration ? (bufferedEnd / duration) * 100 : 0}%"
 								></div>
-								<div
-									class="pc-scrubber-fill"
-									style:inline-size="{duration ? (currentTime / duration) * 100 : 0}%"
-								></div>
+								<div class="pc-scrubber-fill" style:inline-size="{scrubberFraction * 100}%"></div>
 								<div
 									class="pc-scrubber-thumb"
-									style:inset-inline-start="{duration ? (currentTime / duration) * 100 : 0}%"
+									style:inset-inline-start="{scrubberFraction * 100}%"
 								></div>
 							</div>
 						</div>

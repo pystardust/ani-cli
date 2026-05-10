@@ -21,15 +21,24 @@ export function clientXToFraction(clientX: number, rect: { left: number; width: 
 
 /**
  * Decide the [0, 1] fraction the scrubber's thumb + fill should
- * render at right now. Stub fails red.
+ * render at right now.
+ *
+ * `dragPreviewFraction` (updated synchronously on every
+ * pointermove during a drag) wins so the visuals follow the
+ * pointer 1:1; otherwise we use `currentTime / duration` so the
+ * thumb tracks normal playback. Always clamps to [0, 1] so
+ * out-of-range inputs (a duration zero before loadedmetadata, a
+ * currentTime briefly past duration on the seeking edge) can't
+ * render a glitchy >100% fill or negative thumb.
  */
 export function displayedScrubFraction(
 	dragPreviewFraction: number | null,
 	currentTime: number,
 	duration: number
 ): number {
-	void dragPreviewFraction;
-	void currentTime;
-	void duration;
-	throw new Error('not yet implemented — green commit fills this in');
+	const raw =
+		dragPreviewFraction ?? (Number.isFinite(duration) && duration > 0 ? currentTime / duration : 0);
+	if (!Number.isFinite(raw) || raw <= 0) return 0;
+	if (raw >= 1) return 1;
+	return raw;
 }
