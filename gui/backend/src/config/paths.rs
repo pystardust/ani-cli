@@ -302,6 +302,11 @@ mod tests {
         assert_eq!(p, PathBuf::from("/tmp/test-fake-home/Downloads/ani-gui"));
     }
 
+    /// Unix-only: removing `$HOME` is the "no home dir" trigger on
+    /// Linux/macOS. On Windows the same test would still resolve via
+    /// `%USERPROFILE%` (we deliberately fall through to it in
+    /// home_dir_xplat), so the assertion doesn't apply there.
+    #[cfg(unix)]
     #[test]
     fn download_dir_returns_none_when_no_home_no_xdg() {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());

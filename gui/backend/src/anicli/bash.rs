@@ -100,10 +100,15 @@ pub fn build_anicli_command(
         // creation_flags is a direct method on tokio::process::Command
         // under cfg(windows); no extension trait import needed.
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let bash = bash_path.expect(
-            "bash_path is required on Windows — call locate_bash at startup and surface BashMissing if it returns None",
-        );
-        let mut cmd = tokio::process::Command::new(bash);
+        // Production callers always pass `Some(path)` (resolved at
+        // startup via locate_bash, with BashMissing surfaced if the
+        // locator finds nothing). `None` is the test-fixture path —
+        // fall back to "bash" on PATH so the spawn fails gracefully
+        // with a normal io::Error instead of panicking on .expect.
+        let mut cmd = match bash_path {
+            Some(bash) => tokio::process::Command::new(bash),
+            None => tokio::process::Command::new("bash"),
+        };
         cmd.arg(ani_cli_path).creation_flags(CREATE_NO_WINDOW);
         cmd
     }
