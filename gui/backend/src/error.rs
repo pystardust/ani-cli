@@ -190,6 +190,23 @@ mod tests {
     }
 
     #[test]
+    fn bash_missing_serializes_with_a_dedicated_kind_and_key() {
+        // Windows-readiness: the GUI needs bash.exe (Git for Windows)
+        // to drive the POSIX ani-cli script. When the locator returns
+        // None at startup, the frontend renders an install-Git-for-
+        // Windows pointer; that branch keys off this dedicated
+        // variant rather than collapsing into MissingBinary (which is
+        // the ani-cli-not-found error and would mislead the message).
+        let err = AniError::BashMissing;
+        let s = serde_json::to_string(&err).expect("serializes");
+        assert!(
+            s.contains("\"kind\":\"bash_missing\""),
+            "snake_case kind: {s}"
+        );
+        assert_eq!(err.key(), "error.bash.missing");
+    }
+
+    #[test]
     fn player_spawn_failed_carries_the_configured_binary_name() {
         // The frontend toast should be able to name *which* player
         // failed — generic "missing binary" wasn't actionable. Pin
