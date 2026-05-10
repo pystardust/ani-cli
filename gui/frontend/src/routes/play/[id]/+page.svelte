@@ -79,7 +79,11 @@
 		unregisterDeferredCancel
 	} from '$lib/play/prefetch-lifecycle';
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
-	import { describeError, describePlayFailure } from '$lib/play/error-copy';
+	import {
+		describeError,
+		describeExternalLaunchFailure,
+		describePlayFailure
+	} from '$lib/play/error-copy';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import { m } from '$lib/paraglide/messages';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
@@ -1311,10 +1315,14 @@
 	// Hand the currently-playing episode off to the user's mpv (or
 	// whichever player they configured). The backend resolves the same
 	// upstream URL it would for the embedded path; only the terminal
-	// action differs. Errors surface as a short-lived inline notice
-	// rather than the LoadingOverlay so the playing video keeps going.
+	// action differs. Transient launching/sent feedback rides the
+	// short-lived inline notice (so the playing video keeps going);
+	// failures route through the ErrorOverlay modal instead — the
+	// inline banner was easy to miss, particularly the player-spawn-
+	// failed case where the user actually has to act on the message.
 	let externalNotice = $state<string | null>(null);
 	let externalBusy = $state(false);
+	let externalError = $state<{ episode: number; message: string } | null>(null);
 
 	// Overflow menu (the "..." button) housing the secondary actions
 	// Open in external + Download. They were demoted from the np-actions
@@ -1377,25 +1385,31 @@
 			});
 			externalNotice = `Episode ${episodeNum} sent to external player.`;
 		} catch (e) {
-			// Surface the configured binary name when the spawn failed,
-			// so the user knows *which* command went missing instead
-			// of a generic "External player failed: player_spawn_failed".
-			const obj = typeof e === 'object' && e !== null ? (e as Record<string, unknown>) : null;
-			if (
-				obj &&
-				obj.kind === 'player_spawn_failed' &&
-				typeof obj.binary === 'string' &&
-				obj.binary.length > 0
-			) {
-				externalNotice = m.play_external_spawn_failed_named({ binary: obj.binary });
-			} else {
-				externalNotice = `External player failed: ${describeError(e)}`;
-			}
+			// Route the failure through the ErrorOverlay modal so the
+			// user can't miss it — the prior inline notice landed in
+			// the player area and the player_spawn_failed case (the
+			// most common one, when the user's configured binary
+			// isn't on PATH) was easy to scroll past. Body text is
+			// shaped by describeExternalLaunchFailure so the spawn
+			// case names the binary and the resolve-step branches
+			// reuse describePlayFailure copy.
+			externalError = {
+				episode: episodeNum,
+				message: describeExternalLaunchFailure(e)
+			};
+			// Clear the in-progress banner so it doesn't sit alongside
+			// the modal saying "launching".
+			externalNotice = null;
 		} finally {
 			externalBusy = false;
-			setTimeout(() => {
-				externalNotice = null;
-			}, 4000);
+			// Only the success/launching banner auto-clears. The
+			// failure modal stays until the user dismisses it — its
+			// whole point is being unmissable.
+			if (!externalError) {
+				setTimeout(() => {
+					externalNotice = null;
+				}, 4000);
+			}
 		}
 	}
 
@@ -2321,6 +2335,14 @@
 		headline={m.play_error_play_headline({ episode: String(playFailure.episode) })}
 		body={playFailure.message}
 		onDismiss={() => (playFailure = null)}
+	/>
+{/if}
+
+{#if externalError}
+	<ErrorOverlay
+		headline={m.play_error_external_headline({ episode: String(externalError.episode) })}
+		body={externalError.message}
+		onDismiss={() => (externalError = null)}
 	/>
 {/if}
 

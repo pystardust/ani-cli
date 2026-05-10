@@ -72,6 +72,7 @@
 	"episodes_loading_message": "Загрузка эпизодов…",
 	"similar_strip_eyebrow": "Похожее",
 	"error_play_headline": "Не удалось включить эпизод {episode}",
+	"error_external_headline": "Не удалось открыть эпизод {episode} во внешнем плеере",
 	"episodes_range_of": "{epStart}–{epEnd} из {total}",
 	"play_failure_no_results": "Не удалось найти тайтл на источнике стриминга. Возможно, эпизод недоступен — попробуйте позже.",
 	"play_failure_scraper": "Сейчас не удаётся получить рабочий поток. Источник стриминга барахлит — попробуйте через пару минут.",

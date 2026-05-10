@@ -72,6 +72,7 @@
 	"episodes_loading_message": "Loading episodes…",
 	"similar_strip_eyebrow": "More like this",
 	"error_play_headline": "Couldn't play episode {episode}",
+	"error_external_headline": "Couldn't open episode {episode} externally",
 	"episodes_range_of": "{epStart}–{epEnd} of {total}",
 	"play_failure_no_results": "Couldn't find this title on the streaming source. The episode may not be available — try again later.",
 	"play_failure_scraper": "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.",

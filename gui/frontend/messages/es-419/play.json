@@ -72,6 +72,7 @@
 	"episodes_loading_message": "Cargando episodios…",
 	"similar_strip_eyebrow": "Más como esto",
 	"error_play_headline": "No se pudo reproducir el episodio {episode}",
+	"error_external_headline": "No se pudo abrir el episodio {episode} externamente",
 	"episodes_range_of": "{epStart}–{epEnd} de {total}",
 	"play_failure_no_results": "No se encontró este título en la fuente de streaming. El episodio puede no estar disponible — inténtalo más tarde.",
 	"play_failure_scraper": "No se pudo resolver una transmisión válida ahora mismo. La fuente de streaming parece tener problemas — vuelve a intentarlo en unos minutos.",
