@@ -23,6 +23,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import { breadcrumb, defaultTrailFor } from '$lib/breadcrumb';
 	import {
 		imageProxyUrl,
@@ -329,7 +330,7 @@
 
 <div class="shell">
 	<aside class="rail" aria-label="Primary navigation">
-		<a class="brand" href={resolve('/')} aria-label="ani-gui — home">
+		<a class="brand" href={resolve('/')} aria-label={m.app_home_link_title()}>
 			<svg
 				class="brand-mark"
 				viewBox="0 0 32 32"
@@ -368,7 +369,7 @@
 						aria-current={isHome ? 'page' : undefined}
 					>
 						<span class="nav-mark"><Icon name="home" size={20} /></span>
-						<span class="nav-label">Home</span>
+						<span class="nav-label">{m.app_home_link_label()}</span>
 					</a>
 				</li>
 				<li>
@@ -379,7 +380,7 @@
 						aria-current={isSearch ? 'page' : undefined}
 					>
 						<span class="nav-mark"><Icon name="search" size={20} /></span>
-						<span class="nav-label">Search</span>
+						<span class="nav-label">{m.app_search_link_label()}</span>
 					</a>
 				</li>
 				<li>
@@ -390,7 +391,7 @@
 						aria-current={isSettings ? 'page' : undefined}
 					>
 						<span class="nav-mark"><Icon name="settings" size={20} /></span>
-						<span class="nav-label">Settings</span>
+						<span class="nav-label">{m.app_settings_link_label()}</span>
 					</a>
 				</li>
 				<li class="small">
@@ -401,7 +402,7 @@
 						aria-current={isDiagnostics ? 'page' : undefined}
 					>
 						<span class="nav-mark"><Icon name="debug" size={18} /></span>
-						<span class="nav-label">Debug</span>
+						<span class="nav-label">{m.app_debug_link_label()}</span>
 					</a>
 				</li>
 			</ul>
@@ -433,8 +434,8 @@
 					type="search"
 					autocomplete="off"
 					spellcheck="false"
-					placeholder={isSearch ? 'Refine your search…' : 'Search anime…'}
-					aria-label="Search anime"
+					placeholder={isSearch ? m.app_search_refine_placeholder() : m.app_search_placeholder()}
+					aria-label={m.app_search_aria_label()}
 					oninput={onInput}
 					onfocus={onInputFocus}
 					onblur={onInputBlur}
@@ -449,11 +450,15 @@
 				</span>
 				<!-- Submit on Enter; the explicit button is sr-only for a11y. -->
 				<button type="submit" class="sr-only" disabled={topbarQuery.trim().length === 0}>
-					Search
+					{m.app_search_submit_button()}
 				</button>
 
 				{#if shouldRenderDropdown({ dropdownOpen, liveResults, liveError, queryTrimmed: topbarQuery.trim(), recentsCount: recentSearches.length }, { liveMinChars: LIVE_MIN_CHARS })}
-					<div class="topbar-dropdown" role="listbox" aria-label="Search suggestions">
+					<div
+						class="topbar-dropdown"
+						role="listbox"
+						aria-label={m.app_search_dropdown_aria_label()}
+					>
 						{#if liveResults && liveResults.length > 0}
 							{#each liveResults as hit, i (hit.id)}
 								{@const poster = hitPoster(hit)}
@@ -482,11 +487,11 @@
 								</a>
 							{/each}
 						{:else if liveError}
-							<p class="topbar-dropdown-empty">Couldn't reach Kitsu.</p>
+							<p class="topbar-dropdown-empty">{m.app_search_error_kitsu()}</p>
 						{:else if liveResults?.length === 0 && topbarQuery.trim().length >= LIVE_MIN_CHARS}
-							<p class="topbar-dropdown-empty">No matches.</p>
+							<p class="topbar-dropdown-empty">{m.app_search_error_no_matches()}</p>
 						{:else if !topbarQuery.trim() && recentSearches.length > 0}
-							<p class="topbar-dropdown-section">Recent</p>
+							<p class="topbar-dropdown-section">{m.app_search_recent_section_title()}</p>
 							{#each recentSearches as q (q)}
 								<button
 									type="button"

@@ -1,4 +1,6 @@
 {
+	"hero_aria_label": "Featured",
+	"hero_pager_aria_label": "Featured rotation",
 	"hero_eyebrow_key": "Tonight's marquee",
 	"hero_eyebrow_value": "via AniList · trending",
 	"hero_cta_details": "See more",

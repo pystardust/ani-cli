@@ -43,6 +43,7 @@
 	import PosterCard from '$lib/components/PosterCard.svelte';
 	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	// Hero cycles through the top N trending titles. Rotation is slow
 	// (~9s) and pauses while the cursor is over the hero, so it never
@@ -346,14 +347,14 @@
 </script>
 
 <svelte:head>
-	<title>ani-gui</title>
+	<title>{m.app_brand_title()}</title>
 </svelte:head>
 
 <!-- Hero. -->
 <section
 	class="hero"
 	style:--accent={featuredAccent}
-	aria-label="Featured"
+	aria-label={m.home_hero_aria_label()}
 	onmouseenter={() => (heroPaused = true)}
 	onmouseleave={() => (heroPaused = false)}
 	onfocusin={() => (heroPaused = true)}
@@ -380,9 +381,9 @@
 
 				<div class="hero-body">
 					<p class="eyebrow">
-						<span class="eyebrow-key">Tonight's marquee</span>
+						<span class="eyebrow-key">{m.home_hero_eyebrow_key()}</span>
 						<span class="eyebrow-rule" aria-hidden="true"></span>
-						<span class="eyebrow-value">via AniList · trending</span>
+						<span class="eyebrow-value">{m.home_hero_eyebrow_value()}</span>
 					</p>
 					<h1 class="hero-title">{featured.canonical_title}</h1>
 					{#if synopsis}
@@ -390,26 +391,26 @@
 					{/if}
 					<div class="hero-actions">
 						<a class="btn btn-glass" href={resolve('/anime/[id]', { id: featured.id })}>
-							<span>See more</span>
+							<span>{m.home_hero_cta_details()}</span>
 							<span aria-hidden="true">→</span>
 						</a>
 						<a class="btn btn-ghost" href={resolve('/search')}>
 							<span aria-hidden="true">/</span>
-							<span>Browse the catalogue</span>
+							<span>{m.home_hero_cta_browse()}</span>
 						</a>
 					</div>
 				</div>
 			</div>
 		{/key}
 		{#if heroRotation.length > 1}
-			<div class="hero-pager" aria-label="Featured rotation">
+			<div class="hero-pager" aria-label={m.home_hero_pager_aria_label()}>
 				{#each heroRotation as item, i (item.id)}
 					<button
 						type="button"
 						class="hero-pager-dot"
 						class:active={i === heroIndex}
 						onclick={() => (heroIndex = i)}
-						aria-label={`Show ${item.canonical_title}`}
+						aria-label={m.home_hero_pager_dot_label({ title: item.canonical_title })}
 						aria-current={i === heroIndex ? 'true' : undefined}
 					>
 						<span class="hero-pager-track" aria-hidden="true"></span>
@@ -420,15 +421,15 @@
 	{:else if trendingError}
 		<div class="hero-empty">
 			<p class="eyebrow">
-				<span class="eyebrow-key">Off-air</span>
+				<span class="eyebrow-key">{m.home_hero_error_eyebrow_key()}</span>
 				<span class="eyebrow-rule" aria-hidden="true"></span>
 				<span class="eyebrow-value">{trendingError}</span>
 			</p>
-			<h1 class="hero-title">The catalogue is unreachable.</h1>
-			<p class="hero-snippet">Kitsu didn't answer. Search still works locally — type a title.</p>
+			<h1 class="hero-title">{m.home_hero_error_title()}</h1>
+			<p class="hero-snippet">{m.home_hero_error_body()}</p>
 			<div class="hero-actions">
 				<a class="btn btn-primary" href={resolve('/search')}>
-					<span>Open Search</span>
+					<span>{m.home_hero_error_cta()}</span>
 					<span aria-hidden="true">→</span>
 				</a>
 			</div>
@@ -439,7 +440,7 @@
 			<div class="hero-skel-img"></div>
 		</div>
 		<div class="hero-body">
-			<p class="eyebrow"><span class="eyebrow-key">Loading</span></p>
+			<p class="eyebrow"><span class="eyebrow-key">{m.home_hero_skeleton_eyebrow_key()}</span></p>
 			<div class="line line-skel" style="inline-size: 50%; block-size: 3rem;"></div>
 			<div class="line line-skel" style="inline-size: 70%;"></div>
 			<div class="line line-skel" style="inline-size: 60%;"></div>
@@ -449,7 +450,11 @@
 
 <!-- Continue Watching: only when history is non-empty -->
 {#if history && history.length > 0}
-	<Strip eyebrow="Continue watching" caption="resume from history" cardWidth="16rem">
+	<Strip
+		eyebrow={m.home_strip_continue_eyebrow()}
+		caption={m.home_strip_continue_caption()}
+		cardWidth="16rem"
+	>
 		{#each history as entry (entry.id)}
 			{@const match = historyMatches[entry.id]}
 			{@const ep = historyEpisodes[entry.id]}
@@ -491,7 +496,7 @@
 							</span>
 						{/if}
 						<span class="resume-ep-tag" aria-hidden="true">
-							<span class="resume-ep-key">EP</span>
+							<span class="resume-ep-key">{m.home_resume_ep_key()}</span>
 							<span class="resume-ep-num">{target.displayEpisode}</span>
 						</span>
 					</span>
@@ -500,7 +505,9 @@
 						{#if ep?.canonical_title}
 							<span class="resume-title">{ep.canonical_title}</span>
 						{:else}
-							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
+							<span class="resume-title resume-title-faint"
+								>{m.home_resume_episode_label({ episode: target.displayEpisode })}</span
+							>
 						{/if}
 					</span>
 				</button>
@@ -520,7 +527,7 @@
 							</span>
 						{/if}
 						<span class="resume-ep-tag" aria-hidden="true">
-							<span class="resume-ep-key">EP</span>
+							<span class="resume-ep-key">{m.home_resume_ep_key()}</span>
 							<span class="resume-ep-num">{target.displayEpisode}</span>
 						</span>
 					</span>
@@ -529,7 +536,9 @@
 						{#if ep?.canonical_title}
 							<span class="resume-title">{ep.canonical_title}</span>
 						{:else}
-							<span class="resume-title resume-title-faint">Episode {target.displayEpisode}</span>
+							<span class="resume-title resume-title-faint"
+								>{m.home_resume_episode_label({ episode: target.displayEpisode })}</span
+							>
 						{/if}
 					</span>
 				</a>
@@ -542,7 +551,7 @@
 <LoadingOverlay visible={resumeBusy !== null} progress={resumeProgress} />
 {#if resumeFailure}
 	<ErrorOverlay
-		headline="Couldn't resume {resumeFailure.title}"
+		headline={m.home_error_resume_headline({ title: resumeFailure.title })}
 		body={resumeFailure.message}
 		onDismiss={() => (resumeFailure = null)}
 	/>
@@ -550,7 +559,10 @@
 
 <!-- Trending strip (the tail; the head is the hero) -->
 {#if trending === null && !trendingError}
-	<Strip eyebrow="Trending now" caption="loading">
+	<Strip
+		eyebrow={m.home_strip_trending_eyebrow()}
+		caption={m.home_strip_trending_caption_loading()}
+	>
 		{#each Array.from({ length: 8 }, (_, k) => k) as i (i)}
 			<div class="skel-card" style="--i: {i};">
 				<div class="skel-poster"></div>
@@ -560,7 +572,7 @@
 		{/each}
 	</Strip>
 {:else if trendingTail.length > 0}
-	<Strip eyebrow="Trending now" caption="this week · via AniList">
+	<Strip eyebrow={m.home_strip_trending_eyebrow()} caption={m.home_strip_trending_caption()}>
 		{#each trendingTail as anime (anime.id)}
 			<PosterCard {anime} />
 		{/each}
@@ -569,7 +581,10 @@
 
 <!-- Top Rated strip -->
 {#if topRated === null && !topRatedError}
-	<Strip eyebrow="Top rated" caption="loading">
+	<Strip
+		eyebrow={m.home_strip_top_rated_eyebrow()}
+		caption={m.home_strip_top_rated_caption_loading()}
+	>
 		{#each Array.from({ length: 8 }, (_, k) => k) as i (i)}
 			<div class="skel-card" style="--i: {i};">
 				<div class="skel-poster"></div>
@@ -579,7 +594,7 @@
 		{/each}
 	</Strip>
 {:else if topRated && topRated.length > 0}
-	<Strip eyebrow="Top rated" caption="all-time · via Kitsu">
+	<Strip eyebrow={m.home_strip_top_rated_eyebrow()} caption={m.home_strip_top_rated_caption()}>
 		{#each topRated as anime (anime.id)}
 			<PosterCard {anime} />
 		{/each}
