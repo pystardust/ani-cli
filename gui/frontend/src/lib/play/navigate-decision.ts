@@ -21,8 +21,10 @@ export interface NavigateDecisionInput {
 	targetShowId: string;
 	/** Show id the play page is currently rendering. */
 	currentShowId: string;
-	/** `videoEl.paused` snapshot. When true there's nothing to keep
-	 *  alive — neither PiP nor an explicit pause makes sense. */
+	/** `videoEl.paused` snapshot. Kept on the input shape for the
+	 *  call site's convenience, but the decision no longer branches
+	 *  on it: a paused video still pops out into PiP so the user
+	 *  keeps the thumbnail and can resume from there. */
 	videoPaused: boolean;
 	/** True when `document.pictureInPictureElement` already points at
 	 *  the singleton — the user manually PiP'd before clicking away.
@@ -47,17 +49,18 @@ export type NavigateAction = 'noop' | 'request-pip' | 'pause';
  *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │ Same show on /play/[id]?                  → noop            │
- *   │ Already paused?                           → noop            │
  *   │ Already in PiP?                           → noop            │
  *   │ Auto-PiP disabled in settings?            → pause           │
  *   │ Otherwise                                 → request-pip     │
  *   └─────────────────────────────────────────────────────────────┘
+ *
+ * `videoPaused` no longer guards: a paused video still requests PiP
+ * so the user keeps the floating thumbnail and can resume there.
  */
 export function decideNavigateAction(input: NavigateDecisionInput): NavigateAction {
 	const sameShowSwap =
 		input.targetRoute === '/play/[id]' && input.targetShowId === input.currentShowId;
 	if (sameShowSwap) return 'noop';
-	if (input.videoPaused) return 'noop';
 	if (input.alreadyInPip) return 'noop';
 	if (input.disableAutoPip) return 'pause';
 	return 'request-pip';
