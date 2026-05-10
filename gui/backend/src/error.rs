@@ -43,6 +43,13 @@ pub enum AniError {
     #[error("missing ani-cli binary")]
     MissingBinary,
 
+    /// Windows-readiness: no `bash.exe` reachable. The locator probes
+    /// PATH, Git for Windows install dirs, and the scoop default; if
+    /// none point at an executable, this fires. The frontend renders
+    /// a one-link install pointer for Git for Windows.
+    #[error("missing bash.exe (install Git for Windows)")]
+    BashMissing,
+
     /// An upstream HTTP request returned a non-success status.
     #[error("upstream {status}")]
     Upstream {
@@ -99,6 +106,7 @@ impl AniError {
             Self::NoResults => "error.search.no_results",
             Self::ParseFailed { .. } => "error.scraper.parse_failed",
             Self::MissingBinary => "error.scraper.missing_binary",
+            Self::BashMissing => "error.bash.missing",
             Self::PlayerSpawnFailed { .. } => "error.player.spawn_failed",
             Self::Upstream { .. } => "error.network.upstream",
             Self::Network => "error.network.unreachable",
@@ -160,6 +168,7 @@ mod tests {
             AniError::NoResults,
             AniError::ParseFailed { detail: "x".into() },
             AniError::MissingBinary,
+            AniError::BashMissing,
             AniError::PlayerSpawnFailed {
                 binary: "vlc".into(),
             },
