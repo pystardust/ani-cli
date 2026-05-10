@@ -212,6 +212,92 @@ describe('pickKitsuMatch', () => {
 		const hits = [titledHit('p1', 'Stone Ocean'), titledHit('p2', 'Stone Ocean Part 2')];
 		expect(pickKitsuMatch(hits, r)?.id).toBe('p1');
 	});
+
+	const titledCountedHit = (
+		id: string,
+		canonical_title: string,
+		episode_count: number | null
+	): KitsuAnimeRef => ({
+		...stubKitsu(id),
+		canonical_title,
+		episode_count
+	});
+
+	it('rejects a fuzzy first hit whose episode count is wildly off', () => {
+		// Burichi -, episode 2, 366-episode show. Kitsu's text search
+		// for "Burichi -" returns Doraemon Movie 14: Nobita to Buriki
+		// no Labyrinth (1 episode) as the first hit because it
+		// fuzzy-matches "Buriki". Without the episode-count filter the
+		// picker locks onto Doraemon, persists the title-match cache,
+		// and Continue Watching renders the wrong show forever. With
+		// the filter Doraemon is rejected (1 vs 366 — way outside
+		// tolerance) and the picker falls through; the alias
+		// enrichment path (englishName "Bleach") then resolves
+		// correctly.
+		const r = resolveHistoryEntry(entry('Burichi - (366 episodes)', '2'), null);
+		const hits = [
+			titledCountedHit('doraemon14', 'Doraemon Movie 14: Nobita to Buriki no Labyrinth', 1),
+			titledCountedHit('chichibu', 'Chichibu de Buchichi', 1)
+		];
+		expect(pickKitsuMatch(hits, r)).toBeNull();
+	});
+
+	it('passes hits whose episode count is close to courSize', () => {
+		// Off-by-one episode-count differences are common (Kitsu
+		// counts a recap, allmanga doesn't). Accept those.
+		const r = resolveHistoryEntry(entry('Bleach (366 episodes)', '2'), null);
+		const hits = [
+			titledCountedHit('right', 'BLEACH', 367),
+			titledCountedHit('wrong', 'Doraemon Movie 14', 1)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('right');
+	});
+
+	it('does not filter when courSize is unknown (legacy hsts row)', () => {
+		// Older history entries have no "(N episodes)" parenthetical,
+		// so courSize is null. We can't filter — preserve the existing
+		// fall-back-to-first-hit behaviour.
+		const r = resolveHistoryEntry(entry('Some Show', '1'), null);
+		const hits = [
+			titledCountedHit('first', 'Some Show', 1),
+			titledCountedHit('second', 'Some Show: Movie', 1)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('first');
+	});
+
+	it('does not filter when a hit has null episode_count', () => {
+		// Kitsu's `episodeCount` is null for ongoing shows that have
+		// not declared a final count. We can't reject those — they
+		// might be the right match. Pass null-count hits through to
+		// the existing heuristics.
+		const r = resolveHistoryEntry(entry('Ongoing Show (12 episodes)', '1'), null);
+		const hits = [titledCountedHit('ongoing', 'Ongoing Show', null)];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('ongoing');
+	});
+
+	it('accepts within ±25% tolerance for long-running shows', () => {
+		// Long shows (Naruto, One Piece) have wide allmanga ↔ Kitsu
+		// drift because Kitsu sometimes splits filler arcs into
+		// separate entries. 220 vs 200 should still match.
+		const r = resolveHistoryEntry(entry('Naruto (220 episodes)', '1'), null);
+		const hits = [
+			titledCountedHit('naruto', 'Naruto', 200),
+			titledCountedHit('movie', 'Naruto Movie 1', 1)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('naruto');
+	});
+
+	it('accepts within ±5 absolute tolerance for short shows', () => {
+		// Single-cour drift: 12 vs 13 (one extra special) is common.
+		// Tolerance must allow it without making the long-show
+		// percentage too tight.
+		const r = resolveHistoryEntry(entry('Tiny Show (12 episodes)', '1'), null);
+		const hits = [
+			titledCountedHit('thirteen', 'Tiny Show', 13),
+			titledCountedHit('one', 'Tiny Show Movie', 1)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('thirteen');
+	});
 });
 
 describe('resumeQueryString', () => {
