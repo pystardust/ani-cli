@@ -59,7 +59,9 @@ pub struct Config {
     /// per-show accent color + lets the fullscreen button target
     /// `.player-frame` so the Skip OP/Outro overlay stays visible
     /// during fullscreen — at the cost of losing the native PiP
-    /// menu and caption picker. Default `false` (native).
+    /// menu and caption picker. Default `true` (custom) because the
+    /// custom chrome is what the M3 design direction targets and
+    /// native is strictly inferior for ani-gui's UI surface.
     pub use_custom_player_controls: bool,
     /// When `true`, navigating away from the player pauses the
     /// video instead of entering Picture-in-Picture. Auto-PiP is
@@ -90,7 +92,7 @@ impl Default for Config {
             download_bottom_bar_enabled: true,
             auto_skip_op: false,
             auto_skip_ed: false,
-            use_custom_player_controls: false,
+            use_custom_player_controls: true,
             disable_auto_pip_on_leave: false,
             auto_update_anicli: true,
         }
