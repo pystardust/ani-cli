@@ -182,6 +182,58 @@ mod tests {
     }
 
     #[test]
+    fn external_player_kind_round_trips_through_toml() {
+        // The kind picker in settings persists this value to disk; if it
+        // doesn't survive a TOML round-trip, the user's choice resets
+        // every launch.
+        use crate::commands::external_player::ExternalPlayerKind;
+        let c = Config {
+            external_player_kind: ExternalPlayerKind::Vlc,
+            ..Config::default()
+        };
+        let s = toml::to_string(&c).unwrap();
+        let parsed: Config = toml::from_str(&s).unwrap();
+        assert_eq!(parsed.external_player_kind, ExternalPlayerKind::Vlc);
+    }
+
+    #[test]
+    fn external_player_kind_absent_in_old_config_decodes_as_mpv() {
+        // Pre-existing config.toml files don't have this field — they
+        // must decode with the default Mpv kind so existing users don't
+        // get a sudden behaviour change on upgrade.
+        use crate::commands::external_player::ExternalPlayerKind;
+        let body = "external_player = \"mpv\"\n";
+        let cfg: Config = toml::from_str(body).unwrap();
+        assert_eq!(cfg.external_player_kind, ExternalPlayerKind::Mpv);
+    }
+
+    #[test]
+    fn external_player_custom_args_round_trips_through_toml() {
+        // The Custom kind needs the args template to survive disk
+        // round-trips — otherwise picking Custom and writing a template
+        // resets every launch.
+        let c = Config {
+            external_player_custom_args: "--ref={referer} --title={title} {url}".into(),
+            ..Config::default()
+        };
+        let s = toml::to_string(&c).unwrap();
+        let parsed: Config = toml::from_str(&s).unwrap();
+        assert_eq!(
+            parsed.external_player_custom_args,
+            "--ref={referer} --title={title} {url}"
+        );
+    }
+
+    #[test]
+    fn external_player_custom_args_defaults_to_empty_string() {
+        // A fresh install has nothing to spawn with under Custom — the
+        // empty default is the trigger for build_argv_custom's bare-URL
+        // fallback.
+        let c = Config::default();
+        assert!(c.external_player_custom_args.is_empty());
+    }
+
+    #[test]
     fn read_config_returns_defaults_when_file_missing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("nope.toml");
