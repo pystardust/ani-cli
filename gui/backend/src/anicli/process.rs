@@ -172,6 +172,18 @@ pub async fn run_debug(
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
+    // Windows: forward the OS env vars Git Bash needs to bootstrap its
+    // MSYS mount table (`/tmp` resolution) and load core DLLs. Without
+    // these, the first ani-cli spawn after backend startup fails with
+    // `mktemp: ... '/tmp/...': Permission denied`, the script's
+    // variables collapse to empty, and the user sees a "Network
+    // trouble" toast for what's really a tmp-dir issue. Inert on Unix
+    // because `/tmp` is always writable and there's no MSYS layer to
+    // bootstrap.
+    #[cfg(windows)]
+    for (k, v) in crate::anicli::env::windows_env_passthrough(|k: &str| std::env::var_os(k)) {
+        cmd.env(k, v);
+    }
     // PATH is required so ani-cli can find curl/openssl/fzf/mpv. The
     // helper prepends `opts.bundled_bin` (Windows: bundled fzf.exe)
     // and honours `opts.path_override` (tests inject a curl shim).
@@ -299,6 +311,13 @@ where
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
+    // See run_debug for the rationale; this is the streaming variant
+    // and uses the same env-bootstrap on Windows so the first spawn
+    // doesn't fall over on /tmp.
+    #[cfg(windows)]
+    for (k, v) in crate::anicli::env::windows_env_passthrough(|k: &str| std::env::var_os(k)) {
+        cmd.env(k, v);
+    }
     let inherited = std::env::var_os("PATH");
     cmd.env(
         "PATH",
@@ -477,6 +496,13 @@ where
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
+    // See run_debug for rationale; same Windows env-bootstrap on the
+    // download path so aria2c / ffmpeg / ani-cli all see the OS env
+    // they need to find /tmp and load DLLs.
+    #[cfg(windows)]
+    for (k, v) in crate::anicli::env::windows_env_passthrough(|k: &str| std::env::var_os(k)) {
+        cmd.env(k, v);
+    }
     let inherited = std::env::var_os("PATH");
     let composed_path = crate::anicli::env::compose_anicli_path(
         opts.bundled_bin.as_deref(),

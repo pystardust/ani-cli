@@ -102,8 +102,10 @@ pub const WINDOWS_ENV_PASSTHROUGH_KEYS: &[&str] = &[
 pub fn windows_env_passthrough(
     read: impl Fn(&str) -> Option<OsString>,
 ) -> Vec<(&'static str, OsString)> {
-    let _ = read;
-    todo!("filled in by the fix(green) commit — keeps the red test red")
+    WINDOWS_ENV_PASSTHROUGH_KEYS
+        .iter()
+        .filter_map(|k| read(k).map(|v| (*k, v)))
+        .collect()
 }
 
 /// Locate `ffmpeg` inside a composed PATH string. Pure: caller
