@@ -84,11 +84,22 @@ When Kitsu's `coverImage` is null (common for shows currently airing — roughly
 | aniskip OP/ED skip-time intervals (per MAL id + episode) | SQLite `meta_cache` | 7 days |
 | Title matches (Kitsu/AniList → allanime ID) | SQLite `title_match` | 30 days |
 | Long-term play resolution (resolved stream URLs) | SQLite play-resolution table | until upstream rotates |
+| In-flight play-resolution coalescer (`play-cache.getOrFire`) | Renderer-side `Map` | 4 hours (also dedupes concurrent calls) |
 | Poster + banner image bytes | Filesystem `images/<shard>/<hash>.<ext>` | LRU, capped at 500 MB |
 
 Image bytes never live in SQLite; they're filesystem-keyed by `sha256(url)[..16]`, sharded two-deep to avoid huge flat directories. The play-resolution cache is separate from `meta_cache` — it stores fully-resolved stream URLs keyed by `(allanime id, episode, mode, quality)` so a repeat visit to an episode skips both the `ani-cli` spawn and the upstream link-discovery round trip. Entries are invalidated only when a cached URL fails on use; allmanga's slugs rotate every few weeks, so the layer self-heals via the silent retry path rather than a wall-clock TTL.
 
 The **availability TTL branches on Kitsu's `status` field**: shows airing weekly need a 24-hour window so a new episode surfaces within a day, but finished shows can hold for 30 days. Unknown / missing status falls back to the short (24h) window — a stale "no episode 1161 yet" is much worse than re-probing too eagerly.
+
+## Bundled ani-cli script — keeping the scraper fresh
+
+The Bash scraper at the repository root is shipped inside the desktop bundle, but its scraping logic drifts daily as upstream patches around allmanga API changes. The bundled copy goes stale within days. The app handles this in three steps:
+
+1. **Materialise a writable copy.** AppImage / `.deb` / `.msi` resource directories are read-only on most platforms, and `-U` patches the script in place. On first launch the seed (the script shipped inside the bundle) is copied to `$XDG_CACHE_HOME/ani-gui/ani-cli`, and from then on every spawn — search, play, download, `-U` itself — uses that writable cache copy.
+2. **Strip the carried test-loader guard.** The seed in the repo carries a single `__ANI_CLI_LIB__` source-guard line so the bats test loader can `source` the script without executing `main`. The runtime never sources, so the line is dead code there — and worse, it's the one byte that always differs from upstream `master`. Without stripping it on copy, `-U` would report `Updated` on every single boot in a perpetual remove-then-reapply cycle.
+3. **Run `-U` in the background on every launch.** A Tokio task is spawned right after the proxy listener binds, so app startup isn't blocked. The task runs `bash <cached-script> -U` with `TERM=dumb` and `NO_COLOR=1`, captures stdout / stderr, and classifies the run as `NoChange`, `Updated`, or `Failed`. Outcomes are persisted as a small JSON log under `$XDG_STATE_HOME/ani-gui/` (the latest few entries) so the **/diagnostics** route can render the last attempt's status, output, and timestamp.
+
+The whole flow is gated by the `auto_update_anicli` setting (default ON; the toggle lives on the Settings page). Disable it and the bundle just keeps using whatever script lives in the cache, indefinitely. Failures are non-fatal — a bad `-U` (e.g. offline at launch) means the previous script keeps running. The next successful boot self-heals.
 
 ## Embedded playback
 
