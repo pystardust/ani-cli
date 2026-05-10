@@ -38,8 +38,14 @@
 		     segment's URL — already an app-relative path (resolve()-d
 		     by the contributing route), so the no-resolve rule's
 		     pattern matcher trips on the dynamic value. -->
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a class="up" href={upHref} onclick={goUp} aria-label={m.breadcrumb_up_aria_label()}>
+		<!-- eslint-disable svelte/no-navigation-without-resolve -->
+		<a
+			class="up"
+			href={upHref}
+			onclick={goUp}
+			aria-label={m.breadcrumb_up_aria_label()}
+			title={m.breadcrumb_up_aria_label()}
+		>
 			<svg viewBox="0 0 16 16" aria-hidden="true">
 				<path
 					d="M10.5 3.5 6 8l4.5 4.5"
@@ -51,6 +57,7 @@
 				/>
 			</svg>
 		</a>
+		<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		<ol>
 			{#each segments as seg, i (i)}
 				{#if i > 0}
