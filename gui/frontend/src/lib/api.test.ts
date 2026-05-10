@@ -3,7 +3,7 @@ import {
 	__resetApiBaseForTests,
 	allmangaKitsuMapGet,
 	altTitlesFromKitsu,
-	anicliUpdateStatus,
+	anicliUpdateLog,
 	aniskipGet,
 	appInfo,
 	availabilityBatch,
@@ -980,27 +980,36 @@ describe('settingsPut', () => {
 	});
 });
 
-describe('anicliUpdateStatus', () => {
-	it('GETs /api/anicli/update-status and returns the outcome', async () => {
-		const outcome = {
-			status: 'updated' as const,
-			stdout: 'Script has been updated\n',
-			stderr: '',
-			finished_at: '2026-05-10T05:00:00Z',
-			duration_ms: 1234
-		};
-		const fetchMock = mockFetchOnce(outcome);
+describe('anicliUpdateLog', () => {
+	it('GETs /api/anicli/update-log and returns the array', async () => {
+		const log = [
+			{
+				status: 'updated' as const,
+				stdout: 'Script has been updated\n',
+				stderr: '',
+				finished_at: '2026-05-10T05:00:00Z',
+				duration_ms: 1234
+			},
+			{
+				status: 'no_change' as const,
+				stdout: 'Script is up to date :)\n',
+				stderr: '',
+				finished_at: '2026-05-09T05:00:00Z',
+				duration_ms: 800
+			}
+		];
+		const fetchMock = mockFetchOnce(log);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
-		const got = await anicliUpdateStatus();
-		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/anicli/update-status`);
-		expect(got).toEqual(outcome);
+		const got = await anicliUpdateLog();
+		expect(lastCall(fetchMock).url).toBe(`${BASE}/api/anicli/update-log`);
+		expect(got).toEqual(log);
 	});
 
-	it('passes through the null body when no run has happened yet', async () => {
-		const fetchMock = mockFetchOnce(null);
+	it('returns an empty array when no run has happened yet', async () => {
+		const fetchMock = mockFetchOnce([]);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
-		const got = await anicliUpdateStatus();
-		expect(got).toBeNull();
+		const got = await anicliUpdateLog();
+		expect(got).toEqual([]);
 	});
 });
 

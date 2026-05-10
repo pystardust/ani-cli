@@ -843,11 +843,11 @@ export function settingsPut(cfg: Config): Promise<void> {
 	return putJson<void>('/api/settings', cfg);
 }
 
-/** Fetch the most recent ani-cli `-U` outcome the backend persisted
- *  to disk. Returns `null` when no run has happened yet (first
- *  launch, or auto-update was off the whole time). */
-export function anicliUpdateStatus(): Promise<AnicliUpdateOutcome | null> {
-	return getJson<AnicliUpdateOutcome | null>('/api/anicli/update-status');
+/** Fetch the rolling log of recent ani-cli `-U` outcomes, latest
+ *  first. Capped at 100 entries by the backend. Empty when no run
+ *  has happened yet (first launch or auto-update permanently off). */
+export function anicliUpdateLog(): Promise<AnicliUpdateOutcome[]> {
+	return getJson<AnicliUpdateOutcome[]>('/api/anicli/update-log');
 }
 
 /**

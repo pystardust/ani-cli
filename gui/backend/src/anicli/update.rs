@@ -11,20 +11,19 @@
 //!    to `$XDG_CACHE_HOME/ani-gui/ani-cli` and use that path everywhere.
 //!    See [`resolve_anicli_path`].
 //!
-//! 2. **Reapply our patch.** The vendored script carries one local
-//!    modification — the `__ANI_CLI_LIB__` source guard that lets the
-//!    bats test suite source the script without executing it. `ani-cli
-//!    -U` overwrites the file via `patch`, so we re-apply the guard
-//!    after every successful update. See [`reapply_lib_guard`].
+//! 2. **Strip the test-loader guard.** The seed in the repo carries
+//!    a single `__ANI_CLI_LIB__` source-guard line so the bats test
+//!    loader can source the script without executing it. The runtime
+//!    cache invokes via `bash <path>` and never sources, so the
+//!    guard is dead code there — and worse, it's the one line that
+//!    always differs from upstream master, which would make `-U`
+//!    report `Updated` on every single boot in a perpetual remove-
+//!    then-reapply cycle. See [`strip_lib_guard`].
 //!
-//! 3. **Decide when to run.** Daily by default (24 h TTL on the cache
-//!    file's mtime), gated by a settings toggle. See [`should_update_now`].
-//!
-//! 4. **Run `-U`.** Spawn `bash <cached_script> -U`, capture stdout +
-//!    stderr, classify the outcome. Always run the patch reapply
-//!    afterwards regardless of whether `-U` reported a change — the
-//!    upstream might have shifted the patch's anchor lines without
-//!    touching ours. See [`run_update`] / [`UpdateOutcome`].
+//! 3. **Run `-U` on every boot.** Gated only by the per-user
+//!    settings toggle. The task is spawned in the background after
+//!    the listener binds, so app launch is unaffected. See
+//!    [`run_update`] / [`UpdateOutcome`].
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -108,38 +107,31 @@ pub fn resolve_anicli_path(seed: &Path, cache_dir: &Path) -> std::io::Result<Pat
     Ok(target)
 }
 
-/// Re-apply the `__ANI_CLI_LIB__` source guard to `script_path` if it
-/// isn't already there. Idempotent: running twice is a no-op.
+/// Remove the `__ANI_CLI_LIB__` source-guard line from `script_path`
+/// if present. Idempotent: a no-op when the line isn't there.
 ///
-/// The guard is a single line `[ -n "$__ANI_CLI_LIB__" ] && return 0`
-/// appended near the bottom of the script (before `main "$@"`). It
-/// lets the bats test loader pull the script in without executing
-/// `main`. `-U` clobbers the file via `patch`, so we re-apply after
-/// every successful run.
+/// The guard exists in the repo's seed script for the bats test
+/// loader, which sources `ani-cli` directly. The runtime cache copy
+/// invokes the script via `bash <path>`, where the guard is dead
+/// code. Carrying it forward is actively harmful: it's the one line
+/// that always differs between our cache and upstream master, which
+/// makes `ani-cli -U` report `Updated` on every single boot (the
+/// patch keeps removing the guard and we'd have to re-apply it,
+/// burning a bash + patch + write cycle for nothing).
 ///
 /// # Errors
 /// Returns [`std::io::Error`] on read/write failure.
-pub fn reapply_lib_guard(script_path: &Path) -> std::io::Result<()> {
+pub fn strip_lib_guard(script_path: &Path) -> std::io::Result<()> {
     let contents = std::fs::read_to_string(script_path)?;
-    if contents.contains(LIB_GUARD_MARKER) {
+    if !contents.contains(LIB_GUARD_MARKER) {
         return Ok(());
     }
-    // Insert before the final `main "$@"` invocation. If we can't find
-    // it, append at end — better to have the guard at the wrong place
-    // than to lose it entirely.
-    let guard_line = format!("[ -n \"${LIB_GUARD_MARKER}\" ] && return 0\n");
-    let patched = match contents.rfind("\nmain \"$@\"") {
-        Some(idx) => {
-            let mut out = String::with_capacity(contents.len() + guard_line.len());
-            out.push_str(&contents[..idx]);
-            out.push('\n');
-            out.push_str(&guard_line);
-            out.push_str(&contents[idx + 1..]);
-            out
-        }
-        None => format!("{contents}\n{guard_line}"),
-    };
-    std::fs::write(script_path, patched)?;
+    let stripped: String = contents
+        .lines()
+        .filter(|line| !line.contains(LIB_GUARD_MARKER))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    std::fs::write(script_path, stripped)?;
     Ok(())
 }
 
@@ -201,39 +193,58 @@ pub async fn run_update(script_path: &Path) -> UpdateOutcome {
     }
 }
 
-/// On-disk filename (under `$XDG_STATE_HOME/ani-gui/`) for the latest
-/// outcome. Written after every run; read by /diagnostics.
-pub const OUTCOME_FILENAME: &str = "anicli-update.json";
+/// On-disk filename (under `$XDG_STATE_HOME/ani-gui/`) for the
+/// rolling log of recent outcomes. Stored as a JSON array, latest
+/// entry first, capped at [`OUTCOME_LOG_CAP`] entries.
+pub const OUTCOMES_LOG_FILENAME: &str = "anicli-update-log.json";
 
-/// Persist `outcome` to `<state_dir>/anicli-update.json`. Atomic via
-/// `path.new` + rename so a partial write can't corrupt the file the
-/// next boot reads.
+/// How many past run outcomes we keep on disk. Past this point the
+/// oldest entries roll off; the on-disk file stays small (~tens of
+/// KB even at the cap).
+pub const OUTCOME_LOG_CAP: usize = 100;
+
+/// Append `outcome` as the newest entry in the rolling log at
+/// `<state_dir>/anicli-update-log.json`. Caps the log at
+/// [`OUTCOME_LOG_CAP`] entries; older entries roll off. Atomic via
+/// `path.new` + rename so a partial write can't corrupt the next
+/// boot's read.
+///
+/// A corrupt or unreadable existing log is treated as empty — the
+/// new entry replaces the file rather than blocking on a parse
+/// error the user can't act on.
 ///
 /// # Errors
-/// Returns [`std::io::Error`] on directory creation, write, or rename
-/// failure.
-pub fn write_outcome(state_dir: &Path, outcome: &UpdateOutcome) -> std::io::Result<()> {
+/// Returns [`std::io::Error`] on directory creation, write, or
+/// rename failure.
+pub fn append_outcome(state_dir: &Path, outcome: &UpdateOutcome) -> std::io::Result<()> {
     std::fs::create_dir_all(state_dir)?;
-    let target = state_dir.join(OUTCOME_FILENAME);
-    let tmp = state_dir.join(format!("{OUTCOME_FILENAME}.new"));
-    let body = serde_json::to_string_pretty(outcome).map_err(std::io::Error::other)?;
+    let mut existing = read_outcomes(state_dir).unwrap_or_default();
+    existing.insert(0, outcome.clone());
+    if existing.len() > OUTCOME_LOG_CAP {
+        existing.truncate(OUTCOME_LOG_CAP);
+    }
+    let target = state_dir.join(OUTCOMES_LOG_FILENAME);
+    let tmp = state_dir.join(format!("{OUTCOMES_LOG_FILENAME}.new"));
+    let body = serde_json::to_string_pretty(&existing).map_err(std::io::Error::other)?;
     std::fs::write(&tmp, body)?;
     std::fs::rename(&tmp, &target)?;
     Ok(())
 }
 
-/// Read the latest persisted outcome. Returns `Ok(None)` when the
-/// file doesn't exist (first boot, or never run); `Err` on I/O or
-/// parse failure.
-pub fn read_outcome(state_dir: &Path) -> std::io::Result<Option<UpdateOutcome>> {
-    let target = state_dir.join(OUTCOME_FILENAME);
+/// Read the persisted log of recent outcomes, latest first. Returns
+/// `Ok(vec![])` when the file doesn't exist (first boot, never run).
+///
+/// # Errors
+/// I/O failure on read; parse failure on a corrupt JSON file.
+pub fn read_outcomes(state_dir: &Path) -> std::io::Result<Vec<UpdateOutcome>> {
+    let target = state_dir.join(OUTCOMES_LOG_FILENAME);
     if !target.is_file() {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let body = std::fs::read_to_string(&target)?;
-    let outcome: UpdateOutcome = serde_json::from_str(&body)
+    let log: Vec<UpdateOutcome> = serde_json::from_str(&body)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-    Ok(Some(outcome))
+    Ok(log)
 }
 
 /// RFC3339 (de)serialisation for `SystemTime`. Stored as a string so
@@ -378,82 +389,112 @@ mod tests {
         assert_eq!(mode & 0o111, 0o111, "copy must be executable: {mode:o}");
     }
 
-    // ── reapply_lib_guard ───────────────────────────────────────────────
+    // ── strip_lib_guard ─────────────────────────────────────────────────
 
     #[test]
-    fn reapply_lib_guard_inserts_before_main_invocation() {
+    fn strip_lib_guard_removes_the_marker_line() {
         let dir = tmpdir();
         let path = dir.path().join("ani-cli");
-        std::fs::write(&path, "#!/bin/sh\nfoo() { :; }\n\nmain \"$@\"\n").unwrap();
-        reapply_lib_guard(&path).unwrap();
+        std::fs::write(
+            &path,
+            "#!/bin/sh\nfoo() { :; }\n[ -n \"$__ANI_CLI_LIB__\" ] && return 0\nmain \"$@\"\n",
+        )
+        .unwrap();
+        strip_lib_guard(&path).unwrap();
         let body = std::fs::read_to_string(&path).unwrap();
-        let guard_pos = body
-            .find(LIB_GUARD_MARKER)
-            .expect("guard marker present after reapply");
-        let main_pos = body.find("main \"$@\"").unwrap();
-        assert!(guard_pos < main_pos, "guard must precede main invocation");
+        assert!(!body.contains(LIB_GUARD_MARKER), "guard line removed");
+        assert!(body.contains("foo() { :; }"), "other lines preserved");
+        assert!(body.contains("main \"$@\""), "main invocation preserved");
     }
 
     #[test]
-    fn reapply_lib_guard_is_idempotent() {
+    fn strip_lib_guard_is_a_noop_when_marker_absent() {
         let dir = tmpdir();
         let path = dir.path().join("ani-cli");
-        std::fs::write(&path, "#!/bin/sh\nmain \"$@\"\n").unwrap();
-        reapply_lib_guard(&path).unwrap();
+        let original = "#!/bin/sh\necho hello\nmain \"$@\"\n";
+        std::fs::write(&path, original).unwrap();
+        strip_lib_guard(&path).unwrap();
+        let body = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(body, original, "no-op when guard isn't present");
+    }
+
+    #[test]
+    fn strip_lib_guard_is_idempotent() {
+        let dir = tmpdir();
+        let path = dir.path().join("ani-cli");
+        std::fs::write(
+            &path,
+            "#!/bin/sh\n[ -n \"$__ANI_CLI_LIB__\" ] && return 0\necho hi\n",
+        )
+        .unwrap();
+        strip_lib_guard(&path).unwrap();
         let after_first = std::fs::read_to_string(&path).unwrap();
-        reapply_lib_guard(&path).unwrap();
+        strip_lib_guard(&path).unwrap();
         let after_second = std::fs::read_to_string(&path).unwrap();
-        assert_eq!(after_first, after_second, "second reapply must be a no-op");
-    }
-
-    #[test]
-    fn reapply_lib_guard_appends_when_no_main_anchor() {
-        let dir = tmpdir();
-        let path = dir.path().join("ani-cli");
-        std::fs::write(&path, "#!/bin/sh\necho hello\n").unwrap();
-        reapply_lib_guard(&path).unwrap();
-        let body = std::fs::read_to_string(&path).unwrap();
-        assert!(body.contains(LIB_GUARD_MARKER), "guard appended");
+        assert_eq!(after_first, after_second, "second strip must be a no-op");
     }
 
     // ── UpdateOutcome (de)serialisation ─────────────────────────────────
 
     // ── persistence ────────────────────────────────────────────────────
 
-    #[test]
-    fn write_then_read_outcome_round_trips() {
-        let dir = tmpdir();
-        let outcome = UpdateOutcome {
-            status: UpdateStatus::Updated,
-            stdout: "ok\n".into(),
+    fn make_outcome(epoch_secs: u64, status: UpdateStatus) -> UpdateOutcome {
+        UpdateOutcome {
+            status,
+            stdout: format!("run @ {epoch_secs}\n"),
             stderr: String::new(),
-            finished_at: UNIX_EPOCH + Duration::from_secs(1_700_000_000),
+            finished_at: UNIX_EPOCH + Duration::from_secs(epoch_secs),
             duration_ms: 42,
-        };
-        write_outcome(dir.path(), &outcome).unwrap();
-        let back = read_outcome(dir.path()).unwrap().unwrap();
-        assert_eq!(back, outcome);
+        }
     }
 
     #[test]
-    fn read_outcome_returns_none_when_file_missing() {
+    fn append_outcome_round_trips_a_single_entry() {
         let dir = tmpdir();
-        assert!(read_outcome(dir.path()).unwrap().is_none());
+        let outcome = make_outcome(1_700_000_000, UpdateStatus::Updated);
+        append_outcome(dir.path(), &outcome).unwrap();
+        let log = read_outcomes(dir.path()).unwrap();
+        assert_eq!(log, vec![outcome]);
     }
 
     #[test]
-    fn write_outcome_creates_state_dir_when_missing() {
+    fn read_outcomes_returns_empty_when_file_missing() {
+        let dir = tmpdir();
+        assert_eq!(read_outcomes(dir.path()).unwrap(), Vec::new());
+    }
+
+    #[test]
+    fn append_outcome_creates_state_dir_when_missing() {
         let dir = tmpdir();
         let nested = dir.path().join("a/b/c");
-        let outcome = UpdateOutcome {
-            status: UpdateStatus::NoChange,
-            stdout: String::new(),
-            stderr: String::new(),
-            finished_at: UNIX_EPOCH,
-            duration_ms: 0,
-        };
-        write_outcome(&nested, &outcome).unwrap();
-        assert!(nested.join(OUTCOME_FILENAME).is_file());
+        append_outcome(&nested, &make_outcome(1, UpdateStatus::NoChange)).unwrap();
+        assert!(nested.join(OUTCOMES_LOG_FILENAME).is_file());
+    }
+
+    #[test]
+    fn append_outcome_pushes_newest_to_the_front() {
+        let dir = tmpdir();
+        let first = make_outcome(1, UpdateStatus::Updated);
+        let second = make_outcome(2, UpdateStatus::NoChange);
+        append_outcome(dir.path(), &first).unwrap();
+        append_outcome(dir.path(), &second).unwrap();
+        let log = read_outcomes(dir.path()).unwrap();
+        assert_eq!(log, vec![second, first]);
+    }
+
+    #[test]
+    fn append_outcome_caps_at_cap_size() {
+        let dir = tmpdir();
+        for i in 0..(OUTCOME_LOG_CAP as u64 + 5) {
+            append_outcome(dir.path(), &make_outcome(i, UpdateStatus::NoChange)).unwrap();
+        }
+        let log = read_outcomes(dir.path()).unwrap();
+        assert_eq!(log.len(), OUTCOME_LOG_CAP);
+        // Newest first; the most recent run is at the head.
+        assert_eq!(
+            log[0].finished_at,
+            UNIX_EPOCH + Duration::from_secs(OUTCOME_LOG_CAP as u64 + 4)
+        );
     }
 
     #[test]

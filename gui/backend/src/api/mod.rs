@@ -112,7 +112,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(get_kitsu_resolve_allmanga),
         )
         .route("/api/watched-at", get(get_watched_at_all))
-        .route("/api/anicli/update-status", get(get_anicli_update_status))
+        .route("/api/anicli/update-log", get(get_anicli_update_log))
         .with_state(state)
         // The Electron renderer in dev runs at `http://localhost:<vite>`
         // while we bind 127.0.0.1:<random> — that's cross-origin, so
@@ -593,14 +593,13 @@ async fn get_watched_at_all(
     Ok(Json(kitsu_inner::watched_at_all(&state)?))
 }
 
-/// Returns the most recent ani-cli `-U` outcome from disk. The
-/// /diagnostics page reads this to render status, captured stdout,
-/// and last-run timestamp. Returns `null` when no run has happened
-/// yet (first-launch state).
-async fn get_anicli_update_status(
+/// Returns the persisted log of recent ani-cli `-U` outcomes,
+/// latest first. Empty when no run has happened yet. The
+/// /diagnostics page renders one row per entry.
+async fn get_anicli_update_log(
     State(state): State<Arc<AppState>>,
-) -> Json<Option<crate::anicli::update::UpdateOutcome>> {
-    Json(state.anicli_update_status().unwrap_or(None))
+) -> Json<Vec<crate::anicli::update::UpdateOutcome>> {
+    Json(state.anicli_update_log().unwrap_or_default())
 }
 
 /// Evict the cached play resolution for `(title, mode, quality,

@@ -87,8 +87,11 @@ impl AppState {
             tracing::warn!(target: "anicli::boot", error = %e, "resolve_anicli_path failed; falling back to seed");
             AniError::Io
         })?;
-        if let Err(e) = update::reapply_lib_guard(&ani_cli_path) {
-            tracing::warn!(target: "anicli::boot", error = %e, "reapply_lib_guard failed");
+        // Strip the bats test-loader guard from the cache copy so it
+        // matches upstream's content shape; otherwise every -U would
+        // report Updated as the patch keeps removing our line.
+        if let Err(e) = update::strip_lib_guard(&ani_cli_path) {
+            tracing::warn!(target: "anicli::boot", error = %e, "strip_lib_guard failed");
         }
         let history_path = paths::ani_cli_history().ok_or(AniError::Io)?;
         let image_cache_dir = paths::image_cache_dir().ok_or(AniError::Io)?;
@@ -117,20 +120,13 @@ impl AppState {
         })
     }
 
-    /// Spawn a background task that runs `ani-cli -U` if the cached
-    /// script is older than `ttl` and the user hasn't disabled
-    /// auto-update. Reapplies the source-guard patch after a
-    /// successful run and writes the outcome to the state dir for
-    /// /diagnostics to pick up.
+    /// Spawn a background task that runs `ani-cli -U` and appends
+    /// the outcome to the rolling log for /diagnostics to read.
+    /// Gated only by the `auto_update_anicli` settings toggle. The
+    /// task fires off the listener-bind path so app launch is
+    /// unaffected by the curl latency.
     pub fn maybe_spawn_anicli_update(self: &Arc<Self>) {
         let cfg = crate::config::read_config(&self.config_path).unwrap_or_default();
-        // Run on every backend boot. The cost is one ~30 KB curl to
-        // raw.githubusercontent.com (CDN-served, no rate limit) — the
-        // task is spawned in the background after the listener binds,
-        // so app launch is unaffected. A stale scraper means broken
-        // playback for everyone the second upstream ships a fix; a
-        // TTL would let that gap last up to a day for no real saving.
-        // The settings toggle is the only gate.
         if !cfg.auto_update_anicli {
             return;
         }
@@ -139,27 +135,22 @@ impl AppState {
         tokio::spawn(async move {
             tracing::info!(target: "anicli::update", script = %script.display(), "running -U in background");
             let outcome = update::run_update(&script).await;
-            // Re-apply the source guard regardless of the outcome —
-            // a partial patch could have shifted the anchor lines.
-            if let Err(e) = update::reapply_lib_guard(&script) {
-                tracing::warn!(target: "anicli::update", error = %e, "reapply_lib_guard failed after -U");
-            }
             tracing::info!(
                 target: "anicli::update",
                 status = ?outcome.status,
                 duration_ms = outcome.duration_ms,
                 "ani-cli -U finished"
             );
-            if let Err(e) = update::write_outcome(&state_dir, &outcome) {
-                tracing::warn!(target: "anicli::update", error = %e, "write_outcome failed");
+            if let Err(e) = update::append_outcome(&state_dir, &outcome) {
+                tracing::warn!(target: "anicli::update", error = %e, "append_outcome failed");
             }
         });
     }
 
-    /// Read the most recent `-U` outcome from disk. Returns
-    /// `Ok(None)` when none has been written yet.
-    pub fn anicli_update_status(&self) -> std::io::Result<Option<UpdateOutcome>> {
-        update::read_outcome(&self.state_dir)
+    /// Read the persisted log of recent `-U` outcomes, latest first.
+    /// Empty vector when no run has happened yet.
+    pub fn anicli_update_log(&self) -> std::io::Result<Vec<UpdateOutcome>> {
+        update::read_outcomes(&self.state_dir)
     }
 
     /// A fresh [`DebugOptions`] for an ani-cli invocation, picking up the
