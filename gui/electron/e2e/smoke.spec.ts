@@ -208,26 +208,28 @@ test("settings locale picker live-switches Paraglide messages", async () => {
     // Language picker — select pt-BR. The picker is a native
     // <select> with the locale key as the option value.
     // paraglideSetLocale's default is `reload: true`, so the page
-    // does a full reload after persist() resolves. Wait for the
-    // pt-BR translation of "House rules." to appear, then assert
-    // we're still on /settings (the reload preserves the URL).
+    // does a full reload after persist() resolves. Wait on the
+    // page's `load` event explicitly so we don't race the reload —
+    // CI's xvfb + Electron boot is markedly slower than a local
+    // run, and a plain element-poll timed out at 10s there.
     const langSelect = page.getByRole("combobox", { name: /locale/i });
+    const reloaded = page.waitForEvent("load");
     await langSelect.selectOption("pt-BR");
+    await reloaded;
 
     await expect(
       page.getByRole("heading", { name: /regras da casa/i }),
     ).toBeVisible({
-      timeout: 10_000,
+      timeout: 15_000,
     });
     await expect(page).toHaveURL(/\/settings\/?$/);
 
     // Switch back to en. The combobox's aria-label is now "Idioma"
-    // in pt-BR, so re-query by the option's value rather than role.
-    // `<select>` elements without an accessible name still match
-    // `getByRole('combobox')` — combine that with `.first()` to
-    // pick the only one on the page.
+    // in pt-BR, so re-query by role-only (works for any <select>).
+    const reloadedBack = page.waitForEvent("load");
     await page.getByRole("combobox").first().selectOption("en");
-    await expect(headline).toBeVisible({ timeout: 10_000 });
+    await reloadedBack;
+    await expect(headline).toBeVisible({ timeout: 15_000 });
   } finally {
     await app.close();
   }
