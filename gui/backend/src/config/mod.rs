@@ -64,10 +64,11 @@ pub struct Config {
     /// native is strictly inferior for ani-gui's UI surface.
     pub use_custom_player_controls: bool,
     /// When `true`, navigating away from the player pauses the
-    /// video instead of entering Picture-in-Picture. Auto-PiP is
-    /// the default behaviour (the user keeps watching while they
-    /// browse); this flag disables it for users who'd rather have
-    /// navigation halt playback.
+    /// video instead of entering Picture-in-Picture. Default
+    /// `true` because auto-PiP-on-navigate is a surprising default
+    /// (a small floating window follows OS focus when the user
+    /// expected Back to halt playback). Users who actively want
+    /// PiP can flip this to `false` in Settings.
     pub disable_auto_pip_on_leave: bool,
     /// When `true`, the backend runs `ani-cli -U` against its cached
     /// copy on each boot if the script is older than 24 h. Defaults
@@ -93,7 +94,7 @@ impl Default for Config {
             auto_skip_op: false,
             auto_skip_ed: false,
             use_custom_player_controls: true,
-            disable_auto_pip_on_leave: false,
+            disable_auto_pip_on_leave: true,
             auto_update_anicli: true,
         }
     }
