@@ -28,22 +28,40 @@ The CLI still exists. The GUI does not replace it; the two share the script and 
 
 ani-gui is distributed as a desktop bundle. The bundled script is updated automatically on launch (see *Self-update* below); a separate `ani-cli` install is **not** required.
 
-### Linux
+Platform support tiers:
+
+| Tier | Platform | Status |
+|---|---|---|
+| 1 | Linux | Actively tested on Ubuntu. Other distros work via AppImage. |
+| 2 | Windows | Most features verified end-to-end. Edge cases may surface. |
+| 3 | macOS | Untested. Builds the same way; should work — please file an issue if it doesn't. |
+
+<details>
+<summary><strong>Linux</strong> — tier 1 (tested on Ubuntu)</summary>
 
 - **AppImage** — download from the [releases page](https://github.com/JoaoPucci/ani-gui/releases), `chmod +x`, double-click.
 - **Debian / Ubuntu (`.deb`)** — `sudo dpkg -i ani-gui_<version>_amd64.deb`. The post-install script sets the `chrome-sandbox` SUID bit Electron needs.
 
-### macOS
+</details>
 
-`.dmg` from the releases page. Drag into Applications.
-
-### Windows
+<details>
+<summary><strong>Windows</strong> — tier 2 (most functions tested)</summary>
 
 NSIS installer (`.exe`). Run it; it installs per-user by default and creates Start menu and desktop shortcuts.
 
 ani-gui drives the upstream `ani-cli` Bash script via `bash`, which on Windows ships as part of [Git for Windows](https://gitforwindows.org/). If Git for Windows isn't installed when you launch the app, you'll see a dialog with a one-click link to its download page. The installer will fetch ffmpeg automatically the first time it runs (~80 MB) so the download feature works out of the box; aria2c and fzf are bundled directly.
 
-### Build from source
+</details>
+
+<details>
+<summary><strong>macOS</strong> — untested</summary>
+
+A `.dmg` is produced by the same `electron-builder` config and should install via the standard drag-into-Applications flow. macOS isn't part of the regular acceptance pass, so if you hit a problem please [open an issue](https://github.com/JoaoPucci/ani-gui/issues) — the app is shipped for it but unverified.
+
+</details>
+
+<details>
+<summary><strong>Build from source</strong> — any platform</summary>
 
 See [`docs/development.md`](./docs/development.md). Short version: Rust toolchain, Node 24+, pnpm, then:
 
@@ -53,6 +71,8 @@ cd ../electron && pnpm install
 pnpm run package          # Linux AppImage + .deb
 pnpm run package:win      # Windows NSIS installer (cross-builds on Linux)
 ```
+
+</details>
 
 ## First run
 
