@@ -275,6 +275,34 @@ describe('pickKitsuMatch', () => {
 		expect(pickKitsuMatch(hits, r)?.id).toBe('ongoing');
 	});
 
+	it('accepts ongoing shows where allmanga lags behind Kitsu announced count', () => {
+		// Re:Zero S4: allmanga reports 5 streamable episodes, Kitsu's
+		// announced total is 19. Without the asymmetric rule the
+		// strict ratio (14/5 = 2.8) rejected the correct match,
+		// forcing the resolver into alias enrichment where Kitsu's
+		// text-search for the englishName returned an unrelated
+		// fuzzy hit (Genjitsu Shugi). The asymmetric branch lets
+		// the legitimate ongoing match through.
+		const r = resolveHistoryEntry(
+			entry('Re:Zero kara Hajimeru Isekai Seikatsu Season 4 (5 episodes)', '1'),
+			null
+		);
+		const hits = [
+			titledCountedHit('rezero-s4', 'Re:Zero kara Hajimeru Isekai Seikatsu 4th Season', 19)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('rezero-s4');
+	});
+
+	it('accepts ep1-of-cour shows (very early airing)', () => {
+		// First episode aired, full season is 12. Most extreme
+		// shortfall case we want the resolver to handle — without
+		// the asymmetric rule a freshly-airing show could never get
+		// matched.
+		const r = resolveHistoryEntry(entry('Brand New Anime (1 episode)', '1'), null);
+		const hits = [titledCountedHit('brand-new', 'Brand New Anime', 12)];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('brand-new');
+	});
+
 	it('rejects null-count hits when the user has a long finished show', () => {
 		// Naruto (220 episodes) → poisoned reverse-cache hit was Duan
 		// Nao 2 (Kitsu episode_count = null, an ONA without a

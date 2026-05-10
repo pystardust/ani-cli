@@ -185,18 +185,16 @@ export const FINISHED_SHOW_COUR_THRESHOLD = 50;
 
 /** Whether a Kitsu hit's `episode_count` is plausibly the same show
  *  as the user's history record (which carries `courSize` from the
- *  "(N episodes)" tail). Returns true when:
- *  - `courSize` is null (legacy hsts row, no constraint to apply)
- *  - the Kitsu hit's count is null AND courSize is at most
- *    `FINISHED_SHOW_COUR_THRESHOLD` (typical ongoing 1-2 cour case)
- *  - the counts are within ±5 absolute (handles short-show drift —
- *    12 vs 13 with one OVA)
- *  - the counts are within ±25% (handles long-show drift — 220 vs
- *    200 when Kitsu splits filler arcs).
+ *  "(N episodes)" tail).
  *
- *  Wide-net by design: false negatives lock the user onto a wrong
- *  match permanently (cached in title-match), false positives just
- *  let the existing slug/cour heuristics pick. */
+ *  Asymmetric tolerance: when allmanga's `courSize` is *less than*
+ *  Kitsu's `episode_count`, the gap is most likely an ongoing show
+ *  where allmanga hasn't caught up to the announced total (Re:Zero
+ *  S4: allmanga has 5 streamable, Kitsu's full season is 19). Be
+ *  lenient — accept up to a 95% shortfall, which covers
+ *  ep-1-of-12-style early-airing cases. When `courSize > kitsu`,
+ *  stay strict (Burichi 366 vs Doraemon 1 is the canonical mis-match
+ *  this catches). */
 export function isEpisodeCountCompatible(
 	courSize: number | null,
 	kitsuEpisodeCount: number | null
@@ -211,7 +209,15 @@ export function isEpisodeCountCompatible(
 	}
 	const diff = Math.abs(courSize - kitsuEpisodeCount);
 	if (diff <= 5) return true;
-	const ratio = diff / Math.max(courSize, 1);
+	const denom = Math.max(courSize, kitsuEpisodeCount);
+	const ratio = diff / denom;
+	if (courSize < kitsuEpisodeCount) {
+		// Ongoing-show shortfall: allmanga's streamable count is below
+		// Kitsu's announced total. Accept a wide gap so freshly-
+		// airing shows (ep 1 of 12 = 91.7% shortfall) still match.
+		return ratio <= 0.95;
+	}
+	// Strict: allmanga over-reports vs Kitsu = likely wrong show.
 	return ratio <= 0.25;
 }
 
