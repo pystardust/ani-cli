@@ -2,6 +2,13 @@ import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
 import globals from 'globals';
 import ts from 'typescript-eslint';
+import noHardcodedStrings from './tools/eslint-rules/no-hardcoded-strings.js';
+
+// Local plugin scope so the i18n rule lives next to the project
+// instead of as a separate npm package.
+const local = {
+	rules: { 'no-hardcoded-strings': noHardcodedStrings }
+};
 
 export default ts.config(
 	js.configs.recommended,
@@ -24,6 +31,14 @@ export default ts.config(
 				parser: ts.parser,
 				svelteConfig: undefined
 			}
+		},
+		plugins: { local },
+		rules: {
+			// Custom rule — see tools/eslint-rules/no-hardcoded-strings.js.
+			// Only applied to .svelte files since plain .ts/.js modules
+			// (api wrappers, format helpers, etc.) need string literals
+			// for non-UI work like backend keys / debug labels.
+			'local/no-hardcoded-strings': 'error'
 		}
 	},
 	{

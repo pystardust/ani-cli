@@ -23,6 +23,7 @@
 	"app_info_proxy_base": "Базовый URL прокси",
 	"history_loading": "Загрузка…",
 	"history_error": "Не удалось загрузить историю.",
+	"history_entry_format": "{title} — эпизод {epNo} (id: {id})",
 	"cache_clear_success": "Кэш метаданных очищен.",
 	"cache_clear_error": "Не удалось очистить кэш."
 }

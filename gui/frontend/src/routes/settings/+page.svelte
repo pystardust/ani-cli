@@ -173,7 +173,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings · ani-gui</title>
+	<title>{m.app_page_title_settings()}</title>
 </svelte:head>
 
 <main class="page">

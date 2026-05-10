@@ -21,7 +21,7 @@
 {#if visible}
 	<aside
 		class="dl-bar"
-		aria-label="Active downloads"
+		aria-label={m.download_bar_aria_label()}
 		transition:fly={{ y: 16, duration: 220, easing: cubicOut }}
 	>
 		{#each active as item (item.id)}

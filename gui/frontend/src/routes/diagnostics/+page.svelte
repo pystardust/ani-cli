@@ -116,7 +116,13 @@
 		{:else}
 			<ul>
 				{#each history as entry (entry.id)}
-					<li>{entry.title} — episode {entry.ep_no} (id: {entry.id})</li>
+					<li>
+						{m.diagnostics_history_entry_format({
+							title: entry.title,
+							epNo: entry.ep_no,
+							id: entry.id
+						})}
+					</li>
 				{/each}
 			</ul>
 		{/if}

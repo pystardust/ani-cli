@@ -31,6 +31,7 @@
 	"button_cancel": "Отмена",
 	"button_confirm": "Начать загрузку",
 	"button_confirming": "Запуск…",
+	"bar_aria_label": "Активные загрузки",
 	"bar_ep_label_range_progress": "Эп. {current} из {total}",
 	"bar_ep_label_range_static": "Эп. {episode}",
 	"bar_ep_label_single": "Эп. {episode}",

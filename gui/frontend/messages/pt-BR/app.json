@@ -18,5 +18,7 @@
 	"page_title_settings": "Ajustes · ani-gui",
 	"page_title_search": "Busca · ani-gui",
 	"page_title_detail": "{title} · ani-gui",
-	"page_title_loading": "Carregando"
+	"page_title_loading": "Carregando",
+	"nav_primary_aria_label": "Navegação principal",
+	"nav_breadcrumb_aria_label": "Trilha"
 }

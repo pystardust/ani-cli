@@ -329,7 +329,7 @@
 </svelte:head>
 
 <div class="shell">
-	<aside class="rail" aria-label="Primary navigation">
+	<aside class="rail" aria-label={m.app_nav_primary_aria_label()}>
 		<a class="brand" href={resolve('/')} aria-label={m.app_home_link_title()}>
 			<svg
 				class="brand-mark"

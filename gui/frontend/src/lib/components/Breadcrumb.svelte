@@ -33,7 +33,7 @@
 </script>
 
 {#if segments.length > 0}
-	<nav class="crumbs" aria-label="Breadcrumb">
+	<nav class="crumbs" aria-label={m.app_nav_breadcrumb_aria_label()}>
 		<!-- Chevron walks the trail "up" one level. href is the parent
 		     segment's URL — already an app-relative path (resolve()-d
 		     by the contributing route), so the no-resolve rule's

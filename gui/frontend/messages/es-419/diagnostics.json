@@ -23,6 +23,7 @@
 	"app_info_proxy_base": "URL base del proxy",
 	"history_loading": "Cargando…",
 	"history_error": "No se pudo cargar el historial.",
+	"history_entry_format": "{title} — episodio {epNo} (id: {id})",
 	"cache_clear_success": "Caché de metadatos borrada.",
 	"cache_clear_error": "No se pudo borrar la caché."
 }

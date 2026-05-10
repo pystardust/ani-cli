@@ -23,6 +23,7 @@
 	"app_info_proxy_base": "Proxy base URL",
 	"history_loading": "Loading…",
 	"history_error": "Couldn't load history.",
+	"history_entry_format": "{title} — episode {epNo} (id: {id})",
 	"cache_clear_success": "Metadata cache cleared.",
 	"cache_clear_error": "Couldn't clear cache."
 }

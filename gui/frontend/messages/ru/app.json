@@ -18,5 +18,7 @@
 	"page_title_settings": "Настройки · ani-gui",
 	"page_title_search": "Поиск · ani-gui",
 	"page_title_detail": "{title} · ani-gui",
-	"page_title_loading": "Загрузка"
+	"page_title_loading": "Загрузка",
+	"nav_primary_aria_label": "Основная навигация",
+	"nav_breadcrumb_aria_label": "Хлебные крошки"
 }

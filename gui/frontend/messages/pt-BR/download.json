@@ -31,6 +31,7 @@
 	"button_cancel": "Cancelar",
 	"button_confirm": "Iniciar download",
 	"button_confirming": "Iniciando…",
+	"bar_aria_label": "Downloads em andamento",
 	"bar_ep_label_range_progress": "Ep {current} de {total}",
 	"bar_ep_label_range_static": "Eps {episode}",
 	"bar_ep_label_single": "Ep {episode}",

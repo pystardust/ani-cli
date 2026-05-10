@@ -875,7 +875,11 @@
 </script>
 
 <svelte:head>
-	<title>{detail?.canonical_title ?? 'Loading'} · ani-gui</title>
+	<title
+		>{m.app_page_title_detail({
+			title: detail?.canonical_title ?? m.app_page_title_loading()
+		})}</title
+	>
 </svelte:head>
 
 <main class="page" style:--accent={accent}>
