@@ -22,7 +22,7 @@ set -eu
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-if [ ! -f gui/src-tauri/src/error.rs ]; then
+if [ ! -f gui/backend/src/error.rs ]; then
     printf 'arch/i18n: error.rs not present yet — skipping\n'
     exit 0
 fi
@@ -46,18 +46,18 @@ variants=$(awk '
             if ($0 != "") print $0
         }
     }
-' gui/src-tauri/src/error.rs)
+' gui/backend/src/error.rs)
 
 for v in $variants; do
     # Must appear in key() match (Self::Variant ... => "...")
-    if ! grep -q "Self::$v" gui/src-tauri/src/error.rs; then
+    if ! grep -q "Self::$v" gui/backend/src/error.rs; then
         printf 'arch/i18n FAIL: AniError::%s has no arm in key()\n' "$v" >&2
         failed=1
     fi
 done
 
 # 2. i18n.rs constants must be well-formed.
-if [ -f gui/src-tauri/src/i18n.rs ]; then
+if [ -f gui/backend/src/i18n.rs ]; then
     while IFS= read -r line; do
         # Match e.g.: pub const NAME: &str = "error.scope.thing";
         value=$(printf '%s\n' "$line" | sed -nE 's/.*"([^"]*)".*/\1/p')
@@ -70,7 +70,7 @@ if [ -f gui/src-tauri/src/i18n.rs ]; then
                 ;;
         esac
     done <<EOF
-$(grep -E '^pub const [A-Z_]+: &str' gui/src-tauri/src/i18n.rs)
+$(grep -E '^pub const [A-Z_]+: &str' gui/backend/src/i18n.rs)
 EOF
 fi
 
