@@ -5,9 +5,29 @@
 //! This is never an automatic fallback — it's user-triggered (a button
 //! on the in-window player chrome). Auto-fallback would be confusing.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{AniError, Result};
+
+/// Player flavor — controls which flag syntax `build_argv` emits.
+///
+/// The argv contract differs per player: mpv accepts
+/// `--force-media-title=`, VLC accepts `--meta-title=`, IINA forwards
+/// mpv flags via `--mpv-` prefixes, and Custom plays it safe by
+/// passing only the URL (we don't know what the user's player wants).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalPlayerKind {
+    /// mpv — the default, matches the upstream `ani-cli` flag set.
+    #[default]
+    Mpv,
+    /// VideoLAN VLC — different flag names for the same concepts.
+    Vlc,
+    /// IINA on macOS — wraps mpv, takes flags via `--mpv-` prefix.
+    Iina,
+    /// Anything else — bare URL only, no flags.
+    Custom,
+}
 
 /// Arguments to the command. Frontend supplies the resolved stream URL +
 /// optional referer + optional subtitle. The player command itself comes
@@ -24,6 +44,17 @@ pub struct LaunchArgs {
     pub title: Option<String>,
     /// Player command, e.g. `"mpv"`. Caller resolves this from settings.
     pub player_command: String,
+    /// Which player flag syntax to use. Old payloads without this
+    /// field decode as `Mpv` so existing clients keep working.
+    #[serde(default)]
+    pub player_kind: ExternalPlayerKind,
+    /// Free-text args template used only when `player_kind` is
+    /// `Custom`. Tokens supported: `{url}`, `{referer}`, `{title}`,
+    /// `{sub}`. A token containing a missing/empty placeholder is
+    /// dropped from argv entirely (so optional flags don't end up
+    /// as `--sub-file=` with nothing after the equals).
+    #[serde(default)]
+    pub custom_args_template: Option<String>,
 }
 
 /// Build the argv that would be passed to `Command::new(player).args(...)`.
@@ -84,6 +115,8 @@ mod tests {
             subtitle_url: None,
             title: None,
             player_command: "mpv".into(),
+            player_kind: ExternalPlayerKind::Mpv,
+            custom_args_template: None,
         }
     }
 
@@ -125,6 +158,122 @@ mod tests {
                 "https://example.com/master.m3u8".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn argv_for_vlc_uses_vlc_flag_syntax() {
+        // VLC's flag names differ from mpv: `--meta-title` for the
+        // title, `--http-referrer` for the Referer header, and the
+        // global `--sub-file` for subtitles. Order matches mpv's:
+        // title, sub, referrer, URL last.
+        let mut a = args("https://example.com/master.m3u8");
+        a.player_kind = ExternalPlayerKind::Vlc;
+        a.title = Some("T".into());
+        a.subtitle_url = Some("https://example.com/sub.vtt".into());
+        a.referer = Some("https://allmanga.to".into());
+        let v = build_argv(&a);
+        assert_eq!(
+            v,
+            vec![
+                "--meta-title=T".to_string(),
+                "--sub-file=https://example.com/sub.vtt".to_string(),
+                "--http-referrer=https://allmanga.to".to_string(),
+                "https://example.com/master.m3u8".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn argv_for_iina_uses_mpv_prefixed_flags() {
+        // IINA wraps mpv on macOS and forwards flags through `--mpv-`,
+        // except `--sub-file` which IINA exposes natively.
+        let mut a = args("https://example.com/v.mp4");
+        a.player_kind = ExternalPlayerKind::Iina;
+        a.title = Some("T".into());
+        a.subtitle_url = Some("https://example.com/sub.vtt".into());
+        a.referer = Some("https://allmanga.to".into());
+        let v = build_argv(&a);
+        assert_eq!(
+            v,
+            vec![
+                "--mpv-force-media-title=T".to_string(),
+                "--sub-file=https://example.com/sub.vtt".to_string(),
+                "--mpv-referrer=https://allmanga.to".to_string(),
+                "https://example.com/v.mp4".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn argv_for_custom_kind_substitutes_placeholders() {
+        // Custom uses a free-text template the user controls. Tokens
+        // are shlex-split, then `{url}`, `{referer}`, `{title}`,
+        // `{sub}` are interpolated per token.
+        let mut a = args("https://example.com/v.mp4");
+        a.player_kind = ExternalPlayerKind::Custom;
+        a.title = Some("My Show".into());
+        a.subtitle_url = Some("https://example.com/sub.vtt".into());
+        a.referer = Some("https://allmanga.to".into());
+        a.custom_args_template = Some("--ref={referer} --title={title} --sub={sub} {url}".into());
+        let v = build_argv(&a);
+        assert_eq!(
+            v,
+            vec![
+                "--ref=https://allmanga.to".to_string(),
+                "--title=My Show".to_string(),
+                "--sub=https://example.com/sub.vtt".to_string(),
+                "https://example.com/v.mp4".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn argv_for_custom_drops_tokens_with_missing_placeholders() {
+        // If the user includes `--sub={sub}` in the template but the
+        // current episode has no subtitle, the entire token is
+        // dropped — better than emitting `--sub=` with empty value.
+        let mut a = args("https://example.com/v.mp4");
+        a.player_kind = ExternalPlayerKind::Custom;
+        a.referer = Some("https://allmanga.to".into());
+        // No subtitle, no title.
+        a.custom_args_template = Some("--ref={referer} --title={title} --sub={sub} {url}".into());
+        let v = build_argv(&a);
+        // --title= and --sub= tokens are dropped because their
+        // placeholders are missing.
+        assert_eq!(
+            v,
+            vec![
+                "--ref=https://allmanga.to".to_string(),
+                "https://example.com/v.mp4".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn argv_for_custom_with_empty_template_falls_back_to_url_only() {
+        // A user who picks Custom but leaves the template blank gets
+        // a bare URL — not a panic, not an error.
+        let mut a = args("https://example.com/v.mp4");
+        a.player_kind = ExternalPlayerKind::Custom;
+        a.custom_args_template = None;
+        let v = build_argv(&a);
+        assert_eq!(v, vec!["https://example.com/v.mp4".to_string()]);
+    }
+
+    #[test]
+    fn launch_args_decode_without_player_kind_field_for_back_compat() {
+        // Old client payloads (pre-multi-player) don't include
+        // `player_kind`. They must still decode and default to Mpv.
+        let json = r#"{
+            "stream_url": "https://example.com/v.mp4",
+            "referer": null,
+            "subtitle_url": null,
+            "title": null,
+            "player_command": "mpv"
+        }"#;
+        let a: LaunchArgs = serde_json::from_str(json).expect("decodes with default kind");
+        assert_eq!(a.player_kind, ExternalPlayerKind::Mpv);
+        assert!(a.custom_args_template.is_none());
     }
 
     #[test]
