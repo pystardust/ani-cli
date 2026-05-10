@@ -46,12 +46,19 @@ pub const SETTING_KEY_AUTO_UPDATE: &str = "auto_update_anicli";
 /// long-lived in-memory log.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UpdateOutcome {
+    /// Classified outcome of the run; see [`UpdateStatus`].
     pub status: UpdateStatus,
+    /// Captured stdout of `bash <script> -U`. The diagnostics page
+    /// renders this verbatim — short enough (one or two lines) that
+    /// pretty-printing isn't worth it.
     pub stdout: String,
+    /// Captured stderr. Empty on success; carries the upstream
+    /// "Connection error" / "Can't update" text on failure.
     pub stderr: String,
     /// Wall-clock at the moment the run finished. Serialised as RFC3339.
     #[serde(with = "rfc3339")]
     pub finished_at: SystemTime,
+    /// How long the run took, in milliseconds.
     pub duration_ms: u64,
 }
 
@@ -61,8 +68,12 @@ pub struct UpdateOutcome {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateStatus {
+    /// Upstream `master` matches the cached script — `-U` exited 0
+    /// with the "Script is up to date" line.
     NoChange,
+    /// Upstream had drift; the cache was patched in place.
     Updated,
+    /// Spawn failure, non-zero exit, or unparseable output.
     Failed,
 }
 
@@ -85,8 +96,8 @@ pub fn should_update_now(last: Option<SystemTime>, ttl: Duration, enabled: bool)
 }
 
 /// Materialise a writable script path from a seed (the bundled script)
-/// + the cache directory. Copies the seed to `<cache_dir>/ani-cli` if
-/// the target is missing; returns the cache path either way.
+/// plus the cache directory. Copies the seed to `<cache_dir>/ani-cli`
+/// when the target is missing; returns the cache path either way.
 ///
 /// # Errors
 /// Returns an [`std::io::Error`] when the seed is missing, the cache
@@ -134,7 +145,7 @@ pub fn reapply_lib_guard(script_path: &Path) -> std::io::Result<()> {
     // Insert before the final `main "$@"` invocation. If we can't find
     // it, append at end — better to have the guard at the wrong place
     // than to lose it entirely.
-    let guard_line = format!("[ -n \"${}\" ] && return 0\n", LIB_GUARD_MARKER);
+    let guard_line = format!("[ -n \"${LIB_GUARD_MARKER}\" ] && return 0\n");
     let patched = match contents.rfind("\nmain \"$@\"") {
         Some(idx) => {
             let mut out = String::with_capacity(contents.len() + guard_line.len());
@@ -206,6 +217,41 @@ pub async fn run_update(script_path: &Path) -> UpdateOutcome {
             duration_ms,
         },
     }
+}
+
+/// On-disk filename (under `$XDG_STATE_HOME/ani-gui/`) for the latest
+/// outcome. Written after every run; read by /diagnostics.
+pub const OUTCOME_FILENAME: &str = "anicli-update.json";
+
+/// Persist `outcome` to `<state_dir>/anicli-update.json`. Atomic via
+/// `path.new` + rename so a partial write can't corrupt the file the
+/// next boot reads.
+///
+/// # Errors
+/// Returns [`std::io::Error`] on directory creation, write, or rename
+/// failure.
+pub fn write_outcome(state_dir: &Path, outcome: &UpdateOutcome) -> std::io::Result<()> {
+    std::fs::create_dir_all(state_dir)?;
+    let target = state_dir.join(OUTCOME_FILENAME);
+    let tmp = state_dir.join(format!("{OUTCOME_FILENAME}.new"));
+    let body = serde_json::to_string_pretty(outcome).map_err(std::io::Error::other)?;
+    std::fs::write(&tmp, body)?;
+    std::fs::rename(&tmp, &target)?;
+    Ok(())
+}
+
+/// Read the latest persisted outcome. Returns `Ok(None)` when the
+/// file doesn't exist (first boot, or never run); `Err` on I/O or
+/// parse failure.
+pub fn read_outcome(state_dir: &Path) -> std::io::Result<Option<UpdateOutcome>> {
+    let target = state_dir.join(OUTCOME_FILENAME);
+    if !target.is_file() {
+        return Ok(None);
+    }
+    let body = std::fs::read_to_string(&target)?;
+    let outcome: UpdateOutcome = serde_json::from_str(&body)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    Ok(Some(outcome))
 }
 
 /// RFC3339 (de)serialisation for `SystemTime`. Stored as a string so
@@ -431,6 +477,44 @@ mod tests {
     }
 
     // ── UpdateOutcome (de)serialisation ─────────────────────────────────
+
+    // ── persistence ────────────────────────────────────────────────────
+
+    #[test]
+    fn write_then_read_outcome_round_trips() {
+        let dir = tmpdir();
+        let outcome = UpdateOutcome {
+            status: UpdateStatus::Updated,
+            stdout: "ok\n".into(),
+            stderr: String::new(),
+            finished_at: UNIX_EPOCH + Duration::from_secs(1_700_000_000),
+            duration_ms: 42,
+        };
+        write_outcome(dir.path(), &outcome).unwrap();
+        let back = read_outcome(dir.path()).unwrap().unwrap();
+        assert_eq!(back, outcome);
+    }
+
+    #[test]
+    fn read_outcome_returns_none_when_file_missing() {
+        let dir = tmpdir();
+        assert!(read_outcome(dir.path()).unwrap().is_none());
+    }
+
+    #[test]
+    fn write_outcome_creates_state_dir_when_missing() {
+        let dir = tmpdir();
+        let nested = dir.path().join("a/b/c");
+        let outcome = UpdateOutcome {
+            status: UpdateStatus::NoChange,
+            stdout: String::new(),
+            stderr: String::new(),
+            finished_at: UNIX_EPOCH,
+            duration_ms: 0,
+        };
+        write_outcome(&nested, &outcome).unwrap();
+        assert!(nested.join(OUTCOME_FILENAME).is_file());
+    }
 
     #[test]
     fn update_outcome_round_trips_through_json() {

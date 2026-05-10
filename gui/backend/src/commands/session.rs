@@ -150,6 +150,7 @@ mod tests {
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
             kitsu: crate::meta::kitsu::KitsuClient::new(reqwest::Client::new()),
             config_path: PathBuf::from("/tmp/ani-gui-config.toml"),
+            state_dir: PathBuf::from("/tmp/ani-gui-state"),
         }
     }
 

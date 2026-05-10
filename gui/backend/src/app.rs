@@ -18,6 +18,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 
 use crate::anicli::process::{locate_ani_cli, DebugOptions};
+use crate::anicli::update::{self, UpdateOutcome};
 use crate::cache::SqlitePool;
 use crate::config::paths;
 use crate::error::{AniError, Result};
@@ -53,6 +54,9 @@ pub struct AppState {
     pub kitsu: KitsuClient,
     /// Path to the user's TOML settings file (`config.toml`).
     pub config_path: PathBuf,
+    /// `$XDG_STATE_HOME/ani-gui/` — backing store for the latest
+    /// `ani-cli -U` outcome JSON the diagnostics page reads.
+    pub state_dir: PathBuf,
 }
 
 impl AppState {
@@ -70,8 +74,22 @@ impl AppState {
         proxy_origin: ProxyOrigin,
         ani_cli_resource_dir: Option<PathBuf>,
     ) -> Result<Self> {
+        // Resolve the script path through the writable cache copy so
+        // `-U` can patch it in place. The seed is whatever PATH or
+        // the resource dir gives us; the live path is always under
+        // `$XDG_CACHE_HOME/ani-gui/ani-cli`. The reapply pass is
+        // idempotent and ensures our `__ANI_CLI_LIB__` source guard
+        // survives between releases.
         let fallback = ani_cli_resource_dir.map(|d| d.join("ani-cli"));
-        let ani_cli_path = locate_ani_cli(fallback.as_ref())?;
+        let seed = locate_ani_cli(fallback.as_ref())?;
+        let cache_root = paths::cache_dir().ok_or(AniError::Io)?;
+        let ani_cli_path = update::resolve_anicli_path(&seed, &cache_root).map_err(|e| {
+            tracing::warn!(target: "anicli::boot", error = %e, "resolve_anicli_path failed; falling back to seed");
+            AniError::Io
+        })?;
+        if let Err(e) = update::reapply_lib_guard(&ani_cli_path) {
+            tracing::warn!(target: "anicli::boot", error = %e, "reapply_lib_guard failed");
+        }
         let history_path = paths::ani_cli_history().ok_or(AniError::Io)?;
         let image_cache_dir = paths::image_cache_dir().ok_or(AniError::Io)?;
         std::fs::create_dir_all(&image_cache_dir).map_err(|_| AniError::Io)?;
@@ -82,6 +100,7 @@ impl AppState {
         let cache_pool = crate::cache::open_pool(&metadata_db)?;
         let kitsu = KitsuClient::new(proxy_http.clone());
         let config_path = paths::config_file().ok_or(AniError::Io)?;
+        let state_dir = paths::state_dir().ok_or(AniError::Io)?;
         Ok(Self {
             secret: AppSecret::random(),
             sessions: SessionTable::new(),
@@ -94,7 +113,50 @@ impl AppState {
             cache_pool,
             kitsu,
             config_path,
+            state_dir,
         })
+    }
+
+    /// Spawn a background task that runs `ani-cli -U` if the cached
+    /// script is older than `ttl` and the user hasn't disabled
+    /// auto-update. Reapplies the source-guard patch after a
+    /// successful run and writes the outcome to the state dir for
+    /// /diagnostics to pick up.
+    pub fn maybe_spawn_anicli_update(self: &Arc<Self>) {
+        const TTL: std::time::Duration = std::time::Duration::from_secs(24 * 60 * 60);
+        let cfg = crate::config::read_config(&self.config_path).unwrap_or_default();
+        let last = std::fs::metadata(&self.ani_cli_path)
+            .ok()
+            .and_then(|m| m.modified().ok());
+        if !update::should_update_now(last, TTL, cfg.auto_update_anicli) {
+            return;
+        }
+        let script = self.ani_cli_path.clone();
+        let state_dir = self.state_dir.clone();
+        tokio::spawn(async move {
+            tracing::info!(target: "anicli::update", script = %script.display(), "running -U in background");
+            let outcome = update::run_update(&script).await;
+            // Re-apply the source guard regardless of the outcome —
+            // a partial patch could have shifted the anchor lines.
+            if let Err(e) = update::reapply_lib_guard(&script) {
+                tracing::warn!(target: "anicli::update", error = %e, "reapply_lib_guard failed after -U");
+            }
+            tracing::info!(
+                target: "anicli::update",
+                status = ?outcome.status,
+                duration_ms = outcome.duration_ms,
+                "ani-cli -U finished"
+            );
+            if let Err(e) = update::write_outcome(&state_dir, &outcome) {
+                tracing::warn!(target: "anicli::update", error = %e, "write_outcome failed");
+            }
+        });
+    }
+
+    /// Read the most recent `-U` outcome from disk. Returns
+    /// `Ok(None)` when none has been written yet.
+    pub fn anicli_update_status(&self) -> std::io::Result<Option<UpdateOutcome>> {
+        update::read_outcome(&self.state_dir)
     }
 
     /// A fresh [`DebugOptions`] for an ani-cli invocation, picking up the
@@ -148,6 +210,7 @@ mod tests {
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
             kitsu: KitsuClient::new(reqwest::Client::new()),
             config_path: PathBuf::from("/tmp/ani-gui-config.toml"),
+            state_dir: PathBuf::from("/tmp/ani-gui-state"),
         }
     }
 

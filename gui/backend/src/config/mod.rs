@@ -57,6 +57,13 @@ pub struct Config {
     /// browse); this flag disables it for users who'd rather have
     /// navigation halt playback.
     pub disable_auto_pip_on_leave: bool,
+    /// When `true`, the backend runs `ani-cli -U` against its cached
+    /// copy on each boot if the script is older than 24 h. Defaults
+    /// to `true` because allmanga's API drifts daily — without
+    /// fresh script content, playback breaks for everyone the moment
+    /// upstream pushes a hotfix we don't have. Users on metered or
+    /// strictly offline setups can flip it off.
+    pub auto_update_anicli: bool,
 }
 
 impl Default for Config {
@@ -73,6 +80,7 @@ impl Default for Config {
             auto_skip_ed: false,
             use_custom_player_controls: false,
             disable_auto_pip_on_leave: false,
+            auto_update_anicli: true,
         }
     }
 }

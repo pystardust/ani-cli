@@ -52,6 +52,24 @@ pub fn logs_dir() -> Option<PathBuf> {
     project_dirs().map(|d| d.data_dir().join("logs"))
 }
 
+/// `$XDG_STATE_HOME/ani-gui/` — small, machine-state files that aren't
+/// quite cache (regenerable) and aren't quite config (user-edited).
+/// The latest ani-cli `-U` outcome lands here so /diagnostics can
+/// surface it without re-running the update.
+#[must_use]
+pub fn state_dir() -> Option<PathBuf> {
+    if let Ok(state) = std::env::var("XDG_STATE_HOME") {
+        return Some(PathBuf::from(state).join("ani-gui"));
+    }
+    let home = std::env::var_os("HOME")?;
+    Some(
+        PathBuf::from(home)
+            .join(".local")
+            .join("state")
+            .join("ani-gui"),
+    )
+}
+
 /// The history file shared with the CLI:
 /// `$XDG_STATE_HOME/ani-cli/ani-hsts` on Linux. On other platforms this
 /// returns the equivalent state directory under `ani-cli` (not `ani-gui`),

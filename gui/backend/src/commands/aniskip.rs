@@ -95,6 +95,7 @@ mod tests {
             cache_pool: crate::cache::open_in_memory().expect("in-mem pool"),
             kitsu: KitsuClient::with_base(reqwest::Client::new(), uri),
             config_path: PathBuf::from("/tmp/ani-gui-config.toml"),
+            state_dir: PathBuf::from("/tmp/ani-gui-state"),
         }
     }
 

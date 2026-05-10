@@ -58,10 +58,17 @@ fn main() -> std::process::ExitCode {
         let proxy_http = proxy::upstream::build_client()?;
         let (addr, listener) = proxy::bind_loopback(0).await?;
         let origin = proxy::ProxyOrigin::new(&addr.ip().to_string(), addr.port());
-        let state = app::AppState::build(proxy_http, origin.clone(), resource_dir)?;
+        let state = Arc::new(app::AppState::build(
+            proxy_http,
+            origin.clone(),
+            resource_dir,
+        )?);
+        // Daily ani-cli `-U` — runs in the background after the
+        // listener binds so it never blocks app launch.
+        state.maybe_spawn_anicli_update();
 
         let proxy_router = proxy::build_router(state.proxy_state());
-        let api_router = api::build_api_router(Arc::new(state));
+        let api_router = api::build_api_router(state.clone());
         let router = proxy_router.merge(api_router);
 
         // The handshake: print the URL the Electron main process is
