@@ -63,6 +63,49 @@ pub fn compose_anicli_path(
     std::env::join_paths(&parts).unwrap_or(base)
 }
 
+/// Names of OS env vars the ani-cli spawn must forward on Windows
+/// after `cmd.env_clear()`. Without these, Git Bash can't bootstrap
+/// its MSYS mount table (so `/tmp` resolves to a path the user often
+/// can't write — see the cascade of `mktemp: ... Permission denied`
+/// followed by empty-variable bash errors that turned a regular
+/// click-to-play into a generic "Network trouble" toast).
+///
+/// Inert on Unix: kept here so `windows_env_passthrough` is callable
+/// from cross-platform unit tests, but the spawn-site call is
+/// `#[cfg(windows)]`-gated so Linux runs are byte-identical to today.
+///
+/// Order is stable so callers can rely on it for deterministic env
+/// snapshots in tests.
+pub const WINDOWS_ENV_PASSTHROUGH_KEYS: &[&str] = &[
+    "TMP",
+    "TEMP",
+    "SYSTEMROOT",
+    "USERPROFILE",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "COMSPEC",
+    "WINDIR",
+];
+
+/// Windows env-var passthrough for the ani-cli spawn. Pure with
+/// respect to `read`, which the caller injects: production calls pass
+/// `|k| std::env::var_os(k)`; tests pass a closure backed by a
+/// `HashMap` so they pin exact behaviour without touching real env.
+///
+/// Returns the (name, value) pairs to apply with `cmd.env(name, value)`
+/// after `cmd.env_clear()`. Only entries whose values are present
+/// (i.e. `read` returned `Some(_)`) are emitted, in the order defined
+/// by [`WINDOWS_ENV_PASSTHROUGH_KEYS`]. Empty values are forwarded
+/// (Windows env API treats empty string as "set"; Git Bash distinguishes
+/// it from missing).
+#[must_use]
+pub fn windows_env_passthrough(
+    read: impl Fn(&str) -> Option<OsString>,
+) -> Vec<(&'static str, OsString)> {
+    let _ = read;
+    todo!("filled in by the fix(green) commit — keeps the red test red")
+}
+
 /// Locate `ffmpeg` inside a composed PATH string. Pure: caller
 /// supplies the path-list and the executable check, so the test
 /// suite can drive every branch without touching real disk.
@@ -210,5 +253,120 @@ mod tests {
         assert_eq!(parts[0], PathBuf::from("/bundle/bin"));
         let fallback: Vec<PathBuf> = std::env::split_paths(OsStr::new(FALLBACK_PATH)).collect();
         assert_eq!(&parts[1..], fallback.as_slice());
+    }
+
+    // --- windows_env_passthrough ------------------------------------
+    //
+    // Reproduces the Windows-only failure where `cmd.env_clear()`
+    // stripped the OS env vars Git Bash needs to set up its `/tmp`
+    // mount and load core DLLs. Without these, the first ani-cli
+    // spawn after backend startup hits `mktemp: ... '/tmp/...':
+    // Permission denied`, the script's variables go empty, paths
+    // collapse to `/`, and the user sees a "Network trouble" toast
+    // because the gibberish stdout misclassifies on the frontend.
+    //
+    // The helper is a pure (env, key-list) → (key, value) pairs
+    // function so these tests can run on Linux CI too.
+
+    use std::collections::HashMap;
+
+    fn env_reader(map: HashMap<&'static str, &'static str>) -> impl Fn(&str) -> Option<OsString> {
+        move |k| map.get(k).map(|v| OsString::from(*v))
+    }
+
+    #[test]
+    fn windows_passthrough_returns_all_keys_when_all_present() {
+        // Happy path: every documented var is set in the parent env;
+        // the helper forwards all of them, in the documented order so
+        // tests downstream can assert on positional equality.
+        let env = env_reader(HashMap::from([
+            ("TMP", r"C:\Users\joe\AppData\Local\Temp"),
+            ("TEMP", r"C:\Users\joe\AppData\Local\Temp"),
+            ("SYSTEMROOT", r"C:\Windows"),
+            ("USERPROFILE", r"C:\Users\joe"),
+            ("LOCALAPPDATA", r"C:\Users\joe\AppData\Local"),
+            ("APPDATA", r"C:\Users\joe\AppData\Roaming"),
+            ("COMSPEC", r"C:\Windows\System32\cmd.exe"),
+            ("WINDIR", r"C:\Windows"),
+        ]));
+        let got = windows_env_passthrough(&env);
+        let names: Vec<&'static str> = got.iter().map(|(k, _)| *k).collect();
+        assert_eq!(
+            names,
+            vec![
+                "TMP",
+                "TEMP",
+                "SYSTEMROOT",
+                "USERPROFILE",
+                "LOCALAPPDATA",
+                "APPDATA",
+                "COMSPEC",
+                "WINDIR",
+            ]
+        );
+        assert_eq!(
+            got.iter().find(|(k, _)| *k == "SYSTEMROOT").unwrap().1,
+            OsString::from(r"C:\Windows")
+        );
+    }
+
+    #[test]
+    fn windows_passthrough_skips_missing_keys_preserving_order() {
+        // Partial env: scoop-style minimal user shells often have TMP
+        // but no APPDATA, or vice versa. Forward what's there; don't
+        // emit a key with an empty value masquerading as "set" because
+        // the `env_clear()`-then-restore design is supposed to be
+        // transparent to anything we don't explicitly carry over.
+        let env = env_reader(HashMap::from([
+            ("TMP", r"C:\Temp"),
+            ("SYSTEMROOT", r"C:\Windows"),
+            ("WINDIR", r"C:\Windows"),
+        ]));
+        let got = windows_env_passthrough(&env);
+        let names: Vec<&'static str> = got.iter().map(|(k, _)| *k).collect();
+        assert_eq!(names, vec!["TMP", "SYSTEMROOT", "WINDIR"]);
+    }
+
+    #[test]
+    fn windows_passthrough_returns_empty_when_no_keys_present() {
+        // Pathological but valid: a process spawned with a fully
+        // scrubbed env. The helper emits nothing — the spawn site
+        // never calls cmd.env() with absent values, which is the same
+        // shape we'd get if we hadn't wrapped them at all.
+        let env = env_reader(HashMap::new());
+        let got = windows_env_passthrough(&env);
+        assert!(got.is_empty(), "got: {got:?}");
+    }
+
+    #[test]
+    fn windows_passthrough_forwards_empty_string_values() {
+        // Windows env API distinguishes empty string from missing —
+        // `set FOO=` leaves FOO defined but empty. Git Bash relies on
+        // this for some MSYS-mode flags; clobbering them with "drop
+        // when empty" semantics would silently change behaviour.
+        let env = env_reader(HashMap::from([("TMP", "")]));
+        let got = windows_env_passthrough(&env);
+        assert_eq!(got, vec![("TMP", OsString::new())]);
+    }
+
+    #[test]
+    fn windows_passthrough_keys_are_the_documented_set() {
+        // Pin the canonical key list so a future refactor can't
+        // silently drop one. If you intentionally add or remove a
+        // key from WINDOWS_ENV_PASSTHROUGH_KEYS, update this list
+        // and write a one-line note in the PR explaining why.
+        assert_eq!(
+            WINDOWS_ENV_PASSTHROUGH_KEYS,
+            &[
+                "TMP",
+                "TEMP",
+                "SYSTEMROOT",
+                "USERPROFILE",
+                "LOCALAPPDATA",
+                "APPDATA",
+                "COMSPEC",
+                "WINDIR",
+            ]
+        );
     }
 }
