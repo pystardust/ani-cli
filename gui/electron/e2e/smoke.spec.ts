@@ -206,31 +206,28 @@ test("settings locale picker live-switches Paraglide messages", async () => {
     await expect(headline).toBeVisible();
 
     // Language picker — select pt-BR. The picker is a native
-    // <select> with the locale key as the option value. We grab
-    // the underlying element once (rather than re-querying by
-    // aria-label) because the aria-label itself is localised, so
-    // after switching to pt-BR the combobox would no longer
-    // match `/locale/i`.
+    // <select> with the locale key as the option value.
+    // paraglideSetLocale's default is `reload: true`, so the page
+    // does a full reload after persist() resolves. Wait for the
+    // pt-BR translation of "House rules." to appear, then assert
+    // we're still on /settings (the reload preserves the URL).
     const langSelect = page.getByRole("combobox", { name: /locale/i });
-    const langSelectElement = await langSelect.elementHandle();
     await langSelect.selectOption("pt-BR");
 
-    // paraglideSetLocale flips the active locale immediately
-    // (reload: false). The h1 should re-derive to its pt-BR
-    // translation: "Regras da casa.".
     await expect(
       page.getByRole("heading", { name: /regras da casa/i }),
     ).toBeVisible({
-      timeout: 5_000,
+      timeout: 10_000,
     });
+    await expect(page).toHaveURL(/\/settings\/?$/);
 
-    // Switch back to en before the test closes the app — the
-    // XDG dirs are tmp so it doesn't matter, but it makes
-    // debug output friendlier when the test fails midway. Use
-    // the element handle from before the switch so we don't
-    // have to know the pt-BR aria-label.
-    await langSelectElement?.selectOption("en");
-    await expect(headline).toBeVisible({ timeout: 5_000 });
+    // Switch back to en. The combobox's aria-label is now "Idioma"
+    // in pt-BR, so re-query by the option's value rather than role.
+    // `<select>` elements without an accessible name still match
+    // `getByRole('combobox')` — combine that with `.first()` to
+    // pick the only one on the page.
+    await page.getByRole("combobox").first().selectOption("en");
+    await expect(headline).toBeVisible({ timeout: 10_000 });
   } finally {
     await app.close();
   }

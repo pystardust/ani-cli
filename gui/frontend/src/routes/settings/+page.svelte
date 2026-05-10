@@ -91,15 +91,21 @@
 	}
 	function setLocale(l: string) {
 		if (!cfg) return;
-		// Live-switch UI strings before persisting — Paraglide accepts
-		// any registered locale; unsupported picks are guarded by the
-		// `disabled` attribute on each <option>.
-		try {
-			paraglideSetLocale(l as Parameters<typeof paraglideSetLocale>[0], { reload: false });
-		} catch {
-			/* unknown locale — fall through; persist still records the user's intent */
-		}
-		void persist({ ...cfg, locale: l });
+		// Persist the picked locale FIRST, then ask Paraglide to flip
+		// — paraglideSetLocale defaults to `reload: true`, which is
+		// the only reliable way to re-render every `m.foo()` call in
+		// the SPA (Paraglide v2's plain function calls don't trigger
+		// Svelte reactivity on their own). Persisting first means the
+		// reloaded page reads the new locale from both localStorage
+		// (Paraglide's strategy) and config.toml (our backend).
+		void persist({ ...cfg, locale: l }).then(() => {
+			try {
+				paraglideSetLocale(l as Parameters<typeof paraglideSetLocale>[0]);
+			} catch {
+				/* unknown locale — fall through; the picker's `disabled`
+				   guard should keep this branch unreachable. */
+			}
+		});
 	}
 	function setExternalPlayer(value: string) {
 		if (!cfg) return;
