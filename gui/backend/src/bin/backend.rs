@@ -90,6 +90,14 @@ fn main() -> std::process::ExitCode {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(e) => {
             tracing::error!(error = ?e, "ani-gui-backend exited with error");
+            // Structured fatal-signal line for Electron's main process
+            // to parse — without it, a Windows user with no Git for
+            // Windows install just sees "backend exited" and the app
+            // dies silently. Electron scans stderr for this prefix
+            // and surfaces a native dialog with the install link.
+            if matches!(e, AniError::BashMissing) {
+                eprintln!("ANI_GUI_FATAL bash_missing");
+            }
             std::process::ExitCode::FAILURE
         }
     }
