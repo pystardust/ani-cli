@@ -261,6 +261,11 @@
 		const showId = id;
 		const ep = String(episodeNum);
 		const len = duration;
+		// Clear stale data before the fetch so a previous episode's
+		// intervals can't briefly drive `activeSkip` against the new
+		// episode's currentTime — that produced a quick button flash
+		// when navigating to a show with no aniskip data.
+		skipIntervals = [];
 		void aniskipGet(showId, ep, len)
 			.then((v) => {
 				// Guard against the user navigating to a different
