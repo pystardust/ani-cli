@@ -48,6 +48,7 @@
 	import type { DownloadArgs } from '$lib/api';
 	import { decideEpisodeFetchAction, parsePageParam } from '$lib/history/url-deeplink';
 	import { breadcrumb } from '$lib/breadcrumb';
+	import { m } from '$lib/paraglide/messages';
 
 	let detail = $state<KitsuAnimeRef | null>(null);
 	let error = $state<{ headline: string; detail: string | null } | null>(null);
@@ -581,9 +582,9 @@
 					: typeof obj.kind === 'string'
 						? obj.kind
 						: null;
-			return { headline: "Couldn't load this title.", detail };
+			return { headline: m.detail_error_load_headline(), detail };
 		}
-		return { headline: "Couldn't load this title.", detail: String(e) };
+		return { headline: m.detail_error_load_headline(), detail: String(e) };
 	}
 	function describeErrorString(e: unknown): string {
 		if (typeof e === 'object' && e !== null) {
@@ -608,18 +609,18 @@
 			// indexed, retrying won't help. The detail page also
 			// gates the Play CTA proactively when the availability
 			// probe lands first; this copy is the lazy fallback.
-			return "This title isn't in the streaming catalogue. allmanga doesn't index it.";
+			return m.detail_error_play_no_results();
 		}
 		if (raw.includes('scraper')) {
-			return "Couldn't resolve a working stream right now. The streaming source looks unhappy — try again in a few minutes.";
+			return m.detail_error_play_scraper();
 		}
 		if (raw.includes('timeout')) {
-			return 'The streaming source took too long to respond. Try again in a few minutes.';
+			return m.detail_error_play_timeout();
 		}
 		if (raw.includes('network') || raw.includes('upstream')) {
-			return 'Network trouble reaching the streaming source. Check your connection and try again.';
+			return m.detail_error_play_network();
 		}
-		return "Couldn't start this episode right now. Try again in a few minutes.";
+		return m.detail_error_play_generic();
 	}
 
 	function heroFor(d: KitsuAnimeRef): { url: string | null; isCover: boolean } {
@@ -646,10 +647,10 @@
 		return d.start_date ? d.start_date.slice(0, 4) : null;
 	}
 	function statusLabel(s: string | null): string {
-		if (!s) return '—';
-		if (s === 'current') return 'Currently airing';
-		if (s === 'finished') return 'Finished';
-		if (s === 'upcoming') return 'Upcoming';
+		if (!s) return m.detail_status_unknown();
+		if (s === 'current') return m.detail_status_current();
+		if (s === 'finished') return m.detail_status_finished();
+		if (s === 'upcoming') return m.detail_status_upcoming();
 		return s;
 	}
 	function subtypeLabel(s: string | null): string {
@@ -726,16 +727,17 @@
 	 *  when we capped at the last episode, otherwise "Play episode 1". */
 	const playLabel = $derived.by(() => {
 		const ep = defaultEpisode();
-		if (!resumeEntry) return 'Play episode 1';
+		if (!resumeEntry) return m.detail_play_button_episode_one();
 		const last = parseInt(resumeEntry.ep_no, 10);
-		if (Number.isFinite(last) && ep === last) return `Replay · Episode ${ep}`;
-		return `Continue · Episode ${ep}`;
+		if (Number.isFinite(last) && ep === last)
+			return m.detail_play_button_replay({ episode: String(ep) });
+		return m.detail_play_button_resume({ episode: String(ep) });
 	});
 
 	async function startPlay(ep: number) {
 		const title = playTitle();
 		if (!title) {
-			notify('No title available for playback yet.');
+			notify(m.detail_notify_no_title());
 			return;
 		}
 		// Persistent-PiP short-circuit: if the singleton video is
@@ -948,17 +950,21 @@
 					     notice. True → real Play/Download with the
 					     allmanga-truth count threaded through. -->
 					{#if availability === null}
-						<div class="actions actions-loading" aria-label="Title actions" aria-busy="true">
+						<div
+							class="actions actions-loading"
+							aria-label={m.detail_actions_aria_label()}
+							aria-busy="true"
+						>
 							<span class="action-skel"></span>
 							<span class="action-skel action-skel-narrow"></span>
 						</div>
 					{:else if availability === false}
 						<p class="unavailable" role="status">
 							<span aria-hidden="true">⏵</span>
-							Not in allmanga's catalogue — playback &amp; download unavailable for this title.
+							{m.detail_unavailable_message()}
 						</p>
 					{:else}
-						<div class="actions" aria-label="Title actions">
+						<div class="actions" aria-label={m.detail_actions_aria_label()}>
 							<button
 								type="button"
 								class="btn btn-glass"
@@ -971,15 +977,15 @@
 							</button>
 							<button type="button" class="btn btn-outline" onclick={onDownload}>
 								<span aria-hidden="true">↓</span>
-								<span>Download</span>
+								<span>{m.detail_download_button()}</span>
 							</button>
 						</div>
 					{/if}
 
 					<!-- Sub/Dub + Quality controls. Reads/writes ani-gui config. -->
 					<div class="controls">
-						<div class="seg-group" role="group" aria-label="Audio mode">
-							<span class="seg-label">Audio</span>
+						<div class="seg-group" role="group" aria-label={m.detail_audio_group_aria_label()}>
+							<span class="seg-label">{m.detail_audio_group_label()}</span>
 							<div class="seg">
 								{#each ['sub', 'dub'] as mode (mode)}
 									<button
@@ -996,8 +1002,8 @@
 							</div>
 						</div>
 
-						<div class="seg-group" role="group" aria-label="Quality">
-							<span class="seg-label">Quality</span>
+						<div class="seg-group" role="group" aria-label={m.detail_quality_group_aria_label()}>
+							<span class="seg-label">{m.detail_quality_group_label()}</span>
 							<div class="seg seg-narrow">
 								{#each QUALITIES as q (q.key)}
 									<button
@@ -1015,42 +1021,44 @@
 						</div>
 
 						{#if configError}
-							<span class="seg-error" role="alert">Settings: {configError}</span>
+							<span class="seg-error" role="alert"
+								>{m.detail_settings_error_prefix({ detail: configError })}</span
+							>
 						{/if}
 					</div>
 
-					<ul class="meta-row" aria-label="Title metadata">
+					<ul class="meta-row" aria-label={m.detail_meta_row_aria_label()}>
 						{#if year}
 							<li class="meta-pill">
-								<span class="meta-key">Year</span>
+								<span class="meta-key">{m.detail_meta_year_key()}</span>
 								<span class="meta-val num">{year}</span>
 							</li>
 						{/if}
 						{#if detail.episode_count}
 							<li class="meta-pill">
-								<span class="meta-key">Episodes</span>
+								<span class="meta-key">{m.detail_meta_episodes_key()}</span>
 								<span class="meta-val num">{detail.episode_count}</span>
 							</li>
 						{/if}
 						{#if rating}
 							<li class="meta-pill">
-								<span class="meta-key">Rating</span>
+								<span class="meta-key">{m.detail_meta_rating_key()}</span>
 								<span class="meta-val num">
 									<span class="star" aria-hidden="true">★</span>{rating}<span class="meta-faint"
-										>/10</span
+										>{m.detail_meta_rating_suffix()}</span
 									>
 								</span>
 							</li>
 						{/if}
 						{#if detail.age_rating}
 							<li class="meta-pill">
-								<span class="meta-key">Age</span>
+								<span class="meta-key">{m.detail_meta_age_key()}</span>
 								<span class="meta-val">{detail.age_rating}</span>
 							</li>
 						{/if}
 						{#if detail.popularity_rank}
 							<li class="meta-pill">
-								<span class="meta-key">Rank</span>
+								<span class="meta-key">{m.detail_meta_rank_key()}</span>
 								<span class="meta-val num">#{detail.popularity_rank}</span>
 							</li>
 						{/if}
@@ -1060,7 +1068,7 @@
 
 			{#if actionNotice}
 				<div class="action-notice" role="status">
-					<span class="action-notice-key">Note</span>
+					<span class="action-notice-key">{m.detail_action_notice_key()}</span>
 					<span class="action-notice-rule" aria-hidden="true"></span>
 					<span>{actionNotice}</span>
 				</div>
@@ -1073,7 +1081,7 @@
 		     column width and visually breathe. -->
 			<section class="body">
 				<div class="body-col body-col-prose">
-					<h2 class="section-eyebrow">Synopsis</h2>
+					<h2 class="section-eyebrow">{m.detail_synopsis_heading()}</h2>
 					{#if detail.synopsis}
 						<div class="prose-wrap" class:expanded={synopsisExpanded}>
 							<p class="prose">{detail.synopsis}</p>
@@ -1092,11 +1100,13 @@
 								onclick={() => (synopsisExpanded = !synopsisExpanded)}
 								aria-expanded={synopsisExpanded}
 							>
-								{synopsisExpanded ? 'Read less' : 'Read more'}
+								{synopsisExpanded
+									? m.detail_synopsis_toggle_less()
+									: m.detail_synopsis_toggle_more()}
 							</button>
 						{/if}
 					{:else}
-						<p class="prose-empty">No synopsis on file at Kitsu.</p>
+						<p class="prose-empty">{m.detail_synopsis_empty()}</p>
 					{/if}
 				</div>
 
@@ -1109,7 +1119,7 @@
 					     same. -->
 					<div class="ep-toolbar">
 						<div class="ep-toolbar-left">
-							<h2 class="ep-section-heading">Episodes</h2>
+							<h2 class="ep-section-heading">{m.detail_episodes_heading()}</h2>
 							<span class="ep-range">
 								{#if episodes && episodes.length > 0 && detail.episode_count}
 									{#if knownAvailableEpisodes !== null && knownAvailableEpisodes < detail.episode_count}
@@ -1119,26 +1129,43 @@
 										     (Kitsu missing data on a finished show) read as
 										     "{N} of {M} listed". -->
 										{#if detail.status === 'current'}
-											{knownAvailableEpisodes} aired so far
-											<span class="ep-range-faint"> · {detail.episode_count} expected</span>
+											{m.detail_episodes_range_aired_so_far({
+												count: String(knownAvailableEpisodes)
+											})}
+											<span class="ep-range-faint"
+												>{m.detail_episodes_range_expected_suffix({
+													count: String(detail.episode_count)
+												})}</span
+											>
 										{:else if detail.status === 'upcoming'}
-											{knownAvailableEpisodes} aired
-											<span class="ep-range-faint"> · {detail.episode_count} announced</span>
+											{m.detail_episodes_range_aired({ count: String(knownAvailableEpisodes) })}
+											<span class="ep-range-faint"
+												>{m.detail_episodes_range_announced_suffix({
+													count: String(detail.episode_count)
+												})}</span
+											>
 										{:else}
-											{knownAvailableEpisodes} of {detail.episode_count}
-											<span class="ep-range-faint"> listed</span>
+											{m.detail_episodes_range_of({
+												aired: String(knownAvailableEpisodes),
+												total: String(detail.episode_count)
+											})}
+											<span class="ep-range-faint">{m.detail_episodes_range_listed_suffix()}</span>
 										{/if}
 									{:else if totalEpisodePages !== null && totalEpisodePages > 1}
-										{epStart}–{epEnd} of {detail.episode_count}
+										{m.detail_episodes_range_pagination({
+											epStart: String(epStart),
+											epEnd: String(epEnd),
+											total: String(detail.episode_count)
+										})}
 									{:else}
-										{detail.episode_count} episodes
+										{m.detail_episodes_range_all({ count: String(detail.episode_count) })}
 									{/if}
 								{:else if episodes && episodes.length > 0}
-									page {episodesPage}
+									{m.detail_episodes_range_page({ page: String(episodesPage) })}
 								{:else if episodesError}
-									unavailable
+									{m.detail_episodes_range_unavailable()}
 								{:else}
-									loading…
+									{m.detail_episodes_range_loading()}
 								{/if}
 							</span>
 						</div>
@@ -1146,7 +1173,9 @@
 						{#if (totalEpisodePages !== null && totalEpisodePages > 1) || (episodes && episodes.length === UI_PAGE_SIZE)}
 							<div class="ep-toolbar-right">
 								<form class="ep-jump" onsubmit={jumpToEpisode}>
-									<span class="ep-jump-key" aria-hidden="true">jump</span>
+									<span class="ep-jump-key" aria-hidden="true"
+										>{m.detail_episodes_jump_label()}</span
+									>
 									<span class="ep-jump-pill">
 										<input
 											class="jump-input"
@@ -1154,15 +1183,15 @@
 											min="1"
 											max={detail.episode_count ?? 9999}
 											step="1"
-											placeholder="ep #"
-											aria-label="Jump to episode number"
+											placeholder={m.detail_episodes_jump_placeholder()}
+											aria-label={m.detail_episodes_jump_placeholder()}
 											bind:value={jumpInput}
 										/>
 										<button
 											type="submit"
 											class="ep-jump-go"
 											disabled={!jumpInput || episodesLoading}
-											aria-label="Go to episode"
+											aria-label={m.detail_episodes_jump_submit_aria_label()}
 										>
 											<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 												<path
@@ -1177,13 +1206,17 @@
 										</button>
 									</span>
 								</form>
-								<div class="ep-pager-mini" role="group" aria-label="Episode pagination">
+								<div
+									class="ep-pager-mini"
+									role="group"
+									aria-label={m.detail_episodes_pager_aria_label()}
+								>
 									<button
 										type="button"
 										class="ep-pager-mini-btn"
 										onclick={() => gotoPage(episodesPage - 1)}
 										disabled={episodesPage <= 1 || episodesLoading}
-										aria-label="Previous page"
+										aria-label={m.detail_episodes_pager_previous_aria_label()}
 									>
 										<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 											<path
@@ -1203,7 +1236,7 @@
 										disabled={(totalEpisodePages !== null && episodesPage >= totalEpisodePages) ||
 											episodesLoading ||
 											(episodes !== null && episodes.length < UI_PAGE_SIZE)}
-										aria-label="Next page"
+										aria-label={m.detail_episodes_pager_next_aria_label()}
 									>
 										<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
 											<path
@@ -1258,7 +1291,7 @@
 										class="ep-tile"
 										class:ep-tile-disabled={availability === false}
 										aria-disabled={availability === false}
-										title={availability === false ? "Not in allmanga's catalogue." : undefined}
+										title={availability === false ? m.detail_ep_disabled_tooltip() : undefined}
 										onclick={() => onPickEpisode(num ?? 0)}
 									>
 										<span class="ep-thumb">
@@ -1270,16 +1303,19 @@
 												</span>
 											{/if}
 											<span class="ep-frame-num" aria-hidden="true">
-												<span class="ep-frame-num-key">ep</span>
+												<span class="ep-frame-num-key">{m.detail_episode_frame_num_key()}</span>
 												<span class="ep-frame-num-val">{num ?? '?'}</span>
 											</span>
 										</span>
 										<span class="ep-foot">
 											<span class="ep-title">
-												{ep.canonical_title ?? `Episode ${num ?? ''}`}
+												{ep.canonical_title ??
+													m.detail_episode_title_fallback({ num: String(num ?? '') })}
 											</span>
 											<span class="ep-meta">
-												{#if ep.length}<span>{ep.length}m</span>{/if}
+												{#if ep.length}<span
+														>{m.detail_episode_length_suffix({ minutes: String(ep.length) })}</span
+													>{/if}
 											</span>
 										</span>
 									</button>
@@ -1301,7 +1337,7 @@
 										class="ep-tile"
 										class:ep-tile-disabled={availability === false}
 										aria-disabled={availability === false}
-										title={availability === false ? "Not in allmanga's catalogue." : undefined}
+										title={availability === false ? m.detail_ep_disabled_tooltip() : undefined}
 										onclick={() => onPickEpisode(n)}
 									>
 										<span class="ep-thumb">
@@ -1309,13 +1345,15 @@
 												{n.toString().padStart(2, '0')}
 											</span>
 											<span class="ep-tag" aria-hidden="true">
-												<span class="ep-tag-key">Ep</span>
+												<span class="ep-tag-key">{m.detail_episode_frame_num_key()}</span>
 												<span class="ep-tag-num">{n}</span>
 											</span>
 										</span>
 										<span class="ep-foot">
-											<span class="ep-title">Episode {n}</span>
-											<span class="ep-meta">—</span>
+											<span class="ep-title"
+												>{m.detail_episode_placeholder_title({ num: String(n) })}</span
+											>
+											<span class="ep-meta">{m.detail_episode_placeholder_meta()}</span>
 										</span>
 									</button>
 								</li>
@@ -1324,10 +1362,10 @@
 					</ul>
 					{#if episodesError}
 						<p class="ep-grid-foot ep-grid-foot-warn">
-							Episode metadata unavailable from Kitsu — playable list above is a fallback.
+							{m.detail_episodes_error_message()}
 						</p>
 					{:else if episodes && episodes.length > 0}
-						<p class="ep-grid-foot">Thumbnails and titles via Kitsu.</p>
+						<p class="ep-grid-foot">{m.detail_episodes_source_credit()}</p>
 					{/if}
 				</div>
 			</section>
@@ -1337,7 +1375,10 @@
 		     1-2 words to surface franchise neighbours / look-alikes. -->
 			{#if similar && similar.length > 0}
 				<section class="similar">
-					<Strip eyebrow="Similar titles" caption="via Kitsu search">
+					<Strip
+						eyebrow={m.detail_similar_strip_eyebrow()}
+						caption={m.detail_similar_strip_caption()}
+					>
 						{#each similar as hit (hit.id)}
 							<PosterCard anime={hit} />
 						{/each}
@@ -1352,7 +1393,7 @@
 
 {#if playFailure}
 	<ErrorOverlay
-		headline={`Couldn't play episode ${playFailure.episode}`}
+		headline={m.detail_error_play_headline({ episode: String(playFailure.episode) })}
 		body={playFailure.message}
 		onDismiss={() => (playFailure = null)}
 	/>
