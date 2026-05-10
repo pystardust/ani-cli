@@ -48,5 +48,14 @@ contextBridge.exposeInMainWorld('aniGui', {
 	// resolve.
 	async revealInFolder(dirPath) {
 		return ipcRenderer.invoke('ani-gui:reveal-in-folder', dirPath);
+	},
+
+	// Push the renderer's current active-download count to main so
+	// the close handler can decide whether to prompt the user before
+	// quitting. Fire-and-forget — main caches the latest value and
+	// reads it synchronously at close time. Called from the layout's
+	// download-store effect; no return value needed.
+	notifyActiveDownloads(count) {
+		ipcRenderer.send('ani-gui:active-downloads', count);
 	}
 });

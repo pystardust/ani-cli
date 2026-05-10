@@ -36,6 +36,7 @@
 	import DownloadBar from '$lib/components/DownloadBar.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import { downloadFailureStore } from '$lib/download/failure-store.svelte';
+	import { downloadStore } from '$lib/download/store.svelte';
 	import { nextDepth, shouldShowBackButton, type NavType } from '$lib/history/nav-depth';
 	import {
 		RECENT_LIMIT,
@@ -50,6 +51,16 @@
 	import { decideLeavePipAction } from '$lib/play/leave-pip-decision';
 
 	let { children } = $props();
+
+	// Push the active-download count to Electron main on every
+	// change. Main caches the latest value and reads it at close
+	// time to decide whether to prompt the user before quitting.
+	// `active` filters items by pending/active status — which is
+	// exactly the set whose work would be lost on quit.
+	$effect(() => {
+		const count = downloadStore.active.length;
+		if (typeof window !== 'undefined') window.aniGui?.notifyActiveDownloads?.(count);
+	});
 
 	// Routes where the chrome should yield to content.
 	// Use the route id (e.g. "/", "/search", "/anime/[id]") instead of the

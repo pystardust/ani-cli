@@ -123,7 +123,17 @@ function resolveBackendBinary() {
 function spawnBackend() {
   return new Promise((resolve, reject) => {
     const bin = resolveBackendBinary();
-    const child = spawn(bin, [], { stdio: ["ignore", "pipe", "pipe"] });
+    // `detached: true` puts the backend in its own process group on
+    // POSIX so we can kill the entire group (backend + ani-cli +
+    // aria2c + ffmpeg) at quit time via `process.kill(-pid, …)`.
+    // Without it, only the Rust process gets the signal and the
+    // download grandchildren get reparented to init and keep
+    // running. Windows has no process groups; the tree-kill path
+    // shells out to taskkill /T instead — see killBackendTree().
+    const child = spawn(bin, [], {
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    });
     let buf = "";
     let resolved = false;
     // Set when the backend emits the ANI_GUI_FATAL bash_missing
@@ -204,6 +214,43 @@ async function showBashMissingDialog() {
 }
 
 let backendChild = null;
+
+/**
+ * Kill the backend AND every download grandchild it spawned
+ * (ani-cli, aria2c, ffmpeg, yt-dlp). On POSIX we negate the pid to
+ * signal the backend's process group — spawnBackend uses
+ * `detached: true` so the cascade works. On Windows there are no
+ * process groups, so we shell out to taskkill with /T (kill tree).
+ *
+ * Idempotent — safe to call when the backend has already exited.
+ */
+function killBackendTree() {
+  if (!backendChild || backendChild.killed) return;
+  if (process.platform === "win32") {
+    // /F = force, /T = include child processes. Fire-and-forget;
+    // we don't await it because the close path is already winding
+    // down and a stuck taskkill shouldn't block the quit.
+    try {
+      spawn("taskkill", ["/F", "/T", "/PID", String(backendChild.pid)], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+    } catch (e) {
+      console.error("[main] taskkill failed:", e);
+    }
+    return;
+  }
+  try {
+    // Negative pid = process group. SIGTERM gives the children a
+    // chance to clean up; if any survives, the OS reaper will
+    // eventually SIGKILL on app shutdown.
+    process.kill(-backendChild.pid, "SIGTERM");
+  } catch (e) {
+    // ESRCH: group already gone (backend exited first). Anything
+    // else is unexpected and worth logging.
+    if (e && e.code !== "ESRCH") console.error("[main] killBackendTree:", e);
+  }
+}
 
 async function createWindow(apiBase) {
   // Pre-compute the work area so the window opens at the maximized
@@ -288,6 +335,11 @@ async function createWindow(apiBase) {
   win.once("show", () => {
     if (!win.isMaximized()) win.maximize();
   });
+
+  // Catch the X-button / window-close path. The before-quit hook
+  // below covers Cmd+Q / dock-quit / OS shutdown; both reuse the
+  // same guard so wording stays consistent across exit paths.
+  win.on("close", (e) => maybePromptOnClose(win, e));
 
   if (IS_DEV) {
     win.webContents.openDevTools({ mode: "detach" });
@@ -382,6 +434,50 @@ ipcMain.handle("ani-gui:reveal-in-folder", async (_event, dirPath) => {
   return err === "";
 });
 
+// Latest active-download count pushed by the renderer (see preload's
+// notifyActiveDownloads). Main reads this synchronously at close
+// time to decide whether to prompt the user before quitting.
+let activeDownloadCount = 0;
+// Set true once the user has confirmed "Quit anyway" so the
+// follow-up close (which we synthesise via win.close()) skips the
+// prompt. Without this we'd recurse.
+let confirmedQuit = false;
+
+ipcMain.on("ani-gui:active-downloads", (_event, count) => {
+  if (typeof count !== "number" || !Number.isFinite(count) || count < 0) return;
+  activeDownloadCount = Math.floor(count);
+});
+
+/**
+ * Close-path guard. Called from window 'close' and app 'before-quit';
+ * intercepts both X-button and Cmd+Q / dock-quit / OS shutdown. Uses
+ * showMessageBoxSync so the close-handler's preventDefault sticks —
+ * the async variant returns after the close has already been
+ * committed.
+ */
+function maybePromptOnClose(win, event) {
+  if (confirmedQuit) return;
+  if (activeDownloadCount <= 0) return;
+  event.preventDefault();
+  const plural = activeDownloadCount === 1 ? "" : "s";
+  const choice = dialog.showMessageBoxSync(win, {
+    type: "question",
+    buttons: ["Cancel", "Quit anyway"],
+    defaultId: 0,
+    cancelId: 0,
+    title: "Active downloads",
+    message: `${activeDownloadCount} download${plural} in progress.`,
+    detail: "They will be cancelled if you quit. Continue?",
+  });
+  if (choice === 1) {
+    confirmedQuit = true;
+    // Re-trigger the close path. The flag above makes this no-op
+    // through the guard so the window actually closes this time.
+    if (win && !win.isDestroyed()) win.close();
+    else app.quit();
+  }
+}
+
 app.whenReady().then(async () => {
   try {
     // Drop Electron's default app menu (File / Edit / View / Window /
@@ -413,8 +509,17 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  if (backendChild && !backendChild.killed) backendChild.kill("SIGTERM");
+app.on("before-quit", (e) => {
+  // Prompt on Cmd+Q / dock-quit / OS-shutdown if downloads are
+  // active. The window-level `close` handler above covers the
+  // X-button path; both reuse the same guard.
+  const focused = BrowserWindow.getFocusedWindow();
+  const win = focused || BrowserWindow.getAllWindows()[0];
+  if (win) maybePromptOnClose(win, e);
+  // Tree-kill so ani-cli + aria2c + ffmpeg actually stop. A bare
+  // backendChild.kill() only signals the Rust process and orphans
+  // the download grandchildren to init.
+  killBackendTree();
 });
 
 // Re-create a window if the user clicks the dock icon on macOS while

@@ -50,6 +50,10 @@ declare global {
 			/** Open the OS file manager at `dirPath`. Returns true on
 			 *  success. */
 			revealInFolder?: (dirPath: string) => Promise<boolean>;
+			/** Push the renderer's current active-download count to
+			 *  Electron main so the close handler can decide whether
+			 *  to prompt the user before quitting. Fire-and-forget. */
+			notifyActiveDownloads?: (count: number) => void;
 		};
 	}
 }
