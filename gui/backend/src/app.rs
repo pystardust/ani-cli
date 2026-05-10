@@ -92,10 +92,7 @@ impl AppState {
         // populated by the `fetch:win-deps` script so playback works
         // without polluting global PATH. Computed before consuming
         // `ani_cli_resource_dir` for the script fallback below.
-        let bundled_bin = ani_cli_resource_dir
-            .as_ref()
-            .map(|d| d.join("bin"))
-            .filter(|p| p.is_dir());
+        let bundled_bin = resolve_bundled_bin(ani_cli_resource_dir.as_deref());
         // Resolve the script path through the writable cache copy so
         // `-U` can patch it in place. The seed is whatever PATH or
         // the resource dir gives us; the live path is always under
@@ -240,6 +237,17 @@ fn resolve_bash_path() -> Result<Option<PathBuf>> {
     }
 }
 
+/// Resolve the bundled-deps directory next to the backend binary.
+/// `<resource_dir>/bin` holds POSIX-side ani-cli deps the script
+/// needs but Git for Windows doesn't bundle (today: `fzf.exe`,
+/// `aria2c.exe`). Returns `Some` only when the dir actually exists
+/// — so a Linux build (no resource dir at all) and a dev Windows
+/// run that hasn't run `fetch:win-deps` both come out as `None`,
+/// and the spawn path falls through to the inherited PATH.
+fn resolve_bundled_bin(resource_dir: Option<&std::path::Path>) -> Option<PathBuf> {
+    resource_dir.map(|d| d.join("bin")).filter(|p| p.is_dir())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -325,5 +333,59 @@ mod tests {
     fn scraper_slots_starts_at_capacity() {
         let app = fake_state();
         assert_eq!(app.scraper_slots.available_permits(), SCRAPER_CONCURRENCY);
+    }
+
+    #[test]
+    fn debug_options_threads_bundled_bin_from_state() {
+        // Windows-readiness: AppState::bundled_bin must flow into
+        // every spawn site so `compose_anicli_path` can prepend it
+        // ahead of the inherited PATH. Mirror of the bash_path test.
+        let mut app = fake_state();
+        app.bundled_bin = Some(PathBuf::from("/opt/ani-gui/resources/bin"));
+        let opts = app.debug_options();
+        assert_eq!(
+            opts.bundled_bin.as_deref(),
+            Some(std::path::Path::new("/opt/ani-gui/resources/bin"))
+        );
+    }
+
+    #[test]
+    fn debug_options_carries_none_bundled_bin_by_default() {
+        // Default fake_state has no bundled dir; debug_options must
+        // propagate that None so the spawn helper falls through to
+        // the inherited PATH unchanged. Linux build path always.
+        let app = fake_state();
+        assert!(app.debug_options().bundled_bin.is_none());
+    }
+
+    #[test]
+    fn resolve_bundled_bin_returns_none_when_resource_dir_is_none() {
+        // No resource dir handed in (cargo run from source on Linux,
+        // dev Windows without fetch:win-deps) → no bundled dir to
+        // resolve. PATH falls through unchanged at every spawn site.
+        assert!(resolve_bundled_bin(None).is_none());
+    }
+
+    #[test]
+    fn resolve_bundled_bin_returns_none_when_bin_subdir_missing() {
+        // Resource dir exists but the bundled deps haven't been
+        // staged into <resource_dir>/bin (Linux packaging, or a
+        // Windows dev build that didn't run fetch:win-deps yet).
+        // Tempdir gets cleaned up at scope exit.
+        let td = tempfile::tempdir().expect("tempdir");
+        // td.path() exists; td.path()/bin does not.
+        assert!(resolve_bundled_bin(Some(td.path())).is_none());
+    }
+
+    #[test]
+    fn resolve_bundled_bin_returns_some_when_bin_subdir_exists() {
+        // Production shape: <resource_dir>/bin holds the bundled
+        // POSIX deps. Helper returns Some(<resource_dir>/bin) so
+        // compose_anicli_path can prepend it.
+        let td = tempfile::tempdir().expect("tempdir");
+        let bin = td.path().join("bin");
+        std::fs::create_dir(&bin).expect("mkdir bin");
+        let got = resolve_bundled_bin(Some(td.path()));
+        assert_eq!(got.as_deref(), Some(bin.as_path()));
     }
 }
