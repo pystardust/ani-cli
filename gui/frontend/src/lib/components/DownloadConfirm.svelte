@@ -71,22 +71,32 @@
 		if (open) {
 			dir = args?.download_dir && args.download_dir.length > 0 ? args.download_dir : defaultDir;
 			busy = false;
+			// IMPORTANT: never *read* a piece of $state inside this
+			// effect after writing to it elsewhere — any read makes it
+			// a reactive dep, and the user clicking Range/All would
+			// immediately retrigger this effect and snap state back to
+			// the modal-open defaults (i.e. the picker locks on This).
+			// Compute every initial value into a local before writing.
 			const initial = args ? Number.parseInt(args.episode, 10) : 1;
-			startEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
-			endEp = startEp;
+			const clickedEp = Number.isFinite(initial) && initial > 0 ? initial : 1;
 			// On /play: This is the obvious default (current ep). On the
 			// detail page where This is hidden, prefer All when we know
 			// the count (most common intent — grab the season); fall
 			// back to Range when count is unknown.
-			mode = showThisEpisode ? 'this' : maxEpisode ? 'all' : 'range';
-			// If we're starting in Range mode, seed with the full known
-			// range (or 1..rangeMax fallback) so the user lands on a
-			// useful default rather than clicked-ep..clicked-ep.
-			if (mode === 'range') {
+			const desiredMode: Mode = showThisEpisode ? 'this' : maxEpisode ? 'all' : 'range';
+			let initStart = clickedEp;
+			let initEnd = clickedEp;
+			if (desiredMode === 'range') {
+				// Starting directly in Range (detail page, count unknown):
+				// seed with 1..rangeMax so the user lands on a useful
+				// default rather than clicked-ep..clicked-ep.
 				const r = defaultRangeOnEnter(maxEpisode, RANGE_FALLBACK_CAP);
-				startEp = r.start;
-				endEp = r.end;
+				initStart = r.start;
+				initEnd = r.end;
 			}
+			startEp = initStart;
+			endEp = initEnd;
+			mode = desiredMode;
 		}
 	});
 
