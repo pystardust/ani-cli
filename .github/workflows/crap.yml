@@ -83,7 +83,11 @@ jobs:
           # the JSON one feeds the ratchet check; the table goes to
           # the build log so failures surface the top-N offenders
           # without needing a second push.
-          lizard --xml gui/backend/src gui/frontend/src > coverage/lizard.xml
+          # Exclude Paraglide's compiled output — it's a generated
+          # artifact (one switch arm per message key, regenerated at
+          # i18n:compile time) and inflates max/p95 wildly without
+          # representing handwritten complexity.
+          lizard --xml -x ".*paraglide.*" gui/backend/src gui/frontend/src > coverage/lizard.xml
           node tools/crap-score.mjs \
               --lcov=gui/backend/lcov.info \
               --lcov=gui/frontend/coverage/lcov.info:gui/frontend \

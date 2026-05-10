@@ -42,7 +42,7 @@ find "$ROUTES_DIR" "$COMPONENTS_DIR" -name '*.svelte' 2>/dev/null | while IFS= r
     grep -nE '>[[:space:]]*[A-Z][a-zA-Z]+[[:space:]]+[a-zA-Z]+[[:space:]a-zA-Z.,!?'"'"'-]*[<]' "$f" |
         grep -v 'i18n-ignore' |
         grep -v '\bm\.' |
-        grep -vF "$dollar_brace" |  # template expression
+        grep -vF "$dollar_brace" | # template expression
         grep -v '{[a-z]' || true
 done >"$hits"
 
