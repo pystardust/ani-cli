@@ -162,6 +162,22 @@ mod tests {
     }
 
     #[test]
+    fn use_custom_player_controls_defaults_to_true() {
+        // The native Chromium controls bar is functional but plain;
+        // the custom overlay carries the per-show accent color, keeps
+        // the Skip OP/Outro overlay visible during fullscreen, and is
+        // the chrome the M3 design direction (§7) actually targets.
+        // Native is the strictly inferior option for ani-gui's
+        // top-priority UI surface, so a fresh install should pick the
+        // designed experience by default. Existing users who already
+        // wrote `use_custom_player_controls = false` keep that —
+        // serde's deserializer respects the file, this default only
+        // covers the absent-field case (fresh install / upgraded user
+        // whose config predates the field landing).
+        assert!(Config::default().use_custom_player_controls);
+    }
+
+    #[test]
     fn auto_play_next_round_trips_through_toml() {
         let c = Config {
             auto_play_next: true,
