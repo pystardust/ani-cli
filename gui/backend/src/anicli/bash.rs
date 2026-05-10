@@ -12,32 +12,105 @@
 use std::path::{Path, PathBuf};
 
 /// Pure: given a closure that resolves env vars, return the ordered
-/// candidate paths to probe for `bash.exe` on Windows.
+/// candidate paths to probe for `bash.exe` on Windows. Order matters
+/// — the caller takes the first one that exists on disk.
+///
+/// Probe order rationale:
+///   1. `%ProgramFiles%\Git\bin\bash.exe` — the default Git for
+///      Windows install path; covers `winget install Git.Git`,
+///      manual installer, most enterprise images.
+///   2. `%ProgramFiles(x86)%\Git\bin\bash.exe` — 32-bit Git for
+///      Windows on a 64-bit OS (rare, but cheap to check).
+///   3. `%USERPROFILE%\scoop\apps\git\current\bin\bash.exe` — the
+///      scoop-recommended path the upstream ani-cli README walks
+///      users through.
+///
+/// Falls back to canonical literals when `ProgramFiles` / `(x86)`
+/// are absent so the list is never empty on a freshly-imaged machine
+/// where the user's shell hasn't populated env yet. Omits the scoop
+/// entry when `USERPROFILE` is absent because we can't construct a
+/// useful path without it.
 #[must_use]
-pub fn windows_bash_candidate_paths(_env: impl Fn(&str) -> Option<String>) -> Vec<PathBuf> {
-    // Stub — the real implementation lives in the green commit.
-    Vec::new()
+pub fn windows_bash_candidate_paths(env: impl Fn(&str) -> Option<String>) -> Vec<PathBuf> {
+    let mut out = Vec::with_capacity(3);
+
+    let pf = env("ProgramFiles").unwrap_or_else(|| r"C:\Program Files".to_string());
+    out.push(PathBuf::from(format!(r"{pf}\Git\bin\bash.exe")));
+
+    let pf86 = env("ProgramFiles(x86)").unwrap_or_else(|| r"C:\Program Files (x86)".to_string());
+    out.push(PathBuf::from(format!(r"{pf86}\Git\bin\bash.exe")));
+
+    if let Some(home) = env("USERPROFILE") {
+        out.push(PathBuf::from(format!(
+            r"{home}\scoop\apps\git\current\bin\bash.exe"
+        )));
+    }
+    out
 }
 
 /// Probe filesystem for the first existing path in `candidates`.
+/// Pure with respect to `is_file`, which the caller supplies — tests
+/// inject a closure to drive specific branches without touching real
+/// disk; production callers pass `Path::is_file` directly.
 #[must_use]
 pub fn pick_first_existing(
-    _candidates: &[PathBuf],
-    _is_file: impl Fn(&Path) -> bool,
+    candidates: &[PathBuf],
+    is_file: impl Fn(&Path) -> bool,
 ) -> Option<PathBuf> {
-    // Stub — the real implementation lives in the green commit.
-    None
+    candidates.iter().find(|p| is_file(p)).cloned()
 }
 
-/// On Windows, build `bash.exe <ani_cli_path>`. On Unix, build
-/// `<ani_cli_path>` directly. Centralised so every spawn site does
-/// the same thing.
+/// Resolve `bash.exe` at startup on Windows.
+///
+/// 1. PATH — covers users who added Git Bash to PATH or installed
+///    via scoop's shim
+/// 2. Candidate paths from [`windows_bash_candidate_paths`]
+///
+/// Returns `None` only when the user has no Git for Windows install
+/// reachable; the caller surfaces [`crate::error::AniError::BashMissing`]
+/// to the frontend with a one-link install pointer.
+///
+/// On Unix this function isn't called — the spawn path uses
+/// [`build_anicli_command`] which is a noop there.
+#[cfg(windows)]
+#[must_use]
+pub fn locate_bash() -> Option<PathBuf> {
+    if let Some(p) = crate::anicli::process::find_in_path("bash.exe") {
+        return Some(p);
+    }
+    let candidates = windows_bash_candidate_paths(|k| std::env::var(k).ok());
+    pick_first_existing(&candidates, |p| p.is_file())
+}
+
+/// On Windows, build `bash.exe <ani_cli_path>` and apply the
+/// `CREATE_NO_WINDOW` flag so spawning doesn't briefly flash a
+/// console window (bash.exe is a console-subsystem binary; without
+/// the flag, GUI apps that spawn it get a visible flicker on every
+/// invocation). On Unix, build `<ani_cli_path>` directly.
+///
+/// `bash_path` is required on Windows and ignored on Unix. Pass
+/// `None` on Unix; pass `Some(resolved)` on Windows where the
+/// caller has already run [`locate_bash`].
 pub fn build_anicli_command(
-    _ani_cli_path: &Path,
-    _bash_path: Option<&Path>,
+    ani_cli_path: &Path,
+    bash_path: Option<&Path>,
 ) -> tokio::process::Command {
-    // Stub — the real implementation lives in the green commit.
-    tokio::process::Command::new("__bash_stub_unimplemented__")
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let bash = bash_path.expect(
+            "bash_path is required on Windows — call locate_bash at startup and surface BashMissing if it returns None",
+        );
+        let mut cmd = tokio::process::Command::new(bash);
+        cmd.arg(ani_cli_path).creation_flags(CREATE_NO_WINDOW);
+        cmd
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = bash_path;
+        tokio::process::Command::new(ani_cli_path)
+    }
 }
 
 #[cfg(test)]

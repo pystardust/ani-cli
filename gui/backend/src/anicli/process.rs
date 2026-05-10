@@ -57,7 +57,7 @@ pub fn locate_ani_cli(fallback: Option<&PathBuf>) -> Result<PathBuf> {
     Err(AniError::MissingBinary)
 }
 
-fn find_in_path(name: &str) -> Option<PathBuf> {
+pub(crate) fn find_in_path(name: &str) -> Option<PathBuf> {
     let path_var = std::env::var_os("PATH")?;
     for dir in std::env::split_paths(&path_var) {
         let candidate = dir.join(name);
