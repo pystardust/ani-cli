@@ -1,0 +1,22 @@
+{
+	"title": "ani-gui",
+	"back": "Назад",
+	"brand_title": "ani-gui",
+	"home_link_title": "ani-gui — главная",
+	"home_link_label": "Главная",
+	"search_link_label": "Поиск",
+	"settings_link_label": "Настройки",
+	"debug_link_label": "Отладка",
+	"search_refine_placeholder": "Уточните запрос…",
+	"search_placeholder": "Поиск аниме…",
+	"search_aria_label": "Поиск аниме",
+	"search_submit_button": "Искать",
+	"search_dropdown_aria_label": "Подсказки поиска",
+	"search_error_kitsu": "Не удалось связаться с Kitsu.",
+	"search_error_no_matches": "Ничего не найдено.",
+	"search_recent_section_title": "Недавние",
+	"page_title_settings": "Настройки · ani-gui",
+	"page_title_search": "Поиск · ani-gui",
+	"page_title_detail": "{title} · ani-gui",
+	"page_title_loading": "Загрузка"
+}

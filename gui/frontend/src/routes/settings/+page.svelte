@@ -39,9 +39,9 @@
 
 	const LOCALES: Array<{ key: string; label: string; available: boolean }> = [
 		{ key: 'en', label: 'English', available: true },
-		{ key: 'pt-BR', label: 'Português (Brasil)', available: false },
-		{ key: 'es-419', label: 'Español (Latinoamérica)', available: false },
-		{ key: 'ru', label: 'Русский', available: false }
+		{ key: 'pt-BR', label: 'Português (Brasil)', available: true },
+		{ key: 'es-419', label: 'Español (Latinoamérica)', available: true },
+		{ key: 'ru', label: 'Русский', available: true }
 	];
 
 	onMount(() => {

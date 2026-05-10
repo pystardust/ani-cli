@@ -1,0 +1,22 @@
+{
+	"title": "ani-gui",
+	"back": "Atrás",
+	"brand_title": "ani-gui",
+	"home_link_title": "ani-gui — inicio",
+	"home_link_label": "Inicio",
+	"search_link_label": "Buscar",
+	"settings_link_label": "Ajustes",
+	"debug_link_label": "Depuración",
+	"search_refine_placeholder": "Refina tu búsqueda…",
+	"search_placeholder": "Buscar anime…",
+	"search_aria_label": "Buscar anime",
+	"search_submit_button": "Buscar",
+	"search_dropdown_aria_label": "Sugerencias de búsqueda",
+	"search_error_kitsu": "No se pudo conectar con Kitsu.",
+	"search_error_no_matches": "Sin resultados.",
+	"search_recent_section_title": "Recientes",
+	"page_title_settings": "Ajustes · ani-gui",
+	"page_title_search": "Búsqueda · ani-gui",
+	"page_title_detail": "{title} · ani-gui",
+	"page_title_loading": "Cargando"
+}
