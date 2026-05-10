@@ -16,7 +16,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages';
 
-	let { headline, body, dismissLabel, onDismiss } = $props<{
+	let { headline, body, dismissLabel, onDismiss, actionLabel, actionHref } = $props<{
 		/** Short eyebrow line — `Couldn't play episode N` style. */
 		headline: string;
 		/** Full sentence the user reads. Should suggest what to try
@@ -30,8 +30,21 @@
 		 *  clicks the dim backdrop. Parent should reset the error
 		 *  state in the handler. */
 		onDismiss: () => void;
+		/** Optional secondary action — when both `actionLabel` and
+		 *  `actionHref` are set, an `<a>` renders next to dismiss
+		 *  pointing at an external resource (e.g. "Download ffmpeg"
+		 *  → ffmpeg.org/download). Electron's setWindowOpenHandler
+		 *  routes target=_blank links through shell.openExternal. */
+		actionLabel?: string;
+		actionHref?: string;
 	}>();
 	const displayDismissLabel = $derived(dismissLabel ?? m.errors_dismiss_default_label());
+	const hasAction = $derived(
+		typeof actionLabel === 'string' &&
+			actionLabel.length > 0 &&
+			typeof actionHref === 'string' &&
+			actionHref.length > 0
+	);
 
 	function onBackdropClick(e: MouseEvent) {
 		// Only fire when the click hit the backdrop itself, not the
@@ -64,7 +77,26 @@
 	<div class="card" role="document">
 		<p id="error-headline" class="headline">{headline}</p>
 		<p class="body">{body}</p>
-		<button type="button" class="dismiss" onclick={onDismiss}>{displayDismissLabel}</button>
+		<div class="actions">
+			{#if hasAction}
+				<!-- External URL — `resolve()` is for SvelteKit route
+				     ids, not arbitrary outbound links. Electron's
+				     setWindowOpenHandler hands target=_blank to
+				     shell.openExternal, which is what we want. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					class="action"
+					href={actionHref}
+					target="_blank"
+					rel="noopener noreferrer"
+					data-testid="error-overlay-action"
+				>
+					{actionLabel}
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
+			<button type="button" class="dismiss" onclick={onDismiss}>{displayDismissLabel}</button>
+		</div>
 	</div>
 </div>
 
@@ -139,9 +171,51 @@
 		line-height: 1.5;
 		color: var(--bone-100, #f4ece1);
 	}
-	.dismiss {
-		align-self: flex-end;
+	/* Action row: right-aligned cluster holding the optional external
+	   link + the dismiss button. Gap matches the rest of the card so
+	   the row sits naturally below the body without an extra rule. */
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		align-items: center;
+		gap: var(--space-3, 0.75rem);
 		margin-top: var(--space-2, 0.5rem);
+	}
+	/* Action link: visually paired with the dismiss button (same
+	   pill geometry, same focus ring) but filled with the alarm
+	   colour so it reads as the recommended next step. The
+	   underlying anchor stays an <a target=_blank> so Electron's
+	   setWindowOpenHandler hands it to shell.openExternal. */
+	.action {
+		padding: 0.6rem 1.5rem;
+		font-family: var(--font-mono, monospace);
+		font-size: var(--type-meta, 0.875rem);
+		font-weight: 600;
+		letter-spacing: var(--tracking-micro, 0.08em);
+		text-transform: uppercase;
+		text-decoration: none;
+		color: var(--bone-100, #f4ece1);
+		background: color-mix(in oklab, var(--alarm, #c45947) 38%, transparent);
+		border: 1px solid var(--alarm, #c45947);
+		border-radius: var(--radius-pill, 999px);
+		transition:
+			background var(--dur-fast, 140ms) var(--ease-out-soft, ease-out),
+			transform var(--dur-fast, 140ms) var(--ease-out-soft, ease-out);
+	}
+	.action:hover {
+		background: color-mix(in oklab, var(--alarm, #c45947) 55%, transparent);
+	}
+	.action:focus-visible {
+		outline: none;
+		box-shadow:
+			0 0 0 2px var(--ink-000, #000),
+			0 0 0 4px var(--alarm, var(--accent-oxblood, #c45947));
+	}
+	.action:active {
+		transform: translateY(1px);
+	}
+	.dismiss {
 		padding: 0.6rem 1.5rem;
 		font-family: var(--font-mono, monospace);
 		font-size: var(--type-meta, 0.875rem);

@@ -34,6 +34,8 @@
 	} from '$lib/api';
 	import DownloadDock from '$lib/components/DownloadDock.svelte';
 	import DownloadBar from '$lib/components/DownloadBar.svelte';
+	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
+	import { downloadFailureStore } from '$lib/download/failure-store.svelte';
 	import { nextDepth, shouldShowBackButton, type NavType } from '$lib/history/nav-depth';
 	import {
 		RECENT_LIMIT,
@@ -544,6 +546,25 @@
 
 {#if config?.download_bottom_bar_enabled !== false}
 	<DownloadBar />
+{/if}
+
+<!--
+  Layout-level modal for blocking download failures (today: ffmpeg
+  missing on Windows). Lives here, not in the dock, because the
+  point is to be impossible to miss — the dock's bare "!" tooltip
+  was ignorable. Reuses ErrorOverlay (same component the play page
+  uses) so the failure surface is consistent across the app.
+  External link goes through Electron's setWindowOpenHandler →
+  shell.openExternal because <a target=_blank> is intercepted there.
+-->
+{#if downloadFailureStore.current?.kind === 'ffmpeg_missing'}
+	<ErrorOverlay
+		headline={m.download_error_ffmpeg_missing_headline()}
+		body={m.download_error_ffmpeg_missing_body()}
+		actionLabel={m.download_error_ffmpeg_missing_action_label()}
+		actionHref="https://ffmpeg.org/download.html"
+		onDismiss={() => downloadFailureStore.dismiss()}
+	/>
 {/if}
 
 <style>

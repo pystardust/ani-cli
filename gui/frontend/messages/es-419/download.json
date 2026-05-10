@@ -48,5 +48,8 @@
 	"dock_reveal_aria_label": "Mostrar en la carpeta",
 	"dock_reveal_title": "Mostrar en la carpeta",
 	"dock_dismiss_aria_label": "Descartar",
-	"dock_dismiss_title": "Descartar"
+	"dock_dismiss_title": "Descartar",
+	"error_ffmpeg_missing_headline": "La descarga necesita ffmpeg",
+	"error_ffmpeg_missing_body": "ani-gui usa ffmpeg para guardar las descargas como MP4, pero no está instalado en este sistema. El instalador normalmente lo descarga durante la configuración — vuelve a ejecutar el instalador con conexión a internet, o instala ffmpeg manualmente.",
+	"error_ffmpeg_missing_action_label": "Descargar ffmpeg"
 }

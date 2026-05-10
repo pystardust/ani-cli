@@ -22,13 +22,12 @@ class DownloadFailureStore {
 	/** Open the modal with the given payload. Replaces any existing
 	 *  modal — the most-recent failure is the one the user sees. */
 	show(payload: DownloadFailurePayload): void {
-		void payload;
-		throw new Error('test(red): show() lands in the paired feat(green) commit');
+		this.current = payload;
 	}
 
 	/** Close the modal. Idempotent — safe to call when nothing is open. */
 	dismiss(): void {
-		throw new Error('test(red): dismiss() lands in the paired feat(green) commit');
+		this.current = null;
 	}
 }
 
