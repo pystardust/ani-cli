@@ -12,6 +12,7 @@
 //!   `TERM=dumb`, `NO_COLOR=1`, and a wall-clock timeout. The function
 //!   that actually spawns the script.
 
+pub mod bash;
 pub mod parser;
 pub mod process;
 pub mod update;
