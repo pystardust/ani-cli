@@ -39,10 +39,8 @@ Platform support tiers:
 <details>
 <summary><strong>Linux</strong> — tier 1 (tested on Ubuntu)</summary>
 
-- **AppImage** — download from the [releases page](https://github.com/JoaoPucci/ani-gui/releases), `chmod +x`, double-click. The bundle launches with Chromium's setuid sandbox disabled (the bundled `AppRun` injects `--no-sandbox` automatically) because AppImage's read-only FUSE mount can't carry the SUID bit `chrome-sandbox` requires; the localhost-only architecture means the sandbox isn't load-bearing for the threat model. If you'd rather keep the sandbox, install the `.deb` instead.
+- **AppImage** — download from the [releases page](https://github.com/JoaoPucci/ani-gui/releases), `chmod +x`, double-click. The bundle launches with Chromium's setuid sandbox disabled (AppImage's read-only FUSE mount can't carry the SUID bit `chrome-sandbox` requires); the localhost-only architecture means the sandbox isn't load-bearing for the threat model. If you'd rather keep the sandbox, install the `.deb` instead.
 - **Debian / Ubuntu (`.deb`)** — `sudo dpkg -i ani-gui_<version>_amd64.deb`. The post-install script sets the `chrome-sandbox` SUID bit Electron needs, so the sandbox stays on.
-
-If a non-standard launcher ever bypasses the AppRun (some users invoke the embedded `electron` binary directly) and Electron aborts with `setuid_sandbox_host.cc … not configured correctly`, pass the flag explicitly: `./ani-gui-<version>-x86_64.AppImage --no-sandbox`.
 
 </details>
 
