@@ -48,7 +48,5 @@
 	"dock_reveal_aria_label": "Reveal in folder",
 	"dock_reveal_title": "Reveal in folder",
 	"dock_dismiss_aria_label": "Dismiss",
-	"dock_dismiss_title": "Dismiss",
-	"dock_ffmpeg_missing_help": "ffmpeg is required for downloads. Install the official Windows build, then retry.",
-	"dock_ffmpeg_install_link": "Install ffmpeg"
+	"dock_dismiss_title": "Dismiss"
 }

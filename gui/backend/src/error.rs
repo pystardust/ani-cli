@@ -50,16 +50,6 @@ pub enum AniError {
     #[error("missing bash.exe (install Git for Windows)")]
     BashMissing,
 
-    /// Windows-readiness for downloads: `ffmpeg` isn't on PATH and
-    /// isn't in the bundled-bin directory. ani-cli's `dep_ch
-    /// "ffmpeg" "aria2c"` exits the script the moment downloads start
-    /// without it. Surfaced before the spawn so the frontend renders
-    /// a CTA pointing at the lazy-install flow / official build page.
-    /// `aria2c` is bundled (commit d6c9992) so its absence isn't
-    /// expected and falls through as a generic Scraper error.
-    #[error("ffmpeg required for downloads")]
-    FfmpegMissing,
-
     /// An upstream HTTP request returned a non-success status.
     #[error("upstream {status}")]
     Upstream {
@@ -117,7 +107,6 @@ impl AniError {
             Self::ParseFailed { .. } => "error.scraper.parse_failed",
             Self::MissingBinary => "error.scraper.missing_binary",
             Self::BashMissing => "error.bash.missing",
-            Self::FfmpegMissing => crate::i18n::keys::DOWNLOAD_FFMPEG_MISSING,
             Self::PlayerSpawnFailed { .. } => "error.player.spawn_failed",
             Self::Upstream { .. } => "error.network.upstream",
             Self::Network => "error.network.unreachable",
@@ -180,7 +169,6 @@ mod tests {
             AniError::ParseFailed { detail: "x".into() },
             AniError::MissingBinary,
             AniError::BashMissing,
-            AniError::FfmpegMissing,
             AniError::PlayerSpawnFailed {
                 binary: "vlc".into(),
             },
@@ -208,23 +196,6 @@ mod tests {
         let s = serde_json::to_string(&err).expect("serializes");
         assert!(s.contains("\"kind\""), "serialized form has kind tag: {s}");
         assert!(s.contains("no_results"), "snake_case discriminant: {s}");
-    }
-
-    #[test]
-    fn ffmpeg_missing_serializes_with_a_dedicated_kind_and_key() {
-        // ani-cli's download path runs `dep_ch "ffmpeg" "aria2c"` at
-        // startup — without ffmpeg it exits the shell instantly, and
-        // the user previously saw a generic "Download failed" tooltip
-        // with no actionable info. The dedicated variant lets the
-        // frontend render a "ffmpeg required" CTA pointing at the
-        // install link / lazy-fetch button.
-        let err = AniError::FfmpegMissing;
-        let s = serde_json::to_string(&err).expect("serializes");
-        assert!(
-            s.contains("\"kind\":\"ffmpeg_missing\""),
-            "snake_case kind: {s}"
-        );
-        assert_eq!(err.key(), "error.download.ffmpeg_missing");
     }
 
     #[test]

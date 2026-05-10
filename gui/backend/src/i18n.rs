@@ -16,12 +16,6 @@
 
 /// Key constants. Keep alphabetized within each block.
 pub mod keys {
-    // --- error.download.* ---
-    /// Download mode requires `ffmpeg` (HLS → MP4 mux). The variant
-    /// surfaces it before the ani-cli spawn so the frontend can
-    /// render a "ffmpeg required" CTA instead of a generic failure.
-    pub const DOWNLOAD_FFMPEG_MISSING: &str = "error.download.ffmpeg_missing";
-
     // --- error.cache.* ---
     /// Generic SQLite failure.
     pub const CACHE_GENERIC: &str = "error.cache.generic";
@@ -73,7 +67,6 @@ mod tests {
         let all = [
             CACHE_GENERIC,
             CONFIG_PARSE,
-            DOWNLOAD_FFMPEG_MISSING,
             IO_GENERIC,
             METADATA_SOURCE,
             NETWORK_UNREACHABLE,

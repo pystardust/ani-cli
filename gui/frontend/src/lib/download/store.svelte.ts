@@ -32,12 +32,6 @@ export interface DownloadItem {
 	status: DownloadStatus;
 	progress: string | null;
 	error: string | null;
-	/** Typed discriminator from the backend's serialized AniError
-	 *  (e.g. `"ffmpeg_missing"`, `"timeout"`). Drives error-specific
-	 *  dock UI — the ffmpeg-missing case shows an install link. Null
-	 *  for transport-layer rejections that don't carry the typed
-	 *  payload. */
-	errorKind: string | null;
 	startedAt: number;
 	abort: AbortController | null;
 	/** True when status flipped to "done" or "error" while the user
@@ -96,7 +90,6 @@ class DownloadStore {
 				status: 'pending',
 				progress: null,
 				error: null,
-				errorKind: null,
 				startedAt: Date.now(),
 				abort: null,
 				unseen: false,
@@ -131,18 +124,9 @@ class DownloadStore {
 		);
 	}
 
-	markError(id: string, message: string, kind: string | null = null) {
+	markError(id: string, message: string) {
 		this.items = this.items.map((i) =>
-			i.id === id
-				? {
-						...i,
-						status: 'error',
-						error: message,
-						errorKind: kind,
-						abort: null,
-						unseen: true
-					}
-				: i
+			i.id === id ? { ...i, status: 'error', error: message, abort: null, unseen: true } : i
 		);
 	}
 

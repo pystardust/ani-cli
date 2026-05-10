@@ -13,8 +13,6 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-use crate::error::{AniError, Result};
-
 /// Default PATH used when neither the inherited env nor a test
 /// override provides one. Matches the previous inline literal in
 /// `process.rs` so behaviour is unchanged on a freshly-cleared env.
@@ -61,47 +59,6 @@ pub fn compose_anicli_path(
     // pre-split PATH should ever contain. Fall back to the un-prefixed
     // base string so a malformed bundled dir doesn't break spawns.
     std::env::join_paths(&parts).unwrap_or(base)
-}
-
-/// Locate `ffmpeg` inside a composed PATH string. Pure: caller
-/// supplies the path-list and the executable check, so the test
-/// suite can drive every branch without touching real disk.
-///
-/// Returns `Ok(())` when an executable matching the platform's
-/// ffmpeg name (`ffmpeg.exe` on Windows, `ffmpeg` elsewhere) sits
-/// in any of the path components. Otherwise returns
-/// [`AniError::FfmpegMissing`] so the SSE download stream can
-/// short-circuit before spawning ani-cli — surfacing the typed
-/// error early lets the frontend render an actionable CTA instead
-/// of the generic "Download failed" the post-spawn dep_ch failure
-/// otherwise produces.
-pub fn ensure_ffmpeg_in_path(
-    composed_path: &OsStr,
-    is_executable: impl Fn(&Path) -> bool,
-) -> Result<()> {
-    // Platform-correct binary name: Windows resolves bare names by
-    // appending PATHEXT, but our caller (the bash subprocess on
-    // Windows) walks PATH literally and only matches `ffmpeg.exe`.
-    // Match that behaviour exactly so the pre-check agrees with what
-    // the spawn would see.
-    let exe_name: &str = if cfg!(windows) {
-        "ffmpeg.exe"
-    } else {
-        "ffmpeg"
-    };
-    for dir in std::env::split_paths(composed_path) {
-        // split_paths on Unix yields a single empty PathBuf for an
-        // empty input — that path joins to bare "ffmpeg" which would
-        // false-positive in any callback that accepts every path.
-        // bash's command -v likewise ignores empty PATH components.
-        if dir.as_os_str().is_empty() {
-            continue;
-        }
-        if is_executable(&dir.join(exe_name)) {
-            return Ok(());
-        }
-    }
-    Err(AniError::FfmpegMissing)
 }
 
 #[cfg(test)]
@@ -164,41 +121,6 @@ mod tests {
         let parts = split(&got);
         let expected: Vec<PathBuf> = std::env::split_paths(OsStr::new(FALLBACK_PATH)).collect();
         assert_eq!(parts, expected);
-    }
-
-    #[test]
-    fn ensure_ffmpeg_returns_ok_when_executable_in_first_dir() {
-        let path = std::env::join_paths(["/bundle/bin", "/usr/bin"].map(PathBuf::from)).unwrap();
-        let r = ensure_ffmpeg_in_path(&path, |p| {
-            p == Path::new("/bundle/bin/ffmpeg") || p == Path::new("/bundle/bin/ffmpeg.exe")
-        });
-        assert!(r.is_ok(), "got: {r:?}");
-    }
-
-    #[test]
-    fn ensure_ffmpeg_returns_ok_when_executable_in_later_dir() {
-        let path =
-            std::env::join_paths(["/no/ffmpeg/here", "/usr/bin"].map(PathBuf::from)).unwrap();
-        let r = ensure_ffmpeg_in_path(&path, |p| {
-            p == Path::new("/usr/bin/ffmpeg") || p == Path::new("/usr/bin/ffmpeg.exe")
-        });
-        assert!(r.is_ok(), "got: {r:?}");
-    }
-
-    #[test]
-    fn ensure_ffmpeg_returns_ffmpeg_missing_when_absent_everywhere() {
-        let path = std::env::join_paths(["/a", "/b", "/c"].map(PathBuf::from)).unwrap();
-        let r = ensure_ffmpeg_in_path(&path, |_| false);
-        assert!(matches!(r, Err(AniError::FfmpegMissing)), "got: {r:?}");
-    }
-
-    #[test]
-    fn ensure_ffmpeg_returns_ffmpeg_missing_for_empty_path() {
-        // join_paths can't produce an empty value on every platform
-        // (Windows allows it, Unix doesn't), so build directly.
-        let path = OsString::new();
-        let r = ensure_ffmpeg_in_path(&path, |_| true);
-        assert!(matches!(r, Err(AniError::FfmpegMissing)), "got: {r:?}");
     }
 
     #[test]

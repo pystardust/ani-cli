@@ -48,7 +48,5 @@
 	"dock_reveal_aria_label": "Mostrar en la carpeta",
 	"dock_reveal_title": "Mostrar en la carpeta",
 	"dock_dismiss_aria_label": "Descartar",
-	"dock_dismiss_title": "Descartar",
-	"dock_ffmpeg_missing_help": "ffmpeg es necesario para las descargas. Instala la versión oficial para Windows y vuelve a intentar.",
-	"dock_ffmpeg_install_link": "Instalar ffmpeg"
+	"dock_dismiss_title": "Descartar"
 }

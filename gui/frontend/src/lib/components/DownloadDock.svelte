@@ -193,42 +193,6 @@
 											/>
 										</svg>
 									</button>
-								{:else if item.errorKind === 'ffmpeg_missing'}
-									<!-- ffmpeg-missing CTA: ani-cli's `dep_ch "ffmpeg" "aria2c"`
-									     dies the moment downloads start without ffmpeg, and
-									     bundling ffmpeg blows the installer up to ~190 MB. The
-									     backend now surfaces a typed FfmpegMissing error; the
-									     row replaces the bare "!" with a one-link install
-									     pointer at the official Windows builds. The lazy in-app
-									     fetch flow lands later — for now this is the manual
-									     escape hatch. -->
-									<span class="dl-row-error" aria-hidden="true">!</span>
-									<a
-										class="dl-row-act dl-row-link"
-										href="https://www.gyan.dev/ffmpeg/builds/"
-										target="_blank"
-										rel="noopener noreferrer"
-										title={m.download_dock_ffmpeg_missing_help()}
-									>
-										{m.download_dock_ffmpeg_install_link()}
-									</a>
-									<button
-										type="button"
-										class="dl-row-act"
-										onclick={() => downloadStore.dismiss(item.id)}
-										aria-label={m.download_dock_dismiss_aria_label()}
-										title={m.download_dock_dismiss_title()}
-									>
-										<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-											<path
-												d="M6 6l12 12M6 18L18 6"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-											/>
-										</svg>
-									</button>
 								{:else}
 									<span class="dl-row-error" title={item.error ?? m.errors_failed_default()}>!</span
 									>

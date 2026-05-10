@@ -576,28 +576,6 @@ export interface DownloadResponse {
 	dest_dir: string;
 }
 
-/** Typed error payload emitted on the SSE `error` event when the
- *  download path fails. Mirrors the backend's serialized AniError —
- *  `kind` is the snake_case discriminant, `key` is the i18n key the
- *  frontend resolves through Paraglide. Callers of {@link downloadStream}
- *  / {@link playStream} get this object verbatim on rejection so the
- *  dock can branch on `kind` (e.g. ffmpeg_missing → render the install
- *  CTA) instead of regex'ing a debug string. */
-export interface ApiErrorPayload {
-	kind: string;
-	key: string;
-	[extra: string]: unknown;
-}
-
-export function isApiErrorPayload(value: unknown): value is ApiErrorPayload {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		typeof (value as { kind?: unknown }).kind === 'string' &&
-		typeof (value as { key?: unknown }).key === 'string'
-	);
-}
-
 /** Streaming download. Same shape as {@link playStream}: opens an SSE
  *  connection to GET /api/download/stream, fires `onProgress` for every
  *  forwarded ani-cli stderr line, resolves with the destination dir on

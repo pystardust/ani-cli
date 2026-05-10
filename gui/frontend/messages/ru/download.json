@@ -48,7 +48,5 @@
 	"dock_reveal_aria_label": "Показать в папке",
 	"dock_reveal_title": "Показать в папке",
 	"dock_dismiss_aria_label": "Скрыть",
-	"dock_dismiss_title": "Скрыть",
-	"dock_ffmpeg_missing_help": "Для скачивания требуется ffmpeg. Установите официальную сборку для Windows и попробуйте снова.",
-	"dock_ffmpeg_install_link": "Установить ffmpeg"
+	"dock_dismiss_title": "Скрыть"
 }

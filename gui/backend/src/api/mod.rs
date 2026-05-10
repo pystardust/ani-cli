@@ -51,7 +51,6 @@ impl IntoResponse for AniError {
             AniError::ParseFailed { .. }
             | AniError::MissingBinary
             | AniError::BashMissing
-            | AniError::FfmpegMissing
             | AniError::PlayerSpawnFailed { .. }
             | AniError::Cache
             | AniError::Io
@@ -386,27 +385,10 @@ async fn get_play_stream(
 
         let final_event = match result {
             Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
-            // Serialize the typed AniError directly — Serialize emits
-            // `{"kind":"<snake_case>",...}` which lets the frontend
-            // render error-specific UI (the dock's ffmpeg-missing
-            // CTA, for example) instead of showing a debug-formatted
-            // Rust string in the tooltip. Inject `key` alongside the
-            // auto-derived discriminator so a Paraglide lookup is one
-            // field-read away.
-            Err(e) => {
-                let key = e.key();
-                let mut payload = match serde_json::to_value(&e) {
-                    Ok(v) => v,
-                    Err(_) => serde_json::json!({"kind": "io"}),
-                };
-                if let Some(obj) = payload.as_object_mut() {
-                    obj.insert(
-                        "key".to_string(),
-                        serde_json::Value::String(key.to_string()),
-                    );
-                }
-                Event::default().event("error").json_data(payload).ok()
-            }
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(serde_json::json!({"error": format!("{e:?}")}))
+                .ok(),
         };
         if let Some(ev) = final_event {
             let _ = tx.send(Ok(ev));
@@ -442,27 +424,10 @@ async fn get_download_stream(
 
         let final_event = match result {
             Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
-            // Serialize the typed AniError directly — Serialize emits
-            // `{"kind":"<snake_case>",...}` which lets the frontend
-            // render error-specific UI (the dock's ffmpeg-missing
-            // CTA, for example) instead of showing a debug-formatted
-            // Rust string in the tooltip. Inject `key` alongside the
-            // auto-derived discriminator so a Paraglide lookup is one
-            // field-read away.
-            Err(e) => {
-                let key = e.key();
-                let mut payload = match serde_json::to_value(&e) {
-                    Ok(v) => v,
-                    Err(_) => serde_json::json!({"kind": "io"}),
-                };
-                if let Some(obj) = payload.as_object_mut() {
-                    obj.insert(
-                        "key".to_string(),
-                        serde_json::Value::String(key.to_string()),
-                    );
-                }
-                Event::default().event("error").json_data(payload).ok()
-            }
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(serde_json::json!({"error": format!("{e:?}")}))
+                .ok(),
         };
         if let Some(ev) = final_event {
             let _ = tx.send(Ok(ev));
