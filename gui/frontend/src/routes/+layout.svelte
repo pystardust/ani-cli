@@ -45,6 +45,7 @@
 		shouldRenderDropdown
 	} from '$lib/topbar/dropdown';
 	import { getCurrentSession, getGlobalVideo } from '$lib/play/global-video';
+	import { decideLeavePipAction } from '$lib/play/leave-pip-decision';
 
 	let { children } = $props();
 
@@ -131,16 +132,33 @@
 			// localStorage unavailable — leave recentSearches empty.
 		}
 
-		// Persistent PiP — when the user closes the PiP window
-		// (or it closes itself via stop/play-end) and the player
-		// page isn't currently mounted, navigate back to the play
-		// route so the in-page player picks up the now-orphaned
-		// singleton video and the user can continue watching
-		// inline. If we're already on /play/[id], do nothing —
-		// the page itself will reabsorb the video on its next
-		// effect tick.
+		// Persistent PiP — distinguish two ways the PiP window can
+		// close:
+		//
+		//   • X button: the W3C spec has the UA pause the video
+		//     synchronously before exiting, so a `pause` event
+		//     lands within ms of `leavepictureinpicture`. The user
+		//     dismissed the floating thumbnail; stay where they are
+		//     and let the singleton sit paused in the hidden host.
+		//
+		//   • Return-to-tab: the spec keeps playback state intact;
+		//     no UA-issued pause. The user explicitly asked to come
+		//     back to the player, so navigate to /play/[id].
+		//
+		// The discriminator (decideLeavePipAction) is a tight time
+		// window after the most recent pause event. See the helper
+		// for the edge-case discussion.
 		const v = getGlobalVideo();
+		let lastPauseAtMs = 0;
+		const onPause = () => {
+			lastPauseAtMs = Date.now();
+		};
 		const onLeave = () => {
+			const action = decideLeavePipAction({
+				lastPauseAtMs,
+				leftAtMs: Date.now()
+			});
+			if (action === 'stay') return;
 			const sess = getCurrentSession();
 			if (!sess) return;
 			const onPlayPage = page.route?.id === '/play/[id]';
@@ -160,8 +178,12 @@
 			void goto(target);
 			/* eslint-enable svelte/no-navigation-without-resolve */
 		};
+		v.addEventListener('pause', onPause);
 		v.addEventListener('leavepictureinpicture', onLeave);
-		return () => v.removeEventListener('leavepictureinpicture', onLeave);
+		return () => {
+			v.removeEventListener('pause', onPause);
+			v.removeEventListener('leavepictureinpicture', onLeave);
+		};
 	});
 
 	function persistRecents(q: string) {
