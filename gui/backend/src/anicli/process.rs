@@ -716,8 +716,12 @@ mod tests {
 
     /// Stub `ani-cli` that echoes each argv token + selected env vars to
     /// stderr (so the streaming line callback captures them) and exits
-    /// 0. Lets `spawn_download_*` tests assert the spawn contract
-    /// without actually downloading anything.
+    /// 0. Also stages a no-op `ffmpeg` next to it so spawn_download's
+    /// pre-spawn `ensure_ffmpeg_in_path` finds something on PATH —
+    /// without it the test fails on CI runners that don't have ffmpeg
+    /// installed (macos), even though the stub ani-cli never actually
+    /// invokes ffmpeg. The stub dir is meant to be prepended to
+    /// `path_override` so the pre-check sees the fake binary first.
     #[cfg(unix)]
     fn stub_ani_cli_echo() -> (tempfile::TempDir, PathBuf) {
         use std::io::Write;
@@ -734,7 +738,31 @@ mod tests {
         let mut perm = f.metadata().expect("perm").permissions();
         perm.set_mode(0o755);
         std::fs::set_permissions(&path, perm).expect("chmod");
+
+        // No-op ffmpeg: needs to exist + be executable so the pre-check
+        // passes. Never actually invoked — the stub ani-cli exits 0
+        // without spawning anything.
+        let ffmpeg = td.path().join("ffmpeg");
+        std::fs::write(&ffmpeg, b"#!/bin/sh\nexit 0\n").expect("write ffmpeg stub");
+        std::fs::set_permissions(&ffmpeg, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod ffmpeg");
+
         (td, path)
+    }
+
+    /// `debug_opts` for download tests — like `debug_opts` but prepends
+    /// the stub dir (which holds the no-op ffmpeg from
+    /// `stub_ani_cli_echo`) to `path_override` so the pre-spawn check
+    /// finds it. The dir is the parent of the stub ani-cli path.
+    #[cfg(unix)]
+    fn debug_opts_dl(stub_ani_cli: PathBuf) -> DebugOptions {
+        let stub_dir = stub_ani_cli
+            .parent()
+            .expect("stub has parent dir")
+            .to_path_buf();
+        let mut opts = DebugOptions::new(stub_ani_cli);
+        opts.path_override = Some(format!("{}:/usr/bin:/bin", stub_dir.display()));
+        opts
     }
 
     #[cfg(unix)]
@@ -747,7 +775,7 @@ mod tests {
         let cap = captured.clone();
 
         let r = spawn_download(
-            &debug_opts(stub),
+            &debug_opts_dl(stub),
             &DownloadRequest {
                 query: "Naruto Shippuuden",
                 episode: "5",
@@ -791,7 +819,7 @@ mod tests {
         let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
         let cap = captured.clone();
         spawn_download(
-            &debug_opts(stub),
+            &debug_opts_dl(stub),
             &DownloadRequest {
                 query: "any",
                 episode: "1",
@@ -822,7 +850,7 @@ mod tests {
         let captured: std::sync::Arc<std::sync::Mutex<Vec<String>>> = Default::default();
         let cap = captured.clone();
         spawn_download(
-            &debug_opts(stub),
+            &debug_opts_dl(stub),
             &DownloadRequest {
                 query: "any",
                 episode: "1",

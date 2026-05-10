@@ -63,6 +63,28 @@ impl IntoResponse for AniError {
     }
 }
 
+/// Convert an [`AniError`] into the JSON shape sent on SSE error
+/// events. Centralises the play- and download-stream handlers'
+/// identical reshape logic so both streams emit the same envelope
+/// (`{"kind": "<snake>", "key": "error.<scope>.<name>", ...}`)
+/// — the frontend matches on `kind` to render error-specific UI
+/// (today: the ffmpeg-missing modal at the layout level).
+///
+/// Falls back to `{"kind":"io"}` if the typed error somehow fails
+/// to serialize, which keeps the frontend's discriminator handler
+/// from breaking on a missing `kind` field.
+fn ani_error_to_sse_payload(e: &AniError) -> serde_json::Value {
+    let key = e.key();
+    let mut payload = serde_json::to_value(e).unwrap_or_else(|_| serde_json::json!({"kind": "io"}));
+    if let Some(obj) = payload.as_object_mut() {
+        obj.insert(
+            "key".to_string(),
+            serde_json::Value::String(key.to_string()),
+        );
+    }
+    payload
+}
+
 /// Build the API router. Returns a `Router<()>` (state already
 /// applied via `with_state`) so it can be `merge`d with the proxy
 /// router at startup.
@@ -386,27 +408,10 @@ async fn get_play_stream(
 
         let final_event = match result {
             Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
-            // Serialize the typed AniError directly — Serialize emits
-            // `{"kind":"<snake_case>",...}` which lets the frontend
-            // render error-specific UI (the ffmpeg-missing modal,
-            // for example) instead of showing a debug-formatted Rust
-            // string. Inject `key` alongside the auto-derived
-            // discriminator so a Paraglide lookup is one field-read
-            // away.
-            Err(e) => {
-                let key = e.key();
-                let mut payload = match serde_json::to_value(&e) {
-                    Ok(v) => v,
-                    Err(_) => serde_json::json!({"kind": "io"}),
-                };
-                if let Some(obj) = payload.as_object_mut() {
-                    obj.insert(
-                        "key".to_string(),
-                        serde_json::Value::String(key.to_string()),
-                    );
-                }
-                Event::default().event("error").json_data(payload).ok()
-            }
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(ani_error_to_sse_payload(&e))
+                .ok(),
         };
         if let Some(ev) = final_event {
             let _ = tx.send(Ok(ev));
@@ -442,27 +447,10 @@ async fn get_download_stream(
 
         let final_event = match result {
             Ok(resp) => Event::default().event("done").json_data(&resp).ok(),
-            // Serialize the typed AniError directly — Serialize emits
-            // `{"kind":"<snake_case>",...}` which lets the frontend
-            // render error-specific UI (the ffmpeg-missing modal,
-            // for example) instead of showing a debug-formatted Rust
-            // string. Inject `key` alongside the auto-derived
-            // discriminator so a Paraglide lookup is one field-read
-            // away.
-            Err(e) => {
-                let key = e.key();
-                let mut payload = match serde_json::to_value(&e) {
-                    Ok(v) => v,
-                    Err(_) => serde_json::json!({"kind": "io"}),
-                };
-                if let Some(obj) = payload.as_object_mut() {
-                    obj.insert(
-                        "key".to_string(),
-                        serde_json::Value::String(key.to_string()),
-                    );
-                }
-                Event::default().event("error").json_data(payload).ok()
-            }
+            Err(e) => Event::default()
+                .event("error")
+                .json_data(ani_error_to_sse_payload(&e))
+                .ok(),
         };
         if let Some(ev) = final_event {
             let _ = tx.send(Ok(ev));
@@ -676,6 +664,32 @@ mod tests {
     use tempfile::TempDir;
     use tokio::sync::Semaphore;
     use tower::ServiceExt;
+
+    /// The SSE error envelope must carry both the snake_case `kind`
+    /// discriminator (so the frontend can branch on it — e.g. opening
+    /// the layout-level ffmpeg-missing modal) and the `key` (so a
+    /// Paraglide lookup is one field-read away). Pin both for a
+    /// representative variant — drift here would silently break the
+    /// download dock or play overlay's error rendering.
+    #[test]
+    fn ani_error_to_sse_payload_carries_kind_and_key_for_ffmpeg_missing() {
+        let v = ani_error_to_sse_payload(&AniError::FfmpegMissing);
+        assert_eq!(v["kind"], "ffmpeg_missing", "got: {v}");
+        assert_eq!(v["key"], "error.download.ffmpeg_missing", "got: {v}");
+    }
+
+    /// A variant carrying data fields keeps them alongside the injected
+    /// `key` — the frontend can interpolate `binary` into the toast for
+    /// the "couldn't launch <vlc>" path without losing the i18n key.
+    #[test]
+    fn ani_error_to_sse_payload_preserves_variant_data_fields() {
+        let v = ani_error_to_sse_payload(&AniError::PlayerSpawnFailed {
+            binary: "vlc".into(),
+        });
+        assert_eq!(v["kind"], "player_spawn_failed", "got: {v}");
+        assert_eq!(v["binary"], "vlc", "got: {v}");
+        assert_eq!(v["key"], "error.player.spawn_failed", "got: {v}");
+    }
 
     /// Build a stub AppState for router tests. Uses an in-memory SQLite
     /// pool, a tempdir for image cache + config, and a Kitsu client
