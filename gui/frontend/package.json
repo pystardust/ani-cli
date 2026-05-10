@@ -7,7 +7,7 @@
 		"node": ">=20.11"
 	},
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "pnpm i18n:compile && vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && pnpm i18n:compile && svelte-check --tsconfig ./tsconfig.json",

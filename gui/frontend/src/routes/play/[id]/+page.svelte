@@ -152,6 +152,33 @@
 	let duration = $state(0);
 	let videoVolume = $state(1);
 	let isMuted = $state(false);
+	// Captions selector for the custom controls. Reads the live
+	// TextTrackList off the singleton video so the menu reflects
+	// whatever the current session has attached (today: 0 or 1
+	// track; multi-language sessions land later). `textTracksTick`
+	// is the reactivity dependency — every addtrack / removetrack /
+	// individual `change` event bumps it so `availableTracks` and
+	// `captionsOn` re-derive.
+	let ccMenuOpen = $state(false);
+	let ccMenuAnchor = $state<HTMLButtonElement | null>(null);
+	let textTracksTick = $state(0);
+	const availableTracks = $derived.by(() => {
+		void textTracksTick; // reactivity dep — re-derive on each tick
+		if (!videoEl) return [];
+		const out: Array<{ index: number; label: string; showing: boolean }> = [];
+		for (let i = 0; i < videoEl.textTracks.length; i++) {
+			const t = videoEl.textTracks[i];
+			if (t.kind !== 'subtitles' && t.kind !== 'captions') continue;
+			out.push({
+				index: i,
+				label: t.label || t.language || `Track ${i + 1}`,
+				showing: t.mode === 'showing'
+			});
+		}
+		return out;
+	});
+	const captionsOn = $derived(availableTracks.some((t) => t.showing));
+	const showCcButton = $derived(availableTracks.length > 0);
 	let scrubberHover = $state(false);
 	// Furthest end of the contiguous buffered range that contains
 	// currentTime — feeds the dimmer "preloaded" segment of the
@@ -295,6 +322,21 @@
 		videoEl.muted = !videoEl.muted;
 	}
 
+	function toggleCcMenu() {
+		ccMenuOpen = !ccMenuOpen;
+	}
+
+	/** Pick a subtitle track by its index in the TextTrackList, or
+	 *  'off' to hide every track. The chosen one becomes `showing`,
+	 *  everything else `hidden`. */
+	function pickCcTrack(target: number | 'off') {
+		ccMenuOpen = false;
+		if (!videoEl) return;
+		for (let i = 0; i < videoEl.textTracks.length; i++) {
+			videoEl.textTracks[i].mode = target === i ? 'showing' : 'hidden';
+		}
+	}
+
 	function setVolume(v: number) {
 		if (!videoEl) return;
 		const clamped = Math.max(0, Math.min(1, v));
@@ -337,6 +379,32 @@
 			if (e.key === 'Escape') {
 				closePcMenu();
 				pcMenuAnchor?.focus();
+			}
+		};
+		document.addEventListener('pointerdown', onPointerDown);
+		document.addEventListener('keydown', onKey);
+		return () => {
+			document.removeEventListener('pointerdown', onPointerDown);
+			document.removeEventListener('keydown', onKey);
+		};
+	});
+	// Same dismiss pattern for the CC track selector — pointerdown on
+	// anything outside the trigger or the menu closes it; Escape
+	// closes and restores focus to the trigger button.
+	$effect(() => {
+		if (!ccMenuOpen) return;
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Node | null;
+			if (!target) return;
+			if (ccMenuAnchor?.contains(target)) return;
+			const menu = document.getElementById('pc-cc-menu');
+			if (menu?.contains(target)) return;
+			ccMenuOpen = false;
+		};
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				ccMenuOpen = false;
+				ccMenuAnchor?.focus();
 			}
 		};
 		document.addEventListener('pointerdown', onPointerDown);
@@ -706,6 +774,26 @@
 			if (USE_CUSTOM_PLAYER_CONTROLS) togglePlay();
 		};
 
+		// Bump the textTracks reactivity ticker on every list-level
+		// change (track add / remove) and per-track mode change so
+		// the captions menu reflects the current state.
+		const onTextTracksMutate = () => {
+			textTracksTick++;
+		};
+		const wireTrackChange = (track: TextTrack) => {
+			track.addEventListener('cuechange', onTextTracksMutate); // mode flips fire 'cuechange' too
+			track.addEventListener('change' as keyof TextTrackEventMap, onTextTracksMutate);
+		};
+		for (let i = 0; i < v.textTracks.length; i++) wireTrackChange(v.textTracks[i]);
+		const onAddTrack = (e: TrackEvent) => {
+			if (e.track) wireTrackChange(e.track);
+			onTextTracksMutate();
+		};
+		v.textTracks.addEventListener('addtrack', onAddTrack);
+		v.textTracks.addEventListener('removetrack', onTextTracksMutate);
+		v.textTracks.addEventListener('change', onTextTracksMutate);
+		onTextTracksMutate();
+
 		v.addEventListener('timeupdate', onTime);
 		v.addEventListener('timeupdate', onProg);
 		v.addEventListener('progress', onProg);
@@ -730,6 +818,9 @@
 			v.removeEventListener('ratechange', onRate);
 			v.removeEventListener('ended', onEnded);
 			v.removeEventListener('click', onClick);
+			v.textTracks.removeEventListener('addtrack', onAddTrack);
+			v.textTracks.removeEventListener('removetrack', onTextTracksMutate);
+			v.textTracks.removeEventListener('change', onTextTracksMutate);
 			detachGlobalVideo();
 		};
 	});
@@ -1452,6 +1543,92 @@
 								{/if}
 							</button>
 						</div>
+
+						<!-- Captions selector. Only renders when the singleton
+						     video has at least one subtitles / captions track
+						     attached. Click toggles a popover listing each
+						     available track plus an explicit "Off"; the
+						     accent rule under the icon mirrors the YouTube
+						     convention for "captions are on". -->
+						{#if showCcButton}
+							<div class="pc-cc-wrap">
+								<button
+									type="button"
+									class="pc-btn pc-cc"
+									class:pc-cc-active={captionsOn}
+									bind:this={ccMenuAnchor}
+									onclick={toggleCcMenu}
+									aria-haspopup="menu"
+									aria-expanded={ccMenuOpen}
+									aria-controls="pc-cc-menu"
+									aria-label={m.play_controls_cc_aria_label()}
+									title={captionsOn
+										? m.play_controls_cc_on_title()
+										: m.play_controls_cc_off_title()}
+								>
+									<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+										<rect
+											x="3"
+											y="6"
+											width="18"
+											height="12"
+											rx="2.5"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.75"
+										/>
+										<path
+											d="M9.5 11.25c-.4-.65-1.1-1-1.85-.85-.95.2-1.5 1.1-1.5 2.1s.55 1.9 1.5 2.1c.75.15 1.45-.2 1.85-.85"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.75"
+											stroke-linecap="round"
+										/>
+										<path
+											d="M16.5 11.25c-.4-.65-1.1-1-1.85-.85-.95.2-1.5 1.1-1.5 2.1s.55 1.9 1.5 2.1c.75.15 1.45-.2 1.85-.85"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.75"
+											stroke-linecap="round"
+										/>
+									</svg>
+									<span class="pc-cc-rule" aria-hidden="true"></span>
+								</button>
+								{#if ccMenuOpen}
+									<div id="pc-cc-menu" class="pc-cc-menu" role="menu" tabindex="-1">
+										<p class="pc-cc-menu-heading">{m.play_controls_cc_menu_heading()}</p>
+										<button
+											type="button"
+											class="pc-menu-item"
+											class:pc-menu-active={!captionsOn}
+											role="menuitemradio"
+											aria-checked={!captionsOn}
+											onclick={() => pickCcTrack('off')}
+										>
+											<span class="pc-menu-check" aria-hidden="true">
+												{#if !captionsOn}✓{/if}
+											</span>
+											<span>{m.play_controls_cc_off()}</span>
+										</button>
+										{#each availableTracks as t (t.index)}
+											<button
+												type="button"
+												class="pc-menu-item"
+												class:pc-menu-active={t.showing}
+												role="menuitemradio"
+												aria-checked={t.showing}
+												onclick={() => pickCcTrack(t.index)}
+											>
+												<span class="pc-menu-check" aria-hidden="true">
+													{#if t.showing}✓{/if}
+												</span>
+												<span>{t.label}</span>
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
 
 						<button
 							type="button"
@@ -2625,6 +2802,66 @@
 	.pc-btn:hover {
 		background: rgba(255, 255, 255, 0.18);
 	}
+
+	/* Captions toggle. Active state grows an accent-coloured
+	   underline rule under the icon — same affordance YouTube uses
+	   so users learn it instantly. The rule animates in/out so the
+	   on/off transition reads as deliberate, not as a flicker. */
+	.pc-cc {
+		position: relative;
+	}
+	.pc-cc-rule {
+		position: absolute;
+		inset-block-end: 0.55rem;
+		inset-inline-start: 50%;
+		transform: translateX(-50%) scaleX(0);
+		inline-size: 1.6rem;
+		block-size: 2px;
+		background: var(--accent, #fff);
+		border-radius: 1px;
+		transform-origin: center;
+		transition: transform var(--dur-fast) var(--ease-out-soft);
+		pointer-events: none;
+	}
+	.pc-cc-active .pc-cc-rule {
+		transform: translateX(-50%) scaleX(1);
+	}
+	/* Faint dim on the icon when captions are off — mirrors the
+	   off-state of the auto-play toggle in the now-playing row. */
+	.pc-cc:not(.pc-cc-active) {
+		color: rgba(255, 255, 255, 0.7);
+	}
+	.pc-cc-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.pc-cc-menu {
+		position: absolute;
+		inset-inline-end: 0;
+		inset-block-end: calc(100% + 0.5rem);
+		min-inline-size: 14rem;
+		padding: 0.45rem;
+		background: rgba(28, 28, 32, 0.96);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 12px;
+		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		/* Higher than every other layer inside the player so the
+		   popover always wins. The kebab menu uses 5; the player-skip
+		   button is z-10 — we stay above both. */
+		z-index: 50;
+	}
+	.pc-cc-menu-heading {
+		margin: 0.15rem 0.6rem 0.4rem;
+		font-family: var(--font-mono);
+		font-size: 0.7rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.55);
+	}
+
 	.pc-time {
 		font-family: var(--font-body);
 		font-size: 0.95rem;
