@@ -14,6 +14,7 @@
 
 pub mod parser;
 pub mod process;
+pub mod update;
 
 pub use parser::{DebugOutput, SearchResult};
 pub use process::{run_debug, run_search};
