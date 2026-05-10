@@ -117,7 +117,8 @@
 			"allowToChangeInstallationDirectory": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"shortcutName": "ani-gui"
+			"shortcutName": "ani-gui",
+			"include": "build-resources/installer.nsh"
 		}
 	}
 }
