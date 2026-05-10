@@ -1,3 +1,9 @@
 {
-	"up_aria_label": "Go up one level"
+	"up_aria_label": "Go up one level",
+	"home": "Home",
+	"search": "Search",
+	"settings": "Settings",
+	"diagnostics": "Diagnostics",
+	"anime": "Anime",
+	"watching": "Watching"
 }

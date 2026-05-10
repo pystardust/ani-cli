@@ -458,7 +458,10 @@
 				// Override the layout's URL-only default with the
 				// loaded title so the breadcrumb reads the show
 				// instead of "Anime".
-				breadcrumb.set([{ label: 'Home', href: '/' }, { label: d.canonical_title ?? 'Anime' }]);
+				breadcrumb.set([
+					{ label: m.breadcrumb_home(), href: '/' },
+					{ label: d.canonical_title ?? m.breadcrumb_anime() }
+				]);
 				const seed = (d.canonical_title ?? '').split(/\s+/).slice(0, 2).join(' ').trim();
 				if (seed.length >= 2) {
 					void kitsuSearch(seed)

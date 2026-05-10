@@ -1048,8 +1048,8 @@
 	$effect(() => {
 		const title = detail?.canonical_title ?? null;
 		breadcrumb.set([
-			{ label: 'Home', href: '/' },
-			{ label: title ?? 'Anime', href: resolve('/anime/[id]', { id }) },
+			{ label: m.breadcrumb_home(), href: '/' },
+			{ label: title ?? m.breadcrumb_anime(), href: resolve('/anime/[id]', { id }) },
 			{ label: `EP ${episodeNum}` }
 		]);
 	});

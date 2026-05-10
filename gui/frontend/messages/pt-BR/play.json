@@ -63,7 +63,7 @@
 	"head_title_loading": "Player · ani-gui",
 	"now_playing_show_loading": "Carregando…",
 	"episodes_section_aria_label": "Episódios",
-	"episode_now_playing": "Tocando agora",
+	"episode_now_playing": "Assistindo agora",
 	"episode_card_num": "EP {episode}",
 	"episode_card_title_fallback": "Episódio {num}",
 	"episode_card_length_minutes": "{minutes}min",

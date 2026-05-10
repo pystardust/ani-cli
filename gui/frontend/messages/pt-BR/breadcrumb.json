@@ -1,3 +1,9 @@
 {
-	"up_aria_label": "Subir um nível"
+	"up_aria_label": "Subir um nível",
+	"home": "Início",
+	"search": "Buscar",
+	"settings": "Ajustes",
+	"diagnostics": "Diagnóstico",
+	"anime": "Anime",
+	"watching": "Assistindo"
 }

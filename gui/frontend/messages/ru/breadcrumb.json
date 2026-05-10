@@ -1,3 +1,9 @@
 {
-	"up_aria_label": "На уровень выше"
+	"up_aria_label": "На уровень выше",
+	"home": "Главная",
+	"search": "Поиск",
+	"settings": "Настройки",
+	"diagnostics": "Диагностика",
+	"anime": "Аниме",
+	"watching": "Просмотр"
 }

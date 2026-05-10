@@ -16,6 +16,7 @@
  */
 
 import { writable } from 'svelte/store';
+import { m } from '$lib/paraglide/messages';
 
 export interface BreadcrumbSegment {
 	label: string;
@@ -30,16 +31,17 @@ export const breadcrumb = writable<BreadcrumbSegment[]>([]);
 /** Build the default trail from a route id alone. Used by the layout
  *  on every navigation so a page with no breadcrumb hook still shows
  *  something meaningful. Routes override this on mount with richer
- *  labels (anime title, episode number). */
+ *  labels (anime title, episode number). Labels resolve through
+ *  Paraglide so the trail re-renders in the active locale. */
 export function defaultTrailFor(routeId: string | null): BreadcrumbSegment[] {
 	if (!routeId || routeId === '/') {
-		return [{ label: 'Home' }];
+		return [{ label: m.breadcrumb_home() }];
 	}
-	const home: BreadcrumbSegment = { label: 'Home', href: '/' };
-	if (routeId.startsWith('/search')) return [home, { label: 'Search' }];
-	if (routeId.startsWith('/settings')) return [home, { label: 'Settings' }];
-	if (routeId.startsWith('/diagnostics')) return [home, { label: 'Diagnostics' }];
-	if (routeId.startsWith('/anime')) return [home, { label: 'Anime' }];
-	if (routeId.startsWith('/play')) return [home, { label: 'Watching' }];
+	const home: BreadcrumbSegment = { label: m.breadcrumb_home(), href: '/' };
+	if (routeId.startsWith('/search')) return [home, { label: m.breadcrumb_search() }];
+	if (routeId.startsWith('/settings')) return [home, { label: m.breadcrumb_settings() }];
+	if (routeId.startsWith('/diagnostics')) return [home, { label: m.breadcrumb_diagnostics() }];
+	if (routeId.startsWith('/anime')) return [home, { label: m.breadcrumb_anime() }];
+	if (routeId.startsWith('/play')) return [home, { label: m.breadcrumb_watching() }];
 	return [home];
 }
