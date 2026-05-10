@@ -87,7 +87,7 @@ jobs:
           # artifact (one switch arm per message key, regenerated at
           # i18n:compile time) and inflates max/p95 wildly without
           # representing handwritten complexity.
-          lizard --xml -x ".*paraglide.*" gui/backend/src gui/frontend/src > coverage/lizard.xml
+          lizard --xml -x "*paraglide*" gui/backend/src gui/frontend/src > coverage/lizard.xml
           node tools/crap-score.mjs \
               --lcov=gui/backend/lcov.info \
               --lcov=gui/frontend/coverage/lcov.info:gui/frontend \
