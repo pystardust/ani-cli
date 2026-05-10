@@ -12,6 +12,18 @@ use std::path::PathBuf;
 
 use directories_next::ProjectDirs;
 
+/// Cross-platform "where's the user's home dir" — returns whatever
+/// `$HOME` / `%USERPROFILE%` points at without consulting `/etc/passwd`
+/// or other platform-level fallbacks. The state/history/download
+/// resolvers below use this so a test can `set_var("HOME", …)` and
+/// see the change reflected, and so a Windows machine without a
+/// MSYS-style `$HOME` still resolves via the native `%USERPROFILE%`.
+fn home_dir_xplat() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
 const QUALIFIER: &str = "net";
 const ORG: &str = "thirdmovement";
 const APP: &str = "ani-gui";
@@ -52,51 +64,71 @@ pub fn logs_dir() -> Option<PathBuf> {
     project_dirs().map(|d| d.data_dir().join("logs"))
 }
 
-/// `$XDG_STATE_HOME/ani-gui/` — small, machine-state files that aren't
-/// quite cache (regenerable) and aren't quite config (user-edited).
-/// The latest ani-cli `-U` outcome lands here so /diagnostics can
-/// surface it without re-running the update.
+/// `$XDG_STATE_HOME/ani-gui/` on Linux. On Windows / macOS, falls
+/// back to the platform-appropriate local-state directory via
+/// [`directories_next`] (`%LOCALAPPDATA%\thirdmovement\ani-gui`,
+/// `~/Library/Application Support/net.thirdmovement.ani-gui`).
+///
+/// Holds machine-state files that aren't quite cache (regenerable)
+/// and aren't quite config (user-edited). The latest ani-cli `-U`
+/// outcome lands here so /diagnostics can surface it without
+/// re-running the update.
 #[must_use]
 pub fn state_dir() -> Option<PathBuf> {
     if let Ok(state) = std::env::var("XDG_STATE_HOME") {
-        return Some(PathBuf::from(state).join("ani-gui"));
+        if !state.is_empty() {
+            return Some(PathBuf::from(state).join("ani-gui"));
+        }
     }
-    let home = std::env::var_os("HOME")?;
-    Some(
-        PathBuf::from(home)
-            .join(".local")
-            .join("state")
-            .join("ani-gui"),
-    )
+    // Linux defaults to ~/.local/state/<app> per the XDG Base
+    // Directory Specification — directories-next 2.x doesn't expose
+    // a state_dir helper, so we construct it manually. macOS /
+    // Windows have no analogue for "state" specifically; fall
+    // through to the platform's local-data directory via ProjectDirs
+    // (`~/Library/Application Support/...`, `%LOCALAPPDATA%\...`).
+    #[cfg(target_os = "linux")]
+    if let Some(home) = home_dir_xplat() {
+        return Some(home.join(".local").join("state").join("ani-gui"));
+    }
+    let pd = project_dirs()?;
+    Some(pd.data_local_dir().to_path_buf())
 }
 
 /// The history file shared with the CLI:
-/// `$XDG_STATE_HOME/ani-cli/ani-hsts` on Linux. On other platforms this
-/// returns the equivalent state directory under `ani-cli` (not `ani-gui`),
-/// so a user who alternates between CLI and GUI sees one history.
+/// `$XDG_STATE_HOME/ani-cli/ani-hsts` on Linux. On Windows the path
+/// resolves under `%USERPROFILE%\.local\state\ani-cli\ani-hsts`,
+/// which is where ani-cli running under Git Bash actually writes
+/// (Git Bash maps `~/.local/state` literally onto the user's
+/// Windows profile dir). The GUI and CLI thus share one history
+/// file on every supported platform.
 #[must_use]
 pub fn ani_cli_history() -> Option<PathBuf> {
     if let Ok(override_dir) = std::env::var("ANI_CLI_HIST_DIR") {
         return Some(PathBuf::from(override_dir).join("ani-hsts"));
     }
     if let Ok(state) = std::env::var("XDG_STATE_HOME") {
-        return Some(PathBuf::from(state).join("ani-cli").join("ani-hsts"));
+        if !state.is_empty() {
+            return Some(PathBuf::from(state).join("ani-cli").join("ani-hsts"));
+        }
     }
-    let home = std::env::var_os("HOME")?;
+    let home = home_dir_xplat()?;
     Some(
-        PathBuf::from(home)
-            .join(".local")
+        home.join(".local")
             .join("state")
             .join("ani-cli")
             .join("ani-hsts"),
     )
 }
 
-/// Default destination for episode downloads:
-/// `$XDG_DOWNLOAD_DIR/ani-gui/`, falling back to `$HOME/Downloads/ani-gui/`
-/// when XDG isn't set (the same fallback chain the user-dirs spec
-/// recommends). Returns `None` only when neither var is available, in
-/// which case the renderer should ask for a path explicitly.
+/// Default destination for episode downloads. Honours
+/// `XDG_DOWNLOAD_DIR` (some Linux distros export it as an env var),
+/// then defers to [`directories_next::UserDirs`] which picks the
+/// platform-correct default — `~/Downloads` on Linux/macOS,
+/// `%USERPROFILE%\Downloads` on Windows via `SHGetKnownFolderPath`.
+///
+/// The path returned has `ani-gui` appended. Returns `None` only when
+/// the user dirs lookup fails — in which case the renderer should
+/// ask for a path explicitly.
 ///
 /// The user can always override per-download via the folder picker
 /// before confirming — this is just the *default* the picker opens at.
@@ -107,8 +139,8 @@ pub fn download_dir() -> Option<PathBuf> {
             return Some(PathBuf::from(xdg).join("ani-gui"));
         }
     }
-    let home = std::env::var_os("HOME")?;
-    Some(PathBuf::from(home).join("Downloads").join("ani-gui"))
+    let home = home_dir_xplat()?;
+    Some(home.join("Downloads").join("ani-gui"))
 }
 
 #[cfg(test)]
