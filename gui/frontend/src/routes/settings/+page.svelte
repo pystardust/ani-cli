@@ -16,6 +16,8 @@
 		type AppInfo,
 		type Config
 	} from '$lib/api';
+	import { m } from '$lib/paraglide/messages';
+	import { setLocale as paraglideSetLocale } from '$lib/paraglide/runtime';
 
 	let cfg = $state<Config | null>(null);
 	let info = $state<AppInfo | null>(null);
@@ -89,6 +91,14 @@
 	}
 	function setLocale(l: string) {
 		if (!cfg) return;
+		// Live-switch UI strings before persisting — Paraglide accepts
+		// any registered locale; unsupported picks are guarded by the
+		// `disabled` attribute on each <option>.
+		try {
+			paraglideSetLocale(l as Parameters<typeof paraglideSetLocale>[0], { reload: false });
+		} catch {
+			/* unknown locale — fall through; persist still records the user's intent */
+		}
 		void persist({ ...cfg, locale: l });
 	}
 	function setExternalPlayer(value: string) {
@@ -169,43 +179,43 @@
 <main class="page">
 	<header class="page-head">
 		<p class="eyebrow">
-			<span class="eyebrow-key">Settings</span>
+			<span class="eyebrow-key">{m.settings_eyebrow_key()}</span>
 			<span class="eyebrow-rule" aria-hidden="true"></span>
-			<span class="eyebrow-value">persisted to <code>config.toml</code></span>
+			<span class="eyebrow-value"
+				>{m.settings_eyebrow_value_prefix()}<code>{m.settings_eyebrow_value_path()}</code></span
+			>
 			<!-- Saved indicator now lives inline with the eyebrow rather
 			     than in a per-route topbar (the global topbar from
 			     +layout.svelte already owns the back button). -->
 			<span class="saved" class:visible={showSaved} aria-live="polite">
 				<span class="saved-mark" aria-hidden="true">✓</span>
-				<span>Saved</span>
+				<span>{m.settings_saved_label()}</span>
 			</span>
 		</p>
-		<h1 class="page-title">House rules.</h1>
+		<h1 class="page-title">{m.settings_title()}</h1>
 	</header>
 
 	{#if loadError}
 		<div class="state state-error" role="alert">
-			<p class="state-headline">Couldn't load settings.</p>
+			<p class="state-headline">{m.settings_error_headline()}</p>
 			<p class="state-detail">{loadError}</p>
 		</div>
 	{:else if cfg === null}
-		<p class="loading">Loading…</p>
+		<p class="loading">{m.settings_loading()}</p>
 	{:else}
 		<!-- PLAYBACK -->
 		<section class="section">
 			<h2 class="section-eyebrow">
-				<span>Playback</span>
-				<span class="section-eyebrow-faint">defaults applied to every stream</span>
+				<span>{m.settings_section_playback_title()}</span>
+				<span class="section-eyebrow-faint">{m.settings_section_playback_hint()}</span>
 			</h2>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Audio</span>
-					<span class="field-hint"
-						>Sub matches Japanese audio with subtitles. Dub uses dubbed audio.</span
-					>
+					<span class="field-key">{m.settings_field_audio_key()}</span>
+					<span class="field-hint">{m.settings_field_audio_hint()}</span>
 				</div>
-				<div class="seg" role="group" aria-label="Audio mode">
+				<div class="seg" role="group" aria-label={m.settings_audio_group_aria_label()}>
 					{#each ['sub', 'dub'] as mode (mode)}
 						<button
 							type="button"
@@ -222,12 +232,10 @@
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Quality</span>
-					<span class="field-hint"
-						>"Best" lets the source pick. Lower values cap the resolution.</span
-					>
+					<span class="field-key">{m.settings_field_quality_key()}</span>
+					<span class="field-hint">{m.settings_field_quality_hint()}</span>
 				</div>
-				<div class="seg seg-narrow" role="group" aria-label="Quality">
+				<div class="seg seg-narrow" role="group" aria-label={m.settings_quality_group_aria_label()}>
 					{#each QUALITIES as q (q.key)}
 						<button
 							type="button"
@@ -244,9 +252,11 @@
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">External player</span>
+					<span class="field-key">{m.settings_field_external_player_key()}</span>
 					<span class="field-hint">
-						Command launched by "Open in external player". Defaults to <code>mpv</code>.
+						{m.settings_field_external_player_hint_prefix()}<code
+							>{m.settings_field_external_player_default()}</code
+						>{m.settings_field_external_player_hint_suffix()}
 					</span>
 				</div>
 				<input
@@ -254,109 +264,105 @@
 					type="text"
 					value={cfg.external_player}
 					oninput={(e) => setExternalPlayer((e.currentTarget as HTMLInputElement).value)}
-					placeholder="mpv"
+					placeholder={m.settings_field_external_player_default()}
 					spellcheck="false"
 					autocomplete="off"
-					aria-label="External player command"
+					aria-label={m.settings_field_external_player_key()}
 				/>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Auto-play next episode</span>
-					<span class="field-hint">
-						When the current episode ends, advance to the next one automatically. Stops at the last
-						episode of the series.
-					</span>
+					<span class="field-key">{m.settings_field_auto_play_next_key()}</span>
+					<span class="field-hint">{m.settings_field_auto_play_next_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
 						type="checkbox"
 						checked={cfg.auto_play_next}
 						onchange={(e) => setAutoPlayNext((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Auto-play next episode"
+						aria-label={m.settings_auto_play_next_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.auto_play_next ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.auto_play_next
+							? m.settings_switch_state_on()
+							: m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Show download progress strip</span>
-					<span class="field-hint">
-						Slim accent strip across the bottom while downloads run. Disabled = downloads still
-						work, but progress is only visible from the topbar download icon.
-					</span>
+					<span class="field-key">{m.settings_field_download_bar_key()}</span>
+					<span class="field-hint">{m.settings_field_download_bar_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
 						type="checkbox"
 						checked={cfg.download_bottom_bar_enabled}
 						onchange={(e) => setDownloadBottomBar((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Show download progress strip"
+						aria-label={m.settings_download_bar_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.download_bottom_bar_enabled ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.download_bottom_bar_enabled
+							? m.settings_switch_state_on()
+							: m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Auto-skip openings</span>
-					<span class="field-hint">
-						Jump past the OP automatically when one is detected. Off by default — you can still use
-						the manual Skip button. Powered by aniskip's crowd-sourced timestamps.
-					</span>
+					<span class="field-key">{m.settings_field_auto_skip_op_key()}</span>
+					<span class="field-hint">{m.settings_field_auto_skip_op_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
 						type="checkbox"
 						checked={cfg.auto_skip_op}
 						onchange={(e) => setAutoSkipOp((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Auto-skip openings"
+						aria-label={m.settings_auto_skip_op_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.auto_skip_op ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.auto_skip_op ? m.settings_switch_state_on() : m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Auto-skip endings</span>
-					<span class="field-hint">
-						Jump past the ED automatically when one is detected. Pairs well with Auto-play next for
-						binge sessions.
-					</span>
+					<span class="field-key">{m.settings_field_auto_skip_ed_key()}</span>
+					<span class="field-hint">{m.settings_field_auto_skip_ed_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
 						type="checkbox"
 						checked={cfg.auto_skip_ed}
 						onchange={(e) => setAutoSkipEd((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Auto-skip endings"
+						aria-label={m.settings_auto_skip_ed_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.auto_skip_ed ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.auto_skip_ed ? m.settings_switch_state_on() : m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Custom player controls</span>
-					<span class="field-hint">
-						Replace Chromium's native bar with our themed one. The accent-coloured timeline matches
-						each show and the Skip OP/Outro button stays visible during fullscreen. Off uses
-						Chromium's bar (better for PiP and the native captions menu).
-					</span>
+					<span class="field-key">{m.settings_field_custom_controls_key()}</span>
+					<span class="field-hint">{m.settings_field_custom_controls_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
@@ -364,24 +370,23 @@
 						checked={cfg.use_custom_player_controls}
 						onchange={(e) =>
 							setUseCustomPlayerControls((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Custom player controls"
+						aria-label={m.settings_custom_controls_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.use_custom_player_controls ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.use_custom_player_controls
+							? m.settings_switch_state_on()
+							: m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Disable auto Picture-in-Picture</span>
-					<span class="field-hint">
-						By default, navigating away from the player while a video is playing pops it into a
-						Picture-in-Picture window so you can keep watching while browsing. Turn this on to pause
-						playback on navigation instead. Episode-to-episode navigation never triggers PiP
-						regardless.
-					</span>
+					<span class="field-key">{m.settings_field_disable_pip_key()}</span>
+					<span class="field-hint">{m.settings_field_disable_pip_hint()}</span>
 				</div>
 				<label class="switch">
 					<input
@@ -389,12 +394,16 @@
 						checked={cfg.disable_auto_pip_on_leave}
 						onchange={(e) =>
 							setDisableAutoPipOnLeave((e.currentTarget as HTMLInputElement).checked)}
-						aria-label="Disable auto Picture-in-Picture"
+						aria-label={m.settings_disable_pip_aria_label()}
 					/>
 					<span class="switch-track" aria-hidden="true">
 						<span class="switch-thumb"></span>
 					</span>
-					<span class="switch-state">{cfg.disable_auto_pip_on_leave ? 'On' : 'Off'}</span>
+					<span class="switch-state"
+						>{cfg.disable_auto_pip_on_leave
+							? m.settings_switch_state_on()
+							: m.settings_switch_state_off()}</span
+					>
 				</label>
 			</div>
 		</section>
@@ -404,25 +413,25 @@
 		<!-- LIBRARY -->
 		<section class="section">
 			<h2 class="section-eyebrow">
-				<span>Library</span>
-				<span class="section-eyebrow-faint">locale, cache, history</span>
+				<span>{m.settings_section_library_title()}</span>
+				<span class="section-eyebrow-faint">{m.settings_section_library_hint()}</span>
 			</h2>
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Language</span>
-					<span class="field-hint">UI strings. Title language is independent (M2.6).</span>
+					<span class="field-key">{m.settings_field_language_key()}</span>
+					<span class="field-hint">{m.settings_field_language_hint()}</span>
 				</div>
 				<div class="select-wrap">
 					<select
 						class="select-input"
 						value={cfg.locale}
 						onchange={(e) => setLocale((e.currentTarget as HTMLSelectElement).value)}
-						aria-label="Locale"
+						aria-label={m.settings_language_aria_label()}
 					>
 						{#each LOCALES as l (l.key)}
 							<option value={l.key} disabled={!l.available}>
-								{l.label}{l.available ? '' : '  — coming soon'}
+								{l.label}{l.available ? '' : m.settings_locale_unavailable_suffix()}
 							</option>
 						{/each}
 					</select>
@@ -432,10 +441,8 @@
 
 			<div class="field">
 				<div class="field-label">
-					<span class="field-key">Image cache cap</span>
-					<span class="field-hint">
-						Posters and banners cached to disk. Older entries evicted when the cap is hit.
-					</span>
+					<span class="field-key">{m.settings_field_image_cache_cap_key()}</span>
+					<span class="field-hint">{m.settings_field_image_cache_cap_hint()}</span>
 				</div>
 				<div class="number-wrap">
 					<input
@@ -445,50 +452,58 @@
 						step="50"
 						value={cfg.image_cache_cap_mb}
 						oninput={(e) => setCacheCap((e.currentTarget as HTMLInputElement).value)}
-						aria-label="Image cache cap, megabytes"
+						aria-label={m.settings_image_cache_cap_aria_label()}
 					/>
-					<span class="number-suffix" aria-hidden="true">MB</span>
+					<span class="number-suffix" aria-hidden="true">{m.settings_image_cache_suffix()}</span>
 				</div>
 			</div>
 
 			<div class="field field-stack">
 				<div class="field-label">
-					<span class="field-key">Clear cached images</span>
+					<span class="field-key">{m.settings_field_clear_images_key()}</span>
 					<span class="field-hint">
-						Removes posters and thumbnails on disk at <code>~/.cache/ani-gui/images/</code>. Useful
-						after a Kitsu re-cataloguing or to reclaim disk before the LRU prune kicks in.
+						{m.settings_field_clear_images_hint_prefix()}<code
+							>{m.settings_field_clear_images_hint_path()}</code
+						>{m.settings_field_clear_images_hint_suffix()}
 					</span>
 				</div>
 				<button type="button" class="btn-danger" onclick={clearImages} disabled={clearingImages}>
 					<span aria-hidden="true">×</span>
 					<span
 						>{clearingImages
-							? 'Clearing…'
+							? m.settings_clear_images_clearing()
 							: imagesCleared
-								? 'Image cache cleared'
-								: 'Clear image cache'}</span
+								? m.settings_clear_images_cleared()
+								: m.settings_clear_images_button()}</span
 					>
 				</button>
 			</div>
 
 			<div class="field field-stack">
 				<div class="field-label">
-					<span class="field-key">Continue Watching history</span>
+					<span class="field-key">{m.settings_field_history_key()}</span>
 					<span class="field-hint">
-						Stored locally at <code>{info?.history_path ?? '~/.local/state/ani-cli/ani-hsts'}</code
-						>. Clearing is permanent.
+						{m.settings_field_history_hint_path_prefix()}<code
+							>{info?.history_path ?? '~/.local/state/ani-cli/ani-hsts'}</code
+						>{m.settings_field_history_hint_path_suffix()}
 					</span>
 				</div>
 				<button type="button" class="btn-danger" onclick={clearHistory} disabled={clearing}>
 					<span aria-hidden="true">×</span>
-					<span>{clearing ? 'Clearing…' : cleared ? 'History cleared' : 'Clear history'}</span>
+					<span
+						>{clearing
+							? m.settings_clear_history_clearing()
+							: cleared
+								? m.settings_clear_history_cleared()
+								: m.settings_clear_history_button()}</span
+					>
 				</button>
 			</div>
 		</section>
 
 		{#if saveError}
 			<div class="state state-error" role="alert">
-				<p class="state-headline">Couldn't save.</p>
+				<p class="state-headline">{m.settings_error_save_headline()}</p>
 				<p class="state-detail">{saveError}</p>
 			</div>
 		{/if}
@@ -498,17 +513,17 @@
 		<!-- ABOUT -->
 		<section class="section about">
 			<h2 class="section-eyebrow">
-				<span>About</span>
-				<span class="section-eyebrow-faint">credits, version, license</span>
+				<span>{m.settings_section_about_title()}</span>
+				<span class="section-eyebrow-faint">{m.settings_section_about_hint()}</span>
 			</h2>
 
 			<dl class="about-list">
 				<div class="about-row">
-					<dt>Version</dt>
+					<dt>{m.settings_about_version_label()}</dt>
 					<dd class="mono">{info?.version ?? '—'}</dd>
 				</div>
 				<div class="about-row">
-					<dt>Built atop</dt>
+					<dt>{m.settings_about_built_label()}</dt>
 					<dd>
 						<a
 							class="inline-link"
@@ -516,23 +531,24 @@
 							target="_blank"
 							rel="noreferrer"
 						>
-							pystardust/ani-cli
+							{m.settings_about_ani_cli_link()}
 						</a>
-						<span class="about-foot"> — the 666-line POSIX-shell scraper this app drives. </span>
+						<span class="about-foot">{m.settings_about_ani_cli_description()}</span>
 					</dd>
 				</div>
 				<div class="about-row">
-					<dt>License</dt>
+					<dt>{m.settings_about_license_label()}</dt>
 					<dd>
-						GPL-3.0 — inherited from upstream.
-						<a class="inline-link" href={resolve('/diagnostics')}>Diagnostics</a>
+						{m.settings_about_license_text()}
+						<a class="inline-link" href={resolve('/diagnostics')}
+							>{m.settings_about_diagnostics_link()}</a
+						>
 					</dd>
 				</div>
 				<div class="about-row">
-					<dt>Disclaimer</dt>
+					<dt>{m.settings_about_disclaimer_label()}</dt>
 					<dd class="about-foot">
-						ani-gui scrapes public sources. Use only where local laws permit. The maintainers don't
-						operate, host, or guarantee any of the upstream content.
+						{m.settings_about_disclaimer_text()}
 					</dd>
 				</div>
 			</dl>
