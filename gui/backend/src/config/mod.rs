@@ -9,6 +9,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::commands::external_player::ExternalPlayerKind;
 use crate::error::{AniError, Result};
 
 /// Application configuration. Values default to upstream `ani-cli`'s
@@ -25,6 +26,15 @@ pub struct Config {
     pub quality: String,
     /// External-player command for the escape hatch. Default `"mpv"`.
     pub external_player: String,
+    /// Which player flag syntax `build_argv` should emit. Default
+    /// `Mpv` so existing configs keep their behaviour. The settings
+    /// page lets the user switch to `Vlc`, `Iina`, or `Custom`.
+    pub external_player_kind: ExternalPlayerKind,
+    /// Args template for the `Custom` kind (ignored otherwise).
+    /// shlex-split + per-token placeholder substitution at launch
+    /// time — see `commands::external_player::build_argv_custom`.
+    /// Default empty (triggers the bare-URL fallback).
+    pub external_player_custom_args: String,
     /// Hard cap on the on-disk image cache, in megabytes.
     pub image_cache_cap_mb: u64,
     /// When `true`, the player auto-advances to the next episode at
@@ -73,6 +83,8 @@ impl Default for Config {
             mode: "sub".into(),
             quality: "best".into(),
             external_player: "mpv".into(),
+            external_player_kind: ExternalPlayerKind::Mpv,
+            external_player_custom_args: String::new(),
             image_cache_cap_mb: 500,
             auto_play_next: false,
             download_bottom_bar_enabled: true,

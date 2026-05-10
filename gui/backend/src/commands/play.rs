@@ -537,10 +537,8 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
         subtitle_url: resolved.subtitle_url,
         title: Some(format!("{} · ep {}", args.title, args.episode)),
         player_command: cfg.external_player,
-        // TODO(green): plumb cfg.external_player_kind +
-        // cfg.external_player_custom_args once those fields land.
-        player_kind: external_player::ExternalPlayerKind::Mpv,
-        custom_args_template: None,
+        player_kind: cfg.external_player_kind,
+        custom_args_template: Some(cfg.external_player_custom_args),
     };
     external_player::open_external_player(&launch)
 }

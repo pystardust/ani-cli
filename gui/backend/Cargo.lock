@@ -53,6 +53,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sha2",
+ "shlex",
  "strip-ansi-escapes",
  "tempfile",
  "thiserror 2.0.18",

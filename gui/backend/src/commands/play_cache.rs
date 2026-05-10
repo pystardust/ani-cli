@@ -114,9 +114,7 @@ pub(crate) async fn try_launch_args_from_cache(
         subtitle_url: cached.subtitle_url,
         title: Some(format!("{} · ep {}", args.title, args.episode)),
         player_command: cfg.external_player.clone(),
-        // TODO(green): plumb cfg.external_player_kind +
-        // cfg.external_player_custom_args once those fields land.
-        player_kind: crate::commands::external_player::ExternalPlayerKind::Mpv,
-        custom_args_template: None,
+        player_kind: cfg.external_player_kind,
+        custom_args_template: Some(cfg.external_player_custom_args.clone()),
     })
 }

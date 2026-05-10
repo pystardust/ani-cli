@@ -178,6 +178,10 @@ export interface CreateSessionResponse {
 	cache_hit?: boolean;
 }
 
+/** Player flag-syntax flavor — controls the argv shape `build_argv`
+ *  emits on the backend. Snake_case to match the Rust serde tag. */
+export type ExternalPlayerKind = 'mpv' | 'vlc' | 'iina' | 'custom';
+
 /** Input to `cmd_open_external_player`. */
 export interface LaunchExternalPlayerArgs {
 	stream_url: string;
@@ -185,6 +189,8 @@ export interface LaunchExternalPlayerArgs {
 	subtitle_url?: string | null;
 	title?: string | null;
 	player_command: string;
+	player_kind?: ExternalPlayerKind;
+	custom_args_template?: string | null;
 }
 
 /**
@@ -221,6 +227,8 @@ export interface Config {
 	mode: string; // "sub" | "dub"
 	quality: string; // "best" | "worst" | "1080" | "720" | "480"
 	external_player: string;
+	external_player_kind: ExternalPlayerKind;
+	external_player_custom_args: string;
 	image_cache_cap_mb: number;
 	auto_play_next: boolean;
 	download_bottom_bar_enabled: boolean;
