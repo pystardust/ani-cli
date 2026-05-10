@@ -15,6 +15,12 @@ gui/backend/WixTools/
 gui/electron/dist/
 gui/electron/squashfs-root/
 gui/electron/.appimage-cache/
+gui/electron/.win-deps-cache/
+
+# Windows-only POSIX deps fetched at build time by
+# scripts/fetch-windows-deps.mjs (today: fzf.exe). Staged here for
+# electron-builder to pack into the NSIS payload.
+gui/electron/build-resources/win/bin/
 
 # Playwright outputs
 gui/electron/test-results/

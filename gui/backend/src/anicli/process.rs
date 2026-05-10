@@ -104,6 +104,13 @@ pub struct DebugOptions {
     /// Override `PATH` (mainly for tests that put a curl shim ahead of
     /// system binaries). Defaults to the inherited `PATH`.
     pub path_override: Option<String>,
+    /// Directory shipped alongside the backend binary that holds
+    /// bundled POSIX deps the script needs but Git for Windows
+    /// doesn't provide (today: `fzf.exe`). Prepended to the spawn's
+    /// PATH so `command -v fzf` resolves to the bundled copy.
+    /// `None` on Unix and on Windows dev runs without the bundled
+    /// `bin/` dir in the cargo target tree.
+    pub bundled_bin: Option<PathBuf>,
 }
 
 impl DebugOptions {
@@ -116,6 +123,7 @@ impl DebugOptions {
             hist_dir: None,
             timeout: DEFAULT_TIMEOUT,
             path_override: None,
+            bundled_bin: None,
         }
     }
 }
@@ -164,14 +172,18 @@ pub async fn run_debug(
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
-    // PATH is required so ani-cli can find curl/openssl/fzf/mpv. Tests
-    // override this to inject a curl shim ahead of system binaries.
-    let path_value = opts
-        .path_override
-        .clone()
-        .or_else(|| std::env::var("PATH").ok())
-        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
-    cmd.env("PATH", path_value);
+    // PATH is required so ani-cli can find curl/openssl/fzf/mpv. The
+    // helper prepends `opts.bundled_bin` (Windows: bundled fzf.exe)
+    // and honours `opts.path_override` (tests inject a curl shim).
+    let inherited = std::env::var_os("PATH");
+    cmd.env(
+        "PATH",
+        crate::anicli::env::compose_anicli_path(
+            opts.bundled_bin.as_deref(),
+            opts.path_override.as_deref(),
+            inherited.as_deref(),
+        ),
+    );
     if let Some(home) = std::env::var_os("HOME") {
         cmd.env("HOME", home);
     }
@@ -287,12 +299,15 @@ where
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
-    let path_value = opts
-        .path_override
-        .clone()
-        .or_else(|| std::env::var("PATH").ok())
-        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
-    cmd.env("PATH", path_value);
+    let inherited = std::env::var_os("PATH");
+    cmd.env(
+        "PATH",
+        crate::anicli::env::compose_anicli_path(
+            opts.bundled_bin.as_deref(),
+            opts.path_override.as_deref(),
+            inherited.as_deref(),
+        ),
+    );
     if let Some(home) = std::env::var_os("HOME") {
         cmd.env("HOME", home);
     }
@@ -462,12 +477,15 @@ where
     cmd.arg("--").arg(&safe_query);
 
     cmd.env_clear();
-    let path_value = opts
-        .path_override
-        .clone()
-        .or_else(|| std::env::var("PATH").ok())
-        .unwrap_or_else(|| "/usr/bin:/bin".to_string());
-    cmd.env("PATH", path_value);
+    let inherited = std::env::var_os("PATH");
+    cmd.env(
+        "PATH",
+        crate::anicli::env::compose_anicli_path(
+            opts.bundled_bin.as_deref(),
+            opts.path_override.as_deref(),
+            inherited.as_deref(),
+        ),
+    );
     if let Some(home) = std::env::var_os("HOME") {
         cmd.env("HOME", home);
     }

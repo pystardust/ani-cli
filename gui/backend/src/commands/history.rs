@@ -82,6 +82,7 @@ mod tests {
             proxy_origin: ProxyOrigin::new("127.0.0.1", 0),
             ani_cli_path: PathBuf::from("/x/ani-cli"),
             bash_path: None,
+            bundled_bin: None,
             history_path,
             scraper_slots: Arc::new(Semaphore::new(1)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),

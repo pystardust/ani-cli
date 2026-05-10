@@ -14,9 +14,10 @@
 		"start": "electron .",
 		"build:backend": "cd ../backend && cargo build --bin ani-gui-backend --release",
 		"build:frontend": "cd ../frontend && pnpm build",
+		"fetch:win-deps": "node scripts/fetch-windows-deps.mjs",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
 		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
-		"package:win": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:win",
+		"package:win": "pnpm run fetch:win-deps && pnpm run build:backend && pnpm run build:frontend && pnpm run dist:win",
 		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
 		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
 		"dist:win": "electron-builder --win nsis",
@@ -103,6 +104,10 @@
 				{
 					"from": "../../ani-cli",
 					"to": "ani-cli"
+				},
+				{
+					"from": "build-resources/win/bin",
+					"to": "bin"
 				}
 			]
 		},

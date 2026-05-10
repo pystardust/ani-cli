@@ -34,11 +34,31 @@ const FALLBACK_PATH: &str = "/usr/bin:/bin";
 /// Pure: no env or filesystem reads. Caller passes everything in.
 #[must_use]
 pub fn compose_anicli_path(
-    _bundled_bin: Option<&Path>,
-    _path_override: Option<&str>,
-    _inherited: Option<&OsStr>,
+    bundled_bin: Option<&Path>,
+    path_override: Option<&str>,
+    inherited: Option<&OsStr>,
 ) -> OsString {
-    unimplemented!("test(red): compose_anicli_path body lands in the paired feat(green) commit")
+    let base: OsString = match path_override {
+        Some(o) => OsString::from(o),
+        None => match inherited {
+            Some(p) => p.to_os_string(),
+            None => OsString::from(FALLBACK_PATH),
+        },
+    };
+
+    let mut parts: Vec<PathBuf> = Vec::new();
+    if let Some(b) = bundled_bin {
+        parts.push(b.to_path_buf());
+    }
+    for p in std::env::split_paths(&base) {
+        parts.push(p);
+    }
+
+    // join_paths only fails if a component contains the platform's
+    // path-list separator, which neither our bundled dir nor a
+    // pre-split PATH should ever contain. Fall back to the un-prefixed
+    // base string so a malformed bundled dir doesn't break spawns.
+    std::env::join_paths(&parts).unwrap_or(base)
 }
 
 #[cfg(test)]

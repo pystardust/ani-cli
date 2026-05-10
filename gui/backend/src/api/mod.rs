@@ -655,6 +655,7 @@ mod tests {
             proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
             ani_cli_path: PathBuf::from("/tmp/ani-cli"),
             bash_path: None,
+            bundled_bin: None,
             history_path: td.path().join("ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir: td.path().join("images"),

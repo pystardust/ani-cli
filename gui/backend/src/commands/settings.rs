@@ -44,6 +44,7 @@ mod tests {
             proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
             ani_cli_path: PathBuf::from("/x"),
             bash_path: None,
+            bundled_bin: None,
             history_path: PathBuf::from("/y/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),

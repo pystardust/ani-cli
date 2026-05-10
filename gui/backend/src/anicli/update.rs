@@ -144,10 +144,20 @@ pub fn strip_lib_guard(script_path: &Path) -> std::io::Result<()> {
 /// [`crate::anicli::bash::locate_bash`] at startup) and ignored on
 /// Unix where bash is found on PATH naturally.
 ///
+/// `bundled_bin` is the directory holding deps shipped alongside the
+/// backend (Windows: bundled `fzf.exe`). When set, prepended to the
+/// spawn's PATH so the script's `dep_ch` finds bundled binaries
+/// before any system install. `None` on Unix and on dev runs where
+/// the bundle isn't laid down.
+///
 /// # Errors
 /// Never returns `Err`; spawn failures and non-zero exits are surfaced
 /// as `UpdateStatus::Failed` with the error in `stderr`.
-pub async fn run_update(script_path: &Path, bash_path: Option<&Path>) -> UpdateOutcome {
+pub async fn run_update(
+    script_path: &Path,
+    bash_path: Option<&Path>,
+    bundled_bin: Option<&Path>,
+) -> UpdateOutcome {
     let started = std::time::Instant::now();
     let mut cmd = match bash_path {
         // Windows: bash.exe resolved at startup via locate_bash. Apply
@@ -173,8 +183,17 @@ pub async fn run_update(script_path: &Path, bash_path: Option<&Path>) -> UpdateO
         None => tokio::process::Command::new("bash"),
     };
     cmd.arg(script_path);
+    // Prepend bundled_bin to PATH on Windows so `dep_ch` finds the
+    // bundled fzf even when the user has no system install. On Unix
+    // / when bundled_bin is None the inherited PATH passes through
+    // unchanged.
+    let inherited = std::env::var_os("PATH");
     let result = cmd
         .arg("-U")
+        .env(
+            "PATH",
+            crate::anicli::env::compose_anicli_path(bundled_bin, None, inherited.as_deref()),
+        )
         // Don't carry forward the user's $TERM / colour env; -U writes
         // to stdout in plain ASCII.
         .env("TERM", "dumb")

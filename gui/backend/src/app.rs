@@ -47,6 +47,13 @@ pub struct AppState {
     /// via [`crate::anicli::bash::locate_bash`] and threaded into
     /// every spawn site via [`DebugOptions::bash_path`].
     pub bash_path: Option<PathBuf>,
+    /// Directory shipped next to the backend binary holding bundled
+    /// POSIX deps (Windows: `fzf.exe`). Computed once in `build()`
+    /// from the resource dir; threaded into every ani-cli spawn so
+    /// the script's `dep_ch` finds the bundled binaries before any
+    /// system install. `None` on Unix and on Windows dev runs where
+    /// the directory hasn't been laid down.
+    pub bundled_bin: Option<PathBuf>,
     /// Path of the shared history file.
     pub history_path: PathBuf,
     /// Concurrency limiter for ani-cli subprocess spawns.
@@ -79,6 +86,16 @@ impl AppState {
         proxy_origin: ProxyOrigin,
         ani_cli_resource_dir: Option<PathBuf>,
     ) -> Result<Self> {
+        // Bundled-deps dir lives at `<resource_dir>/bin`. On Windows
+        // the NSIS installer drops `fzf.exe` here via electron-builder
+        // `extraResources`; in cargo dev runs the same path is
+        // populated by the `fetch:win-deps` script so playback works
+        // without polluting global PATH. Computed before consuming
+        // `ani_cli_resource_dir` for the script fallback below.
+        let bundled_bin = ani_cli_resource_dir
+            .as_ref()
+            .map(|d| d.join("bin"))
+            .filter(|p| p.is_dir());
         // Resolve the script path through the writable cache copy so
         // `-U` can patch it in place. The seed is whatever PATH or
         // the resource dir gives us; the live path is always under
@@ -122,6 +139,7 @@ impl AppState {
             proxy_origin,
             ani_cli_path,
             bash_path,
+            bundled_bin,
             history_path,
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir,
@@ -144,10 +162,12 @@ impl AppState {
         }
         let script = self.ani_cli_path.clone();
         let bash = self.bash_path.clone();
+        let bundled_bin = self.bundled_bin.clone();
         let state_dir = self.state_dir.clone();
         tokio::spawn(async move {
             tracing::info!(target: "anicli::update", script = %script.display(), "running -U in background");
-            let outcome = update::run_update(&script, bash.as_deref()).await;
+            let outcome =
+                update::run_update(&script, bash.as_deref(), bundled_bin.as_deref()).await;
             tracing::info!(
                 target: "anicli::update",
                 status = ?outcome.status,
@@ -172,6 +192,7 @@ impl AppState {
     pub fn debug_options(&self) -> DebugOptions {
         let mut opts = DebugOptions::new(self.ani_cli_path.clone());
         opts.bash_path = self.bash_path.clone();
+        opts.bundled_bin = self.bundled_bin.clone();
         // history_path is `…/ani-cli/ani-hsts`; ANI_CLI_HIST_DIR wants the
         // directory containing the file.
         opts.hist_dir = self.history_path.parent().map(std::path::Path::to_path_buf);
@@ -231,6 +252,7 @@ mod tests {
             proxy_origin: ProxyOrigin::new("127.0.0.1", 12_345),
             ani_cli_path: PathBuf::from("/tmp/ani-cli"),
             bash_path: None,
+            bundled_bin: None,
             history_path: PathBuf::from("/tmp/ani-cli/ani-hsts"),
             scraper_slots: Arc::new(Semaphore::new(SCRAPER_CONCURRENCY)),
             image_cache_dir: PathBuf::from("/tmp/ani-gui-images"),
