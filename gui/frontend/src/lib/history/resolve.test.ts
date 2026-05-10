@@ -265,14 +265,28 @@ describe('pickKitsuMatch', () => {
 		expect(pickKitsuMatch(hits, r)?.id).toBe('first');
 	});
 
-	it('does not filter when a hit has null episode_count', () => {
+	it('does not filter when a hit has null episode_count for short shows', () => {
 		// Kitsu's `episodeCount` is null for ongoing shows that have
-		// not declared a final count. We can't reject those — they
-		// might be the right match. Pass null-count hits through to
-		// the existing heuristics.
+		// not declared a final count. For short shows (≤50 cour size,
+		// the typical 1-2 cour ongoing window) we can't reject those
+		// — they might be the right match. Pass them through.
 		const r = resolveHistoryEntry(entry('Ongoing Show (12 episodes)', '1'), null);
 		const hits = [titledCountedHit('ongoing', 'Ongoing Show', null)];
 		expect(pickKitsuMatch(hits, r)?.id).toBe('ongoing');
+	});
+
+	it('rejects null-count hits when the user has a long finished show', () => {
+		// Naruto (220 episodes) → poisoned reverse-cache hit was Duan
+		// Nao 2 (Kitsu episode_count = null, an ONA without a
+		// declared final count). A finished long show in history
+		// almost certainly has a known Kitsu episode_count, so a
+		// null-count match for courSize > 50 is overwhelmingly a
+		// poisoned mapping pointing at an unrelated short entry.
+		// Reject so resolveKitsuMatch falls through to the alias-
+		// enrichment path and re-resolves correctly.
+		const r = resolveHistoryEntry(entry('Naruto (220 episodes)', '1'), null);
+		const hits = [titledCountedHit('duan-nao-2', 'Duan Nao 2', null)];
+		expect(pickKitsuMatch(hits, r)).toBeNull();
 	});
 
 	it('accepts within ±25% tolerance for long-running shows', () => {

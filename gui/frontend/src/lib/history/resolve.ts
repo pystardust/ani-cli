@@ -176,11 +176,19 @@ export function deriveSlug(s: string): string {
 		.replace(/^-+|-+$/g, '');
 }
 
+/** Threshold above which courSize is treated as a "definitively
+ *  finished long show" — null Kitsu counts get rejected at this size
+ *  because long shows almost always have finalized counts in Kitsu.
+ *  Below this we accept null counts (ongoing 1-2 cour shows commonly
+ *  have null until the season ends). */
+export const FINISHED_SHOW_COUR_THRESHOLD = 50;
+
 /** Whether a Kitsu hit's `episode_count` is plausibly the same show
  *  as the user's history record (which carries `courSize` from the
  *  "(N episodes)" tail). Returns true when:
  *  - `courSize` is null (legacy hsts row, no constraint to apply)
- *  - the Kitsu hit's count is null (ongoing show, can't reject)
+ *  - the Kitsu hit's count is null AND courSize is at most
+ *    `FINISHED_SHOW_COUR_THRESHOLD` (typical ongoing 1-2 cour case)
  *  - the counts are within ±5 absolute (handles short-show drift —
  *    12 vs 13 with one OVA)
  *  - the counts are within ±25% (handles long-show drift — 220 vs
@@ -194,7 +202,13 @@ export function isEpisodeCountCompatible(
 	kitsuEpisodeCount: number | null
 ): boolean {
 	if (courSize == null) return true;
-	if (kitsuEpisodeCount == null) return true;
+	if (kitsuEpisodeCount == null) {
+		// A finished long show in history (>50 episodes) almost
+		// always has a known Kitsu episode_count. A null match is
+		// overwhelmingly a poisoned cache row pointing at an
+		// unrelated short ONA (e.g. Naruto 500 → Duan Nao 2 null).
+		return courSize <= FINISHED_SHOW_COUR_THRESHOLD;
+	}
 	const diff = Math.abs(courSize - kitsuEpisodeCount);
 	if (diff <= 5) return true;
 	const ratio = diff / Math.max(courSize, 1);

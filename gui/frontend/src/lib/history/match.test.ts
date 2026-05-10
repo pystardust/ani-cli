@@ -36,14 +36,18 @@ const mockedSearch = vi.mocked(kitsuSearch);
 const mockedGetMatch = vi.mocked(kitsuTitleMatchGet);
 const mockedPutMatch = vi.mocked(kitsuTitleMatchPut);
 
-const stubKitsu = (id: string, canonical_title = 'Stub'): KitsuAnimeRef => ({
+const stubKitsu = (
+	id: string,
+	canonical_title = 'Stub',
+	episode_count: number | null = null
+): KitsuAnimeRef => ({
 	id,
 	canonical_title,
 	slug: null,
 	synopsis: null,
 	start_date: null,
 	end_date: null,
-	episode_count: null,
+	episode_count,
 	average_rating: null,
 	subtype: null,
 	status: null,
@@ -237,7 +241,11 @@ describe('resolveKitsuMatch', () => {
 			null
 		);
 		mockedAllmangaMap.mockResolvedValue('11061');
-		mockedDetail.mockResolvedValue(stubKitsu('11061', 'Naruto: Shippuuden'));
+		// Real Kitsu data: Naruto: Shippuuden has episode_count = 500.
+		// Pass it explicitly so the count compatibility check in
+		// resolveKitsuMatch's step-0 reverse-cache path validates the
+		// cached detail against history's courSize=500 and accepts.
+		mockedDetail.mockResolvedValue(stubKitsu('11061', 'Naruto: Shippuuden', 500));
 
 		const got = await resolveKitsuMatch(preliminary);
 
