@@ -40,7 +40,7 @@ Platform support tiers:
 <summary><strong>Linux</strong> — tier 1 (tested on Ubuntu)</summary>
 
 - **AppImage** — download from the [releases page](https://github.com/JoaoPucci/ani-gui/releases), `chmod +x`, double-click. The bundle launches with Chromium's setuid sandbox disabled (AppImage's read-only FUSE mount can't carry the SUID bit `chrome-sandbox` requires); the localhost-only architecture means the sandbox isn't load-bearing for the threat model. If you'd rather keep the sandbox, install the `.deb` instead.
-- **Debian / Ubuntu (`.deb`)** — `sudo dpkg -i ani-gui_<version>_amd64.deb`. The post-install script sets the `chrome-sandbox` SUID bit Electron needs, so the sandbox stays on.
+- **Debian / Ubuntu (`.deb`)** — `sudo apt install ./ani-gui_<version>_amd64.deb`. apt pulls in the recommended `ffmpeg` package (needed for the download feature) along the way; the post-install script sets the `chrome-sandbox` SUID bit Electron needs, so the sandbox stays on. `sudo dpkg -i …` still works but won't auto-install ffmpeg — drop into `apt --fix-broken install` or run `sudo apt install ffmpeg` separately if you used dpkg directly.
 
 </details>
 

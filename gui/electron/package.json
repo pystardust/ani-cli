@@ -15,11 +15,12 @@
 		"build:backend": "cd ../backend && cargo build --bin ani-gui-backend --release",
 		"build:frontend": "cd ../frontend && pnpm build",
 		"fetch:win-deps": "node scripts/fetch-windows-deps.mjs",
+		"fetch:linux-deps": "node scripts/fetch-linux-deps.mjs",
 		"package": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist",
 		"package:release": "pnpm run build:backend && pnpm run build:frontend && pnpm run dist:release",
 		"package:win": "pnpm run fetch:win-deps && pnpm run build:backend && pnpm run build:frontend && pnpm run dist:win",
-		"dist": "electron-builder --linux AppImage && pnpm run repack-appimage",
-		"dist:release": "electron-builder --linux AppImage deb && pnpm run repack-appimage",
+		"dist": "pnpm run fetch:linux-deps && electron-builder --linux AppImage && pnpm run repack-appimage",
+		"dist:release": "pnpm run fetch:linux-deps && electron-builder --linux AppImage deb && pnpm run repack-appimage",
 		"dist:win": "electron-builder --win nsis",
 		"repack-appimage": "node scripts/repack-appimage.mjs",
 		"e2e": "pnpm run package && playwright test",
@@ -70,7 +71,13 @@
 			"category": "AudioVideo",
 			"executableName": "ani-gui",
 			"artifactName": "${productName}-${version}-${arch}.${ext}",
-			"maintainer": "ani-gui contributors <dev@thirdmovement.net>"
+			"maintainer": "ani-gui contributors <dev@thirdmovement.net>",
+			"extraResources": [
+				{
+					"from": "build-resources/linux/bin",
+					"to": "bin"
+				}
+			]
 		},
 		"deb": {
 			"afterInstall": "build-resources/deb-after-install.sh",
@@ -80,6 +87,9 @@
 				"sed",
 				"grep",
 				"coreutils"
+			],
+			"recommends": [
+				"ffmpeg"
 			]
 		},
 		"win": {
