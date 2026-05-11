@@ -47,13 +47,31 @@ impl AvailableEpisodes {
 }
 
 /// Pick the 1-based index of the candidate whose episode count for
-/// `mode` is closest to `expected`. Returns `None` when the input is
-/// empty. Ties resolve in favour of the earliest candidate (allanime's
-/// own ranking) so a perfect-match-vs-perfect-match never reorders.
+/// `mode` is closest to `expected`, with an exact-name-match tie-break
+/// against `search_title` when several candidates land on the same
+/// minimum distance.
+///
+/// Tie-break rationale: a Kitsu-routed play call carries the user's
+/// chosen show title (e.g. `"Gintama."`), and allanime's "Gintama."
+/// search returns several 12-episode shows (Ginpachi-sensei at pos 0,
+/// Shirogane no Tamashii-hen at pos 9, and the actual Gintama. at pos
+/// 12). The episode-count signal can't disambiguate them — but the
+/// allanime `name` of the right show is literally the same as the
+/// search title. Empty `search_title` preserves the older positional
+/// tie-break for non-Kitsu-routed callers.
+///
+/// Returns `None` when the input is empty. The base distance pick
+/// always wins over the tie-break, so a closer non-exact match beats
+/// a more-distant exact-name match.
 ///
 /// Returns a 1-based index because ani-cli's `-S` flag is 1-based.
 #[must_use]
-pub fn pick_by_ep_count(candidates: &[Candidate], expected: u32, mode: &str) -> Option<usize> {
+pub fn pick_by_ep_count(
+    candidates: &[Candidate],
+    expected: u32,
+    mode: &str,
+    search_title: &str,
+) -> Option<usize> {
     if candidates.is_empty() {
         return None;
     }
@@ -65,6 +83,22 @@ pub fn pick_by_ep_count(candidates: &[Candidate], expected: u32, mode: &str) -> 
         if dist < best_dist {
             best_idx = i;
             best_dist = dist;
+        }
+    }
+    // Exact-name tie-break: among the candidates that landed on
+    // `best_dist`, prefer one whose name (case-insensitive, trimmed)
+    // equals the search title. Falls through to `best_idx` when no
+    // exact name match exists, preserving allanime's positional
+    // ranking.
+    let needle = search_title.trim().to_lowercase();
+    if !needle.is_empty() {
+        for (i, c) in candidates.iter().enumerate() {
+            if c.available_episodes.for_mode(mode).abs_diff(expected) != best_dist {
+                continue;
+            }
+            if c.name.trim().to_lowercase() == needle {
+                return Some(i + 1);
+            }
         }
     }
     Some(best_idx + 1)
@@ -353,7 +387,7 @@ mod tests {
 
     #[test]
     fn pick_by_ep_count_returns_none_for_empty_input() {
-        assert_eq!(pick_by_ep_count(&[], 500, "sub"), None);
+        assert_eq!(pick_by_ep_count(&[], 500, "sub", ""), None);
     }
 
     #[test]
@@ -370,22 +404,72 @@ mod tests {
             cand("main", "Naruto: Shippuuden", 500),
             cand("ova", "Naruto OVAs", 12),
         ];
-        assert_eq!(pick_by_ep_count(&cands, 500, "sub"), Some(2));
+        assert_eq!(pick_by_ep_count(&cands, 500, "sub", ""), Some(2));
     }
 
     #[test]
     fn pick_by_ep_count_returns_one_when_only_one_candidate() {
         let cands = vec![cand("only", "Some Show", 12)];
-        assert_eq!(pick_by_ep_count(&cands, 500, "sub"), Some(1));
+        assert_eq!(pick_by_ep_count(&cands, 500, "sub", ""), Some(1));
     }
 
     #[test]
     fn pick_by_ep_count_breaks_ties_in_allanime_order() {
         // Two candidates equidistant from expected — the earlier one
         // wins to preserve allanime's own relevance ranking when the
-        // ep_count signal is ambiguous.
+        // ep_count signal is ambiguous AND no exact name match is
+        // present.
         let cands = vec![cand("a", "A", 100), cand("b", "B", 100)];
-        assert_eq!(pick_by_ep_count(&cands, 100, "sub"), Some(1));
+        assert_eq!(pick_by_ep_count(&cands, 100, "sub", ""), Some(1));
+    }
+
+    #[test]
+    fn pick_by_ep_count_prefers_exact_name_match_among_ep_ties() {
+        // The Gintama./Ginpachi-sensei repro. allmanga's "Gintama."
+        // search returns three candidates with eps=12 (Ginpachi-sensei
+        // at pos 0, Shirogane no Tamashii at pos 9, Gintama. at pos
+        // 12). Kitsu's canonical title for the show the user clicked
+        // is "Gintama." — the picker should prefer the exact-name
+        // match over allanime's positional first.
+        let cands = vec![
+            cand("ginpachi", "3-nen Z-gumi Ginpachi-sensei", 12),
+            cand("shirogane", "Gintama.: Shirogane no Tamashii-hen", 12),
+            cand("gintama-dot", "Gintama.", 12),
+        ];
+        assert_eq!(pick_by_ep_count(&cands, 12, "sub", "Gintama."), Some(3));
+    }
+
+    #[test]
+    fn pick_by_ep_count_exact_name_match_is_case_insensitive_and_trimmed() {
+        // Allmanga occasionally pads names with trailing whitespace;
+        // Kitsu's canonical can differ in case. Normalize both so the
+        // match doesn't break on cosmetic drift.
+        let cands = vec![
+            cand("ginpachi", "3-nen Z-gumi Ginpachi-sensei", 12),
+            cand("gintama-dot", "  GINTAMA.  ", 12),
+        ];
+        assert_eq!(pick_by_ep_count(&cands, 12, "sub", "gintama."), Some(2));
+    }
+
+    #[test]
+    fn pick_by_ep_count_ignores_exact_name_when_distance_differs() {
+        // Tie-break only applies AMONG min-distance candidates. A
+        // distant exact-name match shouldn't beat a closer non-exact
+        // candidate — episode-count remains the primary signal.
+        let cands = vec![
+            cand("close-but-wrong-name", "Other Show", 12),
+            cand("exact-but-distant", "Gintama.", 100),
+        ];
+        assert_eq!(pick_by_ep_count(&cands, 12, "sub", "Gintama."), Some(1));
+    }
+
+    #[test]
+    fn pick_by_ep_count_empty_title_falls_back_to_positional_tie_break() {
+        // Callers without a search title pass "" — the existing
+        // positional-first tie-break is preserved so the function
+        // stays backward-compatible for any non-Kitsu-routed call.
+        let cands = vec![cand("a", "A", 100), cand("b", "B", 100)];
+        assert_eq!(pick_by_ep_count(&cands, 100, "sub", ""), Some(1));
     }
 
     #[test]
@@ -404,7 +488,7 @@ mod tests {
         ];
         // Looking for 500 dub-eps: B wins (dub=500), even though A
         // would win for sub.
-        assert_eq!(pick_by_ep_count(&cands, 500, "dub"), Some(2));
+        assert_eq!(pick_by_ep_count(&cands, 500, "dub", ""), Some(2));
     }
 
     #[tokio::test]
@@ -655,7 +739,7 @@ mod tests {
                     available_episodes: AvailableEpisodes { sub: n, dub: 0 },
                 })
                 .collect();
-            let pick = pick_by_ep_count(&cands, expected, "sub").expect("non-empty");
+            let pick = pick_by_ep_count(&cands, expected, "sub", "").expect("non-empty");
             proptest::prop_assert!(pick >= 1);
             proptest::prop_assert!(pick <= cands.len());
 

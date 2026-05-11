@@ -132,7 +132,7 @@ pub fn select_first_with_hits_with_candidate(
             continue;
         }
         let pick = match expected {
-            Some(n) => scraper::pick_by_ep_count(cands, n, mode).unwrap_or(1),
+            Some(n) => scraper::pick_by_ep_count(cands, n, mode, title).unwrap_or(1),
             None => 1,
         };
         // `pick` is 1-based; clamp into the slice in case
