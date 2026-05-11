@@ -89,6 +89,10 @@ On first launch the app:
 
 After that, click anything that looks clickable. The app routes the click through Kitsu / AniList for metadata, `ani-cli` for the actual stream resolution, and the embedded player for playback.
 
+<p align="center">
+  <img width="2751" height="1300" alt="image" src="https://github.com/user-attachments/assets/b68c7c26-e536-4c01-a711-6f44ed8cd57a" />
+</p>
+
 ## Configuration
 
 User settings live in `$XDG_CONFIG_HOME/ani-gui/config.toml`. The Settings page exposes everything you'd normally edit:
