@@ -115,9 +115,9 @@ When invoking the Anthropic `frontend-design:frontend-design` skill for componen
 
 Once a milestone affects the UI surface, treat the work as v1-quality, not as a quick patch. Specifically: M4 ani-skip integration explicitly triggers a UI revisit, since the player overlay changes shape when intro-skip exists.
 
-## 10. Single-branch policy until v1
+## 10. PR conventions
 
-Commit directly to `master`. No long-lived feature branches. README is reviewed and updated only at the v1 cut, not before.
+Set the assignee on every PR (`gh pr create --assignee @me`). Add a label from the repo's existing set (`bug`, `enhancement`, `documentation`, …) when one obviously fits the change; skip the label otherwise — don't invent new ones without asking.
 
 ## 11. System-modifying actions require explicit approval
 

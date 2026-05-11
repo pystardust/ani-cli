@@ -4,6 +4,10 @@
   <em>A desktop app for browsing and watching anime.</em>
 </p>
 
+<p align="center">
+  <img width="2751" height="1300" alt="image" src="https://github.com/user-attachments/assets/ee2e3d80-01e8-46cb-afa0-a132cd3e3273" />
+</p>
+
 ani-gui is a graphical front-end for [pystardust/ani-cli](https://github.com/pystardust/ani-cli). It embeds the upstream Bash scraper unmodified and wraps it in a Rust + SvelteKit desktop application — discovery, search, an embedded player, downloads, persistent watch history, Picture-in-Picture, and OP/ED skip on top of the same scraping engine.
 
 The CLI still exists. The GUI does not replace it; the two share the script and coexist in this repository. See [`docs/architecture.md`](./docs/architecture.md) for the full picture.
