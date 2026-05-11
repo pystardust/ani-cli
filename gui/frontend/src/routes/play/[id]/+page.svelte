@@ -86,6 +86,7 @@
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
 	import { clientXToFraction, displayedScrubFraction } from '$lib/play/scrubber';
 	import { shouldThrottleSeek } from '$lib/play/seek-throttle';
+	import { isStaleDragCallback } from '$lib/play/drag-generation';
 	import {
 		describeError,
 		describeExternalLaunchFailure,
@@ -490,6 +491,13 @@
 	// `$lib/play/seek-throttle.ts` for the rationale (HLS segment
 	// thrash on every pointermove).
 	let lastSeekAt: number | null = null;
+	// Monotonic generation counter bumped on every pointerdown. The
+	// release-time `seeked` listener and 500 ms safety timer capture
+	// it; on fire they consult `isStaleDragCallback` and no-op when a
+	// fresh drag has bumped the live counter — without this, a
+	// release-then-redrag within 500 ms lets drag-1's stale callback
+	// clobber drag-2's `dragPreviewFraction` for one frame.
+	let dragGeneration = 0;
 	// `dragPreviewFraction` updates synchronously on every
 	// pointermove so the thumb + fill follow the pointer 1:1
 	// during a drag. videoEl.currentTime is also seeked live for
@@ -572,6 +580,9 @@
 		const rect = target.getBoundingClientRect();
 		scrubberDragRect = { left: rect.left, width: rect.width };
 		scrubberDragging = true;
+		// Bump the generation so any release-time callback still
+		// pending from a previous drag detects it's stale and no-ops.
+		dragGeneration += 1;
 		// Fresh drag — reset the throttle so the opening seek lands
 		// immediately (shouldThrottleSeek treats null as "never seeked").
 		lastSeekAt = null;
@@ -626,13 +637,19 @@
 		// sticking forever if `seeked` never fires.
 		if (videoEl) {
 			const v = videoEl;
+			// Capture the current drag's generation so the callbacks
+			// below can no-op if a fresh pointerdown has bumped it
+			// before either fires (the release-then-redrag race).
+			const scheduledGen = dragGeneration;
 			const safety = window.setTimeout(() => {
+				v.removeEventListener('seeked', onSeeked);
+				if (isStaleDragCallback(scheduledGen, dragGeneration)) return;
 				currentTime = v.currentTime;
 				dragPreviewFraction = null;
-				v.removeEventListener('seeked', onSeeked);
 			}, 500);
 			const onSeeked = () => {
 				window.clearTimeout(safety);
+				if (isStaleDragCallback(scheduledGen, dragGeneration)) return;
 				currentTime = v.currentTime;
 				dragPreviewFraction = null;
 			};
