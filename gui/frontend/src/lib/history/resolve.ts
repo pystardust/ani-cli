@@ -183,18 +183,33 @@ export function deriveSlug(s: string): string {
  *  have null until the season ends). */
 export const FINISHED_SHOW_COUR_THRESHOLD = 50;
 
+/** Maximum allowed absolute shortfall in the ongoing-show lane, in
+ *  episodes. allmanga lags Kitsu's announced total by at most this
+ *  many episodes for the same show — anything wider is almost
+ *  certainly an unrelated, much-larger franchise. 50 covers every
+ *  realistic catch-up scenario (most cours are 12–13 eps; a year-long
+ *  show is 24–26; 50 leaves headroom for double-cour announcements
+ *  where allmanga only has ep 1) while cleanly rejecting accidental
+ *  matches like courSize=20 vs Kitsu=400. */
+export const ONGOING_SHORTFALL_MAX_EPISODES = 50;
+
 /** Whether a Kitsu hit's `episode_count` is plausibly the same show
  *  as the user's history record (which carries `courSize` from the
  *  "(N episodes)" tail).
  *
- *  Asymmetric tolerance: when allmanga's `courSize` is *less than*
- *  Kitsu's `episode_count`, the gap is most likely an ongoing show
- *  where allmanga hasn't caught up to the announced total (Re:Zero
- *  S4: allmanga has 5 streamable, Kitsu's full season is 19). Be
- *  lenient — accept up to a 95% shortfall, which covers
- *  ep-1-of-12-style early-airing cases. When `courSize > kitsu`,
- *  stay strict (Burichi 366 vs Doraemon 1 is the canonical mis-match
- *  this catches). */
+ *  Asymmetric tolerance:
+ *
+ *  - **Lenient lane** (`courSize < kitsu`): allmanga's streamable
+ *    count trails Kitsu's announced total — the typical ongoing-show
+ *    shape. Accept any absolute shortfall up to
+ *    `ONGOING_SHORTFALL_MAX_EPISODES`. Replaces the older ratio cap
+ *    (≤ 0.95), which both let through 20-vs-400 nonsense and
+ *    rejected fresh-airing ep-1-of-26 cases at 0.962.
+ *  - **Strict lane** (`courSize ≥ kitsu`): allmanga reporting more
+ *    eps than Kitsu announces is almost always a wrong show
+ *    (Burichi 366 fuzzy-matched against Doraemon Movie 14). Allow a
+ *    25% relative slack here because Kitsu under-counts recaps and
+ *    OVAs sometimes; beyond that it's a different show entirely. */
 export function isEpisodeCountCompatible(
 	courSize: number | null,
 	kitsuEpisodeCount: number | null
@@ -209,15 +224,12 @@ export function isEpisodeCountCompatible(
 	}
 	const diff = Math.abs(courSize - kitsuEpisodeCount);
 	if (diff <= 5) return true;
-	const denom = Math.max(courSize, kitsuEpisodeCount);
-	const ratio = diff / denom;
 	if (courSize < kitsuEpisodeCount) {
-		// Ongoing-show shortfall: allmanga's streamable count is below
-		// Kitsu's announced total. Accept a wide gap so freshly-
-		// airing shows (ep 1 of 12 = 91.7% shortfall) still match.
-		return ratio <= 0.95;
+		// Ongoing-show shortfall — bounded by absolute gap.
+		return diff <= ONGOING_SHORTFALL_MAX_EPISODES;
 	}
-	// Strict: allmanga over-reports vs Kitsu = likely wrong show.
+	// Strict over-report lane stays ratio-based.
+	const ratio = diff / Math.max(courSize, kitsuEpisodeCount);
 	return ratio <= 0.25;
 }
 

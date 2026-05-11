@@ -303,6 +303,43 @@ describe('pickKitsuMatch', () => {
 		expect(pickKitsuMatch(hits, r)?.id).toBe('brand-new');
 	});
 
+	it('accepts ep1-of-26 (full-year early-airing show)', () => {
+		// Pre-refactor the ongoing-show lane was a 0.95 ratio cap.
+		// ep-1-of-26 sits at 25/26 = 0.9615 → got rejected, even
+		// though it's an obviously-legitimate fresh-airing match.
+		// The absolute-cap rule (diff ≤ 50) accepts the 25-ep gap
+		// cleanly. Pin this so we don't regress to a ratio rule.
+		const r = resolveHistoryEntry(entry('Year-Long Anime (1 episode)', '1'), null);
+		const hits = [titledCountedHit('year-long', 'Year-Long Anime', 26)];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('year-long');
+	});
+
+	it('rejects huge-gap ongoing-shape mismatches (20 vs 400)', () => {
+		// Pre-refactor the 0.95 ratio cap let this through: courSize
+		// 20 vs kitsu 400 = 380/400 = 0.95 → accepted as "allmanga
+		// catching up." That's a 20× franchise gap and almost
+		// certainly the wrong show. The absolute-cap rule (diff ≤ 50)
+		// rejects cleanly; the resolver then falls through to the
+		// alias-enrichment path. Pin to lock in the upper bound.
+		const r = resolveHistoryEntry(entry('Some Cour (20 episodes)', '1'), null);
+		const hits = [
+			titledCountedHit('wrong-huge', 'Unrelated Long Franchise', 400),
+			titledCountedHit('right-cour', 'Some Cour', 22)
+		];
+		expect(pickKitsuMatch(hits, r)?.id).toBe('right-cour');
+	});
+
+	it('accepts shortfalls just inside the 50-episode absolute cap', () => {
+		// Boundary case: courSize=1, kitsu=51 → diff=50 → accept.
+		// kitsu=52 → diff=51 → reject. Tighter than the old 0.95
+		// rule (which accepted up to ~0.95) but covers every
+		// realistic catch-up scenario.
+		const r = resolveHistoryEntry(entry('Edge Show (1 episode)', '1'), null);
+		expect(pickKitsuMatch([titledCountedHit('at-cap', 'Edge Show', 51)], r)?.id).toBe('at-cap');
+		// One past the cap → reject.
+		expect(pickKitsuMatch([titledCountedHit('past-cap', 'Edge Show', 52)], r)).toBeNull();
+	});
+
 	it('rejects null-count hits when the user has a long finished show', () => {
 		// Naruto (220 episodes) → poisoned reverse-cache hit was Duan
 		// Nao 2 (Kitsu episode_count = null, an ONA without a
