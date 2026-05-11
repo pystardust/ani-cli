@@ -85,6 +85,7 @@
 	} from '$lib/play/prefetch-lifecycle';
 	import { formatTime, progressLabel, skipLabel } from '$lib/play/format';
 	import { clientXToFraction, displayedScrubFraction } from '$lib/play/scrubber';
+	import { shouldThrottleSeek } from '$lib/play/seek-throttle';
 	import {
 		describeError,
 		describeExternalLaunchFailure,
@@ -482,6 +483,13 @@
 	// even if the bar reflows mid-drag.
 	let scrubberDragging = $state(false);
 	let scrubberDragRect: { left: number; width: number } | null = null;
+	// Timestamp (performance.now()) of the most recent live seek
+	// issued during the current drag. null while no drag is active or
+	// before the first seek of a drag has fired. Drives the
+	// shouldThrottleSeek check that caps live seeks at ~10/s — see
+	// `$lib/play/seek-throttle.ts` for the rationale (HLS segment
+	// thrash on every pointermove).
+	let lastSeekAt: number | null = null;
 	// `dragPreviewFraction` updates synchronously on every
 	// pointermove so the thumb + fill follow the pointer 1:1
 	// during a drag. videoEl.currentTime is also seeked live for
@@ -564,6 +572,9 @@
 		const rect = target.getBoundingClientRect();
 		scrubberDragRect = { left: rect.left, width: rect.width };
 		scrubberDragging = true;
+		// Fresh drag — reset the throttle so the opening seek lands
+		// immediately (shouldThrottleSeek treats null as "never seeked").
+		lastSeekAt = null;
 		// Pointer capture keeps the move/up events on this element
 		// even when the user drags past the bar's edges, which is
 		// exactly the case the clientXToFraction clamp covers.
@@ -571,19 +582,41 @@
 		const f = clientXToFraction(event.clientX, scrubberDragRect);
 		dragPreviewFraction = f;
 		seekToFraction(f);
+		lastSeekAt = performance.now();
 	}
 
 	function onScrubberPointerMove(event: PointerEvent) {
 		if (!scrubberDragging || !scrubberDragRect) return;
 		const f = clientXToFraction(event.clientX, scrubberDragRect);
+		// Visual thumb + fill always update 1:1 with the pointer; the
+		// underlying videoEl.currentTime write is rate-limited (HLS
+		// segment thrash). The final release-position seek in
+		// onScrubberPointerUp bypasses this so the user always lands
+		// where they let go.
 		dragPreviewFraction = f;
-		seekToFraction(f);
+		const now = performance.now();
+		if (!shouldThrottleSeek(lastSeekAt, now)) {
+			seekToFraction(f);
+			lastSeekAt = now;
+		}
 	}
 
 	function onScrubberPointerUp(event: PointerEvent) {
 		if (!scrubberDragging) return;
+		// Final seek at the release position — but ONLY on a real
+		// pointerup. pointercancel reaches this same handler when the
+		// browser/OS yanks the gesture out from under us (context menu,
+		// capture loss, system swipe), and the user didn't release
+		// intentionally there; preserve wherever the last allowed live
+		// seek landed instead of committing the cancel-event coords.
+		// Must run before clearing scrubberDragRect.
+		if (event.type === 'pointerup' && scrubberDragRect) {
+			const finalFraction = clientXToFraction(event.clientX, scrubberDragRect);
+			seekToFraction(finalFraction);
+		}
 		scrubberDragging = false;
 		scrubberDragRect = null;
+		lastSeekAt = null;
 		// Defer clearing dragPreviewFraction until the video reports
 		// the seek complete (`seeked`). Also sync `currentTime` from
 		// the video in the same step — `timeupdate` lags `seeked`
