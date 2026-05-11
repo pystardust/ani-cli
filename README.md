@@ -49,7 +49,7 @@ Platform support tiers:
 
 NSIS installer (`.exe`). Run it; it installs per-user by default and creates Start menu and desktop shortcuts.
 
-ani-gui drives the upstream `ani-cli` Bash script via `bash`, which on Windows ships as part of [Git for Windows](https://gitforwindows.org/). If Git for Windows isn't installed when you launch the app, you'll see a dialog with a one-click link to its download page. The installer will fetch ffmpeg automatically the first time it runs (~80 MB) so the download feature works out of the box; aria2c and fzf are bundled directly.
+ani-gui drives the upstream `ani-cli` Bash script via `bash`, which on Windows ships as part of [Git for Windows](https://gitforwindows.org/). If Git for Windows isn't installed when you launch the app, you'll see a dialog with a one-click link to its download page. The installer will fetch ffmpeg automatically the first time it runs (~80 MB) so the download feature works out of the box; aria2c and fzf are bundled directly. The ffmpeg fetch runs even when you already have ffmpeg installed via a per-user package manager (scoop, winget user-scope) — the installer's elevated context doesn't see per-user PATH entries, and the bundled copy is what the app uses at runtime in either case.
 
 </details>
 
