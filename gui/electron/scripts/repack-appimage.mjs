@@ -163,10 +163,15 @@ async function main() {
 		throw new Error(`dist/ not found — run electron-builder first`);
 	}
 	await ensureRuntime();
+	// Only consider top-level regular files. Filter out our own
+	// `.repack-tmp-…` scratch directories (they're hidden and end with
+	// `.AppImage` — a previous run that bailed mid-extract leaves one
+	// behind, and the next run would otherwise try to spawn the
+	// directory as an executable and fail with EACCES).
 	const candidates = fs
-		.readdirSync(distDir)
-		.filter((f) => f.endsWith('.AppImage'))
-		.map((f) => path.join(distDir, f));
+		.readdirSync(distDir, { withFileTypes: true })
+		.filter((d) => d.isFile() && !d.name.startsWith('.') && d.name.endsWith('.AppImage'))
+		.map((d) => path.join(distDir, d.name));
 	if (candidates.length === 0) {
 		throw new Error(`no .AppImage files in ${distDir}`);
 	}
