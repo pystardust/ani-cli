@@ -1,67 +1,108 @@
 name: 'frontend'
+# Always fires; the `filter` job decides whether downstream steps run
+# the real pipeline or no-op. See rust.yml for the design rationale —
+# this pattern keeps every required-check name reporting once per SHA
+# without inverse-twin workflows.
 on:
+  pull_request:
   push:
     branches:
       - master
-    paths:
-      - 'gui/frontend/**'
-  pull_request:
-    paths:
-      - 'gui/frontend/**'
-      - '.github/workflows/frontend.yml'
 
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: gui/frontend
-
 jobs:
-  lint-typecheck-test:
-    name: lint + typecheck + test
+  filter:
     runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # See rust.yml's filter for why we avoid `git diff | grep -q`
+          # under pipefail (SIGPIPE on early grep exit kills the diff).
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qE '^(gui/frontend/|\.github/workflows/frontend\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - uses: pnpm/action-setup@v4
+  lint-typecheck-test:
+    needs: filter
+    name: lint + typecheck + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gui/frontend
+    steps:
+      - if: needs.filter.outputs.relevant != 'true'
+        working-directory: ${{ github.workspace }}
+        run: 'echo "Not required: no frontend changes in this PR"'
+
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: gui/frontend/pnpm-lock.yaml
 
-      - name: pnpm install --frozen-lockfile
+      - if: needs.filter.outputs.relevant == 'true'
+        name: pnpm install --frozen-lockfile
         run: pnpm install --frozen-lockfile
 
       # `pnpm run lint` = prettier --check + eslint.
-      - name: lint (prettier + eslint)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: lint (prettier + eslint)
         run: pnpm run lint
 
       # `pnpm run check` = svelte-kit sync + svelte-check (which also
       # runs the TypeScript checker against generated SvelteKit types).
-      - name: typecheck (svelte-check + svelte-kit sync)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: typecheck (svelte-check + svelte-kit sync)
         run: pnpm run check
 
-      - name: vitest run
+      - if: needs.filter.outputs.relevant == 'true'
+        name: vitest run
         run: pnpm run test
 
-      - name: vitest run with coverage
+      - if: needs.filter.outputs.relevant == 'true'
+        name: vitest run with coverage
         run: pnpm exec vitest run --coverage
 
-      - name: Ratchet — fail if coverage drops
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Ratchet — fail if coverage drops
         working-directory: ${{ github.workspace }}
         run: node tools/check-coverage-baseline.mjs
 
-      - name: Upload lcov for downstream CRAP job
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Upload lcov for downstream CRAP job
         uses: actions/upload-artifact@v4
         with:
           name: frontend-lcov
           path: gui/frontend/coverage/lcov.info
           retention-days: 7
 
-      - name: production build (vite + adapter-static)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: production build (vite + adapter-static)
         run: pnpm run build

@@ -3,64 +3,95 @@ name: 'crap score'
 # Self-contained: regenerates Rust + frontend lcov files, runs lizard,
 # computes per-file CRAP, then ratchets against `coverage-baseline.json`.
 # Gates the merge — current numbers are the ceiling.
+#
+# Always fires; the `filter` job decides whether downstream steps run
+# the real pipeline or no-op. See rust.yml for the design rationale.
 on:
+  pull_request:
   push:
     branches:
       - master
-    paths:
-      - 'gui/backend/**'
-      - 'gui/frontend/**'
-      - 'tools/**'
-      - 'coverage-baseline.json'
-      - '.github/workflows/crap.yml'
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'gui/backend/**'
-      - 'gui/frontend/**'
-      - 'tools/**'
-      - 'coverage-baseline.json'
-      - '.github/workflows/crap.yml'
 
 permissions:
   contents: read
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # See rust.yml's filter for why we avoid `git diff | grep -q`
+          # under pipefail (SIGPIPE on early grep exit kills the diff).
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qE '^(gui/backend/|gui/frontend/|tools/|coverage-baseline\.json$|\.github/workflows/crap\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   crap:
+    needs: filter
     name: lizard + ratchet
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no backend / frontend / tools changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install lizard (cyclomatic complexity)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install lizard (cyclomatic complexity)
         run: pip install lizard==1.22.1
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
           shared-key: llvm-cov
-      - uses: taiki-e/install-action@v2
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
 
-      - uses: pnpm/action-setup@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: gui/frontend/pnpm-lock.yaml
 
-      - name: pnpm install (frontend)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: pnpm install (frontend)
         working-directory: gui/frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Install ani-cli runtime deps
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install ani-cli runtime deps
         # `cargo llvm-cov --workspace` exercises `anicli_run_debug`, which
         # spawns ./ani-cli — the script `dep_ch`s fzf, curl, openssl, etc.
         # at startup. Same deps the bash workflow installs.
@@ -68,15 +99,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
 
-      - name: Generate Rust lcov
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Generate Rust lcov
         working-directory: gui/backend
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
-      - name: Generate frontend lcov
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Generate frontend lcov
         working-directory: gui/frontend
         run: pnpm exec vitest run --coverage
 
-      - name: Compute CRAP
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Compute CRAP
         run: |
           mkdir -p coverage
           # Run lizard once, fan out to two crap-score invocations:
@@ -98,5 +132,6 @@ jobs:
               --root=. --json < coverage/lizard.xml > coverage/crap-summary.json
           cat coverage/crap-summary.json
 
-      - name: Ratchet — fail if max/p95/high_risk regressed
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Ratchet — fail if max/p95/high_risk regressed
         run: node tools/check-coverage-baseline.mjs

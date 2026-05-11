@@ -4,42 +4,70 @@ name: 'e2e (Playwright + Electron)'
 # Electron app, then drives the packaged binary via `_electron.launch()`
 # under Xvfb. The test suite is deliberately small (~3 hermetic
 # scenarios); add more cases here when feature work crosses the UI.
+#
+# Always fires; the `filter` job decides whether downstream steps run
+# the real pipeline or no-op. See rust.yml for the design rationale.
 on:
+  pull_request:
   push:
     branches:
       - master
-    paths:
-      - 'gui/backend/**'
-      - 'gui/frontend/**'
-      - 'gui/electron/**'
-      - '.github/workflows/e2e.yml'
-  pull_request:
-    paths:
-      - 'gui/backend/**'
-      - 'gui/frontend/**'
-      - 'gui/electron/**'
-      - '.github/workflows/e2e.yml'
 
 permissions:
   contents: read
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # See rust.yml's filter for why we avoid `git diff | grep -q`
+          # under pipefail (SIGPIPE on early grep exit kills the diff).
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qE '^(gui/backend/|gui/frontend/|gui/electron/|\.github/workflows/e2e\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
+    needs: filter
     name: Playwright + _electron
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no backend / frontend / electron changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
           shared-key: e2e
 
-      - uses: pnpm/action-setup@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
@@ -47,7 +75,8 @@ jobs:
             gui/frontend/pnpm-lock.yaml
             gui/electron/pnpm-lock.yaml
 
-      - name: Install vendored ani-cli onto PATH
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install vendored ani-cli onto PATH
         # The Rust backend's `AppState::build` resolves `ani-cli` via
         # `find_in_path`. CI doesn't have it; copy the repo's vendored
         # script into /usr/local/bin so the backend boots cleanly.
@@ -56,7 +85,8 @@ jobs:
         # are intentionally not installed here.
         run: sudo install -m 0755 ani-cli /usr/local/bin/ani-cli
 
-      - name: Linux deps for Electron + Xvfb
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Linux deps for Electron + Xvfb
         # Electron's chrome process needs the standard NSS / X / GTK
         # bundle even in headless Xvfb mode. `xvfb-run` is the wrapper
         # we invoke playwright through. The list mirrors what the
@@ -70,32 +100,38 @@ jobs:
             libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
             libcairo2 libasound2t64
 
-      - name: pnpm install (frontend)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: pnpm install (frontend)
         working-directory: gui/frontend
         run: pnpm install --frozen-lockfile
 
-      - name: pnpm install (electron)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: pnpm install (electron)
         working-directory: gui/electron
         run: pnpm install --frozen-lockfile
 
-      - name: Build Rust backend (release)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Build Rust backend (release)
         working-directory: gui/electron
         run: pnpm run build:backend
 
-      - name: Build SvelteKit static bundle
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Build SvelteKit static bundle
         working-directory: gui/electron
         run: pnpm run build:frontend
 
-      - name: Package the Electron app (produces dist/linux-unpacked/)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Package the Electron app (produces dist/linux-unpacked/)
         working-directory: gui/electron
         run: pnpm run dist
 
-      - name: Run Playwright tests under Xvfb
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Run Playwright tests under Xvfb
         working-directory: gui/electron
         run: xvfb-run --auto-servernum pnpm run e2e:fast
 
-      - name: Upload Playwright report on failure
-        if: failure()
+      - if: failure() && needs.filter.outputs.relevant == 'true'
+        name: Upload Playwright report on failure
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

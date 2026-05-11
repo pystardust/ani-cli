@@ -1,24 +1,54 @@
 name: 'bash tests'
+# Always fires; the `filter` job decides whether downstream steps run
+# the real pipeline or no-op. See rust.yml for the design rationale.
 on:
+  pull_request:
   push:
     branches:
       - master
-  pull_request:
-    paths:
-      - 'tests/bash/**'
-      - 'tests/fixtures/**'
-      - 'ani-cli'
 
 permissions:
   contents: read
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # See rust.yml's filter for why we avoid `git diff | grep -q`
+          # under pipefail (SIGPIPE on early grep exit kills the diff).
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qE '^(tests/bash/|tests/fixtures/|ani-cli$|\.github/workflows/bash\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
+    needs: filter
     name: Shellcheck + Shfmt (per-file dialect)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install shellcheck + shfmt
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no bash test or ani-cli changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install shellcheck + shfmt
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
@@ -26,7 +56,8 @@ jobs:
           sudo curl -sSL -o /usr/local/bin/shfmt \
             https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64
           sudo chmod +x /usr/local/bin/shfmt
-      - name: shfmt (formatting parity with ani-cli, all test sources)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: shfmt (formatting parity with ani-cli, all test sources)
         run: |
           # Same formatter settings ani-cli upstream uses, applied repo-wide
           # to the new test sources. .bats-vendor/ is gitignored and absent
@@ -34,7 +65,8 @@ jobs:
           find tests/bash tests/arch -type f \
             \( -name '*.bats' -o -name '*.bash' -o -name '*.sh' \) \
             -print0 | xargs -0 shfmt -i 4 -ci -d
-      - name: shellcheck (sh dialect for *.sh helpers)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: shellcheck (sh dialect for *.sh helpers)
         run: |
           # POSIX-sh helpers and arch checks. ani-cli upstream uses
           # `-s sh -o all -e 2250`; we additionally exclude:
@@ -45,7 +77,8 @@ jobs:
           #            the natural idiom
           find tests/bash/helpers tests/arch -type f -name '*.sh' \
             -print0 | xargs -0 shellcheck -s sh -o all -e 2250 -e SC2034 -e SC2086 -e SC2312
-      - name: shellcheck (bash dialect for *.bash helpers and *.bats files)
+      - if: needs.filter.outputs.relevant == 'true'
+        name: shellcheck (bash dialect for *.bash helpers and *.bats files)
         run: |
           # bats files run under bash. Disabled checks (test-context noise):
           #   SC2034 — unused vars set as ani-cli globals via source
@@ -69,11 +102,16 @@ jobs:
               -e SC2030 -e SC2031 -e SC2163 -e SC2181 -e SC2016
 
   bats:
+    needs: filter
     name: bats-core suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install bash test dependencies
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no bash test or ani-cli changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install bash test dependencies
         run: |
           sudo apt-get update
           # Acceptance tests run the real ./ani-cli, which dep_ch's curl,
@@ -90,25 +128,27 @@ jobs:
             mpv \
             ffmpeg \
             aria2
-      - name: Install kcov runtime deps
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install kcov runtime deps
         # kcov needs libdw + libcurl shared libs at runtime. apt-get
         # picks these up cleanly even though the kcov package itself
         # was dropped from Ubuntu 24.04.
         run: |
           sudo apt-get install -y \
             libdw1 libcurl4 libstdc++6 zlib1g binutils
-      - name: Cache kcov binary
+      - if: needs.filter.outputs.relevant == 'true'
         id: cache-kcov
+        name: Cache kcov binary
         uses: actions/cache@v4
         with:
           path: /usr/local/bin/kcov
           key: kcov-v43-${{ runner.os }}
-      - name: Build kcov from source (cache miss)
+      - if: needs.filter.outputs.relevant == 'true' && steps.cache-kcov.outputs.cache-hit != 'true'
+        name: Build kcov from source (cache miss)
         # Ubuntu 24.04 dropped the `kcov` apt package. Build from
         # source against pinned tag v43 (latest non-pre-release in
         # SimonKagstrom/kcov as of writing); the resulting binary
         # is cached so subsequent runs skip this step entirely.
-        if: steps.cache-kcov.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install -y \
             cmake binutils-dev libcurl4-openssl-dev zlib1g-dev \
@@ -119,19 +159,24 @@ jobs:
           cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
           make -j"$(nproc)"
           sudo make install
-      - name: Install bats-core and plugins
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install bats-core and plugins
         run: ./tests/bash/helpers/install-bats.sh
-      - name: Run bats suites (unit, network, subprocess, acceptance, property) — gating
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Run bats suites (unit, network, subprocess, acceptance, property) — gating
         run: ./tests/bash/helpers/run-suite.sh
-      - name: Coverage with kcov
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Coverage with kcov
         run: ./tests/bash/helpers/coverage.sh
-      - uses: actions/setup-node@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Ratchet — fail if coverage drops
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Ratchet — fail if coverage drops
         run: node tools/check-coverage-baseline.mjs
-      - name: Upload coverage report
-        if: always()
+      - if: always() && needs.filter.outputs.relevant == 'true'
+        name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: bash-coverage

@@ -1,16 +1,15 @@
 name: 'rust'
+# Always fires on PRs + master pushes; the `filter` job detects whether
+# the diff actually touches Rust sources, and downstream jobs skip
+# their expensive steps when it doesn't. This pattern keeps every
+# required-check name reporting exactly once per SHA, dodging both
+# "skipped but required" (workflow-level `paths:` filter eats the
+# check) and the duplicate-status mess of an inverse-twin workflow.
 on:
+  pull_request:
   push:
     branches:
       - master
-    paths:
-      - 'gui/backend/**'
-      - 'rust-toolchain.toml'
-  pull_request:
-    paths:
-      - 'gui/backend/**'
-      - 'rust-toolchain.toml'
-      - '.github/workflows/rust.yml'
 
 permissions:
   contents: read
@@ -20,53 +19,108 @@ env:
   RUSTFLAGS: '-D warnings'
 
 jobs:
+  filter:
+    # Outputs `relevant = true|false` based on whether the PR diff
+    # touches anything Rust-shaped. On push events (merge to master)
+    # we always run the real pipeline.
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Capture the diff first, then grep the result via a here-string.
+          # The naive `git diff | grep -q` pipeline interacts badly with
+          # pipefail: grep -q closes the pipe on first match and `git diff`
+          # gets killed by SIGPIPE, the pipeline exits non-zero, and the
+          # if-condition wrongly takes the else branch on relevant PRs.
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if grep -qE '^(gui/backend/|rust-toolchain\.toml$|\.github/workflows/rust\.yml$)' <<<"$changed"; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   fmt:
+    needs: filter
     name: cargo fmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no Rust changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: cargo fmt --check
+      - if: needs.filter.outputs.relevant == 'true'
+        name: cargo fmt --check
         working-directory: gui/backend
         run: cargo fmt --all --check
 
   clippy:
+    needs: filter
     name: cargo clippy (-D warnings)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no Rust changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
-      - name: cargo clippy
+      - if: needs.filter.outputs.relevant == 'true'
+        name: cargo clippy
         working-directory: gui/backend
         run: cargo clippy --workspace --all-targets -- -D warnings
 
   deny:
+    needs: filter
     name: cargo deny (licenses + advisories)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no Rust changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
           shared-key: cargo-deny
-      - name: Install cargo-deny
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install cargo-deny
         # Pinning to ^0.18 — older versions choke on RUSTSEC advisories
         # that carry a CVSS v4.0 score (the parser only learned about
         # CVSS 4 in 0.17).
         run: cargo install cargo-deny --locked --version ^0.18
-      - name: cargo deny check
+      - if: needs.filter.outputs.relevant == 'true'
+        name: cargo deny check
         working-directory: gui/backend
         run: cargo deny check
 
   test:
+    needs: filter
     name: cargo test
     strategy:
       fail-fast: false
@@ -74,9 +128,14 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no Rust changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
       - name: Install ani-cli runtime deps (Linux only)
@@ -87,52 +146,58 @@ jobs:
         # these — mirror the list. The integration test is gated to
         # `#![cfg(target_os = "linux")]`, so other matrix legs skip it
         # without needing the deps.
-        if: matrix.os == 'ubuntu-latest'
+        if: needs.filter.outputs.relevant == 'true' && matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
-      - name: cargo test --workspace
+      - if: needs.filter.outputs.relevant == 'true'
+        name: cargo test --workspace
         working-directory: gui/backend
         run: cargo test --workspace --all-features
 
   coverage:
+    needs: filter
     name: cargo-llvm-cov + ratchet
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - if: needs.filter.outputs.relevant != 'true'
+        run: 'echo "Not required: no Rust changes in this PR"'
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/checkout@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: gui/backend
           shared-key: llvm-cov
-      - uses: taiki-e/install-action@v2
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
-      - uses: actions/setup-node@v4
+      - if: needs.filter.outputs.relevant == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install ani-cli runtime deps
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Install ani-cli runtime deps
         # Coverage runs `cargo llvm-cov --workspace`, which executes the
         # same integration test that needs ani-cli's deps. See the matching
         # comment in the `test` job.
         run: |
           sudo apt-get update
           sudo apt-get install -y curl openssl bsdmainutils xxd fzf mpv ffmpeg aria2
-      - name: Generate lcov
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Generate lcov
         working-directory: gui/backend
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
-      - name: Ratchet — fail if coverage drops
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Ratchet — fail if coverage drops
         run: node tools/check-coverage-baseline.mjs
-      - name: Upload lcov for downstream CRAP job
+      - if: needs.filter.outputs.relevant == 'true'
+        name: Upload lcov for downstream CRAP job
         uses: actions/upload-artifact@v4
         with:
           name: rust-lcov
           path: gui/backend/lcov.info
           retention-days: 7
-
-  # proptests:
-  #   The dedicated proptests target was scoped in plan §4 but never built —
-  #   property-testing currently lives inline inside the relevant module's
-  #   tests (see m3u8 / token round-trips). Re-enable this job once a real
-  #   `tests/proptests.rs` lands, with the PROPTEST_CASES env-gated matrix
-  #   from the original plan.
