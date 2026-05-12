@@ -155,3 +155,57 @@ test('--update refreshes every layer including crap', () => {
 		'bash baseline should be refreshed by --update'
 	);
 });
+
+test('--update will not lower coverage floors below baseline', () => {
+	// Mirrors PR #13's firm-CRAP rule for the other direction: a
+	// coverage regression must not be papered over by re-running
+	// `--update`. The fixture's measurements (rust lines 95 / functions
+	// 95, frontend lines 90 / branches 80, bash 200 / 75) are BELOW
+	// the inflated baseline values written here, so a tighten-only
+	// `--update` must leave the higher floors in place.
+	const { tmpDir, run, readBaseline } = stageFixtureRepo();
+	const baselinePath = path.join(tmpDir, 'coverage-baseline.json');
+	const inflated = JSON.parse(fs.readFileSync(baselinePath, 'utf-8'));
+	inflated.rust = { lines_pct: 99, functions_pct: 99 };
+	inflated.frontend = {
+		lines_pct: 99,
+		functions_pct: 99,
+		statements_pct: 99,
+		branches_pct: 99
+	};
+	inflated.bash = { pure_covered_min: 999, network_covered_min: 999 };
+	fs.writeFileSync(baselinePath, JSON.stringify(inflated, null, '\t') + '\n');
+
+	run(['--update']);
+	const next = readBaseline();
+
+	assert.equal(next.rust.lines_pct, 99, 'rust lines_pct must not regress');
+	assert.equal(next.rust.functions_pct, 99, 'rust functions_pct must not regress');
+	assert.equal(next.frontend.lines_pct, 99, 'frontend lines_pct must not regress');
+	assert.equal(next.frontend.branches_pct, 99, 'frontend branches_pct must not regress');
+	assert.equal(next.bash.pure_covered_min, 999, 'bash pure_covered_min must not regress');
+	assert.equal(
+		next.bash.network_covered_min,
+		999,
+		'bash network_covered_min must not regress'
+	);
+});
+
+test('--update still raises coverage floors when the codebase improved', () => {
+	// Symmetric to the regression guard: a real improvement must
+	// land in the baseline. Fixture's measurements (rust lines 95)
+	// are ABOVE the default baseline (rust lines 80), so the
+	// resulting floor should be the higher measured value.
+	const { run, readBaseline } = stageFixtureRepo();
+	run(['--update']);
+	const next = readBaseline();
+
+	assert.equal(next.rust.lines_pct, 95, 'rust lines_pct should rise to measured');
+	assert.equal(next.rust.functions_pct, 95, 'rust functions_pct should rise to measured');
+	assert.equal(next.frontend.lines_pct, 90, 'frontend lines_pct should rise to measured');
+	assert.equal(
+		next.bash.pure_covered_min,
+		200,
+		'bash pure_covered_min should rise to measured'
+	);
+});
