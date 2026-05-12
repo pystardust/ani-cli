@@ -84,6 +84,20 @@ pub enum AniError {
         binary: String,
     },
 
+    /// Syncplay binary couldn't be spawned. Distinct from
+    /// `PlayerSpawnFailed` because the recovery action is different:
+    /// the frontend's ErrorOverlay links the user to syncplay.pl
+    /// (Syncplay is a separate install) rather than telling them to
+    /// fix their external-player setting.
+    #[error("syncplay spawn failed: {binary}")]
+    SyncplaySpawnFailed {
+        /// The Syncplay binary path the user configured (default
+        /// `"syncplay"` on Linux/Win, the macOS .app inner path on
+        /// macOS). Surfaced verbatim via the localized message's
+        /// `{binary}` placeholder.
+        binary: String,
+    },
+
     /// Cache (SQLite) operation failed.
     #[error("cache error")]
     Cache,
@@ -120,6 +134,7 @@ impl AniError {
             Self::BashMissing => "error.bash.missing",
             Self::FfmpegMissing => crate::i18n::keys::DOWNLOAD_FFMPEG_MISSING,
             Self::PlayerSpawnFailed { .. } => "error.player.spawn_failed",
+            Self::SyncplaySpawnFailed { .. } => "error.syncplay.spawn_failed",
             Self::Upstream { .. } => "error.network.upstream",
             Self::Network => "error.network.unreachable",
             Self::Cache => "error.cache.generic",
@@ -185,6 +200,9 @@ mod tests {
             AniError::PlayerSpawnFailed {
                 binary: "vlc".into(),
             },
+            AniError::SyncplaySpawnFailed {
+                binary: "syncplay".into(),
+            },
             AniError::Upstream { status: 503 },
             AniError::Network,
             AniError::Cache,
@@ -243,6 +261,27 @@ mod tests {
             "snake_case kind: {s}"
         );
         assert_eq!(err.key(), "error.bash.missing");
+    }
+
+    #[test]
+    fn syncplay_spawn_failed_carries_the_configured_binary_name() {
+        // Mirror of player_spawn_failed: the frontend's ErrorOverlay
+        // names which binary failed and links to syncplay.pl so the
+        // user can install or fix their path. Pin the JSON shape +
+        // i18n key.
+        let err = AniError::SyncplaySpawnFailed {
+            binary: "syncplay".into(),
+        };
+        let s = serde_json::to_string(&err).expect("serializes");
+        assert!(
+            s.contains("\"binary\":\"syncplay\""),
+            "serialized form has binary field: {s}"
+        );
+        assert!(
+            s.contains("\"kind\":\"syncplay_spawn_failed\""),
+            "serialized form has snake_case kind: {s}"
+        );
+        assert_eq!(err.key(), "error.syncplay.spawn_failed");
     }
 
     #[test]

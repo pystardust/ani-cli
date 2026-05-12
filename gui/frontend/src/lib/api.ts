@@ -244,6 +244,7 @@ export interface Config {
 	external_player: string;
 	external_player_kind: ExternalPlayerKind;
 	external_player_custom_args: string;
+	syncplay_binary: string;
 	image_cache_cap_mb: number;
 	auto_play_next: boolean;
 	download_bottom_bar_enabled: boolean;
@@ -417,6 +418,16 @@ export function play(args: PlayArgs): Promise<CreateSessionResponse> {
  *  directly with the resolved Referer. */
 export function playExternal(args: PlayArgs): Promise<void> {
 	return postJson<void>('/api/play/external', args);
+}
+
+/** Launch the resolved episode in the user's Syncplay binary. Same
+ *  resolution chain as `playExternal`; the only difference is the
+ *  spawn target. Returns 202 Accepted on success. Rejects with
+ *  `AniError::SyncplaySpawnFailed { binary }` when the configured
+ *  Syncplay binary can't be spawned — caller surfaces the failure
+ *  via the play page's `ErrorOverlay` with a syncplay.pl link. */
+export function playSyncplay(args: PlayArgs): Promise<void> {
+	return postJson<void>('/api/play/syncplay', args);
 }
 
 /** Drop the cached play resolution for `args` so the next play call

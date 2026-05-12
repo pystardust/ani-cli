@@ -24,6 +24,8 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower_http::cors::CorsLayer;
 
+mod syncplay;
+
 use crate::app::AppState;
 use crate::commands::{
     aniskip as aniskip_inner, app_info, availability as availability_inner,
@@ -53,6 +55,7 @@ impl IntoResponse for AniError {
             | AniError::BashMissing
             | AniError::FfmpegMissing
             | AniError::PlayerSpawnFailed { .. }
+            | AniError::SyncplaySpawnFailed { .. }
             | AniError::Cache
             | AniError::Io
             | AniError::Config
@@ -126,6 +129,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/download/stream", get(get_download_stream))
         .route("/api/download/default-dir", get(get_download_default_dir))
         .route("/api/play/external", post(post_play_external))
+        .route("/api/play/syncplay", post(syncplay::post_play_syncplay))
         .route("/api/play/cache/evict", post(post_play_cache_evict))
         .route("/api/play/mark-watched", post(post_play_mark_watched))
         .route(

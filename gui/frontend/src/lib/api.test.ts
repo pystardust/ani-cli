@@ -33,6 +33,7 @@ import {
 	openExternalPlayer,
 	play,
 	playExternal,
+	playSyncplay,
 	playStream,
 	proxyBaseUrl,
 	settingsGet,
@@ -298,6 +299,47 @@ describe('playExternal', () => {
 			episode: '5',
 			mode: 'dub'
 		});
+	});
+});
+
+describe('playSyncplay', () => {
+	it('POSTs the PlayArgs payload to /api/play/syncplay', async () => {
+		// Mirror of playExternal: the backend resolves the stream the
+		// same way, then hands the URL to Syncplay instead of mpv.
+		// 202 Accepted on success because the child detaches.
+		const fetchMock = mockFetchOnce(null, 202);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await playSyncplay({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'sub'
+		});
+		const { url, init } = lastCall(fetchMock);
+		expect(url).toBe(`${BASE}/api/play/syncplay`);
+		expect(init?.method).toBe('POST');
+		expect(JSON.parse(init?.body as string)).toMatchObject({
+			title: 'Cowboy Bebop',
+			episode: '5',
+			mode: 'sub'
+		});
+	});
+
+	it('tolerates an empty 2xx body without throwing a JSON parse error', async () => {
+		// Same 202-with-empty-body shape as playExternal — guard
+		// against the same JSON parse footgun.
+		const response = {
+			ok: true,
+			status: 202,
+			async json() {
+				throw new SyntaxError('Unexpected end of JSON input');
+			},
+			async text() {
+				return '';
+			}
+		} as unknown as Response;
+		const fetchMock = vi.fn(async () => response);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+		await expect(playSyncplay({ title: 'x', episode: '1', mode: 'sub' })).resolves.toBeUndefined();
 	});
 });
 
@@ -939,6 +981,7 @@ describe('settingsGet', () => {
 			external_player: 'mpv',
 			external_player_kind: 'mpv',
 			external_player_custom_args: '',
+			syncplay_binary: 'syncplay',
 			image_cache_cap_mb: 500,
 			auto_play_next: false,
 			download_bottom_bar_enabled: true,
@@ -965,6 +1008,7 @@ describe('settingsPut', () => {
 			external_player: 'vlc',
 			external_player_kind: 'vlc',
 			external_player_custom_args: '',
+			syncplay_binary: '/opt/syncplay/syncplay',
 			image_cache_cap_mb: 1000,
 			auto_play_next: true,
 			download_bottom_bar_enabled: false,

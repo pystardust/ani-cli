@@ -21,6 +21,7 @@ use serde::Deserialize;
 use crate::anicli::parser::{parse_progress_line, ProgressLine};
 use crate::anicli::process::{run_debug, run_debug_streaming, DebugOptions};
 use crate::app::AppState;
+use crate::commands::play_referer::infer_referer;
 use crate::commands::play_resolution_cache::{self, CachedResolution};
 use crate::commands::{
     external_player::{self, LaunchArgs},
@@ -519,19 +520,7 @@ pub async fn play_external(state: &AppState, args: &PlayArgs) -> Result<()> {
     )
     .await?;
 
-    // Same Referer-inference as the embedded path — fast4speed.rsvp
-    // 403s without `Referer: https://allmanga.to` and ani-cli's debug
-    // output doesn't surface the header it sets internally.
-    let referer = match resolved.referer.as_ref() {
-        Some(r) if !r.is_empty() => Some(r.clone()),
-        _ => match url::Url::parse(&resolved.selected_url)
-            .ok()
-            .and_then(|u| u.host_str().map(str::to_string))
-        {
-            Some(h) if h.ends_with("fast4speed.rsvp") => Some("https://allmanga.to".to_string()),
-            _ => None,
-        },
-    };
+    let referer = infer_referer(&resolved);
 
     let launch = LaunchArgs {
         stream_url: resolved.selected_url,
@@ -550,12 +539,12 @@ mod tests {
     use super::*;
     use crate::anicli::parser::DebugOutput;
 
-    /// `play()` and `play_external()` are thin wrappers around
-    /// `run_debug` + the relevant terminal action; the integration
-    /// test in `tests/api_play.rs` exercises the full flow against a
-    /// real ani-cli with a curl shim. These unit tests pin the
-    /// mapping from `DebugOutput` → `CreateSessionArgs` /
-    /// `LaunchArgs` so a future refactor of the field names is loud.
+    // `play()` and `play_external()` are thin wrappers around
+    // `run_debug` + the relevant terminal action; the integration
+    // test in `tests/api_play.rs` exercises the full flow against a
+    // real ani-cli with a curl shim. These unit tests pin the
+    // mapping from `DebugOutput` → `CreateSessionArgs` /
+    // `LaunchArgs` so a future refactor of the field names is loud.
 
     #[test]
     fn debug_output_with_referer_and_subtitle_maps_to_session_args() {

@@ -67,6 +67,16 @@
 
 	let debounceHandle: ReturnType<typeof setTimeout> | null = null;
 	async function persist(next: Config) {
+		// Cancel any pending debounced write before the explicit
+		// save lands. Otherwise a user who types into a text input
+		// (queuing persistDebounced) and then clicks a Browse /
+		// segmented-button / switch within the 300ms window would
+		// see the explicit save get clobbered seconds later by the
+		// stale typed value firing through the trailing timeout.
+		if (debounceHandle) {
+			clearTimeout(debounceHandle);
+			debounceHandle = null;
+		}
 		cfg = next;
 		try {
 			await settingsPut(next);
@@ -147,6 +157,33 @@
 		});
 		if (picked) {
 			void persist({ ...cfg, external_player: picked });
+		}
+	}
+	function setSyncplayBinary(value: string) {
+		if (!cfg) return;
+		persistDebounced({ ...cfg, syncplay_binary: value });
+	}
+	async function browseSyncplayBinary() {
+		// Same Electron pick-file path as browseExternalPlayer; Syncplay
+		// on Windows often sits in `C:\Program Files\Syncplay\` outside
+		// %PATH%, and the macOS .app inner exec is awkward to type by
+		// hand. Useful on Linux too for AppImage-based installs.
+		const picker = typeof window !== 'undefined' ? window.aniGui?.pickFile : null;
+		if (!picker || !cfg) return;
+		const isWin = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+		const filters = isWin
+			? [
+					{ name: 'Executables', extensions: ['exe'] },
+					{ name: 'All files', extensions: ['*'] }
+				]
+			: [{ name: 'All files', extensions: ['*'] }];
+		const picked = await picker({
+			title: m.settings_field_syncplay_binary_browse_dialog_title(),
+			defaultPath: cfg.syncplay_binary || undefined,
+			filters
+		});
+		if (picked) {
+			void persist({ ...cfg, syncplay_binary: picked });
 		}
 	}
 	function setCacheCap(valueRaw: string) {
@@ -378,6 +415,46 @@
 					/>
 				</div>
 			{/if}
+
+			<!--
+			  Syncplay binary path. Drives the play page's "Watch
+			  together" hamburger entry. Separate from external_player
+			  because Syncplay isn't a player kind — it's a wrapper
+			  around the user's mpv that adds room sync. Same Browse
+			  pattern as the external player binary input above.
+			-->
+			<div class="field">
+				<div class="field-label">
+					<span class="field-key">{m.settings_field_syncplay_binary_key()}</span>
+					<span class="field-hint">
+						{m.settings_field_syncplay_binary_hint_prefix()}<a
+							href="https://syncplay.pl/download/"
+							target="_blank"
+							rel="noreferrer">syncplay.pl</a
+						>{m.settings_field_syncplay_binary_hint_suffix()}
+					</span>
+				</div>
+				<div class="player-binary-row">
+					<input
+						class="text-input"
+						type="text"
+						value={cfg.syncplay_binary}
+						oninput={(e) => setSyncplayBinary((e.currentTarget as HTMLInputElement).value)}
+						placeholder={m.settings_field_syncplay_binary_placeholder()}
+						spellcheck="false"
+						autocomplete="off"
+						aria-label={m.settings_field_syncplay_binary_key()}
+					/>
+					<button
+						type="button"
+						class="seg-btn browse-btn"
+						onclick={browseSyncplayBinary}
+						aria-label={m.settings_field_syncplay_binary_browse_aria_label()}
+					>
+						{m.settings_field_external_player_browse_button()}
+					</button>
+				</div>
+			</div>
 
 			<div class="field">
 				<div class="field-label">

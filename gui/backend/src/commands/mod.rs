@@ -15,11 +15,14 @@ pub mod kitsu;
 pub mod kitsu_warm;
 pub mod play;
 pub mod play_cache;
+pub mod play_referer;
 pub mod play_resolution_cache;
 pub mod play_select;
+pub mod play_syncplay;
 pub mod proxy_url;
 pub mod session;
 pub mod settings;
+pub mod syncplay;
 
 pub use app_info::app_info;
 pub use external_player::{open_external_player, LaunchArgs};

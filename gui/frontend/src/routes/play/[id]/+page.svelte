@@ -48,6 +48,7 @@
 		markWatched,
 		playStream,
 		playExternal,
+		playSyncplay,
 		settingsGet,
 		settingsPut,
 		type Config,
@@ -93,6 +94,11 @@
 		describePlayFailure
 	} from '$lib/play/error-copy';
 	import { externalLaunchSuccessToast } from '$lib/play/external-toast';
+	import {
+		describeSyncplayLaunchFailure,
+		isSyncplaySpawnFailure,
+		syncplayLaunchSuccessToast
+	} from '$lib/play/syncplay-toast';
 	import { toastStore } from '$lib/toasts/store.svelte';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import { m } from '$lib/paraglide/messages';
@@ -1534,6 +1540,24 @@
 	let externalBusy = $state(false);
 	let externalError = $state<{ episode: number; message: string } | null>(null);
 
+	// Syncplay launch — mirrors the external-player flow: pause the
+	// embedded video, hand the URL to Syncplay's binary (Syncplay
+	// opens its own room dialog + wrapped player), surface success
+	// as a toast and failure as ErrorOverlay. Distinct state vars
+	// from externalBusy/Error so the user can in principle retry one
+	// while the other is busy or failed.
+	let syncplayBusy = $state(false);
+	// `isSpawnFailure` gates the ErrorOverlay's "Get Syncplay"
+	// action affordance — true only when the binary itself was the
+	// problem. Resolve-step failures (scraper / network / timeout)
+	// suppress the install link, since pointing the user at
+	// syncplay.pl wouldn't recover those.
+	let syncplayError = $state<{
+		episode: number;
+		message: string;
+		isSpawnFailure: boolean;
+	} | null>(null);
+
 	// Overflow menu (the "..." button) housing the secondary actions
 	// Open in external + Download. They were demoted from the np-actions
 	// row to declutter — the primary controls are now ep-nav +
@@ -1618,6 +1642,49 @@
 			};
 		} finally {
 			externalBusy = false;
+		}
+	}
+
+	// Hand the currently-playing episode off to the user's locally-
+	// installed Syncplay binary. Mirrors `onOpenExternal` except the
+	// backend route is `/api/play/syncplay` and the success toast +
+	// failure dialog use Syncplay-specific copy + the syncplay.pl
+	// install link as the action affordance.
+	async function onSyncplay() {
+		const title = detail?.canonical_title;
+		if (!title || !config) return;
+		// Same pause-the-embedded-video logic as the external flow:
+		// Syncplay opens its own player window so two instances would
+		// otherwise stack audio.
+		videoEl?.pause();
+		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
+		const quality = config.quality ?? 'best';
+		syncplayBusy = true;
+		try {
+			await playSyncplay({
+				title,
+				episode: String(episodeNum),
+				mode,
+				quality,
+				episode_count: detail?.episode_count ?? null,
+				alt_titles: altTitlesFromKitsu(detail)
+			});
+			toastStore.push(syncplayLaunchSuccessToast({ episode: episodeNum }));
+		} catch (e) {
+			// Same routing as onOpenExternal — ErrorOverlay modal so
+			// missing-binary failures can't be missed. Body shaped
+			// by describeSyncplayLaunchFailure (spawn-fail names the
+			// binary; resolve-step failures reuse describePlayFailure).
+			// `isSpawnFailure` drives whether the modal renders the
+			// "Get Syncplay" install link — only when the binary
+			// itself was the problem.
+			syncplayError = {
+				episode: episodeNum,
+				message: describeSyncplayLaunchFailure(e),
+				isSpawnFailure: isSyncplaySpawnFailure(e)
+			};
+		} finally {
+			syncplayBusy = false;
 		}
 	}
 
@@ -2079,6 +2146,58 @@
 											</svg>
 											<span>{m.play_controls_menu_pip()}</span>
 										</button>
+										<!-- Syncplay (watch-party) entry. Launches the user's
+										     locally-installed Syncplay binary on the resolved
+										     stream URL; Syncplay opens its own room dialog +
+										     wrapped mpv. Two-person icon. -->
+										<button
+											type="button"
+											class="pc-menu-item"
+											role="menuitem"
+											disabled={syncplayBusy}
+											onclick={() => {
+												closePcMenu();
+												void onSyncplay();
+											}}
+										>
+											<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+												<circle
+													cx="9"
+													cy="8"
+													r="3"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												/>
+												<path
+													d="M3 19c0-3 3-5 6-5s6 2 6 5"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+												/>
+												<circle
+													cx="17"
+													cy="9"
+													r="2.4"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												/>
+												<path
+													d="M15 19c0-2 2-3.5 4-3.5s2 1 2 3"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+												/>
+											</svg>
+											<span>
+												{syncplayBusy
+													? m.play_hamburger_syncplay_busy_label()
+													: m.play_hamburger_syncplay_label()}
+											</span>
+										</button>
 									{/if}
 								</div>
 							{/if}
@@ -2333,6 +2452,68 @@
 								</svg>
 								<span>{m.play_controls_menu_download()}</span>
 							</button>
+
+							<!-- "Watch together" lives here in addition to the
+							     in-player hamburger (pc-menu) because the
+							     hamburger is gated on use_custom_player_controls.
+							     When the user opts into Chromium's native
+							     controls the hamburger disappears, and the
+							     more-menu becomes the only reachable surface
+							     for Syncplay launches. -->
+							<button
+								type="button"
+								class="more-item"
+								role="menuitem"
+								disabled={syncplayBusy}
+								onclick={() => {
+									closeMore();
+									void onSyncplay();
+								}}
+							>
+								<svg
+									class="more-icon"
+									viewBox="0 0 24 24"
+									width="18"
+									height="18"
+									aria-hidden="true"
+								>
+									<circle
+										cx="9"
+										cy="8"
+										r="3"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+									/>
+									<path
+										d="M3 19c0-3 3-5 6-5s6 2 6 5"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+										stroke-linecap="round"
+									/>
+									<circle
+										cx="17"
+										cy="9"
+										r="2.4"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+									/>
+									<path
+										d="M15 19c0-2 2-3.5 4-3.5s2 1 2 3"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.25"
+										stroke-linecap="round"
+									/>
+								</svg>
+								<span>
+									{syncplayBusy
+										? m.play_hamburger_syncplay_busy_label()
+										: m.play_hamburger_syncplay_label()}
+								</span>
+							</button>
 						</div>
 					{/if}
 				</div>
@@ -2557,6 +2738,27 @@
 		headline={m.play_error_external_headline({ episode: String(externalError.episode) })}
 		body={externalError.message}
 		onDismiss={() => (externalError = null)}
+	/>
+{/if}
+
+<!--
+  Syncplay launch failures. Same modal as the external-player
+  failure (ErrorOverlay → oxblood-accented alarm) but the
+  action affordance is a link to syncplay.pl/download/ —
+  mirrors how the ffmpeg-missing dialog links to ffmpeg.org.
+  Electron's setWindowOpenHandler routes the <a target=_blank>
+  through shell.openExternal so the link opens in the user's
+  system browser rather than inside Electron.
+-->
+{#if syncplayError}
+	<ErrorOverlay
+		headline={m.play_error_syncplay_headline({ episode: String(syncplayError.episode) })}
+		body={syncplayError.message}
+		actionLabel={syncplayError.isSpawnFailure
+			? m.play_error_syncplay_get_action_label()
+			: undefined}
+		actionHref={syncplayError.isSpawnFailure ? 'https://syncplay.pl/download/' : undefined}
+		onDismiss={() => (syncplayError = null)}
 	/>
 {/if}
 
