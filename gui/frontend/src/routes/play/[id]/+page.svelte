@@ -92,6 +92,8 @@
 		describeExternalLaunchFailure,
 		describePlayFailure
 	} from '$lib/play/error-copy';
+	import { externalLaunchSuccessToast } from '$lib/play/external-toast';
+	import { toastStore } from '$lib/toasts/store.svelte';
 	import { breadcrumb } from '$lib/breadcrumb';
 	import { m } from '$lib/paraglide/messages';
 	import DownloadConfirm from '$lib/components/DownloadConfirm.svelte';
@@ -1523,12 +1525,12 @@
 	// Hand the currently-playing episode off to the user's mpv (or
 	// whichever player they configured). The backend resolves the same
 	// upstream URL it would for the embedded path; only the terminal
-	// action differs. Transient launching/sent feedback rides the
-	// short-lived inline notice (so the playing video keeps going);
-	// failures route through the ErrorOverlay modal instead — the
-	// inline banner was easy to miss, particularly the player-spawn-
-	// failed case where the user actually has to act on the message.
-	let externalNotice = $state<string | null>(null);
+	// action differs. Successful launches surface as a toast through
+	// `toastStore.push` (bottom-right, dock-aware); failures route
+	// through the ErrorOverlay modal so the player-spawn-failed case
+	// can't be missed. The button itself reports launching state via
+	// the `externalBusy` flag (existing m.play_external_launching()
+	// label) so the user has feedback even before the toast lands.
 	let externalBusy = $state(false);
 	let externalError = $state<{ episode: number; message: string } | null>(null);
 
@@ -1581,7 +1583,6 @@
 		const mode = (config.mode === 'dub' ? 'dub' : 'sub') as 'sub' | 'dub';
 		const quality = config.quality ?? 'best';
 		externalBusy = true;
-		externalNotice = `Launching external player for episode ${episodeNum}…`;
 		try {
 			await playExternal({
 				title,
@@ -1591,7 +1592,17 @@
 				episode_count: detail?.episode_count ?? null,
 				alt_titles: altTitlesFromKitsu(detail)
 			});
-			externalNotice = `Episode ${episodeNum} sent to external player.`;
+			// Success surfaces as a bottom-right toast (4s auto-
+			// dismiss owned by the toast store). The shape comes
+			// from externalLaunchSuccessToast so the message text
+			// stays i18n'd and picks up the player's display name
+			// from cfg.external_player_kind.
+			toastStore.push(
+				externalLaunchSuccessToast({
+					episode: episodeNum,
+					kind: config.external_player_kind
+				})
+			);
 		} catch (e) {
 			// Route the failure through the ErrorOverlay modal so the
 			// user can't miss it — the prior inline notice landed in
@@ -1605,19 +1616,8 @@
 				episode: episodeNum,
 				message: describeExternalLaunchFailure(e)
 			};
-			// Clear the in-progress banner so it doesn't sit alongside
-			// the modal saying "launching".
-			externalNotice = null;
 		} finally {
 			externalBusy = false;
-			// Only the success/launching banner auto-clears. The
-			// failure modal stays until the user dismisses it — its
-			// whole point is being unmissable.
-			if (!externalError) {
-				setTimeout(() => {
-					externalNotice = null;
-				}, 4000);
-			}
 		}
 	}
 
@@ -2339,10 +2339,6 @@
 			</div>
 		</header>
 
-		{#if externalNotice}
-			<p class="external-notice" role="status">{externalNotice}</p>
-		{/if}
-
 		{#if detailError}
 			<p class="player-empty">{detailError}</p>
 		{/if}
@@ -2900,16 +2896,6 @@
 		}
 	}
 
-	/* Square icon-only button (bookmark slot) — visual companion
-	   to the external action button. */
-	.external-notice {
-		margin: var(--space-3) 0 0;
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--type-meta);
-		color: var(--bone-100);
-		background: rgba(0, 0, 0, 0.4);
-		border-radius: var(--radius-control);
-	}
 	.player-frame {
 		position: relative;
 		/* Full-bleed Patreon-style player: escapes both .page's

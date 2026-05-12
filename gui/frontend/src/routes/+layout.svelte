@@ -34,6 +34,7 @@
 	} from '$lib/api';
 	import DownloadDock from '$lib/components/DownloadDock.svelte';
 	import DownloadBar from '$lib/components/DownloadBar.svelte';
+	import ToastHost from '$lib/components/ToastHost.svelte';
 	import ErrorOverlay from '$lib/components/ErrorOverlay.svelte';
 	import { downloadFailureStore } from '$lib/download/failure-store.svelte';
 	import { downloadStore } from '$lib/download/store.svelte';
@@ -558,6 +559,15 @@
 {#if config?.download_bottom_bar_enabled !== false}
 	<DownloadBar />
 {/if}
+
+<!--
+  ToastHost — bottom-right anchored notification stack. Lifts above
+  the DownloadBar when downloads are in flight (computeToastBottomOffset
+  derives the inset). Mounted after DownloadBar so the dock sits
+  underneath in DOM order; z-index gives the toast top stacking too
+  (50 vs 40).
+-->
+<ToastHost downloadBarEnabled={config?.download_bottom_bar_enabled !== false} />
 
 <!--
   Layout-level modal for blocking download failures (today: ffmpeg

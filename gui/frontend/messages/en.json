@@ -265,6 +265,8 @@
 	"play_more_title": "More actions",
 	"play_external_launching": "Launching…",
 	"play_external_label": "Open in external",
+	"play_external_sent_toast": "Opened episode {episode} in {player}.",
+	"play_external_player_custom_label": "external player",
 	"play_external_spawn_failed_named": "Couldn't launch {binary}. Make sure it's installed and on PATH (or pick its full path in Settings).",
 	"play_episodes_section_heading": "Episodes",
 	"play_episodes_range_pagination": "{epStart}–{epEnd} of {total}",
@@ -418,5 +420,6 @@
 	"strip_arrow_previous_aria_label": "Previous",
 	"strip_arrow_next_aria_label": "Next",
 	"strip_card_episodes_suffix": "ep",
-	"strip_card_no_date": "—"
+	"strip_card_no_date": "—",
+	"toast_dismiss_aria": "Dismiss notification"
 }

@@ -47,6 +47,8 @@
 	"more_title": "Ещё действия",
 	"external_launching": "Запуск…",
 	"external_label": "Открыть во внешнем плеере",
+	"external_sent_toast": "Эпизод {episode} открыт в {player}.",
+	"external_player_custom_label": "внешний плеер",
 	"external_spawn_failed_named": "Не удалось запустить {binary}. Убедитесь, что плеер установлен и доступен в PATH (или укажите полный путь в Настройках).",
 	"episodes_section_heading": "Эпизоды",
 	"episodes_range_pagination": "{epStart}–{epEnd} из {total}",
