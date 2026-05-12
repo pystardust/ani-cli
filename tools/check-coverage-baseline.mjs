@@ -173,6 +173,23 @@ function checkBash(baseline) {
 	}
 }
 
+/**
+ * Per-metric `max` between an existing baseline block and a fresh
+ * measurement. Unknown keys in `measured` (e.g. `regions_pct` from
+ * cargo-llvm-cov, which the baseline schema doesn't pin) are
+ * dropped — the baseline shape is the source of truth for which
+ * metrics gate.
+ */
+function tightenedFloor(baseline, measured) {
+	const out = { ...baseline };
+	for (const key of Object.keys(baseline)) {
+		if (typeof measured[key] === 'number') {
+			out[key] = Math.max(baseline[key], measured[key]);
+		}
+	}
+	return out;
+}
+
 function round(o) {
 	const out = {};
 	for (const [k, v] of Object.entries(o)) {
@@ -231,13 +248,27 @@ if (update || updateCrap) {
 	// refactor and must leave rust / frontend / bash alone — otherwise
 	// re-running coverage to land a tighter ceiling silently shifts
 	// the floor too.
+	//
+	// Floors are tighten-only — same firmness rule the CRAP ceilings
+	// got in commit a17fd75. `Math.max` per metric means a real
+	// improvement lands in the baseline but a regression can't be
+	// papered over by re-running this command. (For coverage, higher
+	// is better, so "tighten" is `max`; for CRAP, lower is better,
+	// so the symmetric op down there is `min`.)
 	if (update) {
-		if (measured.rust) next.rust = measured.rust;
-		if (measured.frontend) next.frontend = measured.frontend;
+		if (measured.rust) next.rust = tightenedFloor(baseline.rust, measured.rust);
+		if (measured.frontend)
+			next.frontend = tightenedFloor(baseline.frontend, measured.frontend);
 		if (measured.bash) {
 			next.bash = {
-				pure_covered_min: measured.bash.pure?.covered ?? baseline.bash.pure_covered_min,
-				network_covered_min: measured.bash.network?.covered ?? baseline.bash.network_covered_min
+				pure_covered_min: Math.max(
+					baseline.bash.pure_covered_min,
+					measured.bash.pure?.covered ?? baseline.bash.pure_covered_min
+				),
+				network_covered_min: Math.max(
+					baseline.bash.network_covered_min,
+					measured.bash.network?.covered ?? baseline.bash.network_covered_min
+				)
 			};
 		}
 	}
