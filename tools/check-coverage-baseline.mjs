@@ -4,10 +4,22 @@
 // coverage tooling writes.
 //
 // Usage:
-//   node tools/check-coverage-baseline.mjs [--update]
+//   node tools/check-coverage-baseline.mjs [--update] [--update-crap]
 //
-// `--update` writes the current numbers back to the baseline file —
-// run it deliberately after intentional changes to test scope.
+// `--update` writes the current rust / frontend / bash numbers back
+// to the baseline file — run it deliberately after intentional
+// changes to test scope. The CRAP ceilings (`crap.max_le`,
+// `crap.p95_le`, `crap.high_risk_le`) are LEFT UNTOUCHED by
+// `--update` because the firm-ceiling policy (AGENTS.md §2,
+// docs/testing.md, baseline `_comment`) requires PRs to refactor
+// down to the existing ceilings rather than raise them.
+//
+// `--update-crap` is the explicit opt-in for the rare legitimate
+// case where the codebase shape itself improved (e.g., a multi-PR
+// cleanup that brought the worst file's CRAP score down) and the
+// ceiling should ratchet tighter — never looser. The flag will
+// REFUSE to write CRAP values that exceed the current baseline so
+// it can only tighten the gate, not loosen it.
 //
 // Layers checked:
 //   - rust:     gui/backend/lcov.info  (cargo-llvm-cov --lcov)
@@ -29,6 +41,7 @@ const repoRoot = path.resolve(__dirname, '..');
 const baselinePath = path.join(repoRoot, 'coverage-baseline.json');
 
 const update = process.argv.includes('--update');
+const updateCrap = process.argv.includes('--update-crap');
 
 /** @type {{ layer: string, metric: string, current: number, baseline: number, ok: boolean }[]} */
 const results = [];
@@ -211,23 +224,41 @@ checkFrontend(baseline.frontend);
 checkBash(baseline.bash);
 checkCrap(baseline.crap);
 
-if (update) {
+if (update || updateCrap) {
 	const next = { ...baseline };
-	if (measured.rust) next.rust = measured.rust;
-	if (measured.frontend) next.frontend = measured.frontend;
-	if (measured.bash) {
-		next.bash = {
-			pure_covered_min: measured.bash.pure?.covered ?? baseline.bash.pure_covered_min,
-			network_covered_min: measured.bash.network?.covered ?? baseline.bash.network_covered_min
-		};
+	// Only `--update` rewrites the coverage floors. `--update-crap`
+	// is for tightening the CRAP ceilings after a complexity-only
+	// refactor and must leave rust / frontend / bash alone — otherwise
+	// re-running coverage to land a tighter ceiling silently shifts
+	// the floor too.
+	if (update) {
+		if (measured.rust) next.rust = measured.rust;
+		if (measured.frontend) next.frontend = measured.frontend;
+		if (measured.bash) {
+			next.bash = {
+				pure_covered_min: measured.bash.pure?.covered ?? baseline.bash.pure_covered_min,
+				network_covered_min: measured.bash.network?.covered ?? baseline.bash.network_covered_min
+			};
+		}
 	}
-	if (measured.crap) {
-		next.crap = {
-			...baseline.crap,
-			max_le: Math.ceil(measured.crap.max),
-			p95_le: Math.ceil(measured.crap.p95),
-			high_risk_le: measured.crap.high_risk
-		};
+	// CRAP ceilings stay firm under plain `--update`. The
+	// `--update-crap` opt-in tightens them when the codebase
+	// genuinely improved — but never loosens, so an accidental
+	// regression can't slip a ceiling bump through the tool.
+	if (updateCrap && measured.crap) {
+		const max_le = Math.min(Math.ceil(measured.crap.max), baseline.crap.max_le);
+		const p95_le = Math.min(Math.ceil(measured.crap.p95), baseline.crap.p95_le);
+		const high_risk_le = Math.min(measured.crap.high_risk, baseline.crap.high_risk_le);
+		next.crap = { ...baseline.crap, max_le, p95_le, high_risk_le };
+		const tightened =
+			max_le < baseline.crap.max_le ||
+			p95_le < baseline.crap.p95_le ||
+			high_risk_le < baseline.crap.high_risk_le;
+		if (!tightened) {
+			console.log(
+				`[update-crap] current CRAP measurements don't tighten any ceiling; leaving them unchanged.`
+			);
+		}
 	}
 	fs.writeFileSync(baselinePath, JSON.stringify(next, null, '\t') + '\n');
 	console.log(`[update] wrote refreshed baseline to ${baselinePath}`);

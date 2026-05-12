@@ -40,6 +40,8 @@ Never modify a test to make production code pass. Modify production code, or cha
 
 The full pyramid (unit → acceptance → e2e → property → architectural invariants → mutation) lives in `docs/testing.md`.
 
+**The CRAP ceilings (`crap.max_le`, `crap.p95_le`, `crap.high_risk_le` in `coverage-baseline.json`) are firm.** A PR that would push a file's CRAP above `max_le`, or push the count of high-risk files above `high_risk_le`, must refactor — split the file, extract helpers, cover more code — rather than raise the ceiling. The historical pattern of bumping the ceiling on every feature was lenient by accident; bringing code under a fixed bar is the actual quality signal. The percentage / kcov baselines (`rust.*`, `frontend.*`, `bash.*`) may still be refreshed via `node tools/check-coverage-baseline.mjs --update` when tests were deliberately added or removed — never as a workaround for new code that skipped testing.
+
 **Svelte component logic must be testable.** The M3 design + UX detour shipped several pieces of behaviour inside `.svelte` files (BackButton depth tracking, topbar dropdown state machine, detail-page URL `$effect`s, hero rotation). Mounting Svelte 5 components against SvelteKit's runtime in vitest is brittle, so the rule is: **when you find yourself writing more than a couple of lines of imperative logic inside a `<script>`, extract it into a sibling `.ts` module under `$lib` and unit-test the module.** The component becomes a thin adapter that pulls inputs from the Svelte runtime and hands them to the pure function. `$lib/history/nav-depth.ts` is the canonical example — the layout's `afterNavigate` hook is now four lines of glue around a tested function.
 
 Known test debt (extract + unit-test next time you touch them):

@@ -83,6 +83,8 @@ bash tests/arch/run-all.sh
 
 Layer-specific. CI fails on regression below the baseline in `coverage-baseline.json`, not on absolute floors.
 
+The CRAP ceilings (`crap.*` in `coverage-baseline.json`) are a separate, firm gate. A PR that would push a file's CRAP score above `max_le`, or push the count of high-risk files above `high_risk_le`, must refactor (split files, extract helpers, cover more) to bring the code under the ceiling — raising the ceiling to fit new code is not allowed. The percentage baselines below (`rust.*`, `frontend.*`, `bash.*`) may still be refreshed via `node tools/check-coverage-baseline.mjs --update` when tests were deliberately added or removed; the tool deliberately leaves `crap.*` untouched on `--update` so the policy is enforced mechanically, not just by reading discipline. A separate `--update-crap` opt-in lets a deliberate cleanup *tighten* the CRAP ceilings (it refuses to write any value looser than the current baseline).
+
 | Layer | Tool | Line | Branch |
 |---|---|---|---|
 | Bash pure functions | bashcov / kcov | 95% | 90% |
