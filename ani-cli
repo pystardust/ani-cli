@@ -138,9 +138,30 @@ where_mpv() {
 
 # SCRAPING
 
+decode_provider_id() {
+    sed 's/../&\
+/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/:/g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/$/g;s/^1e$/\&/g;s/^10$/\(/g;s/^11$/\)/g;s/^12$/*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%/g' |
+        tr -d '\n' | sed "s/\/clock/\/clock\.json/"
+}
+
 # extract the video links from response of embed urls, extract mp4 links form m3u8 lists
 get_links() {
-    response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent")"
+    case "$*" in
+        *tools.fast4speed.rsvp*)
+            printf "%s\n" "Yt >$*"
+            printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
+            return 0
+            ;;
+        *mp4upload.com*)
+            response="$(curl -L --connect-timeout 10 --max-time 25 -e "$allanime_refr" -s "$*" -A "$agent")"
+            mp4_link="$(printf '%s' "$response" | sed -nE 's#.*(src|file):[[:space:]]*"([^"]+\.mp4[^"]*)".*#\2#p' | head -1 | sed 's|\\u0026|\&|g;s|\\||g')"
+            [ -n "$mp4_link" ] && printf "%s\n" "Mp4 >$mp4_link"
+            printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
+            return 0
+            ;;
+    esac
+
+    response="$(curl --connect-timeout 10 --max-time 25 -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent")"
     episode_link="$(printf '%s' "$response" | sed 's|},{|\
 |g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
 
@@ -164,23 +185,27 @@ get_links() {
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
 
-    printf "%s" "$*" | grep -q "tools.fast4speed.rsvp" && printf "%s\n" "Yt >$*"
     printf "\033[1;32m%s\033[0m Links Fetched\n" "$provider_name" 1>&2
 }
 
 # initialises provider_name and provider_id. First argument is the provider name, 2nd is the regex that matches that provider's link
 provider_init() {
     provider_name=$1
-    provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
-/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/:/g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/$/g;s/^1e$/&/g;s/^10$/\(/g;s/^11$/\)/g;s/^12$/*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
+    provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | sed 's/^[^:]*://')
+    case "$provider_id" in
+        --*) provider_id="$(printf "%s" "${provider_id#--}" | decode_provider_id)" ;;
+        http* | /* | "") ;;
+        *) provider_id="$(printf "%s" "$provider_id" | decode_provider_id)" ;;
+    esac
 }
 
 # generates links based on given provider
 generate_link() {
     case $1 in
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
-        3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        2) provider_init "mp4upload" "/Mp4 :/p" ;;    # mp4upload(mp4)(single)
+        3) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
+        4) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
         5) provider_init "filemoon" "/Fm-mp4 :/p" ;;  # filemoon(m3u8)(single)
         *) provider_init "hianime" "/Luf-Mp4 :/p" ;;  # hianime(m3u8)(multi)
     esac
@@ -207,8 +232,9 @@ select_quality() {
         [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
     printf '%s' "$result" | grep -q "cc>" && m3u8_refr="$(printf '%s' "$links" | sed -nE 's|m3u8_refr >(.*)|\1|p')" && refr_flag="--referrer=$m3u8_refr"
     printf "%s" "$result" | grep -q "tools.fast4speed.rsvp" && refr_flag="--referrer=$allanime_refr"
+    printf "%s" "$result" | grep -q "mp4upload.com" && refr_flag="--referrer=https://www.mp4upload.com/"
 
-    ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset refr_flag
+    ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp|mp4upload.com)") && unset refr_flag
     ! (printf '%s' "$result" | grep -q "cc>") && unset subs_flag
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
@@ -222,7 +248,9 @@ decode_tobeparsed() {
     ct_len=$((file_size - 13 - 16))
     plain="$(dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad 2>/dev/null)"
     rm -f "$tmp"
-    printf '%s' "$plain" | tr '{}' '\n' | sed -nE 's|.*"sourceUrl":"--([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p'
+    printf '%s' "$plain" | tr '{}' '\n' |
+        sed -nE 's|.*"sourceUrl":"([^"]*)".*"sourceName":"([^"]*)".*|\2 :\1|p' |
+        sed 's|\\u002F|/|g;s|\\/|/|g;s|\\u0026|\&|g;s|\\u003D|=|g;s|\\||g'
 }
 
 b64url_to_hex() {
@@ -289,11 +317,11 @@ get_episode_url() {
         blob="$(printf "%s" "$api_resp" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')"
         resp="$(decode_tobeparsed "$blob")"
     else
-        resp="$(printf "%s" "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
+        resp="$(printf "%s" "$api_resp" | tr '{}' '\n' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p' | sed 's|\\u002F|/|g;s|\\/|/|g;s|\\u0026|\&|g;s|\\u003D|=|g;s|\\||g')"
     fi
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4 5"
+    providers="1 2 3 4 5 6"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
@@ -375,8 +403,10 @@ download() {
             # [ -e "$download_dir/$2.vtt" ] && ffmpeg -i "$download_dir/$2.mp4" -i "$download_dir/$2.vtt" -c copy -c:s mov_text "$download_dir/$2.bak.mp4" && mv "$download_dir/$2.bak.mp4" "$download_dir/$2.mp4"
             ;;
         *)
+            download_refr="${refr_flag#--referrer=}"
+            [ "$download_refr" = "$refr_flag" ] && download_refr="$allanime_refr"
             # shellcheck disable=SC2086
-            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
+            aria2c --referer="$download_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide
             ;;
     esac
 }
@@ -413,7 +443,11 @@ play_episode() {
             fi
             ;;
         flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
-        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        vlc*)
+            vlc_refr="${refr_flag#--referrer=}"
+            [ "$vlc_refr" = "$refr_flag" ] && vlc_refr="$allanime_refr"
+            nohup $player_function --http-referrer="$vlc_refr" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+            ;;
         *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
         catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
