@@ -190,9 +190,9 @@ generate_link() {
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
         4) provider_init "mp4upload" "/Mp4 :/p" ;;    # mp4upload(mp4)(single)
         *)
-            provider_init "Filemoon" "/Fm-Hls :/p"
-            get_filemoon_links "$provider_id"
-            return 0
+            # provider_init "Filemoon" "/Fm-Hls :/p"
+            # get_filemoon_links "$provider_id"
+            # return 0
             ;; # filemoon(m3u8)(single)
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
@@ -299,7 +299,8 @@ get_episode_url() {
     resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
-    providers="1 2 3 4 5"
+    #providers="1 2 3 4 5"
+    providers="1 2 3 4"
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
     done
