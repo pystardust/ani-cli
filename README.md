@@ -174,7 +174,7 @@ termux-setup-storage
 ```txt
 include="/storage/emulated/0/mpv/mpv.config.mp4"
 ```
-- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux.
+- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux. These permissions are asked by mpv if you click on the "file picker (legacy)" option.
 
 </details>
 

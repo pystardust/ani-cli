@@ -142,7 +142,7 @@ where_mpv() {
 get_links() {
     case "$*" in
         *mp4upload*)
-            episode_link=$(curl --max-time 15 -sLk "$*" -A "$agent" -e "$allanime_refr" | sed -nE 's|.*src: "([^"]*)"[[:space:]]*|Mp4Upload >\1|p')
+            episode_link=$(curl --max-time 10 -sLk "$*" -A "$agent" -e "$allanime_refr" | sed -nE 's|.*src: "([^"]*)"[[:space:]]*|Mp4Upload >\1|p')
             ;;
         *tools.fast4speed.rsvp*)
             episode_link=$(printf "%s\n" "Yt >$*")
@@ -594,7 +594,7 @@ dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled\n" ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled.\nANI-CLI recommends Android MPV for full compatibility.\nAdd:\n include='/storage/emulated/0/mpv/mpv.config.mp4'\nto:\n MPV > Settings > Advanced > mpv.conf\nfor full functionality.\nIgnore, If Done.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
