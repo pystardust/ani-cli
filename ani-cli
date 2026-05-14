@@ -105,15 +105,15 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Connection error"
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "Connection error"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
-        printf "Script is up to date :)\n"
+        printf "[branch:%s] Script is up to date :)\n" "$branch"
     else
         if printf '%s\n' "$update" | patch "$0" -; then
-            printf "Script has been updated\n"
+            printf "[branch:%s] Script has been updated\n" "$branch"
         else
-            die "Can't update for some reason!"
+            die "[branch:$branch] Can't update for some reason!"
         fi
     fi
     exit 0
@@ -508,6 +508,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+branch="${ANI_CLI_BRANCH:-master}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -575,7 +576,10 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -N | --nextep-countdown) search=nextep ;;
-        -U | --update) update_script ;;
+        -U | --update)
+            branch="${2:-$branch}"
+            update_script
+            ;;
         *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
     esac
     shift
