@@ -105,7 +105,9 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "Connection error"
+    printf "[branch:%s] Checking for Update..\n" "$branch"
+    update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
+    printf '%s' "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "[branch:%s] Script is up to date :)\n" "$branch"
