@@ -613,7 +613,7 @@ case "$search" in
             if [ "$use_external_menu" != "0" ] || [ ! -t 0 ]; then
                 die "No results found!"
             fi
-            printf "\33[2K\r\033[1;31mNo results found for \"%s\". Try alternate spellings or press Ctrl+C to exit.\033[0m\n" "$(printf "%s" "$query" | sed 's|+| |g')" >&2
+            printf "\33[2K\r\033[1;31mNo results found for \"%s\". Try alternate spellings or press Ctrl+C to exit.\033[0m\n\n" "$(printf "%s" "$query" | sed 's|+| |g')" >&2
             query=""
             while [ -z "$query" ]; do
                 printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query || exit 1
