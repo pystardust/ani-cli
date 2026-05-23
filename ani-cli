@@ -138,7 +138,7 @@ where_mpv() {
     printf "%s" "mpv" && return 0
 }
 
-cleanup_shit() {
+cleanup() {
     [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4"
     printf "\033[0m"        # clears colors
     rm -f "${histfile}.new" # remove temp logfile
@@ -607,7 +607,7 @@ case "$player_function" in
 esac
 
 # idk where to put this, so I put it here...
-trap 'cleanup_shit; exit 1' INT HUP
+trap 'cleanup; exit 1' INT HUP
 
 # searching
 case "$search" in
@@ -671,7 +671,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
             select_quality "$new_quality"
             ;;
         *)
-            cleanup_shit
+            cleanup
             exit 0
             ;;
     esac
