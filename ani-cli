@@ -352,8 +352,11 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
-|g; s|"||g' | sort -g -k 1 > "$tmp_dir/ep_list_$id"
+    # use sort -g for anime such as Meitantei Conan, which has float number episodes
+    curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" \
+        --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent" |
+        sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
+|g; s|"||g' | sort -g -k 1 >"$tmp_dir/ep_list_$id"
 }
 
 # PLAYING
@@ -361,10 +364,11 @@ episodes_list() {
 process_hist_entry() {
     episodes_list "$id"
     if [ -s "$tmp_dir/ep_list_$id" ]; then
-      ep_list="$(cat "$tmp_dir/ep_list_$id")"
+        ep_list="$(cat "$tmp_dir/ep_list_$id")"
     else
-      exit 0
+        exit 0
     fi
+
     latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
     title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
