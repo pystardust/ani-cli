@@ -298,9 +298,9 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 
 mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
@@ -345,9 +345,9 @@ press enter("A" button on Steam Deck) on questions
 
 ```sh
 mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 ```
 
