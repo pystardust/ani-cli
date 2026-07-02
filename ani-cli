@@ -59,6 +59,10 @@ help_info() {
         Delete history
       -l, --logview
         Show logs
+    -t, --tty
+        Use tct or drm backend to use it in tty
+        tty 1 = tct (default)
+        tty 2 = drm
       -s, --syncplay
         Use Syncplay to watch with friends
       -S, --select-nth
