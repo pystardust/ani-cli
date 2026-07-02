@@ -2,6 +2,9 @@
 
 version_number="4.14.1"
 
+#flags
+use_tty=0
+tty_mode=0
 # UI
 
 external_menu() {
@@ -414,10 +417,23 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
+            if [ "$use_tty" = 1 ]; then
+                case "$tty_mode" in
+                    1)
+                        tty_flags="--vo=tct --really-quiet"
+                        ;;
+                    2)
+                        tty_flags="--vo=gpu --gpu-context=drm"
+                        ;;
+                    *)
+                        tty_flags="--vo=tct --realy-quiet"
+                        ;;
+                esac
+            fi
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
+                nohup $player_function $tty_flags $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
             else
-                $player_function $skip_flag $refr_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                $player_function $tty_flags $skip_flag $refr_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
@@ -514,6 +530,19 @@ branch="${ANI_CLI_BRANCH:-master}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        -t | --tty)
+            use_tty=1
+            no_detach=1
+            tty_mode=1
+            if [ $# -gt 1 ]; then
+                case "$2" in
+                    1|2)
+                        tty_mode="$2"
+                        shift
+                        ;;
+                esac
+            fi
+            ;;
         -v | --vlc)
             case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
