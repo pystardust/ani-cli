@@ -427,10 +427,7 @@ play_episode() {
                         tty_flags="--vo=tct --really-quiet"
                         ;;
                     2)
-                        tty_flags="--vo=gpu --gpu-context=drm"
-                        ;;
-                    *)
-                        tty_flags="--vo=tct --realy-quiet"
+                        tty_flags="--vo=drm"
                         ;;
                 esac
             fi
