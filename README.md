@@ -1,5 +1,5 @@
 <p align=center>
-<br>
+</br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
 <a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
@@ -7,10 +7,14 @@
 <a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
 <a href="#iOS"><img src="https://img.shields.io/badge/os-ios-yellow">
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
-<br>
-<h1 align="center">
-<a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
+</br>
+<p align=center>
+<a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR" height=90></a>
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
+</br>
+[[Discord](https://discord.gg/aqu7GpqVmR)] - [[Matrix](https://github.com/pystardust/ani-cli/blob/master/matrix.md)]
+</p>
+
 <br>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
