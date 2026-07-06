@@ -69,6 +69,12 @@ Exit the player, and return the player exit code (useful for non interactive sce
 .TP
 \fB\--skip-title\fR \fI\,<title>\/\fR
 Specify the title to use for ani-skip
+.TP
+\fB\--source\fR \fI\,<all|allanime|simindad>\/\fR
+Choose which source(s) to search. Results are labelled per provider. Default is all.
+.TP
+\fB\--login-simindad\fR
+Log in to simindad.top (prompts for username, password and captcha) and store the session, then exit.
 .PP
 .SH
 ENVIRONMENT VARIABLES
@@ -113,6 +119,15 @@ Controls if mpv is detached from the main process for playback, which can be use
 .TP
 \fBANI_CLI_SKIP_TITLE\fR
 Overrides the anime title to query for skip times. Can be any string value. Default is empty, resolving to the anime title as given by ani-cli.
+.TP
+\fBANI_CLI_SOURCE\fR
+Controls which source(s) are searched. Valid options are all, allanime or simindad. Default is all.
+.TP
+\fBANI_CLI_SIMINDAD_USER\fR
+Username for simindad.top. If set (together with ANI_CLI_SIMINDAD_PASS), login is non-interactive except for the captcha.
+.TP
+\fBANI_CLI_SIMINDAD_PASS\fR
+Password for simindad.top. See ANI_CLI_SIMINDAD_USER.
 .PP
 .SH EPISODE SELECTION
 .PP
