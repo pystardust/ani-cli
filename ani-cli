@@ -403,47 +403,6 @@ download() {
     esac
 }
 
-mpv_playlist_init() {
-    mpv_playlist_socket=$(mktemp /tmp/mpv-playlist.XXXXXX.sock)
-    rm -f "$mpv_playlist_socket"
-
-    play_mpv
-    mpv_playlist_pid=$!
-
-    while [ ! -S "$mpv_playlist_socket" ]; do sleep 0.1; done
-}
-
-mpv_playlist_wait() {
-    # waits for IPC signal and checks you reached the end of the playlist
-    # before breaking to allow loading of another episode
-    fifo="/tmp/mpv_fifo.$$"
-    mkfifo "$fifo" || return 1
-
-    socat -u UNIX-CONNECT:"$mpv_playlist_socket" "$fifo" >/dev/null 2>&1 &
-    SOCAT_PID=$!
-
-    while IFS= read -r line ; do
-        if ! kill -0 "$mpv_playlist_pid" 2>/dev/null; then mpv_playlist_quit=true; fi
-
-        event=$(printf '%s\n' "$line" | sed -n 's/.*"event":"\([^"]*\)".*/\1/p')
-        [ "$event" != "end-file" ] && continue
-
-        reason=$(printf '%s\n' "$line" | sed -n 's/.*"reason":"\([^"]*\)".*/\1/p')
-        [ "$reason" = "quit" ] && mpv_playlist_quit=true && return
-
-        playlist_pos=$(send_mpv_ipc '{"command":["get_property","playlist-pos"]}')
-        playlist_count=$(send_mpv_ipc '{"command":["get_property","playlist-count"]}')
-        playlist_pos=$(printf '%s\n' "$playlist_pos" | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
-        playlist_count=$(printf '%s\n' "$playlist_count" | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
-        [ "$playlist_pos" -ne $((playlist_count - 1)) ] && continue
-
-        break
-    done < "$fifo"
-
-    kill "$SOCAT_PID" 2>/dev/null
-    rm -f "$fifo"
-}
-
 send_mpv_ipc() {
     printf '%s\n' "$1" | socat - UNIX-CONNECT:"$mpv_playlist_socket"
 }
@@ -481,16 +440,30 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
-            if [ -n "$playlist" ]; then
-                if [ -z "$mpv_playlist_pid" ] || ! kill -0 "$mpv_playlist_pid"; then
-                    mpv_playlist_init
-                else
-                    [ -z "$episode" ] && return
-                    send_mpv_ipc "{\"command\":[\"loadfile\",\"$episode\",\"append-play\",-1,{\"force-media-title\":\"$media_title\"}]}" >/dev/null 2>&1
-                    mpv_playlist_wait
-                fi
-            else
+            if [ -z "$playlist" ]; then play_mpv; return; fi
+            if [ -z "$mpv_playlist_pid" ] || ! kill -0 "$mpv_playlist_pid"; then
+                mpv_playlist_socket=$(mktemp /tmp/mpv-playlist.XXXXXX.sock)
+                rm -f "$mpv_playlist_socket"
                 play_mpv
+                mpv_playlist_pid=$!
+                while [ ! -S "$mpv_playlist_socket" ]; do sleep 0.1; done
+            else
+                [ -z "$episode" ] && return
+                send_mpv_ipc "{\"command\":[\"loadfile\",\"$episode\",\"append-play\",-1,{\"force-media-title\":\"$media_title\"}]}" >/dev/null 2>&1
+                fifo="/tmp/mpv_fifo.$$"
+                mkfifo "$fifo" || return 1
+                socat -u UNIX-CONNECT:"$mpv_playlist_socket" "$fifo" >/dev/null 2>&1 &
+                SOCAT_PID=$!
+                while IFS= read -r line ; do
+                    if ! kill -0 "$mpv_playlist_pid" 2>/dev/null; then mpv_playlist_quit=true; fi
+                    [ "$(printf '%s\n' "$line" | sed -n 's/.*"event":"\([^"]*\)".*/\1/p')" != "end-file" ] && continue
+                    [ "$(printf '%s\n' "$line" | sed -n 's/.*"reason":"\([^"]*\)".*/\1/p')" = "quit" ] && mpv_playlist_quit=true && return
+                    playlist_pos=$(send_mpv_ipc '{"command":["get_property","playlist-pos"]}' | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
+                    playlist_count=$(send_mpv_ipc '{"command":["get_property","playlist-count"]}' | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
+                    [ "$playlist_pos" -ne $((playlist_count - 1)) ] && continue
+                    break
+                done < "$fifo" && rm -f "$fifo"
+                kill "$SOCAT_PID" 2>/dev/null
             fi
             ;;
         android_mpv) "$player_function" "$episode" "$media_title" "--tls-verify=no $refr_flag" 2>&1 & ;;
