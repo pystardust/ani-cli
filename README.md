@@ -12,7 +12,8 @@
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR" height=90></a>
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 </br>
-[[Discord](https://discord.gg/aqu7GpqVmR)] - [[Matrix](https://github.com/pystardust/ani-cli/blob/master/matrix.md)]
+<a href="https://discord.gg/aqu7GpqVmR">Discord</a>
+<a href="https://github.com/pystardust/ani-cli/blob/master/matrix.md">Matrix</a>
 </p>
 
 <br>
