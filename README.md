@@ -8,10 +8,13 @@
 <a href="#iOS"><img src="https://img.shields.io/badge/os-ios-yellow">
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
 <br>
-<h1 align="center">
+<p align=center>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 <br>
+<a href="https://discord.gg/aqu7GpqVmR">Discord</a>
+<a href="https://github.com/pystardust/ani-cli/blob/master/matrix.md">Matrix</a>
+</p>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
 <a href="https://github.com/justchokingaround"><img src="https://img.shields.io/badge/maintainer-justchokingaround-blue"></a>
