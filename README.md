@@ -54,7 +54,7 @@ If after this the issue persists then open an issue.
 
 ## Install
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.0)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.14)](https://repology.org/project/ani-cli/versions)
 
 ### Tier 1 Support: Linux, Mac, Android
 
@@ -163,6 +163,18 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 ```sh
 pkg install openssl-tool
 ```
+
+**Important Note:** To get all providers working with android MPV, Please follow below steps:
+- Run this command and allow storage permissions:
+```sh
+termux-setup-storage
+```
+- Go to MPV > Settings > Advanced > mpv.conf
+- add this line:
+```txt
+include="/storage/emulated/0/mpv/mpv.config.mp4"
+```
+- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux. These permissions are asked by mpv if you click on the "file picker (legacy)" option.
 
 </details>
 
