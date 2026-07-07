@@ -528,6 +528,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
 - openssl (for decrypting encrypted video sources; on Termux, the CLI is in the `openssl-tool` package)
+- python3 with cryptography (for AllAnime episode source crypto)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 

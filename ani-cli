@@ -128,6 +128,13 @@ dep_ch() {
     done
 }
 
+dep_ch_python_crypto() {
+    dep_ch "python3" || true
+    python3 - <<'PY' || die 'Python package "cryptography" not found. Please install python-cryptography.'
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+PY
+}
+
 where_iina() {
     [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
     printf "%s" "iina" && return 0
@@ -233,9 +240,19 @@ select_quality() {
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
+aa_crypto() {
+    helper="${ANI_CLI_AA_CRYPTO_HELPER:-$(dirname -- "$0")/ani-cli-aa-crypto.py}"
+    [ -f "$helper" ] || return 1
+    python3 "$helper" "$@"
+}
+
 process_response() {
     if ! printf '%s' "$1" | grep -q '"tobeparsed"'; then
         printf '%s' "$1"
+        return 0
+    fi
+
+    if printf '%s' "$1" | aa_crypto decrypt 2>/dev/null; then
         return 0
     fi
 
@@ -297,8 +314,10 @@ get_episode_url() {
     query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
     query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+    aa_req="$(aa_crypto sign "$query_hash" 2>/dev/null || true)"
+    [ -n "$aa_req" ] && query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"},\"aaReq\":\"$aa_req\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" -H "x-build-id: 9" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
     if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
         api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
@@ -595,6 +614,7 @@ case "$(uname -o 2>/dev/null)" in
     *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
     *) dep_ch "openssl" || true ;;
 esac
+dep_ch_python_crypto
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
 case "$player_function" in
