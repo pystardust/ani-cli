@@ -239,14 +239,21 @@ process_response() {
         return 0
     fi
 
-    tmp="$(mktemp)"
-    printf '%s' "$1" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p' | base64 -d >"$tmp"
-    file_size="$(wc -c <"$tmp")"
-    iv="$(dd if="$tmp" bs=1 skip=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
-    ctr="${iv}00000002"
-    ct_len=$((file_size - 13 - 16))
-    dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | openssl enc -d -aes-256-ctr -K "$allanime_key" -iv "$ctr" -nosalt -nopad 2>/dev/null
-    rm -f "$tmp"
+    printf '%s' "$1" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p' | node -e "
+const crypto = require('crypto');
+const key = Buffer.from('$allanime_key', 'hex');
+let d = '';
+process.stdin.on('data', c => d += c);
+process.stdin.on('end', () => {
+  const raw = Buffer.from(d.trim(), 'base64');
+  const iv = raw.subarray(1, 13);
+  const ct = raw.subarray(13, -16);
+  const tag = raw.subarray(-16);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  process.stdout.write(Buffer.concat([decipher.update(ct), decipher.final()]));
+});
+" 2>/dev/null
 }
 
 b64url_to_hex() {
@@ -296,13 +303,21 @@ get_episode_url() {
 
     query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+    query_ext="$(node -e "
+const crypto = require('crypto');
+const key = Buffer.from('$allanime_key', 'hex');
+const qh = '$query_hash';
+const ts = Math.floor(Date.now() / 300000) * 300000;
+const payload = JSON.stringify({v:1,ts:ts,epoch:4128,buildId:'9',qh:qh});
+const iv = crypto.createHash('sha256').update('4128:9:'+qh+':'+ts).digest().subarray(0,12);
+const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+const ct = Buffer.concat([cipher.update(payload), cipher.final()]);
+const tag = cipher.getAuthTag();
+const aareq = Buffer.concat([Buffer.from([1]), iv, ct, tag]).toString('base64');
+console.log(JSON.stringify({persistedQuery:{version:1,sha256Hash:qh},aaReq:aareq}));
+")"
 
     api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
-
-    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
-        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
-    fi
 
     resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
@@ -484,7 +499,7 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefo
 allanime_refr="https://youtu-chan.com"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
-allanime_key="$(printf '%s' 'Xot36i3lK3:v1' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
+allanime_key="22196fa6afca95309fdabe9a3534b87cd2454e50efeabfcbdbdfd3de678b3982"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
