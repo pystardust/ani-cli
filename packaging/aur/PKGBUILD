@@ -1,0 +1,37 @@
+# Maintainer: mgh12453 <algorier.otp@gmail.com>
+_pkgname=awesome-ani-cli
+pkgname=awesome-ani-cli-git
+pkgver=r1
+pkgrel=1
+pkgdesc="ani-cli fork that adds the simindad.top source (films, series, anime) alongside allanime"
+arch=('any')
+url="https://github.com/mgh12453/awesome-ani-cli"
+license=('GPL3')
+depends=('grep' 'sed' 'curl' 'openssl')
+optdepends=(
+    'mpv: default video player'
+    'fzf: interactive menu (required for interactive use)'
+    'vlc: alternative video player (--vlc)'
+    'aria2: downloading (-d)'
+    'ffmpeg: downloading m3u8 streams (-d)'
+    'yt-dlp: downloading m3u8 streams (-d)'
+    'ani-skip: skip intros (--skip)'
+    'chafa: render the simindad login captcha inline in the terminal'
+)
+provides=('ani-cli')
+conflicts=('ani-cli')
+makedepends=('git')
+source=("$_pkgname::git+https://github.com/mgh12453/awesome-ani-cli.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/$_pkgname"
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+package() {
+    cd "$srcdir/$_pkgname"
+    install -Dm755 ani-cli "$pkgdir/usr/bin/ani-cli"
+    install -Dm644 ani-cli.1 "$pkgdir/usr/share/man/man1/ani-cli.1"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

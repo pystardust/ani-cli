@@ -546,7 +546,8 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * Can I change subtitle language or turn them off? - No, the subtitles are baked into the video.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
-* Can I change media source? - No (unless you can scrape that source yourself).
+* Can I change media source? - This fork adds **simindad.top** alongside allanime. Search covers both by default and each result is labelled with its provider (`[allanime]` / `[simindad]`). Use `--source allanime|simindad|all` (or `ANI_CLI_SOURCE`) to scope it.
+* How do I use simindad? - simindad requires a (free) account. Run `ani-cli --login-simindad` once to log in (it shows the captcha and stores the session), or set `ANI_CLI_SIMINDAD_USER` / `ANI_CLI_SIMINDAD_PASS`; a login prompt also appears automatically the first time you pick a simindad title. It covers films, series and anime (movies play as a single item).
 * Can I use vlc? - Yes, use `--vlc` or `export ANI_CLI_PLAYER=vlc`.
 * Can I adjust resolution? - Yes, use `-q resolution`, for example `ani-cli -q 1080`.
 * How can I download? - Use `-d`, it will download into your working directory.
