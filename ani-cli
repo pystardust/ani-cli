@@ -249,6 +249,24 @@ process_response() {
     rm -f "$tmp"
 }
 
+get_aa_rec() {
+    epoch=4128
+    build_id=9
+
+    ts="$(($(date +%s) / 300 * 300 * 1000))"
+
+    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$epoch,\"buildId\":\"$build_id\",\"qh\":\"$query_hash\"}"
+
+    payload_iv="$epoch:$build_id:$query_hash:$ts"
+    iv_raw="$(printf '%s' "$payload_iv" | openssl dgst -sha256 -binary | od -t x1 -An | tr -d ' \n' | cut -c 1-24)"
+    iv_ctr="${iv_raw}00000002"
+
+    ct="$(printf '%s' "$payload" | openssl enc -e -aes-256-ctr -K "$allanime_key" -iv "$iv_ctr" -nosalt | od -t x1 -An | tr -d ' \n')"
+
+    # figure out tag for gcm
+    printf '%s' "$ct" | openssl mac -cipher AES-256-GCM -macopt hexiv:$iv_raw -macopt hexkey:$allanime_key GMAC
+}
+
 b64url_to_hex() {
     _len=$(printf '%s' "$1" | wc -c | tr -d ' ')
     _mod=$((_len % 4))
@@ -289,20 +307,16 @@ get_filemoon_links() {
     printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
 }
 
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     #shellcheck disable=SC2016
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
-    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$aa_req\"}"
 
     api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
-
-    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
-        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
-    fi
 
     resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
@@ -484,7 +498,8 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefo
 allanime_refr="https://youtu-chan.com"
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
-allanime_key="$(printf '%s' 'Xot36i3lK3:v1' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
+allanime_key="22196fa6afca95309fdabe9a3534b87cd2454e50efeabfcbdbdfd3de678b3982"
+allanime_query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
