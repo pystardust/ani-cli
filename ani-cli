@@ -249,7 +249,7 @@ process_response() {
     rm -f "$tmp"
 }
 
-get_aa_rec() {
+get_aa_req() {
     epoch=4128
     build_id=9
 
@@ -264,7 +264,10 @@ get_aa_rec() {
     ct="$(printf '%s' "$payload" | openssl enc -e -aes-256-ctr -K "$allanime_key" -iv "$iv_ctr" -nosalt | od -t x1 -An | tr -d ' \n')"
 
     # figure out tag for gcm
-    printf '%s' "$ct" | openssl mac -cipher AES-256-GCM -macopt hexiv:$iv_raw -macopt hexkey:$allanime_key GMAC
+    tag="$(printf '%s' "$ct" | openssl mac -cipher AES-256-GCM -macopt hexiv:$iv_raw -macopt hexkey:$allanime_key GMAC)"
+
+    aa_req="$(echo "01${iv_raw}${ct}${tag}" | base64)"
+    printf '%s' "{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$aa_req\"}"
 }
 
 b64url_to_hex() {
@@ -314,7 +317,7 @@ get_episode_url() {
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$aa_req\"}"
+    query_ext=$(get_aa_req)
 
     api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
