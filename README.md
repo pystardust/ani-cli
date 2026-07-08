@@ -167,6 +167,11 @@ For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note
 pkg install openssl-tool
 ```
 
+**Note:** `nodejs` is also required for AllAnime source decryption. Install it with:
+```sh
+pkg install nodejs
+```
+
 **Important Note:** To get all providers working with android MPV, Please follow below steps:
 - Run this command and allow storage permissions:
 ```sh
@@ -527,7 +532,8 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
-- openssl (for decrypting encrypted video sources; on Termux, the CLI is in the `openssl-tool` package)
+- openssl (for decrypting Filemoon video sources; on Termux, the CLI is in the `openssl-tool` package)
+- nodejs (for decrypting AllAnime video sources)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 

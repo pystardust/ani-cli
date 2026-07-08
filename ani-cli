@@ -607,8 +607,10 @@ done
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 case "$(uname -o 2>/dev/null)" in
-    *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
-    *) dep_ch "openssl" || true ;;
+    *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool'
+             command -v node >/dev/null || die 'Program "node" not found. On Termux, install with: pkg install nodejs' ;;
+    *) dep_ch "openssl" || true
+       dep_ch "node" || true ;;
 esac
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
