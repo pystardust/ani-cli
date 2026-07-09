@@ -429,6 +429,7 @@ play_episode() {
                     2)
                         tty_flags="--vo=drm"
                         ;;
+                    *) tty_flags="" ;;
                 esac
             fi
             if [ "$no_detach" = 0 ]; then
@@ -537,9 +538,12 @@ while [ $# -gt 0 ]; do
             tty_mode=1
             if [ $# -gt 1 ]; then
                 case "$2" in
-                    1|2)
+                    1 | 2)
                         tty_mode="$2"
                         shift
+                        ;;
+                    *)
+                        tty_mode="1"
                         ;;
                 esac
             fi
