@@ -250,24 +250,36 @@ process_response() {
 }
 
 get_aa_req() {
+    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+    allanime_key="22196fa6afca95309fdabe9a3534b87cd2454e50efeabfcbdbdfd3de678b3982"
+    # will very likely change soon
     epoch=4128
-    build_id=9
+    build_id=12
 
     ts="$(($(date +%s) / 300 * 300 * 1000))"
 
+    payload_iv="$epoch:$build_id:$query_hash:$ts"
     payload="{\"v\":1,\"ts\":$ts,\"epoch\":$epoch,\"buildId\":\"$build_id\",\"qh\":\"$query_hash\"}"
 
-    payload_iv="$epoch:$build_id:$query_hash:$ts"
-    iv_raw="$(printf '%s' "$payload_iv" | openssl dgst -sha256 -binary | od -t x1 -An | tr -d ' \n' | cut -c 1-24)"
-    iv_ctr="${iv_raw}00000002"
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT INT
 
-    ct="$(printf '%s' "$payload" | openssl enc -e -aes-256-ctr -K "$allanime_key" -iv "$iv_ctr" -nosalt | od -t x1 -An | tr -d ' \n')"
+    printf '%s' "$payload_iv" | openssl dgst -sha256 -binary | dd bs=1 count=12 of="$tmpdir/iv.bin" 2>/dev/null
 
-    # figure out tag for gcm
-    tag="$(printf '%s' "$ct" | openssl mac -cipher AES-256-GCM -macopt hexiv:$iv_raw -macopt hexkey:$allanime_key GMAC)"
+    iv_hex="$(od -An -t x1 "$tmpdir/iv.bin" | tr -d ' \n')"
 
-    aa_req="$(echo "01${iv_raw}${ct}${tag}" | base64)"
-    printf '%s' "{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$aa_req\"}"
+    printf "%s" "$payload" | botan cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - > "$tmpdir/gcm_out.bin"
+
+    file_size="$(wc -c < "$tmpdir/gcm_out.bin")"
+    ct_len=$((file_size - 16))
+
+    dd if="$tmpdir/gcm_out.bin" of="$tmpdir/ct.bin" bs=1 skip=0 count="$ct_len" 2>/dev/null
+    dd if="$tmpdir/gcm_out.bin" of="$tmpdir/tag.bin" bs=1 skip="$ct_len" count=16 2>/dev/null
+
+    (
+        printf '\001'
+        cat "$tmpdir/iv.bin" "$tmpdir/ct.bin" "$tmpdir/tag.bin"
+    ) | base64 -w 0
 }
 
 b64url_to_hex() {
@@ -317,9 +329,9 @@ get_episode_url() {
     episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
 
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext=$(get_aa_req)
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" -H "x-build-id: ${build_id:-12}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
     resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
@@ -608,7 +620,7 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
-dep_ch "curl" "sed" "grep" || true
+dep_ch "curl" "sed" "grep" "botan" || true
 case "$(uname -o 2>/dev/null)" in
     *ndroid*) command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
     *) dep_ch "openssl" || true ;;
