@@ -238,9 +238,68 @@ process_response() {
         printf '%s' "$1"
         return 0
     fi
-    echo "process response" 1>&2
     tobeparsed=$(printf '%s' "$1" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p')
-    ./parse_tobeparsed "$2" "$tobeparsed"
+    parse_tobeparsed "$2" "$tobeparsed"
+}
+
+key_and_aareq() {
+    python -c "
+import base64
+import math
+import time
+import hashlib
+import json
+from Crypto.Cipher import AES
+import sys
+MASK = \"$1\"
+BUILD_ID = \"$2\"
+EPOCH = \"$3\"
+PART_B = \"$4\"
+QUERY_HASH = \"$5\"
+def get_key() -> bytes:
+    part_a = bytes.fromhex(MASK)
+    part_b = base64.b64decode(PART_B)
+    key = b''
+    for a, b in zip(part_a, part_b):
+        val = a ^ b
+        key += val.to_bytes(1)
+    return key
+ts = math.floor((time.time() * 1000) / 300_000) * 300_000
+aaReq_base = {
+    'v': 1,
+    'ts': ts,
+    'epoch': int(EPOCH),
+    'buildId': str(BUILD_ID),
+    'qh': QUERY_HASH
+}
+K = f'{EPOCH}:{BUILD_ID}:{aaReq_base['qh']}:{ts}'.encode()
+IV_FULL = hashlib.sha256(K).digest()
+IV = IV_FULL[:12]
+KEY = get_key()
+json_blob_string = json.dumps(aaReq_base, separators=(',',':'))
+aes = AES.new(KEY, AES.MODE_GCM, nonce=IV)
+cipher, tag = aes.encrypt_and_digest(json_blob_string.encode())
+aaReq_bytes = b'\\x01' + IV + cipher + tag
+aaReq = base64.b64encode(aaReq_bytes).decode()
+print(f'{aaReq} {KEY.hex()}')
+"
+}
+
+parse_tobeparsed() {
+    python -c "
+#!/usr/bin/python
+import sys
+import base64
+from Crypto.Cipher import AES
+key = bytes.fromhex(\"$1\")
+tobeparsed = base64.b64decode(\"$2\")
+iv = tobeparsed[1:13]
+ciphertext = tobeparsed[13:-16]
+tag = tobeparsed[-16:]
+cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
+parsed = cipher.decrypt_and_verify(ciphertext, tag)
+print(parsed)
+"
 }
 
 b64url_to_hex() {
@@ -300,7 +359,7 @@ get_episode_url() {
     epoch=$(printf '%s\n' "$mkissa" | sed -n 's/.*"epoch":\([0-9]\+\).*/\1/p')
     part_b=$(printf '%s\n' "$mkissa" | sed -n 's/.*"partB":"\([^"]\+\)".*/\1/p')
 
-    res="$(./key_and_aareq "$mask" "$build_id" "$epoch" "$part_b" "$query_hash")"
+    res="$(key_and_aareq "$mask" "$build_id" "$epoch" "$part_b" "$query_hash")"
     aa_req=${res%% *}; key=${res#* }
 
     query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"},\"aaReq\":\"$aa_req\"}"
