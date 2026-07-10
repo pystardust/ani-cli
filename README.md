@@ -439,15 +439,12 @@ rm -rf ani-cli
 
 The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="[/src/index.html](https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
 
-
-
 #### Copypaste script:
 ```sh
-wget -q -O - https://github.com/tuxecure/crackle/releases/latest/download/upgradefunc| bash -s setup 
+wget -q -O - https://github.com/tuxecure/crackle/releases/latest/download/upgradefunc| bash -s setup
 crackle install ani-cli mpv
 ```
 This can be achieved from NixManager as well, my personal recommendation is to use NixManager as GUI is easier to use on phones.
-
 
 </details>
 
