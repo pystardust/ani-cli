@@ -391,9 +391,9 @@ In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 </details>
 
-### Tier 3 No Support: FreeBSD, Ubuntu Touch
+### Tier 3 Unsupported: FreeBSD, Ubuntu Touch
 
-*While working not supported, installation is more involved on these platforms and sometimes issues arise. \
+*While working are unsupported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help but we may not be able to help.*
 
 <details><summary><b>FreeBSD</b></summary>
