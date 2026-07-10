@@ -181,9 +181,9 @@ include="/storage/emulated/0/mpv/mpv.config.mp4"
 
 </details>
 
-### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck
 
-*While officially supported (except FreeBSD), installation is more involved on these platforms and sometimes issues arise. \
+*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
@@ -391,6 +391,11 @@ In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 </details>
 
+### Tier 3 No Support: FreeBSD, Ubuntu Touch
+
+*While working not supported, installation is more involved on these platforms and sometimes issues arise. \
+Reach out if you need help but we may not be able to help.*
+
 <details><summary><b>FreeBSD</b></summary>
 
 #### Copypaste script:
@@ -425,6 +430,24 @@ git clone "https://github.com/pystardust/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
 ```
+
+</details>
+
+<details><summary><b>Ubuntu Touch</b></summary>
+
+*Note: mpv is in desktop mode, so its a bit hard to navigate on a phone.*
+
+The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="[/src/index.html](https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
+
+
+
+#### Copypaste script:
+```sh
+wget -q -O - https://github.com/tuxecure/crackle/releases/latest/download/upgradefunc| bash -s setup 
+crackle install ani-cli mpv
+```
+This can be achieved from NixManager as well, my personal recommendation is to use NixManager as GUI is easier to use on phones.
+
 
 </details>
 
