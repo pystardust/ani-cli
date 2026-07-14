@@ -432,7 +432,7 @@ rm -rf ani-cli
 
 *Note: mpv is in desktop mode, so its a bit hard to navigate on a phone.*
 
-The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="[/src/index.html](https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
+The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
 
 #### Copypaste script:
 ```sh
