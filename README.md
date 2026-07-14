@@ -181,7 +181,7 @@ include="/storage/emulated/0/mpv/mpv.config.mp4"
 
 </details>
 
-### Tier 2 Support: Windows, WSL, iOS, Steam Deck
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch
 
 *While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
@@ -390,11 +390,6 @@ The .desktop entry will allow to start ani-cli in Konsole directly from "Gaming 
 In Steam Desktop app:
 `Add game` > `Add a non-steam game` > tick a box for `ani-cli` > `Add selected programs`
 </details>
-
-### Tier 3 Unsupported: FreeBSD, Ubuntu Touch
-
-*While working are unsupported, installation is more involved on these platforms and sometimes issues arise. \
-Reach out if you need help but we may not be able to help.*
 
 <details><summary><b>FreeBSD</b></summary>
 
