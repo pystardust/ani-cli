@@ -127,21 +127,12 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 </details></details><details><summary><b>MacOS</b></summary>
 
-Install dependencies [(See below)](#dependencies)
-
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./ani-cli "$(brew --prefix)"/bin
-cd .. && rm -rf ./ani-cli
-```
-
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
-
-```sh
-brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
-brew install --cask iina
+brew tap pystardust/ani-cli https://github.com/pystardust/ani-cli.git
+brew trust pystardust/ani-cli
+brew install ani-cli && brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
@@ -492,7 +483,7 @@ sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:
 ```sh
-rm "$(brew --prefix)/bin/ani-cli"
+brew uninstall ani-cli && brew untap pystardust/ani-cli
 ```
 * Windows:
 In **Git Bash** run (as administrator):
