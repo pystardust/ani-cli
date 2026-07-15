@@ -28,13 +28,14 @@ Example Prompt:
 ```
 Help me write a posix compliant shell script. No non-compliant bash idioms.
 The script should work cross plattform on windows, macos and linux.
-Be as brief as possible.
+Write your code as brief as possible.
 Use && and || over if-else constructs wherever possible.
 If you use third party dependencies, tell me.
 Grep, Sed and Curl are allowed, Awk and Wget are not.
-(if it's a search enabled model, add a link to this contributing.md as well as our github actions file)
+Further context:
+- https://github.com/pystardust/ani-cli/blob/master/.github/workflows/ani-cli.yml
+- https://github.com/pystardust/ani-cli/blob/policy/CONTRIBUTING.md
 ```
-
 
 ## Issues
 
