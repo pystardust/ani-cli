@@ -127,21 +127,12 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 </details></details><details><summary><b>MacOS</b></summary>
 
-Install dependencies [(See below)](#dependencies)
-
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./ani-cli "$(brew --prefix)"/bin
-cd .. && rm -rf ./ani-cli
-```
-
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
-
-```sh
-brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
-brew install --cask iina
+brew tap pystardust/ani-cli https://github.com/pystardust/ani-cli.git
+brew trust pystardust/ani-cli
+brew install ani-cli && brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
@@ -181,9 +172,9 @@ include="/storage/emulated/0/mpv/mpv.config.mp4"
 
 </details>
 
-### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch
 
-*While officially supported (except FreeBSD), installation is more involved on these platforms and sometimes issues arise. \
+*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
@@ -428,6 +419,21 @@ rm -rf ani-cli
 
 </details>
 
+<details><summary><b>Ubuntu Touch</b></summary>
+
+*Note: mpv is in desktop mode, so its a bit hard to navigate on a phone.*
+
+The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
+
+#### Copypaste script:
+```sh
+wget -q -O - https://github.com/tuxecure/crackle/releases/latest/download/upgradefunc| bash -s setup
+crackle install ani-cli mpv
+```
+This can be achieved from NixManager as well, my personal recommendation is to use NixManager as GUI is easier to use on phones.
+
+</details>
+
 ### Installing from source
 
 *This method works for any unix-like operating system and is a baseline for porting efforts.*
@@ -477,7 +483,7 @@ sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:
 ```sh
-rm "$(brew --prefix)/bin/ani-cli"
+brew uninstall ani-cli && brew untap pystardust/ani-cli
 ```
 * Windows:
 In **Git Bash** run (as administrator):
