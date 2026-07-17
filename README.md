@@ -8,10 +8,13 @@
 <a href="#iOS"><img src="https://img.shields.io/badge/os-ios-yellow">
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
 <br>
-<h1 align="center">
+<p align=center>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 <br>
+<a href="https://discord.gg/aqu7GpqVmR">Discord</a>
+<a href="https://github.com/pystardust/ani-cli/blob/master/matrix.md">Matrix</a>
+</p>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
 <a href="https://github.com/justchokingaround"><img src="https://img.shields.io/badge/maintainer-justchokingaround-blue"></a>
@@ -124,21 +127,12 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 
 </details></details><details><summary><b>MacOS</b></summary>
 
-Install dependencies [(See below)](#dependencies)
-
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-git clone "https://github.com/pystardust/ani-cli.git" && cd ./ani-cli
-cp ./ani-cli "$(brew --prefix)"/bin
-cd .. && rm -rf ./ani-cli
-```
-
-*To install (with Homebrew) the dependencies required on Mac OS, you can run:*
-
-```sh
-brew install curl grep aria2 ffmpeg git fzf yt-dlp && \
-brew install --cask iina
+brew tap pystardust/ani-cli https://github.com/pystardust/ani-cli.git
+brew trust pystardust/ani-cli
+brew install ani-cli && brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
@@ -178,9 +172,9 @@ include="/storage/emulated/0/mpv/mpv.config.mp4"
 
 </details>
 
-### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD
+### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch
 
-*While officially supported (except FreeBSD), installation is more involved on these platforms and sometimes issues arise. \
+*While officially supported, installation is more involved on these platforms and sometimes issues arise. \
 Reach out if you need help.*
 
 <details><summary><b>Windows</b></summary>
@@ -298,9 +292,9 @@ git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
 
 mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
@@ -345,9 +339,9 @@ press enter("A" button on Steam Deck) on questions
 
 ```sh
 mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.36.0.tar.bz2 https://github.com/q3aql/aria2-static-builds/releases/download/v1.36.0/aria2-1.36.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.36.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.36.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
+curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
+tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
+cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
 chmod +x ~/.local/bin/aria2c
 ```
 
@@ -425,6 +419,21 @@ rm -rf ani-cli
 
 </details>
 
+<details><summary><b>Ubuntu Touch</b></summary>
+
+*Note: mpv is in desktop mode, so its a bit hard to navigate on a phone.*
+
+The problem is that you need to install and use nix for this to work, and for that you will need to use either <a href="https://next.open-store.io/app/nixmanager.chromiumos-guy/">NixManager</a> (GUI) or <a href="https://github.com/tuxecure/crackle">crackle</a> (CLI). we will be using crackle for copypaste script but feel free to use one or the other.
+
+#### Copypaste script:
+```sh
+wget -q -O - https://github.com/tuxecure/crackle/releases/latest/download/upgradefunc| bash -s setup
+crackle install ani-cli mpv
+```
+This can be achieved from NixManager as well, my personal recommendation is to use NixManager as GUI is easier to use on phones.
+
+</details>
+
 ### Installing from source
 
 *This method works for any unix-like operating system and is a baseline for porting efforts.*
@@ -474,7 +483,7 @@ sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:
 ```sh
-rm "$(brew --prefix)/bin/ani-cli"
+brew uninstall ani-cli && brew untap pystardust/ani-cli
 ```
 * Windows:
 In **Git Bash** run (as administrator):
