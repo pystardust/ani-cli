@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.14.6-anidb"
+version_number="4.15.0-anidb"
 
 # UI
 
@@ -50,8 +50,12 @@ help_info() {
     Options:
       -c, --continue
         Continue watching from history
+      --resume
+        Resume playback from saved position (mpv only)
       -d, --download
         Download the video instead of playing it
+      --batch
+        Download all episodes of found anime (with progress)
       -D, --delete
         Delete history
       -l, --logview
@@ -72,6 +76,10 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
+      --genre
+        Browse anime by genre (interactive picker)
+      --discord
+        Show now-playing on Discord (requires discord-rpc helper)
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -92,10 +100,13 @@ help_info() {
       %s -q 720p banana fish
       %s --skip --skip-title \"one piece\" -S 2 one piece
       %s -d -e 2 cyberpunk edgerunners
+      %s --batch one piece
+      %s --genre
+      %s --resume -c
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
       %s -e \"5 6\" blue lock
-    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+    \n" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -343,6 +354,64 @@ get_anidb_m3u8() {
     printf '%s' "$_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -1
 }
 
+# discord rich presence
+discord_rpc() {
+    _action="$1"
+    _discord_bin="$(cd "$(dirname "$0")" && pwd)/discord-rpc"
+    [ ! -x "$_discord_bin" ] && return 1
+    case "$_action" in
+        playing)
+            _start=$(date +%s)
+            "$_discord_bin" "playing" "$allanime_title" "Episode $ep_no" "$_start" 2>/dev/null &
+            ;;
+        stopped)
+            "$_discord_bin" "stopped" "" "" "" 2>/dev/null &
+            ;;
+    esac
+}
+
+# genre browsing via anidb.app
+genre_list() {
+    _genres="1:Action
+2:Drama
+3:Adventure
+4:Fantasy
+5:Comedy
+6:Sci-Fi
+7:Mystery
+8:Gourmet
+9:Slice of Life
+10:Supernatural
+11:Sports
+12:Award Winning
+13:Ecchi
+14:Romance
+16:Boys Love
+18:Suspense
+19:Avant Garde
+20:Girls Love
+21:Horror"
+    printf "%s" "$_genres" | while IFS=: read -r _id _name; do
+        printf "%s\t%s\n" "$_id" "$_name"
+    done
+}
+
+browse_genre() {
+    _genre_id="$1"
+    _page="$(curl -sL "https://anidb.app/browse?genres=${_genre_id}" -A "$agent" --max-time 15)"
+    printf '%s' "$_page" | sed -nE 's|.*href="/anime/[a-z0-9-]+-[0-9]+"[^>]*>([^<]+)</a>.*|\1|p' | head -20
+}
+
+search_by_genre() {
+    _genre_name="$1"
+    _genre_id=$(genre_list | grep -i "$_genre_name" | cut -f1 | head -1)
+    [ -z "$_genre_id" ] && die "Genre not found!"
+    printf "\33[2K\r\033[1;34mFetching anime in %s...\033[0m\n" "$_genre_name" 1>&2
+    _results=$(browse_genre "$_genre_id")
+    [ -z "$_results" ] && die "No anime found for this genre!"
+    printf "%s" "$_results" | nl -w 2 | sed 's/^[[:space:]]//'
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     links=""
@@ -433,15 +502,30 @@ process_hist_entry() {
 }
 
 update_history() {
+    _pos="${1:-0}"
     if grep -q -- "$id" "$histfile"; then
-        # escape sed special chars in replacement: & and \ and delimiter |
         safe_title=$(printf '%s' "$title" | sed 's/[&\|]/\\&/g')
-        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${safe_title}|" "$histfile" >"${histfile}.new"
+        sed -E "s|^[^	]+	${id}	[^	]+(	[^	]+)?$|${ep_no}	${id}	${safe_title}	${_pos}|" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
+        printf "%s\t%s\t%s\t%s\n" "$ep_no" "$id" "$title" "$_pos" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
+}
+
+get_mpv_position() {
+    _socket="/tmp/ani-cli-mpv-$$"
+    if [ -S "$_socket" ]; then
+        printf '{ "command": ["get_property", "time-pos"] }\n' | socat - UNIX-CONNECT:"$_socket" 2>/dev/null | sed -nE 's|.*"data":([0-9.]+).*|\1|p'
+    fi
+    printf "0"
+}
+
+resume_episode() {
+    _hist_id="$1"
+    _pos=$(grep -- "$_hist_id" "$histfile" | cut -f4)
+    [ -z "$_pos" ] || [ "$_pos" = "0" ] && return 1
+    printf "%.0f" "$_pos"
 }
 
 download() {
@@ -475,6 +559,25 @@ play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
+
+    # discord rich presence
+    [ "$discord_enabled" = 1 ] && discord_rpc "playing"
+
+    # resume position
+    _resume_pos=""
+    if [ "$resume_enabled" = 1 ]; then
+        _resume_pos=$(resume_episode "$id")
+        [ -n "$_resume_pos" ] && [ "$_resume_pos" != "0" ] && printf "\33[2K\r\033[1;33mResuming from %s seconds...\033[0m\n" "$_resume_pos" 1>&2
+    fi
+
+    # mpv socket for position tracking
+    _mpv_socket=""
+    case "$player_function" in
+        mpv*|flatpak_mpv)
+            _mpv_socket="/tmp/ani-cli-mpv-$$"
+            ;;
+    esac
+
     # shellcheck disable=SC2086
     case "$player_function" in
         debug)
@@ -482,10 +585,13 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
+            _mpv_args=""
+            [ -n "$_mpv_socket" ] && _mpv_args="--input-ipc-server=$_mpv_socket"
+            [ -n "$_resume_pos" ] && [ "$_resume_pos" != "0" ] && _mpv_args="$_mpv_args --start=$_resume_pos"
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
+                nohup $player_function $_mpv_args $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
             else
-                $player_function $skip_flag $refr_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                $player_function $_mpv_args $skip_flag $refr_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
@@ -495,13 +601,12 @@ play_episode() {
         *iina*)
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
             if pgrep -f "IINA" >/dev/null 2>&1; then
-                # omit --keep-running when an IINA instance exists to prevent hanging
                 nohup $player_function --no-stdin --mpv-tls-verify=no --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
             else
                 nohup $player_function --no-stdin --mpv-tls-verify=no --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
             fi
             ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --input-ipc-server="$_mpv_socket" --start="$_resume_pos" --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
         vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function "$episode" -- --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
@@ -514,7 +619,21 @@ play_episode() {
     esac
     replay="$episode"
     unset episode
-    update_history
+
+    # wait for player and save position
+    _final_pos="0"
+    case "$player_function" in
+        mpv*|flatpak_mpv)
+            wait $! 2>/dev/null
+            _final_pos=$(get_mpv_position)
+            rm -f "$_mpv_socket"
+            ;;
+    esac
+
+    # discord: stop presence
+    [ "$discord_enabled" = 1 ] && discord_rpc "stopped"
+
+    update_history "$_final_pos"
     [ "$use_external_menu" = "1" ] && wait
     [ "$use_external_menu" = "2" ] && wait
 }
@@ -531,10 +650,28 @@ play() {
         [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
         range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
         [ -z "$range" ] && die "Invalid range!"
+
+        # batch download progress
+        if [ "$batch_mode" = 1 ]; then
+            _total=$(printf "%s\n" "$range" | wc -l | tr -d " ")
+            _count=0
+        fi
+
         for i in $range; do
             tput clear
             ep_no=$i
-            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            if [ "$batch_mode" = 1 ]; then
+                _count=$((_count + 1))
+                printf "\33[2K\r\033[1;34m[%s/%s] Downloading episode %s...\033[0m\n" "$_count" "$_total" "$ep_no"
+                # skip if already downloaded
+                _fname="${allanime_title}Episode ${ep_no}.mp4"
+                if [ -f "$download_dir/$_fname" ]; then
+                    printf "\33[2K\r\033[1;33mSkipping episode %s (already exists)\033[0m\n" "$ep_no"
+                    continue
+                fi
+            else
+                printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            fi
             [ "$i" = "$end" ] && unset range
             play_episode
         done
@@ -582,6 +719,9 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 branch="${ANI_CLI_BRANCH:-fix/aa-crypto-no-botan}"
+resume_enabled=0
+discord_enabled=0
+batch_mode=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -614,6 +754,13 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -c | --continue) search=history ;;
+        --resume) resume_enabled=1 ;;
+        --discord) discord_enabled=1 ;;
+        --batch)
+            [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
+            player_function=download
+            batch_mode=1
+            ;;
         -d | --download)
             [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
             player_function=download
@@ -622,6 +769,7 @@ while [ $# -gt 0 ]; do
             : >"$histfile"
             exit 0
             ;;
+        --genre) search=genre ;;
         -l | --logview)
             case "$(uname -s)" in
                 Darwin*) log show --predicate 'process == "logger"' ;;
@@ -677,6 +825,19 @@ if [ -f "$_aesgcm_src" ] && [ ! -x "$_aesgcm_bin" ]; then
 fi
 aesgcm_bin="$_aesgcm_bin"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
+
+# Compile discord-rpc helper if not present
+if [ "$discord_enabled" = 1 ]; then
+    _discord_src="$(cd "$(dirname "$0")" && pwd)/discord-rpc.c"
+    _discord_bin="$(cd "$(dirname "$0")" && pwd)/discord-rpc"
+    if [ -f "$_discord_src" ] && [ ! -x "$_discord_bin" ]; then
+        printf "\33[2K\r\033[1;34mCompiling discord-rpc helper...\033[0m\n"
+        command -v gcc >/dev/null || die '"gcc" not found. Install gcc to compile the discord-rpc helper.'
+        gcc -O2 -o "$_discord_bin" "$_discord_src" || die 'Failed to compile discord-rpc helper'
+    fi
+    command -v socat >/dev/null || die '"socat" not found. Required for discord-rpc.'
+fi
+
 dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
@@ -693,7 +854,7 @@ trap 'cleanup; exit 1' INT HUP
 # searching
 case "$search" in
     history)
-        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
+        anime_list=$(while read -r ep_no id title _pos; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
@@ -704,6 +865,25 @@ case "$search" in
         ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         printf "%s" "$anime_list" | grep "$id" | cut -f2 | grep -q "(up to date)" && time_until_next_ep "$allanime_title"
+        ;;
+    genre)
+        if [ -z "$query" ]; then
+            _genre_picker=$(genre_list | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select genre: ")
+            [ -z "$_genre_picker" ] && exit 1
+            _genre_name=$(printf "%s" "$_genre_picker" | cut -f2 | sed 's/^[[:space:]]*//')
+        else
+            _genre_name="$query"
+        fi
+        _genre_results=$(search_by_genre "$_genre_name")
+        [ -z "$_genre_results" ] && exit 1
+        result=$(printf "%s" "$_genre_results" | nth "Select anime: ")
+        [ -z "$result" ] && exit 1
+        title=$(printf "%s" "$result" | cut -f2)
+        id=$(printf "%s" "$result" | cut -f1)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then

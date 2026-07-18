@@ -7,7 +7,11 @@ Fork of <a href="https://github.com/pystardust/ani-cli">pystardust/ani-cli</a> w
 <br><br>
 &#x2022; <a href="https://anidb.app">anidb.app</a> as primary source (direct HLS streams, no Cloudflare)<br>
 &#x2022; allanime as fallback (AES-256-GCM crypto, no botan dependency)<br>
-&#x2022; Wider anime coverage — anime missing from allanime now playable
+&#x2022; Wider anime coverage — anime missing from allanime now playable<br>
+&#x2022; Watch history with resume position tracking<br>
+&#x2022; Discord Rich Presence (now playing)<br>
+&#x2022; Batch download with progress indicator<br>
+&#x2022; Genre filtering via anidb.app
 </h4>
 
 ## Table of Contents
@@ -55,12 +59,13 @@ curl -sL https://raw.githubusercontent.com/VVAT3R/ani-cli/master/uninstall.sh | 
 - `curl` — HTTP requests
 - `sed`, `grep` — text processing
 - `openssl` — crypto operations (on Termux: `pkg install openssl-tool`)
-- `gcc` — compiles aesgcm helper on first run
+- `gcc` — compiles aesgcm and discord-rpc helpers on first run
 - `mpv` — video player (or `iina` on macOS, `vlc` with `--vlc`)
 - `fzf` — interactive menu
 - `ffmpeg` — download support (with `-d`)
 - `aria2c` — download support (with `-d`)
 - `yt-dlp` — download support (with `-d`)
+- `socat` — Discord Rich Presence (with `--discord`)
 - `ani-skip` *(optional)* — auto-skip intros
 
 ## FAQ
@@ -68,6 +73,10 @@ curl -sL https://raw.githubusercontent.com/VVAT3R/ani-cli/master/uninstall.sh | 
 - **Can I watch dub?** — Yes, `ani-cli --dub`
 - **Can I change quality?** — Yes, `ani-cli -q 1080`
 - **Can I download?** — Yes, `ani-cli -d`
+- **Can I batch download?** — Yes, `ani-cli --batch -e 1-24 "one piece"`
 - **Can I use vlc?** — Yes, `ani-cli --vlc`
+- **Can I resume where I left off?** — Yes, `ani-cli --resume -c`
+- **Can I browse by genre?** — Yes, `ani-cli --genre`
+- **Can I show what I'm watching on Discord?** — Yes, `ani-cli --discord`
 - **How do I bulk download?** — `ani-cli -d -e 1-100 one piece`
 - **Full options** — `ani-cli --help`
