@@ -720,7 +720,7 @@ histfile="$hist_dir/ani-hsts"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 branch="${ANI_CLI_BRANCH:-fix/aa-crypto-no-botan}"
 resume_enabled=0
-discord_enabled=0
+discord_enabled=1
 batch_mode=0
 
 while [ $# -gt 0 ]; do
