@@ -8,7 +8,7 @@
 #include <errno.h>
 
 #define DISCORD_IPC_PATH "/run/user/%d/discord-ipc-0"
-#define HANDSHAKE "{\"v\":1,\"client_id\":\"1395828732748468335\"}"
+#define HANDSHAKE "{\"v\":1,\"client_id\":\"1528138773341274122\"}"
 #define BUF_SIZE 4096
 
 static int send_ipc(int fd, int op, const char *data, size_t len) {
