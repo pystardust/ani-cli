@@ -262,6 +262,13 @@ get_aa_req() {
 
     iv_hex="$(od -An -t x1 "$tmpdir/iv.bin" | tr -d ' \n')"
 
+    # Checking if botan 2.x is installed, if it is use botan 2.x syntax. If not installed and botan 3.x is installed, use that syntax
+    if [ "$($botan version 2>/dev/null | cut -d. -f1)" = "2" ]; then
+        printf "%s" "$payload" | $botan encryption --mode=aes-256-gcm --key="$allanime_key" --iv="$iv_hex" >"$tmpdir/gcm_out.bin"
+    else
+        printf "%s" "$payload" | $botan cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
+    fi
+
     printf "%s" "$payload" | $botan_exe cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
 
     file_size="$(wc -c <"$tmpdir/gcm_out.bin")"
@@ -618,10 +625,10 @@ printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
 case "$(uname -o 2>/dev/null)" in
     *ndroid*)
-        dep_ch "botan3" && botan_exe=botan3
+        dep_ch "botan3" && botan=botan3
         command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool' ;;
     *)
-        dep_ch "botan" && botan_exe=botan
+        dep_ch "botan" && botan=botan
         dep_ch "openssl" || true ;;
 esac
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
