@@ -25,6 +25,9 @@ curl -fsSL "${RAW}/aesgcm.c" -o "${_tmpdir}/aesgcm.c" || { printf "\033[1;31mFai
 printf "Compiling aesgcm helper...\n"
 gcc -O2 -o "${_tmpdir}/aesgcm" "${_tmpdir}/aesgcm.c" -lcrypto || { printf "\033[1;31mFailed to compile aesgcm\033[0m\n"; exit 1; }
 
+printf "Downloading discord-rpc.c...\n"
+curl -fsSL "${RAW}/discord-rpc.c" -o "${_tmpdir}/discord-rpc.c" || { printf "\033[1;31mFailed to download discord-rpc.c\033[0m\n"; exit 1; }
+
 printf "Compiling discord-rpc helper...\n"
 gcc -O2 -o "${_tmpdir}/discord-rpc" "${_tmpdir}/discord-rpc.c" || { printf "\033[1;31mFailed to compile discord-rpc\033[0m\n"; exit 1; }
 
