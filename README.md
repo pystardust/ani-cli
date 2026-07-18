@@ -13,7 +13,7 @@
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
 <br>
 <a href="https://discord.gg/aqu7GpqVmR">Discord</a>
-<a href="https://github.com/pystardust/ani-cli/blob/master/matrix.md">Matrix</a>
+<a href="https://github.com/VVAT3R/ani-cli/blob/master/matrix.md">Matrix</a>
 </p>
 <a href="https://github.com/port19x"><img src="https://img.shields.io/badge/lead-port19x-lightblue"></a>
 <a href="https://github.com/CoolnsX"><img src="https://img.shields.io/badge/maintainer-CoolnsX-blue"></a>
@@ -25,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allmanga.to/">allmanga.</a>
+A cli to browse and watch anime (alone AND with friends). This fork adds <a href="https://anidb.app">anidb.app</a> as primary source with allanime fallback, plus AES-256-GCM crypto support without botan dependency.
 </h3>
 
 <h1 align="center">
@@ -130,8 +130,8 @@ You'll get a warning about `Signature verification failed [4-Signatures public k
 Install [HomeBrew](https://docs.brew.sh/Installation) if not installed.
 
 ```sh
-brew tap pystardust/ani-cli https://github.com/pystardust/ani-cli.git
-brew trust pystardust/ani-cli
+brew tap VVAT3R/ani-cli https://github.com/VVAT3R/ani-cli.git
+brew trust VVAT3R/ani-cli
 brew install ani-cli && brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
@@ -146,7 +146,7 @@ Install termux [(Guide)](https://termux.com/)
 pkg up -y
 pkg install ani-cli
 ```
-If you're using Android 14 make sure to run this due to [#1206](https://github.com/pystardust/ani-cli/issues/1206):
+If you're using Android 14 make sure to run this due to [#1206](https://github.com/VVAT3R/ani-cli/issues/1206):
 ```sh
 pkg install termux-am
 ```
@@ -255,7 +255,7 @@ This should be fixed if the ani-cli scoop manifest gets updated in [this PR](htt
 
 Follow the installation instructions of your Linux distribution.
 
-Note that the media player (mpv or vlc) will need to be installed on Windows, not WSL. See the justification for this in the comment [(here)](https://github.com/pystardust/ani-cli/issues/1266#issuecomment-1926945757). Instructions on how to use the media player from WSL instead are also included in the linked comment.
+Note that the media player (mpv or vlc) will need to be installed on Windows, not WSL. See the justification for this in the comment [(here)](https://github.com/VVAT3R/ani-cli/issues/1266#issuecomment-1926945757). Instructions on how to use the media player from WSL instead are also included in the linked comment.
 
 When installing the media player on Windows, make sure that it is on the Windows Path. An easy way to ensure this is to download the media player with a package manager (on Windows, not WSL) such as scoop.
 
@@ -269,9 +269,11 @@ then run this:
 ```sh
 apk add grep sed curl fzf git aria2 ncurses patch
 apk add ffmpeg
-git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
+git clone --depth 1 https://github.com/VVAT3R/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
-chmod +x /usr/local/bin/ani-cli
+cp ~/.ani-cli/aesgcm /usr/local/bin/aesgcm
+cp ~/.ani-cli/aesgcm.c /usr/local/bin/aesgcm.c
+chmod +x /usr/local/bin/ani-cli /usr/local/bin/aesgcm
 rm -rf ~/.ani-cli
 ```
 note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
@@ -305,7 +307,7 @@ curl -o ~/.patch/patch.tar.zst https://mirror.sunred.org/archlinux/core/os/x86_6
 tar xvf ~/.patch/patch.tar.zst -C ~/.patch/
 cp ~/.patch/usr/bin/patch ~/.local/bin/
 
-git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+git clone https://github.com/VVAT3R/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 
 flatpak install io.mpv.Mpv
@@ -364,7 +366,7 @@ cp ~/.patch/usr/bin/patch ~/.local/bin/
 ##### Install ani-cli:
 
 ```sh
-git clone https://github.com/pystardust/ani-cli.git ~/.ani-cli
+git clone https://github.com/VVAT3R/ani-cli.git ~/.ani-cli
 cp ~/.ani-cli/ani-cli ~/.local/bin/
 ```
 
@@ -388,7 +390,7 @@ In Steam Desktop app:
 
 ```sh
 sudo pkg install mpv fzf aria2 yt-dlp patch git
-git clone "https://github.com/pystardust/ani-cli.git"
+git clone "https://github.com/VVAT3R/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
 ```
@@ -412,7 +414,7 @@ sudo pkg install git
 install from source:
 
 ```sh
-git clone "https://github.com/pystardust/ani-cli.git"
+git clone "https://github.com/VVAT3R/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
 ```
@@ -438,11 +440,21 @@ This can be achieved from NixManager as well, my personal recommendation is to u
 
 *This method works for any unix-like operating system and is a baseline for porting efforts.*
 
+#### Quick install (curl)
+
+```sh
+curl -sL https://raw.githubusercontent.com/VVAT3R/ani-cli/master/install.sh | sudo sh
+```
+
+#### Manual install
+
 Install dependencies [(See below)](#dependencies)
 
 ```sh
-git clone "https://github.com/pystardust/ani-cli.git"
+git clone "https://github.com/VVAT3R/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
+sudo cp ani-cli/aesgcm /usr/local/bin
+sudo cp ani-cli/aesgcm.c /usr/local/bin
 rm -rf ani-cli
 ```
 
@@ -483,7 +495,7 @@ sudo rm "/usr/local/bin/ani-cli"
 ```
 * Mac:
 ```sh
-brew uninstall ani-cli && brew untap pystardust/ani-cli
+brew uninstall ani-cli && brew untap VVAT3R/ani-cli
 ```
 * Windows:
 In **Git Bash** run (as administrator):
@@ -534,6 +546,7 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
 - openssl (for decrypting encrypted video sources; on Termux, the CLI is in the `openssl-tool` package)
+- gcc (for compiling the aesgcm helper on first run)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 
