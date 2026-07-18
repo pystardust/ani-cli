@@ -70,14 +70,15 @@ int main(int argc, char *argv[]) {
     int fd = connect_discord();
     if (fd < 0) return 1;
 
-    /* handshake */
+    /* handshake - opcode 0 (DISPATCH) */
     send_ipc(fd, 0, HANDSHAKE, strlen(HANDSHAKE));
     char *resp = recv_ipc(fd);
     free(resp);
 
     if (strcmp(action, "stopped") == 0) {
-        /* clear activity */
-        send_ipc(fd, 2, "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":0,\"activity\":null},\"nonce\":\"1\"}", 53);
+        /* clear activity - opcode 1 (FRAME) */
+        const char *clear = "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":0,\"activity\":null},\"nonce\":\"1\"}";
+        send_ipc(fd, 1, clear, strlen(clear));
         free(recv_ipc(fd));
         close(fd);
         return 0;
@@ -105,7 +106,8 @@ int main(int argc, char *argv[]) {
                 "\"nonce\":\"1\"}}",
                 title, detail);
         }
-        send_ipc(fd, 2, payload, strlen(payload));
+        /* opcode 1 (FRAME) */
+        send_ipc(fd, 1, payload, strlen(payload));
         free(recv_ipc(fd));
     }
 
