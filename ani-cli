@@ -106,7 +106,7 @@ version_info() {
 
 update_script() {
     printf "[branch:%s] Checking for Update..\n" "$branch"
-    update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
+    update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/VVAT3R/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
     printf '%s' "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
@@ -581,7 +581,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
-branch="${ANI_CLI_BRANCH:-master}"
+branch="${ANI_CLI_BRANCH:-fix/aa-crypto-no-botan}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -776,4 +776,4 @@ done
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Project repository: https://github.com/pystardust/ani-cli
+# Project repository: https://github.com/VVAT3R/ani-cli
