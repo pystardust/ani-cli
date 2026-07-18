@@ -7,7 +7,7 @@ printf "\033[1;34mUninstalling ani-cli...\033[0m\n"
 
 _removed=0
 
-for _file in ani-cli aesgcm aesgcm.c discord-rpc discord-rpc.c; do
+for _file in ani-cli aesgcm aesgcm.c; do
     _path="${INSTALL_DIR}/${_file}"
     if [ -f "$_path" ] || [ -L "$_path" ]; then
         rm -f "$_path"

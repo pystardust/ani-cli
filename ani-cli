@@ -78,8 +78,6 @@ help_info() {
         Play dubbed version
       --genre
         Browse anime by genre (interactive picker)
-      --discord
-        Show now-playing on Discord (requires discord-rpc helper)
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -354,22 +352,6 @@ get_anidb_m3u8() {
     printf '%s' "$_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -1
 }
 
-# discord rich presence
-discord_rpc() {
-    _action="$1"
-    _discord_bin="$(cd "$(dirname "$0")" && pwd)/discord-rpc"
-    [ ! -x "$_discord_bin" ] && return 1
-    case "$_action" in
-        playing)
-            _start=$(date +%s)
-            "$_discord_bin" "playing" "$allanime_title" "Episode $ep_no" "$_start" 2>/dev/null &
-            ;;
-        stopped)
-            "$_discord_bin" "stopped" "" "" "" 2>/dev/null &
-            ;;
-    esac
-}
-
 # genre browsing via anidb.app
 genre_list() {
     _genres="1:Action
@@ -560,9 +542,6 @@ play_episode() {
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
 
-    # discord rich presence
-    [ "$discord_enabled" = 1 ] && discord_rpc "playing"
-
     # resume position
     _resume_pos=""
     if [ "$resume_enabled" = 1 ]; then
@@ -629,9 +608,6 @@ play_episode() {
             rm -f "$_mpv_socket"
             ;;
     esac
-
-    # discord: stop presence
-    [ "$discord_enabled" = 1 ] && discord_rpc "stopped"
 
     update_history "$_final_pos"
     [ "$use_external_menu" = "1" ] && wait
@@ -720,7 +696,6 @@ histfile="$hist_dir/ani-hsts"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 branch="${ANI_CLI_BRANCH:-fix/aa-crypto-no-botan}"
 resume_enabled=0
-discord_enabled=1
 batch_mode=0
 
 while [ $# -gt 0 ]; do
@@ -755,7 +730,6 @@ while [ $# -gt 0 ]; do
             ;;
         -c | --continue) search=history ;;
         --resume) resume_enabled=1 ;;
-        --discord) discord_enabled=1 ;;
         --batch)
             [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
             player_function=download
@@ -825,18 +799,6 @@ if [ -f "$_aesgcm_src" ] && [ ! -x "$_aesgcm_bin" ]; then
 fi
 aesgcm_bin="$_aesgcm_bin"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
-
-# Compile discord-rpc helper if not present
-if [ "$discord_enabled" = 1 ]; then
-    _discord_src="$(cd "$(dirname "$0")" && pwd)/discord-rpc.c"
-    _discord_bin="$(cd "$(dirname "$0")" && pwd)/discord-rpc"
-    if [ -f "$_discord_src" ] && [ ! -x "$_discord_bin" ]; then
-        printf "\33[2K\r\033[1;34mCompiling discord-rpc helper...\033[0m\n"
-        command -v gcc >/dev/null || die '"gcc" not found. Install gcc to compile the discord-rpc helper.'
-        gcc -O2 -o "$_discord_bin" "$_discord_src" || die 'Failed to compile discord-rpc helper'
-    fi
-    command -v socat >/dev/null || die '"socat" not found. Required for discord-rpc.'
-fi
 
 dep_ch "fzf" || true
 case "$player_function" in
