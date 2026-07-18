@@ -269,8 +269,6 @@ get_aa_req() {
         printf "%s" "$payload" | $botan cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
     fi
 
-    printf "%s" "$payload" | $botan_exe cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
-
     file_size="$(wc -c <"$tmpdir/gcm_out.bin")"
     ct_len=$((file_size - 16))
 
