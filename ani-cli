@@ -352,11 +352,10 @@ episodes_list() {
     #shellcheck disable=SC2016
     episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
 
-    # use sort -g for anime such as Meitantei Conan, which has float number episodes
     curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" \
         --data "{\"variables\":{\"showId\":\"$*\"},\"query\":\"$episodes_list_gql\"}" -A "$agent" |
         sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | sed 's|,|\
-|g; s|"||g' | sort -g -k 1 >"$tmp_dir/ep_list_$id"
+|g; s|"||g' | sort -n -k 1 >"$tmp_dir/ep_list_$id"
 }
 
 # PLAYING
