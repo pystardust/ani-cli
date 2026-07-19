@@ -361,13 +361,21 @@ episodes_list() {
 
 # PLAYING
 
-process_hist_entry() {
-    episodes_list "$id"
-    if [ -s "$tmp_dir/ep_list_$id" ]; then
-        ep_list="$(cat "$tmp_dir/ep_list_$id")"
-    else
-        exit 0
+check_hist_entry() {
+    ep_list_file="$tmp_dir/ep_list_$id"
+    if [ ! -s "$ep_list_file" ]; then
+        episodes_list "$id"
+        return 0
     fi
+    # if file age is less than 20 min, skip curl
+    if [ -f "$ep_list_file" ] && [ -n "$(find "$ep_list_file" -mmin +20 2>/dev/null)" ]; then
+        episodes_list "$id"
+    fi
+}
+
+process_hist_entry() {
+    check_hist_entry "$id"
+    ep_list="$(cat "$ep_list_file")"
 
     latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
     title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
@@ -521,7 +529,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
-tmp_dir="/tmp/ani-cli"
+tmp_dir="$hist_dir/tmp"
 [ ! -d "$tmp_dir" ] && mkdir -p "$tmp_dir"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 branch="${ANI_CLI_BRANCH:-master}"
@@ -563,6 +571,7 @@ while [ $# -gt 0 ]; do
             ;;
         -D | --delete)
             : >"$histfile"
+            rm -rf "$tmp_dir"
             exit 0
             ;;
         -l | --logview)
@@ -659,7 +668,7 @@ case "$search" in
         title=$(printf "%s" "$result" | cut -f2)
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         id=$(printf "%s" "$result" | cut -f1)
-        episodes_list "$id"
+        check_hist_entry "$id"
         ep_list="$(cat "$tmp_dir/ep_list_$id")"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
         [ -z "$ep_no" ] && exit 1
