@@ -194,9 +194,9 @@ provider_init() {
 generate_link() {
     case $1 in
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
-        3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
-        4) provider_init "mp4upload" "/Mp4 :/p" ;;    # mp4upload(mp4)(single)
+        2) provider_init "youtube" "/Yt :/p" ;;         # youtube(mp4)(single)
+        3) provider_init "sharepoint" "/S-mp4 :/p" ;;   # sharepoint(mp4)(single)
+        4) provider_init "mp4upload" "/Mp4 :/p" ;;      # mp4upload(mp4)(single)
         *)
             # provider_init "Filemoon" "/Fm-Hls :/p"
             # get_filemoon_links "$provider_id"
@@ -249,6 +249,140 @@ process_response() {
     rm -f "$tmp"
 }
 
+hex_to_bin() { # $1=hex -> raw bytes on stdout (no xxd)
+    hex="$1"; len=${#hex}; i=0; oct=""
+    while [ $i -lt "$len" ]; do
+        pair=$(printf "%s" "$hex" | cut -c"$((i+1))-$((i+2))")
+        dec=$(printf "%d" "0x$pair")
+        oct="${oct}\\$(printf "%03o" "$dec")"
+        i=$((i+2))
+    done
+    printf "%b" "$oct"
+}
+
+xor_hex() { # $1 $2 hex strings (any length, $2 repeats if shorter) -> xor hex
+    awk -v a="$1" -v b="$2" '
+function hexval(c){
+    if (c>="0"&&c<="9") return c-0
+    c=tolower(c)
+    if (c=="a") return 10; if (c=="b") return 11
+    if (c=="c") return 12; if (c=="d") return 13
+    if (c=="e") return 14; if (c=="f") return 15
+    return 0
+}
+function xorbyte(x,y,   r,i,bx,by){
+    r=0
+    for(i=1;i<=128;i*=2){
+        bx=int(x/i)%2; by=int(y/i)%2
+        if (bx!=by) r+=i
+    }
+    return r
+}
+BEGIN{
+    la=length(a); lb=length(b); out=""
+    for(p=1;p<=la;p+=2){
+        h1=hexval(substr(a,p,1))*16+hexval(substr(a,p+1,1))
+        bp=((p-1)%lb)+1
+        h2=hexval(substr(b,bp,1))*16+hexval(substr(b,bp+1,1))
+        out=out sprintf("%02x", xorbyte(h1,h2))
+    }
+    printf "%s", out
+}'
+}
+
+ghash() { # $1=hex data (multiple of 32 chars); needs $h_hex set
+    awk -v data="$1" -v hkey="$h_hex" '
+function hexval(c){
+    if (c>="0"&&c<="9") return c-0
+    c=tolower(c)
+    if (c=="a") return 10; if (c=="b") return 11
+    if (c=="c") return 12; if (c=="d") return 13
+    if (c=="e") return 14; if (c=="f") return 15
+    return 0
+}
+function xorbyte(x,y,   r,i,bx,by){
+    r=0
+    for(i=1;i<=128;i*=2){
+        bx=int(x/i)%2; by=int(y/i)%2
+        if (bx!=by) r+=i
+    }
+    return r
+}
+function hex_to_bytes(s, arr,   i,p){
+    for(i=0;i<16;i++){
+        p=i*2+1
+        arr[i]=hexval(substr(s,p,1))*16+hexval(substr(s,p+1,1))
+    }
+}
+function bytes_to_hex(arr,   s,i){
+    s=""
+    for(i=0;i<16;i++) s=s sprintf("%02x",arr[i])
+    return s
+}
+function gf_mult(xh, vh,   xb, vb, z, i, byte_i, bit, lsb, prev, cur){
+    hex_to_bytes(xh, xb); hex_to_bytes(vh, vb)
+    for(i=0;i<16;i++) z[i]=0
+    for(byte_i=0; byte_i<16; byte_i++){
+        for(bit=7; bit>=0; bit--){
+            if (int(xb[byte_i]/(2^bit))%2 == 1)
+                for(i=0;i<16;i++) z[i]=xorbyte(z[i], vb[i])
+            lsb = vb[15]%2; prev=0
+            for(i=0;i<=15;i++){
+                cur=vb[i]; vb[i]=int(cur/2)+prev*128; prev=cur%2
+            }
+            if (lsb==1) vb[0]=xorbyte(vb[0],225)
+        }
+    }
+    return bytes_to_hex(z)
+}
+function xor16(ah, bh,   ab, bb, i, s){
+    hex_to_bytes(ah,ab); hex_to_bytes(bh,bb); s=""
+    for(i=0;i<16;i++) s = s sprintf("%02x", xorbyte(ab[i],bb[i]))
+    return s
+}
+BEGIN{
+    y="00000000000000000000000000000000"
+    n = length(data)/32
+    for(idx=0; idx<n; idx++){
+        block = substr(data, idx*32+1, 32)
+        y = gf_mult(xor16(y, block), hkey)
+    }
+    printf "%s", y
+}'
+}
+
+get_aa_req() {
+    ts="$(($(date +%s) / 300 * 300 * 1000))"
+    payload_iv="$allanime_epoch:$allanime_build_id:$allanime_query_hash:$ts"
+    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"buildId\":\"$allanime_build_id\",\"qh\":\"$allanime_query_hash\"}"
+
+    iv_hex="$(printf '%s' "$payload_iv" | openssl dgst -sha256 -binary | dd bs=1 count=12 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    payload_hex="$(printf '%s' "$payload" | od -An -tx1 | tr -d ' \n')"
+
+    h_hex="$(dd if=/dev/zero bs=16 count=1 2>/dev/null | openssl enc -aes-256-ecb -K "$allanime_key" -nopad -e 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    ct_hex="$(hex_to_bin "$payload_hex" | openssl enc -aes-256-ctr -K "$allanime_key" -iv "${iv_hex}00000002" -e 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    tagmask="$(hex_to_bin "${iv_hex}00000001" | openssl enc -aes-256-ecb -K "$allanime_key" -nopad -e 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+
+    rem=$(( ${#ct_hex} % 32 ))
+    if [ "$rem" -ne 0 ]; then
+        pad=$((32 - rem)); zeros="$(printf '%*s' "$pad" '' | tr ' ' '0')"
+        ct_padded="${ct_hex}${zeros}"
+    else
+        ct_padded="$ct_hex"
+    fi
+    ct_bits=$(( (${#ct_hex} / 2) * 8 ))
+    len_block="$(printf "0000000000000000%016x" "$ct_bits")"
+    gh="$(ghash "${ct_padded}${len_block}")"
+    tag="$(xor_hex "$gh" "$tagmask")"
+
+    (
+        printf '\001'
+        hex_to_bin "$iv_hex"
+        hex_to_bin "$ct_hex"
+        hex_to_bin "$tag"
+    ) | base64 -w 0
+}
+
 b64url_to_hex() {
     _len=$(printf '%s' "$1" | wc -c | tr -d ' ')
     _mod=$((_len % 4))
@@ -289,20 +423,30 @@ get_filemoon_links() {
     printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
 }
 
+fetch_bootstrap() {
+    bootstrap_json="$(curl -sS -A "$agent" -e "$allanime_refr" -H "x-build-id: $allanime_build_id" "${allanime_api}/client-crypto/v1/bootstrap?buildId=$allanime_build_id" 2>/dev/null)"
+    allanime_epoch="$(printf '%s' "$bootstrap_json" | sed -nE 's|.*"epoch":([0-9]+).*|\1|p')"
+    allanime_partb="$(printf '%s' "$bootstrap_json" | sed -nE 's|.*"partB":"([^"]*)".*|\1|p')"
+    [ -z "$allanime_epoch" ] || [ -z "$allanime_partb" ] && die "Failed to fetch bootstrap configuration"
+}
+
+derive_key() {
+    partb_hex="$(printf '%s' "$allanime_partb" | base64 -d 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    allanime_key="$(xor_hex "$partb_hex" "$allanime_mask")"
+}
+
+derive_key_from_partb() {
+    # Public wrapper: fetch bootstrap then derive key
+    fetch_bootstrap
+    derive_key
+}
+
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
-    #shellcheck disable=SC2016
-    episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
-
-    query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$query_hash\"}}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
-
-    if [ -z "$api_resp" ] || ! printf "%s" "$api_resp" | grep -q "tobeparsed"; then
-        api_resp="$(curl -e "$allanime_refr" -s -H "Content-Type: application/json" -X POST "${allanime_api}/api" --data "{\"variables\":{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"},\"query\":\"$episode_embed_gql\"}" -A "$agent")"
-    fi
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" -H "x-build-id: $allanime_build_id" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
     resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
@@ -484,10 +628,15 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-allanime_refr="https://youtu-chan.com"
+allanime_refr="https://mkissa.to"
 allanime_base="allanime.day"
-allanime_api="https://api.${allanime_base}"
-allanime_key="$(printf '%s' 'Xot36i3lK3:v1' | openssl dgst -sha256 -binary | od -A n -t x1 | tr -d ' \n')"
+allanime_api="https://api.mkissa.net"
+allanime_key=""
+allanime_query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+allanime_epoch=""
+allanime_build_id="51"
+allanime_partb=""
+allanime_mask="fe3bfee62898aaf5bbb0dbfed5f1cb33a59faab4ca5036885a42119a56429129"
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -514,6 +663,9 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 branch="${ANI_CLI_BRANCH:-master}"
+
+# Fetch bootstrap config and derive encryption key
+derive_key_from_partb
 
 while [ $# -gt 0 ]; do
     case "$1" in
