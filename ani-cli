@@ -367,7 +367,8 @@ check_hist_entry() {
         return 0
     fi
     # if file age is less than 20 min, skip curl
-    if [ -f "$ep_list_file" ] && [ -n "$(find "$ep_list_file" -mmin +20 2>/dev/null)" ]; then
+    mtime="$(find "$ep_list_file" -mmin +20 2>/dev/null)"
+    if [ -f "$ep_list_file" ] && [ -n "$mtime" ]; then
         episodes_list "$id"
     fi
 }
