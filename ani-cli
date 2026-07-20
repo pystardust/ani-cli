@@ -194,9 +194,9 @@ provider_init() {
 generate_link() {
     case $1 in
         1) provider_init "wixmp" "/Default :/p" ;;    # wixmp(default)(m3u8)(multi) -> (mp4)(multi)
-        2) provider_init "youtube" "/Yt :/p" ;;         # youtube(mp4)(single)
-        3) provider_init "sharepoint" "/S-mp4 :/p" ;;   # sharepoint(mp4)(single)
-        4) provider_init "mp4upload" "/Mp4 :/p" ;;      # mp4upload(mp4)(single)
+        2) provider_init "youtube" "/Yt :/p" ;;       # youtube(mp4)(single)
+        3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
+        4) provider_init "mp4upload" "/Mp4 :/p" ;;    # mp4upload(mp4)(single)
         *)
             # provider_init "Filemoon" "/Fm-Hls :/p"
             # get_filemoon_links "$provider_id"
@@ -255,15 +255,16 @@ hex_to_bin() {
     while [ -n "$hb_h" ]; do
         hb_t=${hb_h#??}
         hb_p=${hb_h%"$hb_t"}
-        hb_d=$(( 0x$hb_p ))
-        hb_oct="$hb_oct\\$(( hb_d / 64 ))$(( (hb_d / 8) % 8 ))$(( hb_d % 8 ))"
+        hb_d=$((0x$hb_p))
+        hb_oct="$hb_oct\\$((hb_d / 64))$(((hb_d / 8) % 8))$((hb_d % 8))"
         hb_h="$hb_t"
     done
     printf '%b' "$hb_oct"
 }
 
 xor_hex() {
-    xh_a="$1"; xh_b="$2"
+    xh_a="$1"
+    xh_b="$2"
     xh_bext="$xh_b"
     while [ "${#xh_bext}" -lt "${#xh_a}" ]; do
         xh_bext="$xh_bext$xh_b"
@@ -276,7 +277,7 @@ xor_hex() {
         xh_ba=${xh_ra%"$xh_ta"}
         xh_tb=${xh_rb#??}
         xh_bb=${xh_rb%"$xh_tb"}
-        xh_vals="$xh_vals $(( 0x$xh_ba ^ 0x$xh_bb ))"
+        xh_vals="$xh_vals $((0x$xh_ba ^ 0x$xh_bb))"
         xh_ra="$xh_ta"
         xh_rb="$xh_tb"
     done
@@ -285,30 +286,35 @@ xor_hex() {
 }
 
 hex32_to_vars() {
-    hv_h="$1"; hv_p="$2"; hv_i=1
+    hv_h="$1"
+    hv_p="$2"
+    hv_i=1
     while [ -n "$hv_h" ]; do
         hv_t=${hv_h#??}
         hv_b=${hv_h%"$hv_t"}
         eval "${hv_p}${hv_i}=\$(( 0x${hv_b} ))"
         hv_h="$hv_t"
-        hv_i=$((hv_i+1))
+        hv_i=$((hv_i + 1))
     done
 }
 
 # shellcheck disable=SC2154,SC2034
 gf_mult() {
     gm_i=1
-    while [ "$gm_i" -le 16 ]; do eval "zb${gm_i}=0"; gm_i=$((gm_i+1)); done
+    while [ "$gm_i" -le 16 ]; do
+        eval "zb${gm_i}=0"
+        gm_i=$((gm_i + 1))
+    done
     gm_bi=1
     while [ "$gm_bi" -le 16 ]; do
         eval "gm_xbyte=\$xb${gm_bi}"
         gm_bit=7
         while [ "$gm_bit" -ge 0 ]; do
-            if [ $(( (gm_xbyte >> gm_bit) & 1 )) -eq 1 ]; then
+            if [ $(((gm_xbyte >> gm_bit) & 1)) -eq 1 ]; then
                 gm_i=1
                 while [ "$gm_i" -le 16 ]; do
                     eval "zb${gm_i}=\$(( zb${gm_i} ^ vb${gm_i} ))"
-                    gm_i=$((gm_i+1))
+                    gm_i=$((gm_i + 1))
                 done
             fi
             eval "gm_lsb=\$(( vb16 & 1 ))"
@@ -317,13 +323,13 @@ gf_mult() {
             while [ "$gm_i" -le 16 ]; do
                 eval "gm_cur=\$vb${gm_i}"
                 eval "vb${gm_i}=\$(( (gm_cur >> 1) | (gm_carry << 7) ))"
-                gm_carry=$(( gm_cur & 1 ))
-                gm_i=$((gm_i+1))
+                gm_carry=$((gm_cur & 1))
+                gm_i=$((gm_i + 1))
             done
-            [ "$gm_lsb" -eq 1 ] && vb1=$(( vb1 ^ 225 ))
-            gm_bit=$((gm_bit-1))
+            [ "$gm_lsb" -eq 1 ] && vb1=$((vb1 ^ 225))
+            gm_bit=$((gm_bit - 1))
         done
-        gm_bi=$((gm_bi+1))
+        gm_bi=$((gm_bi + 1))
     done
 }
 
@@ -332,9 +338,12 @@ ghash() {
     gh_key="$h_hex"
 
     gh_i=1
-    while [ "$gh_i" -le 16 ]; do eval "y${gh_i}=0"; gh_i=$((gh_i+1)); done
+    while [ "$gh_i" -le 16 ]; do
+        eval "y${gh_i}=0"
+        gh_i=$((gh_i + 1))
+    done
 
-    gh_n=$(( ${#gh_data} / 32 ))
+    gh_n=$((${#gh_data} / 32))
     gh_rem="$gh_data"
     gh_idx=0
     while [ "$gh_idx" -lt "$gh_n" ]; do
@@ -346,7 +355,7 @@ ghash() {
         gh_i=1
         while [ "$gh_i" -le 16 ]; do
             eval "xb${gh_i}=\$(( y${gh_i} ^ bb${gh_i} ))"
-            gh_i=$((gh_i+1))
+            gh_i=$((gh_i + 1))
         done
 
         hex32_to_vars "$gh_key" "vb"
@@ -355,17 +364,17 @@ ghash() {
         gh_i=1
         while [ "$gh_i" -le 16 ]; do
             eval "y${gh_i}=\$zb${gh_i}"
-            gh_i=$((gh_i+1))
+            gh_i=$((gh_i + 1))
         done
 
-        gh_idx=$((gh_idx+1))
+        gh_idx=$((gh_idx + 1))
     done
 
     gh_out=""
     gh_i=1
     while [ "$gh_i" -le 16 ]; do
         eval "gh_out=\"\$gh_out \$y${gh_i}\""
-        gh_i=$((gh_i+1))
+        gh_i=$((gh_i + 1))
     done
     # shellcheck disable=SC2086
     printf '%02x' $gh_out
@@ -383,14 +392,15 @@ get_aa_req() {
     ct_hex="$(hex_to_bin "$payload_hex" | openssl enc -aes-256-ctr -K "$allanime_key" -iv "${iv_hex}00000002" -e 2>/dev/null | od -An -tx1 | tr -d ' \n')"
     tagmask="$(hex_to_bin "${iv_hex}00000001" | openssl enc -aes-256-ecb -K "$allanime_key" -nopad -e 2>/dev/null | od -An -tx1 | tr -d ' \n')"
 
-    rem=$(( ${#ct_hex} % 32 ))
+    rem=$((${#ct_hex} % 32))
     if [ "$rem" -ne 0 ]; then
-        pad=$((32 - rem)); zeros="$(printf '%*s' "$pad" '' | tr ' ' '0')"
+        pad=$((32 - rem))
+        zeros="$(printf '%*s' "$pad" '' | tr ' ' '0')"
         ct_padded="${ct_hex}${zeros}"
     else
         ct_padded="$ct_hex"
     fi
-    ct_bits=$(( (${#ct_hex} / 2) * 8 ))
+    ct_bits=$(((${#ct_hex} / 2) * 8))
     len_block="$(printf "0000000000000000%016x" "$ct_bits")"
     gh="$(ghash "${ct_padded}${len_block}")"
     tag="$(xor_hex "$gh" "$tagmask")"
