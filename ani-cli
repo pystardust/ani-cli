@@ -249,106 +249,126 @@ process_response() {
     rm -f "$tmp"
 }
 
-hex_to_bin() { # $1=hex -> raw bytes on stdout (no xxd)
-    hex="$1"; len=${#hex}; i=0; oct=""
-    while [ $i -lt "$len" ]; do
-        pair=$(printf "%s" "$hex" | cut -c"$((i+1))-$((i+2))")
-        dec=$(printf "%d" "0x$pair")
-        oct="${oct}\\$(printf "%03o" "$dec")"
-        i=$((i+2))
+hex_to_bin() {
+    hb_h="$1"
+    hb_oct=""
+    while [ -n "$hb_h" ]; do
+        hb_t=${hb_h#??}
+        hb_p=${hb_h%"$hb_t"}
+        hb_d=$(( 0x$hb_p ))
+        hb_oct="$hb_oct\\$(( hb_d / 64 ))$(( (hb_d / 8) % 8 ))$(( hb_d % 8 ))"
+        hb_h="$hb_t"
     done
-    printf "%b" "$oct"
+    printf '%b' "$hb_oct"
 }
 
-xor_hex() { # $1 $2 hex strings (any length, $2 repeats if shorter) -> xor hex
-    awk -v a="$1" -v b="$2" '
-function hexval(c){
-    if (c>="0"&&c<="9") return c-0
-    c=tolower(c)
-    if (c=="a") return 10; if (c=="b") return 11
-    if (c=="c") return 12; if (c=="d") return 13
-    if (c=="e") return 14; if (c=="f") return 15
-    return 0
-}
-function xorbyte(x,y,   r,i,bx,by){
-    r=0
-    for(i=1;i<=128;i*=2){
-        bx=int(x/i)%2; by=int(y/i)%2
-        if (bx!=by) r+=i
-    }
-    return r
-}
-BEGIN{
-    la=length(a); lb=length(b); out=""
-    for(p=1;p<=la;p+=2){
-        h1=hexval(substr(a,p,1))*16+hexval(substr(a,p+1,1))
-        bp=((p-1)%lb)+1
-        h2=hexval(substr(b,bp,1))*16+hexval(substr(b,bp+1,1))
-        out=out sprintf("%02x", xorbyte(h1,h2))
-    }
-    printf "%s", out
-}'
+xor_hex() {
+    xh_a="$1"; xh_b="$2"
+    xh_bext="$xh_b"
+    while [ "${#xh_bext}" -lt "${#xh_a}" ]; do
+        xh_bext="$xh_bext$xh_b"
+    done
+    xh_ra="$xh_a"
+    xh_rb="$xh_bext"
+    xh_vals=""
+    while [ -n "$xh_ra" ]; do
+        xh_ta=${xh_ra#??}
+        xh_ba=${xh_ra%"$xh_ta"}
+        xh_tb=${xh_rb#??}
+        xh_bb=${xh_rb%"$xh_tb"}
+        xh_vals="$xh_vals $(( 0x$xh_ba ^ 0x$xh_bb ))"
+        xh_ra="$xh_ta"
+        xh_rb="$xh_tb"
+    done
+    # shellcheck disable=SC2086
+    printf '%02x' $xh_vals
 }
 
-ghash() { # $1=hex data (multiple of 32 chars); needs $h_hex set
-    awk -v data="$1" -v hkey="$h_hex" '
-function hexval(c){
-    if (c>="0"&&c<="9") return c-0
-    c=tolower(c)
-    if (c=="a") return 10; if (c=="b") return 11
-    if (c=="c") return 12; if (c=="d") return 13
-    if (c=="e") return 14; if (c=="f") return 15
-    return 0
+hex32_to_vars() {
+    hv_h="$1"; hv_p="$2"; hv_i=1
+    while [ -n "$hv_h" ]; do
+        hv_t=${hv_h#??}
+        hv_b=${hv_h%"$hv_t"}
+        eval "${hv_p}${hv_i}=\$(( 0x${hv_b} ))"
+        hv_h="$hv_t"
+        hv_i=$((hv_i+1))
+    done
 }
-function xorbyte(x,y,   r,i,bx,by){
-    r=0
-    for(i=1;i<=128;i*=2){
-        bx=int(x/i)%2; by=int(y/i)%2
-        if (bx!=by) r+=i
-    }
-    return r
+
+# shellcheck disable=SC2154,SC2034
+gf_mult() {
+    gm_i=1
+    while [ "$gm_i" -le 16 ]; do eval "zb${gm_i}=0"; gm_i=$((gm_i+1)); done
+    gm_bi=1
+    while [ "$gm_bi" -le 16 ]; do
+        eval "gm_xbyte=\$xb${gm_bi}"
+        gm_bit=7
+        while [ "$gm_bit" -ge 0 ]; do
+            if [ $(( (gm_xbyte >> gm_bit) & 1 )) -eq 1 ]; then
+                gm_i=1
+                while [ "$gm_i" -le 16 ]; do
+                    eval "zb${gm_i}=\$(( zb${gm_i} ^ vb${gm_i} ))"
+                    gm_i=$((gm_i+1))
+                done
+            fi
+            eval "gm_lsb=\$(( vb16 & 1 ))"
+            gm_carry=0
+            gm_i=1
+            while [ "$gm_i" -le 16 ]; do
+                eval "gm_cur=\$vb${gm_i}"
+                eval "vb${gm_i}=\$(( (gm_cur >> 1) | (gm_carry << 7) ))"
+                gm_carry=$(( gm_cur & 1 ))
+                gm_i=$((gm_i+1))
+            done
+            [ "$gm_lsb" -eq 1 ] && vb1=$(( vb1 ^ 225 ))
+            gm_bit=$((gm_bit-1))
+        done
+        gm_bi=$((gm_bi+1))
+    done
 }
-function hex_to_bytes(s, arr,   i,p){
-    for(i=0;i<16;i++){
-        p=i*2+1
-        arr[i]=hexval(substr(s,p,1))*16+hexval(substr(s,p+1,1))
-    }
-}
-function bytes_to_hex(arr,   s,i){
-    s=""
-    for(i=0;i<16;i++) s=s sprintf("%02x",arr[i])
-    return s
-}
-function gf_mult(xh, vh,   xb, vb, z, i, byte_i, bit, lsb, prev, cur){
-    hex_to_bytes(xh, xb); hex_to_bytes(vh, vb)
-    for(i=0;i<16;i++) z[i]=0
-    for(byte_i=0; byte_i<16; byte_i++){
-        for(bit=7; bit>=0; bit--){
-            if (int(xb[byte_i]/(2^bit))%2 == 1)
-                for(i=0;i<16;i++) z[i]=xorbyte(z[i], vb[i])
-            lsb = vb[15]%2; prev=0
-            for(i=0;i<=15;i++){
-                cur=vb[i]; vb[i]=int(cur/2)+prev*128; prev=cur%2
-            }
-            if (lsb==1) vb[0]=xorbyte(vb[0],225)
-        }
-    }
-    return bytes_to_hex(z)
-}
-function xor16(ah, bh,   ab, bb, i, s){
-    hex_to_bytes(ah,ab); hex_to_bytes(bh,bb); s=""
-    for(i=0;i<16;i++) s = s sprintf("%02x", xorbyte(ab[i],bb[i]))
-    return s
-}
-BEGIN{
-    y="00000000000000000000000000000000"
-    n = length(data)/32
-    for(idx=0; idx<n; idx++){
-        block = substr(data, idx*32+1, 32)
-        y = gf_mult(xor16(y, block), hkey)
-    }
-    printf "%s", y
-}'
+
+ghash() {
+    gh_data="$1"
+    gh_key="$h_hex"
+
+    gh_i=1
+    while [ "$gh_i" -le 16 ]; do eval "y${gh_i}=0"; gh_i=$((gh_i+1)); done
+
+    gh_n=$(( ${#gh_data} / 32 ))
+    gh_rem="$gh_data"
+    gh_idx=0
+    while [ "$gh_idx" -lt "$gh_n" ]; do
+        gh_tail=${gh_rem#????????????????????????????????}
+        gh_block=${gh_rem%"$gh_tail"}
+        gh_rem="$gh_tail"
+
+        hex32_to_vars "$gh_block" "bb"
+        gh_i=1
+        while [ "$gh_i" -le 16 ]; do
+            eval "xb${gh_i}=\$(( y${gh_i} ^ bb${gh_i} ))"
+            gh_i=$((gh_i+1))
+        done
+
+        hex32_to_vars "$gh_key" "vb"
+        gf_mult
+
+        gh_i=1
+        while [ "$gh_i" -le 16 ]; do
+            eval "y${gh_i}=\$zb${gh_i}"
+            gh_i=$((gh_i+1))
+        done
+
+        gh_idx=$((gh_idx+1))
+    done
+
+    gh_out=""
+    gh_i=1
+    while [ "$gh_i" -le 16 ]; do
+        eval "gh_out=\"\$gh_out \$y${gh_i}\""
+        gh_i=$((gh_i+1))
+    done
+    # shellcheck disable=SC2086
+    printf '%02x' $gh_out
 }
 
 get_aa_req() {
