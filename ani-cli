@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="4.15.0-anidb"
+version_number="4.16.0"
 
 # UI
 
@@ -76,8 +76,6 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
-      --genre
-        Browse anime by genre (interactive picker)
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -99,7 +97,6 @@ help_info() {
       %s --skip --skip-title \"one piece\" -S 2 one piece
       %s -d -e 2 cyberpunk edgerunners
       %s --batch one piece
-      %s --genre
       %s --resume -c
       %s --vlc cyberpunk edgerunners -q 1080p -e 4
       %s blue lock -e 5-6
@@ -328,109 +325,24 @@ get_filemoon_links() {
     printf "\033[1;32m%s\033[0m Links Fetched\n" "Filemoon" 1>&2
 }
 
-# anidb.app fallback: search, get episodes, extract m3u8
-search_anidb() {
-    _query="$(printf '%s' "$1" | sed 's/ /+/g')"
-    _page="$(curl -sL "https://anidb.app/search/suggestions?q=${_query}" -A "$agent" --max-time 10)"
-    printf '%s' "$_page" | sed -nE 's|.*anidb\.app/anime/[a-z0-9-]+-([0-9]+)".*|\1|p' | head -1
-}
-
-get_anidb_m3u8() {
-    _anime_id="$1"
-    _ep_no="$2"
-    _ep_json="$(curl -sL "https://anidb.app/api/frontend/anime/${_anime_id}/episodes" -A "$agent" -H "Accept: application/json" --max-time 10)"
-    _ep_id="$(printf '%s' "$_ep_json" | sed -nE "s|.*\"id\":([0-9]+),\"number\":${_ep_no}[,}].*|\1|p" | head -1)"
-    [ -z "$_ep_id" ] && return 1
-    _lang_pref="jpn"
-    [ "$mode" = "dub" ] && _lang_pref="eng"
-    _lang_json="$(curl -sL "https://anidb.app/api/frontend/episode/${_ep_id}/languages" -A "$agent" -H "Accept: application/json" --max-time 10)"
-    _embed_url="$(printf '%s' "$_lang_json" | sed -nE "s|.*\"code\":\"${_lang_pref}\".*\"embed_url\":\"([^\"]*)\".*|\1|p;s|.*\"embed_url\":\"([^\"]*)\".*\"code\":\"${_lang_pref}\".*|\1|p" | head -1)"
-    [ -z "$_embed_url" ] && _embed_url="$(printf '%s' "$_lang_json" | sed -nE 's|.*"embed_url":"([^"]*)".*|\1|p' | head -1)"
-    _embed_url="$(printf '%s' "$_embed_url" | sed 's|\\/|/|g')"
-    [ -z "$_embed_url" ] && return 1
-    _page="$(curl -sL "$_embed_url" -A "$agent" --max-time 10)"
-    printf '%s' "$_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -1
-}
-
-# genre browsing via anidb.app
-genre_list() {
-    _genres="1:Action
-2:Drama
-3:Adventure
-4:Fantasy
-5:Comedy
-6:Sci-Fi
-7:Mystery
-8:Gourmet
-9:Slice of Life
-10:Supernatural
-11:Sports
-12:Award Winning
-13:Ecchi
-14:Romance
-16:Boys Love
-18:Suspense
-19:Avant Garde
-20:Girls Love
-21:Horror"
-    printf "%s" "$_genres" | while IFS=: read -r _id _name; do
-        printf "%s\t%s\n" "$_id" "$_name"
-    done
-}
-
-browse_genre() {
-    _genre_id="$1"
-    _page="$(curl -sL "https://anidb.app/browse?genres=${_genre_id}" -A "$agent" --max-time 15)"
-    printf '%s' "$_page" | sed -nE 's|.*href="/anime/[a-z0-9-]+-[0-9]+"[^>]*>([^<]+)</a>.*|\1|p' | head -20
-}
-
-search_by_genre() {
-    _genre_name="$1"
-    _genre_id=$(genre_list | grep -i "$_genre_name" | cut -f1 | head -1)
-    [ -z "$_genre_id" ] && die "Genre not found!"
-    printf "\33[2K\r\033[1;34mFetching anime in %s...\033[0m\n" "$_genre_name" 1>&2
-    _results=$(browse_genre "$_genre_id")
-    [ -z "$_results" ] && die "No anime found for this genre!"
-    printf "%s" "$_results" | nl -w 2 | sed 's/^[[:space:]]//'
-}
-
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     links=""
 
-    # try anidb.app first (faster, no crypto overhead)
-    _search_name="$(printf '%s' "$title" | cut -d'(' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    _anidb_id="$(search_anidb "$_search_name")"
-    if [ -n "$_anidb_id" ]; then
-        _m3u8="$(get_anidb_m3u8 "$_anidb_id" "$ep_no")"
-        if [ -n "$_m3u8" ]; then
-            _m3u8_content="$(curl -sL "$_m3u8" -A "$agent" --max-time 10)"
-            if printf '%s' "$_m3u8_content" | grep -q "EXTM3U"; then
-                links="$(printf '%s' "$_m3u8_content" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; /EXT-X-I-FRAME/d' | sort -nr)"
-                refr_flag="--referrer=https://anidb.app"
-                [ -n "$links" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "anidb.app" 1>&2
-            fi
-        fi
-    fi
+    query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
 
-    # fallback to allanime
-    if [ -z "$links" ]; then
-        printf "\33[2K\r\033[1;33manidb.app: no sources, trying allanime...\033[0m\n" 1>&2
-        query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-        query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" -H "x-build-id: $allanime_build_id" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
-        api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: ${allanime_refr}" -H "x-build-id: $allanime_build_id" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
-
-        resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
-        cache_dir="$(mktemp -d)"
-        providers="1 2 3 4"
-        for provider in $providers; do
-            generate_link "$provider" >"$cache_dir"/"$provider" &
-        done
-        wait
-        links=$(cat "$cache_dir"/* | sort -g -r -s)
-        rm -r "$cache_dir"
-    fi
+    resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
+    cache_dir="$(mktemp -d)"
+    providers="1 2 3 4"
+    for provider in $providers; do
+        generate_link "$provider" >"$cache_dir"/"$provider" &
+    done
+    wait
+    links=$(cat "$cache_dir"/* | sort -g -r -s)
+    rm -r "$cache_dir"
 
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
@@ -743,7 +655,6 @@ while [ $# -gt 0 ]; do
             : >"$histfile"
             exit 0
             ;;
-        --genre) search=genre ;;
         -l | --logview)
             case "$(uname -s)" in
                 Darwin*) log show --predicate 'process == "logger"' ;;
@@ -827,25 +738,6 @@ case "$search" in
         ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
         printf "%s" "$anime_list" | grep "$id" | cut -f2 | grep -q "(up to date)" && time_until_next_ep "$allanime_title"
-        ;;
-    genre)
-        if [ -z "$query" ]; then
-            _genre_picker=$(genre_list | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select genre: ")
-            [ -z "$_genre_picker" ] && exit 1
-            _genre_name=$(printf "%s" "$_genre_picker" | cut -f2 | sed 's/^[[:space:]]*//')
-        else
-            _genre_name="$query"
-        fi
-        _genre_results=$(search_by_genre "$_genre_name")
-        [ -z "$_genre_results" ] && exit 1
-        result=$(printf "%s" "$_genre_results" | nth "Select anime: ")
-        [ -z "$result" ] && exit 1
-        title=$(printf "%s" "$result" | cut -f2)
-        id=$(printf "%s" "$result" | cut -f1)
-        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
-        ep_list=$(episodes_list "$id")
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
-        [ -z "$ep_no" ] && exit 1
         ;;
     *)
         if [ "$use_external_menu" = "0" ]; then
