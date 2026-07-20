@@ -123,19 +123,16 @@ update_script() {
 
 # checks if dependencies are present
 dep_ch() {
-    for dep; do
-        command -v "${dep%% *}" >/dev/null || die "Program \"${dep%% *}\" not found. Please install it."
-    done
+    command -v "$1" >/dev/null || die "Program $1 not found. Please install it."
 }
 
-where_iina() {
-    [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
-    printf "%s" "iina" && return 0
-}
-
-where_mpv() {
-    command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "%s" "flatpak_mpv" && return 0
-    printf "%s" "mpv" && return 0
+dep_ch_failover() {
+    [ -z "$1" ] && return 1
+    prog=$(printf "%s" "$1" | cut -d "," -f 1)
+    rest=$(printf "%s" "$1" | cut -d "," -f 2-)
+    command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
+    [ -e "$prog" ] && printf "%s" "$prog" && return 0
+    dep_ch_failover "$rest"
 }
 
 cleanup() {
@@ -197,8 +194,7 @@ generate_link() {
         2) provider_init "youtube" "/Yt-mp4 :/p" ;;   # youtube(mp4)(single)
         3) provider_init "sharepoint" "/S-mp4 :/p" ;; # sharepoint(mp4)(single)
         4) provider_init "mp4upload" "/Mp4 :/p" ;;    # mp4upload(mp4)(single)
-        *) true
-            ;;
+        *) true ;;
     esac
     [ -n "$provider_id" ] && get_links "$provider_id"
 }
@@ -391,7 +387,10 @@ play_episode() {
             printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$episode"
             ;;
-        mpv*)
+        android_mpv) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
+        *mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
             else
@@ -400,8 +399,6 @@ play_episode() {
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
             ;;
-        android_mpv) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
         *iina*)
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
             if pgrep -f "IINA" >/dev/null 2>&1; then
@@ -411,8 +408,7 @@ play_episode() {
                 nohup $player_function --no-stdin --mpv-tls-verify=no --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
             fi
             ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
-        vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function "$episode" -- --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
@@ -471,11 +467,12 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a | cut -d " " -f 1,3-)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;   # mac OS
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;           # Linux OS
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc' ;; # mac OS
+    #TODO out of band mpv and vlc
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                                                                       # Android OS (termux)
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;                                                                                                   # Windows OS
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                                                                                                                  # iOS (iSH)
+    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
@@ -550,8 +547,8 @@ while [ $# -gt 0 ]; do
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
-        --rofi) use_external_menu=1 ;;
-        --dmenu) use_external_menu=2 ;;
+        --rofi) use_external_menu=1 && dep_ch rofi ;;
+        --dmenu) use_external_menu=2 && dep_ch dmenu ;;
         --skip) skip_intro=1 ;;
         --skip-title)
             [ $# -lt 2 ] && die "missing argument!"
@@ -571,26 +568,28 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
-dep_ch "curl" "sed" "grep" || true
-botan_exe=botan
-command -v "botan3" >/dev/null && botan_exe=botan3
-dep_ch "${botan_exe}"
-case "$(uname -o 2>/dev/null)" in
-    *ndroid*)
-        command -v openssl >/dev/null || die 'Program "openssl" not found. On Termux, install with: pkg install openssl-tool'
-        ;;
-    *)
-        dep_ch "openssl" || true
-        ;;
+dep_ch "curl"
+dep_ch "sed"
+dep_ch "grep"
+dep_ch "openssl"
+botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
+dep_ch "openssl"
+[ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
+external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
+case "$external_helper" in
+    fzf) true ;;
+    rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
+    dmenu) use_external_menu=2 ;;
+    *) die 'No menu found. Install fzf, rofi or dmenu' ;;
 esac
-[ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
-dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
-    download) dep_ch "ffmpeg" "aria2c" ;;
+    download)
+        dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found'
+        dep_ch "aria2c"
+        ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled.\nANI-CLI recommends Android MPV for full compatibility.\nAdd:\n include='/storage/emulated/0/mpv/mpv.config.mp4'\nto:\n MPV > Settings > Advanced > mpv.conf\nfor full functionality.\nIgnore, If Done.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    flatpak_mpv) true ;; # handled out of band in where_mpv
     *) dep_ch "$player_function" ;;
 esac
 
