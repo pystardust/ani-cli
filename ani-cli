@@ -469,9 +469,9 @@ quality="${ANI_CLI_QUALITY:-best}"
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc' ;; # mac OS
     #TODO out of band mpv and vlc
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                      # Android OS (termux)
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;                                                  # Windows OS
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                                                                 # iOS (iSH)
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                                                                       # Android OS (termux)
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;                                                                                                   # Windows OS
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                                                                                                                  # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
@@ -580,7 +580,7 @@ case "$external_helper" in
     fzf) true ;;
     rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
     dmenu) use_external_menu=2 ;;
-    *) die 'No menu found. Install fzf, rofi or dmenu'
+    *) die 'No menu found. Install fzf, rofi or dmenu' ;;
 esac
 case "$player_function" in
     debug) ;;
