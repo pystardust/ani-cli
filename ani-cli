@@ -472,7 +472,7 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                      # Android OS (termux)
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;                                                  # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                                                                 # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" ;; # Linux OS
+    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
