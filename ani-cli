@@ -573,12 +573,11 @@ dep_ch "sed"
 dep_ch "grep"
 dep_ch "openssl"
 botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
-# why would we do openssl differently on Termux here?
 dep_ch "openssl"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
 external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
 case "$external_helper" in
-    fzf) true ;; #don't reset use_external_menu. technically this means we don't have rofi and dmenu dep_checking if fzf matches.
+    fzf) true ;;
     rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
     dmenu) use_external_menu=2 ;;
     *) die 'No menu found. Install fzf, rofi or dmenu'
