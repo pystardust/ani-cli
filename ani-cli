@@ -580,7 +580,7 @@ external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
 case "$external_helper" in
     fzf) true ;; #don't reset use_external_menu. technically this means we don't have rofi and dmenu dep_checking if fzf matches.
     rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
-    dmenu) [ "$use_external_menu" = "0" ] && use_external_menu=2 ;;
+    dmenu) use_external_menu=2 ;;
     *) die 'No menu found. Install fzf, rofi or dmenu'
 esac
 case "$player_function" in
