@@ -647,7 +647,7 @@ tput sc
 
 # playback & loop
 play
-[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
+[ "$player_function" = "download" ] || [ "$player_function" = "debug" ]
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
     case "$cmd" in
