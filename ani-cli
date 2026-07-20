@@ -576,7 +576,10 @@ botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
 # why would we do openssl differently on Termux here?
 dep_ch "openssl"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
-dep_ch "fzf" #TODO integrate with external window
+external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
+case "$external_helper" in
+    rofi) use_external_menu=1
+    dmenu) use_external_menu=2
 case "$player_function" in
     debug) ;;
     download)
