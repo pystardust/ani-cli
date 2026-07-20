@@ -547,7 +547,7 @@ while [ $# -gt 0 ]; do
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
-        --rofi) use_external_menu=1 ;;
+        --rofi) use_external_menu=1 ;; #TODO
         --dmenu) use_external_menu=2 ;;
         --skip) skip_intro=1 ;;
         --skip-title)
@@ -576,10 +576,13 @@ botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
 # why would we do openssl differently on Termux here?
 dep_ch "openssl"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
-dep_ch "fzf" #TODO
+dep_ch "fzf" #TODO integrate with external window
 case "$player_function" in
     debug) ;;
-    download) dep_ch "ffmpeg" "aria2c" ;;
+    download)
+	    dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found'
+	    dep_ch "aria2c"
+	    ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled.\nANI-CLI recommends Android MPV for full compatibility.\nAdd:\n include='/storage/emulated/0/mpv/mpv.config.mp4'\nto:\n MPV > Settings > Advanced > mpv.conf\nfor full functionality.\nIgnore, If Done.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     *) dep_ch "$player_function" ;;
