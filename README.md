@@ -5,9 +5,11 @@ A cli to browse and watch anime (alone AND with friends).
 <h4 align="center">
 Fork of <a href="https://github.com/pystardust/ani-cli">pystardust/ani-cli</a> with:
 <br><br>
+&#x2022; <a href="https://anidb.app">anidb.app</a> as primary source (direct HLS streams, faster)<br>
 &#x2022; allanime as fallback (AES-256-GCM crypto, no botan dependency)<br>
 &#x2022; Watch history with resume position tracking<br>
 &#x2022; Batch download with progress indicator<br>
+&#x2022; Genre filtering via anidb.app
 </h4>
 
 ## Table of Contents
@@ -71,5 +73,6 @@ curl -sL https://raw.githubusercontent.com/VVAT3R/ani-cli/master/uninstall.sh | 
 - **Can I batch download?** — Yes, `ani-cli --batch -e 1-24 "one piece"`
 - **Can I use vlc?** — Yes, `ani-cli --vlc`
 - **Can I resume where I left off?** — Yes, `ani-cli --resume -c`
+- **Can I browse by genre?** — Yes, `ani-cli --genre`
 - **How do I bulk download?** — `ani-cli -d -e 1-100 one piece`
 - **Full options** — `ani-cli --help`
