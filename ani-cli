@@ -389,6 +389,7 @@ play_episode() {
             ;;
         android_mpv) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
@@ -407,7 +408,6 @@ play_episode() {
                 nohup $player_function --no-stdin --mpv-tls-verify=no --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
             fi
             ;;
-        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
         *vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function "$episode" -- --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
@@ -578,8 +578,10 @@ dep_ch "openssl"
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
 external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
 case "$external_helper" in
+    fzf) true ;; #don't reset use_external_menu. technically this means we don't have rofi and dmenu dep_checking if fzf matches.
     rofi) use_external_menu=1 ;;
     dmenu) use_external_menu=2 ;;
+    *) die 'No menu found. Install fzf, rofi or dmenu'
 esac
 case "$player_function" in
     debug) ;;
