@@ -238,7 +238,7 @@ process_response() {
     iv="$(dd if="$tmp" bs=1 skip=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
     ctr="${iv}00000002"
     ct_len=$((file_size - 13 - 16))
-    dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | "$botan_exe" cipher --decrypt --cipher='AES-256/CTR' --key="$allanime_key" --nonce="$ctr" 2>/dev/null
+    dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | "$botan_exe" cipher --decrypt --cipher='AES-256/CTR' --key="$allanime_key" --nonce="$ctr" - 2>/dev/null
     rm -f "$tmp"
 }
 
@@ -461,7 +461,7 @@ allanime_api="https://api.${allanime_base}"
 allanime_key="f34fa715e2958b8c1ebc6efa4d089acd8f196d8b83d4b6201586c00c8a52e4a8"
 allanime_query_hash="d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
 allanime_epoch=6884
-allanime_build_id=50
+allanime_build_id=61
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
