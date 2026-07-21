@@ -573,7 +573,7 @@ dep_ch "sed"
 dep_ch "grep"
 botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
-external_helper=$(dep_ch_failover "fzf,rofi,dmenu")
+external_helper=$(dep_ch_failover "fzf,rofi,dmenu") || die 'No menu found. Install fzf, rofi or dmenu'
 case "$external_helper" in
     fzf) true ;;
     rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
