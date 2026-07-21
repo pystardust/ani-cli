@@ -11,6 +11,7 @@ class AniCli < Formula
   depends_on "fzf"
   depends_on "grep"
   depends_on "yt-dlp"
+  depends_on "botan"
   depends_on "mpv" => :recommended
 
   def install
