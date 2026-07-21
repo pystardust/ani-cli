@@ -24,18 +24,9 @@
 - Be cautious that LLMs tend to be overly verbose, while the ani-cli codebase prefers brevity
 - Low effort PRs will be closed
 
-Example Prompt:
-```
-Help me write a posix compliant shell script. No non-compliant bash idioms.
-The script should work cross plattform on windows, macos and linux.
-Write your code as brief as possible.
-Use && and || over if-else constructs wherever possible.
-If you use third party dependencies, tell me.
-Grep, Sed and Curl are allowed, Awk and Wget are not.
-Further context:
+Just add these two urls into the context, however you do that with your LLM of choice:
 - https://github.com/pystardust/ani-cli/blob/master/.github/workflows/ani-cli.yml
-- https://github.com/pystardust/ani-cli/blob/policy/CONTRIBUTING.md
-```
+- https://github.com/pystardust/ani-cli/blob/master/CONTRIBUTING.md
 
 ## Issues
 
