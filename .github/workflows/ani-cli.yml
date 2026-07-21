@@ -42,5 +42,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: verify that noone added awk
+    - name: verify that noone added wget
       run: '! grep wget "./ani-cli"'
