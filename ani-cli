@@ -236,9 +236,12 @@ process_response() {
     printf '%s' "$1" | sed -nE 's|.*"tobeparsed":"([^"]*)".*|\1|p' | base64 -d >"$tmp"
     file_size="$(wc -c <"$tmp")"
     iv="$(dd if="$tmp" bs=1 skip=1 count=12 2>/dev/null | od -A n -t x1 | tr -d ' \n')"
-    ctr="${iv}00000002"
-    ct_len=$((file_size - 13 - 16))
-    dd if="$tmp" bs=1 skip=13 count="$ct_len" 2>/dev/null | "$botan_exe" cipher --decrypt --cipher='AES-256/CTR' --key="$allanime_key" --nonce="$ctr" - 2>/dev/null
+    gcm_len=$((file_size - 13))
+    if [ "$botan_version" -eq 3 ]; then
+        dd if="$tmp" bs=1 skip=13 count="$gcm_len" 2>/dev/null | "$botan_exe" cipher --decrypt --cipher='AES-256/GCM' --key="$allanime_key" --nonce="$iv" - 2>/dev/null
+    else
+        dd if="$tmp" bs=1 skip=13 count="$gcm_len" 2>/dev/null | "$botan_exe" encryption --decrypt --mode='aes-256-gcm' --key="$allanime_key" --iv="$iv" 2>/dev/null
+    fi
     rm -f "$tmp"
 }
 
@@ -255,7 +258,12 @@ get_aa_req() {
 
     iv_hex="$(od -An -t x1 "$tmpdir/iv.bin" | tr -d ' \n')"
 
-    printf "%s" "$payload" | $botan_exe cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
+    if [ $botan_version -eq 3 ]; then
+        printf "%s" "$payload" | $botan_exe cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
+    else
+        printf "%s" "$payload" | $botan_exe encryption --mode=aes-256-gcm --key="$allanime_key" --iv="$iv_hex" >"$tmpdir/gcm_out.bin"
+    fi
+
 
     file_size="$(wc -c <"$tmpdir/gcm_out.bin")"
     ct_len=$((file_size - 16))
@@ -460,7 +468,7 @@ allanime_api="https://api.${allanime_base}"
 allanime_key="f34fa715e2958b8c1ebc6efa4d089acd8f196d8b83d4b6201586c00c8a52e4a8"
 allanime_query_hash="f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
 allanime_epoch=6884
-allanime_build_id=61
+allanime_build_id=63
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -571,6 +579,7 @@ dep_ch "curl"
 dep_ch "sed"
 dep_ch "grep"
 botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
+botan_version=$("$botan_exe" --version | cut -c1)
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
 external_helper=$(dep_ch_failover "fzf,rofi,dmenu") || die 'No menu found. Install fzf, rofi or dmenu'
 case "$external_helper" in
