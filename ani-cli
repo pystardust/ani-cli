@@ -129,7 +129,7 @@ dep_ch() {
 dep_ch_failover() {
     [ -z "$1" ] && return 1
     prog=$(printf "%s" "$1" | cut -d "," -f 1)
-    rest=$(printf "%s" "$1" | cut -d "," -f 2-)
+    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
     command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
     [ -e "$prog" ] && printf "%s" "$prog" && return 0
     dep_ch_failover "$rest"
