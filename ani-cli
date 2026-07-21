@@ -258,12 +258,11 @@ get_aa_req() {
 
     iv_hex="$(od -An -t x1 "$tmpdir/iv.bin" | tr -d ' \n')"
 
-    if [ $botan_version -eq 3 ]; then
+    if [ "$botan_version" -eq 3 ]; then
         printf "%s" "$payload" | $botan_exe cipher --cipher=AES-256/GCM --key="$allanime_key" --nonce="$iv_hex" - >"$tmpdir/gcm_out.bin"
     else
         printf "%s" "$payload" | $botan_exe encryption --mode=aes-256-gcm --key="$allanime_key" --iv="$iv_hex" >"$tmpdir/gcm_out.bin"
     fi
-
 
     file_size="$(wc -c <"$tmpdir/gcm_out.bin")"
     ct_len=$((file_size - 16))
