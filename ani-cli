@@ -234,13 +234,13 @@ select_quality() {
         *sharepoint*)
             unset refr_flag
             ;;
-        *anidb.app*)
-            refr_flag="--referrer=https://anidb.app"
-            ;;
         *)
             refr_flag="--referrer=$allanime_refr"
             ;;
     esac
+
+    # restore anidb.app referrer (select_quality can't detect it from CDN URLs)
+    [ "$_source" = "anidb" ] && refr_flag="--referrer=https://anidb.app"
 
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
@@ -399,6 +399,7 @@ get_episode_url() {
     links=""
 
     # try anidb.app first (faster, no crypto overhead)
+    _source=""
     _search_name="$(printf '%s' "$title" | cut -d'(' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     _anidb_id="$(search_anidb "$_search_name")"
     if [ -n "$_anidb_id" ]; then
@@ -407,7 +408,7 @@ get_episode_url() {
             _m3u8_content="$(curl -sL "$_m3u8" -A "$agent" --max-time 10)"
             if printf '%s' "$_m3u8_content" | grep -q "EXTM3U"; then
                 links="$(printf '%s' "$_m3u8_content" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; /EXT-X-I-FRAME/d' | sort -nr)"
-                refr_flag="--referrer=https://anidb.app"
+                _source="anidb"
                 [ -n "$links" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "anidb.app" 1>&2
             fi
         fi
@@ -498,7 +499,8 @@ update_history() {
 get_mpv_position() {
     _socket="/tmp/ani-cli-mpv-$$"
     if [ -S "$_socket" ]; then
-        printf '{ "command": ["get_property", "time-pos"] }\n' | socat - UNIX-CONNECT:"$_socket" 2>/dev/null | sed -nE 's|.*"data":([0-9.]+).*|\1|p'
+        _pos=$(printf '{ "command": ["get_property", "time-pos"] }\n' | socat - UNIX-CONNECT:"$_socket" 2>/dev/null | sed -nE 's|.*"data":([0-9.]+).*|\1|p')
+        [ -n "$_pos" ] && printf "%s" "$_pos" && return 0
     fi
     printf "0"
 }
@@ -687,8 +689,8 @@ use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
 external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 skip_title="${ANI_CLI_SKIP_TITLE:-}"
-[ -t 0 ] || (command -v dmenu && use_external_menu=2)
-[ -t 0 ] || (command -v rofi && use_external_menu=1)
+[ -t 0 ] || { command -v dmenu >/dev/null 2>&1 && use_external_menu=2; }
+[ -t 0 ] || { command -v rofi >/dev/null 2>&1 && use_external_menu=1; }
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
@@ -806,7 +808,7 @@ case "$player_function" in
     download) dep_ch "ffmpeg" "aria2c" ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled.\nANI-CLI recommends Android MPV for full compatibility.\nAdd:\n include='/storage/emulated/0/mpv/mpv.config.mp4'\nto:\n MPV > Settings > Advanced > mpv.conf\nfor full functionality.\nIgnore, If Done.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    flatpak_mpv) true ;; # handled out of band in where_mpv
+    mpv|flatpak_mpv) dep_ch "$player_function" "socat" ;;
     *) dep_ch "$player_function" ;;
 esac
 
@@ -882,7 +884,8 @@ tput sc
 
 # playback & loop
 play
-[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
+[ "$player_function" = "download" ] && exit 0
+[ "$player_function" = "debug" ] && exit 0
 
 while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $title... "); do
     case "$cmd" in
