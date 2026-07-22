@@ -226,7 +226,44 @@ select_quality() {
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
-process_response() {
+fetch_keys() {
+    agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+    page="$(mktemp)"
+    curl -s -A "$agent" "$allanime_refr" -o "$page" 2>/dev/null
+
+    allanime_epoch="$(sed -nE 's|.*"epoch":([0-9]+).*|\1|p' "$page")"
+    aa_part_b="$(sed -nE 's|.*"partB":"([^"]*)".*|\1|p' "$page")"
+
+    app_url="$(grep -oE "${allanime_cdn}/entry/app\.[A-Za-z0-9_.-]+\.js" "$page")"
+
+    _chunks="$(curl -s -A "$agent" "$app_url" | grep -oE '"[.][.]/chunks/[A-Za-z0-9_.-]+\.js"' | tr -d '"' | head -5)"
+    for _chunk in $_chunks; do
+        urls="$urls ${allanime_cdn}/${_chunk#../}"
+    done
+
+    js="$(mktemp)"
+    #shellcheck disable=SC2086
+    curl -s --parallel -A "$agent" $urls >"$js" 2>/dev/null
+    aa_mask_hex=$(grep -oE '[0-9a-f]{64}' "$js")
+    rm -f "$js"
+    rm -f "$page"
+
+    part_b_hex=$(printf '%s' "$aa_part_b" | base64 -d | od -An -tx1 | tr -d ' \n')
+
+    i=1
+    while [ "$i" -le 64 ]; do
+        m_byte="0x$(printf '%s' "$aa_mask_hex" | cut -c "$i"-$((i + 1)))"
+        p_byte="0x$(printf '%s' "$part_b_hex" | cut -c "$i"-$((i + 1)))"
+
+        res_dec=$((m_byte ^ p_byte))
+
+        allanime_key="${allanime_key}$(printf '%02x' "$res_dec")"
+
+        i=$((i + 2))
+    done
+}
+
+process_tobeparsed() {
     if ! printf '%s' "$1" | grep -q '"tobeparsed"'; then
         printf '%s' "$1"
         return 0
@@ -248,8 +285,8 @@ process_response() {
 get_aa_req() {
     ts="$(($(date +%s) / 300 * 300 * 1000))"
 
-    payload_iv="$allanime_epoch:$allanime_build_id:$allanime_query_hash:$ts"
-    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"buildId\":\"$allanime_build_id\",\"qh\":\"$allanime_query_hash\"}"
+    payload_iv="$allanime_epoch:$allanime_query_hash:$ts"
+    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"qh\":\"$allanime_query_hash\"}"
 
     tmpdir="$(mktemp -d)"
     trap 'rm -rf "$tmpdir"' EXIT INT
@@ -281,9 +318,9 @@ get_episode_url() {
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
     query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: https://mkissa.to" -H "x-build-id: ${allanime_build_id:-50}" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: $allanime_refr" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
-    resp="$(process_response "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
+    resp="$(process_tobeparsed "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
     cache_dir="$(mktemp -d)"
     providers="1 2 3 4"
@@ -461,13 +498,13 @@ play() {
 
 # setup
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-allanime_refr="https://youtu-chan.com"
+allanime_cdn="https://cdn.mkissa.net/all/mk/_app/immutable"
+allanime_refr="https://mkissa.to"
 allanime_base="allanime.day"
-allanime_api="https://api.${allanime_base}"
-allanime_key="ff102360a5065bb72fc128f7efa5042dbf4db582e5c58754078265926a76bfd8"
+allanime_api="https://api.mkissa.net"
+allanime_key=
 allanime_query_hash="f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
-allanime_epoch=6885
-allanime_build_id=64
+allanime_epoch=
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -648,6 +685,8 @@ esac
 tput cuu1 && tput el
 # stores the position of cursor
 tput sc
+
+fetch_keys
 
 # playback & loop
 play
