@@ -18,13 +18,12 @@
 
 - Using LLMs as a better search engine is okay
 - Using LLMs to remember syntax and idioms is okay
-- Using LLMs to verify posix compliance is encouraged
+- Using LLMs to verify posix compliance is okay
 - Opening fully AI generated PRs is not okay
-- AI should be your copilot, not you the copilot of AI
 - Be cautious that LLMs tend to be overly verbose, while the ani-cli codebase prefers brevity
 - Low effort PRs will be closed
 
-Just add these two urls into the context, however you do that with your LLM of choice:
+Add these two urls into the context, however you do that with your LLM of choice:
 - https://github.com/pystardust/ani-cli/blob/master/.github/workflows/ani-cli.yml
 - https://github.com/pystardust/ani-cli/blob/master/CONTRIBUTING.md
 
