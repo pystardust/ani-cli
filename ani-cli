@@ -233,7 +233,6 @@ fetch_keys() {
 
     allanime_epoch="$(sed -nE 's|.*"epoch":([0-9]+).*|\1|p' "$page")"
     aa_part_b="$(sed -nE 's|.*"partB":"([^"]*)".*|\1|p' "$page")"
-
     app_url="$(grep -oE "${allanime_cdn}/entry/app\.[A-Za-z0-9_.-]+\.js" "$page")"
 
     _chunks="$(curl -s -A "$agent" "$app_url" | grep -oE '"[.][.]/chunks/[A-Za-z0-9_.-]+\.js"' | tr -d '"' | head -5)"
@@ -245,20 +244,15 @@ fetch_keys() {
     #shellcheck disable=SC2086
     curl -s --parallel -A "$agent" $urls >"$js" 2>/dev/null
     aa_mask_hex=$(grep -oE '[0-9a-f]{64}' "$js")
-    rm -f "$js"
-    rm -f "$page"
-
+    rm -f "$js" "$page"
     part_b_hex=$(printf '%s' "$aa_part_b" | base64 -d | od -An -tx1 | tr -d ' \n')
 
     i=1
     while [ "$i" -le 64 ]; do
         m_byte="0x$(printf '%s' "$aa_mask_hex" | cut -c "$i"-$((i + 1)))"
         p_byte="0x$(printf '%s' "$part_b_hex" | cut -c "$i"-$((i + 1)))"
-
         res_dec=$((m_byte ^ p_byte))
-
         allanime_key="${allanime_key}$(printf '%02x' "$res_dec")"
-
         i=$((i + 2))
     done
 }
