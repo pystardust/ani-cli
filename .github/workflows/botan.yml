@@ -1,0 +1,39 @@
+name: 'botan build'
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/botan.yml"
+
+jobs:
+  build:
+    name: Botan Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout botan
+        uses: actions/checkout@v4
+        with:
+          repository: randombit/botan
+          ref: 3.12.0
+          path: botan
+
+      - name: Install MinGW-w64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: configure
+        run: |
+          ./configure.py \                                       
+          --os=mingw \
+          --cpu=x86_64 \
+          --cc=gcc \
+          --cc-bin=x86_64-w64-mingw32-g++ \
+          --ar-command=x86_64-w64-mingw32-ar \
+          --prefix=$PWD/install-win-amd64 \
+          --with-build-dir=build-win-amd64
+          
+      - name: configure
+        run: |
+          make -f build-win-amd64/Makefile
