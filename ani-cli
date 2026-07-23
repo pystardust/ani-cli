@@ -70,6 +70,8 @@ help_info() {
         Show this help message and exit
       -e, --episode, -r, --range
         Specify the number of episodes to watch
+      -p, --playlist
+        Playlist episodes in same instance (mpv only)
       --dub
         Play dubbed version
       --rofi
@@ -140,6 +142,7 @@ where_mpv() {
 
 cleanup() {
     [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4"
+    [ -n "$playlist" ] && rm -f "$MPV_SOCKET"
     printf "\033[0m"        # clears colors
     rm -f "${histfile}.new" # remove temp logfile
 }
@@ -309,10 +312,18 @@ get_episode_url() {
     cache_dir="$(mktemp -d)"
     #providers="1 2 3 4 5"
     providers="1 2 3 4"
+    pids=""
     for provider in $providers; do
         generate_link "$provider" >"$cache_dir"/"$provider" &
+        pids="$pids $!"
     done
-    wait
+    if [ -n "$playlist" ]; then
+        for pid in $pids; do
+            wait "$pid"
+        done
+    else
+        wait
+    fi
     # select the link with matching quality
     links=$(cat "$cache_dir"/* | sort -g -r -s)
     rm -r "$cache_dir"
@@ -394,6 +405,10 @@ download() {
     esac
 }
 
+send_mpv_ipc() {
+    printf '%s\n' "$1" | socat - UNIX-CONNECT:"$mpv_playlist_socket"
+}
+
 android_mpv() {
     dir="/storage/emulated/0/mpv"
     file="$dir/mpv.config.mp4"
@@ -405,10 +420,21 @@ android_mpv() {
     unset dir file
 }
 
+play_mpv() {
+    if [ "$no_detach" = 0 ]; then
+        nohup $player_function $skip_flag $refr_flag --tls-verify=no --force-media-title="$media_title" ${playlist:+--input-ipc-server="$mpv_playlist_socket"} "$episode" >/dev/null 2>&1 &
+    else
+        $player_function $skip_flag $refr_flag --tls-verify=no --force-media-title="$media_title" ${playlist:+--input-ipc-server="$mpv_playlist_socket"} "$episode"
+        mpv_exitcode=$?
+        [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
+    fi
+}
+
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$episode" ] && get_episode_url
+    media_title="${allanime_title}Episode ${ep_no}"
     # shellcheck disable=SC2086
     case "$player_function" in
         debug)
@@ -416,29 +442,47 @@ play_episode() {
             printf "%s\n" "$episode"
             ;;
         mpv*)
-            if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 &
+            if [ -z "$playlist" ]; then play_mpv; return; fi
+            if [ -z "$mpv_playlist_pid" ] || ! kill -0 "$mpv_playlist_pid"; then
+                mpv_playlist_socket=$(mktemp /tmp/mpv-playlist.XXXXXX.sock)
+                rm -f "$mpv_playlist_socket"
+                play_mpv
+                mpv_playlist_pid=$!
+                while [ ! -S "$mpv_playlist_socket" ]; do sleep 0.1; done
             else
-                $player_function $skip_flag $refr_flag --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
-                mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
+                [ -z "$episode" ] && return
+                send_mpv_ipc "{\"command\":[\"loadfile\",\"$episode\",\"append-play\",-1,{\"force-media-title\":\"$media_title\"}]}" >/dev/null 2>&1
+                fifo="/tmp/mpv_fifo.$$"
+                mkfifo "$fifo" || return 1
+                socat -u UNIX-CONNECT:"$mpv_playlist_socket" "$fifo" >/dev/null 2>&1 &
+                SOCAT_PID=$!
+                while IFS= read -r line ; do
+                    if ! kill -0 "$mpv_playlist_pid" 2>/dev/null; then mpv_playlist_quit=true; fi
+                    [ "$(printf '%s\n' "$line" | sed -n 's/.*"event":"\([^"]*\)".*/\1/p')" != "end-file" ] && continue
+                    [ "$(printf '%s\n' "$line" | sed -n 's/.*"reason":"\([^"]*\)".*/\1/p')" = "quit" ] && mpv_playlist_quit=true && return
+                    playlist_pos=$(send_mpv_ipc '{"command":["get_property","playlist-pos"]}' | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
+                    playlist_count=$(send_mpv_ipc '{"command":["get_property","playlist-count"]}' | sed -n 's/.*"data":[ ]*\([0-9]*\).*/\1/p')
+                    [ "$playlist_pos" -ne $((playlist_count - 1)) ] && continue
+                    break
+                done < "$fifo" && rm -f "$fifo"
+                kill "$SOCAT_PID" 2>/dev/null
             fi
             ;;
-        android_mpv) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "--tls-verify=no $refr_flag" 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        android_mpv) "$player_function" "$episode" "$media_title" "--tls-verify=no $refr_flag" 2>&1 & ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$media_title" >/dev/null 2>&1 & ;;
         *iina*)
             [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --no-stdin --mpv-tls-verify=no --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --mpv-tls-verify=no --mpv-force-media-title="$media_title" $refr_flag "$episode" >/dev/null 2>&1 &
             else
-                nohup $player_function --no-stdin --mpv-tls-verify=no --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag "$episode" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --mpv-tls-verify=no --keep-running --mpv-force-media-title="$media_title" $refr_flag "$episode" >/dev/null 2>&1 &
             fi
             ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $refr_flag >/dev/null 2>&1 & ;;
-        vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function "$episode" -- --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" $refr_flag >/dev/null 2>&1 & ;;
-        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="$media_title" "$episode" $refr_flag >/dev/null 2>&1 & ;;
+        vlc*) nohup $player_function --http-referrer="${refr_flag#--referrer=}" --play-and-exit --meta-title="$media_title" "$episode" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function "$episode" -- --tls-verify=no --force-media-title="$media_title" $refr_flag >/dev/null 2>&1 & ;;
+        download) "$player_function" "$episode" "$media_title" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
@@ -448,6 +492,7 @@ play_episode() {
     esac
     replay="$episode"
     unset episode
+    [ -n "$mpv_playlist_quit" ] && ep_no=$(( ep_no - 1 )) && return
     update_history
     [ "$use_external_menu" = "1" ] && wait
     [ "$use_external_menu" = "2" ] && wait
@@ -466,6 +511,7 @@ play() {
         range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
         [ -z "$range" ] && die "Invalid range!"
         for i in $range; do
+            if [ -n "$mpv_playlist_quit" ]; then [ -n "$exit_after_play" ] && exit || return; fi
             tput clear
             ep_no=$i
             printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
@@ -568,6 +614,7 @@ while [ $# -gt 0 ]; do
             ep_no="$2"
             shift
             ;;
+        -p | --playlist) playlist=true ;;
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
