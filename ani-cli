@@ -608,7 +608,7 @@ printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl"
 dep_ch "sed"
 dep_ch "grep"
-botan_exe=$(dep_ch_failover "botan3,botan") || die 'Program "botan" not found.'
+botan_exe=$(dep_ch_failover "botan3,botan,botan-cli") || die 'Program "botan" not found.'
 botan_version=$("$botan_exe" --version | cut -c1)
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
 external_helper=$(dep_ch_failover "fzf,rofi,dmenu") || die 'No menu found. Install fzf, rofi or dmenu'
