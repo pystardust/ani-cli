@@ -1,5 +1,7 @@
 name: Build static Botan CLI for Windows
 
+# maybe it will build if I poke it :shrug:
+
 on:
   workflow_dispatch:
 
