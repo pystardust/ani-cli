@@ -1,39 +1,136 @@
-name: 'botan build'
+name: Build static Botan CLI for Windows
+
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - ".github/workflows/botan.yml"
+  workflow_dispatch:
+
+  #push:
+  #  branches:
+  #    - botan
+  #    - master
+  #  paths:
+  #    - ".github/workflows/botan.yml"
+
+permissions:
+  contents: read
+
+env:
+  #BOTAN_VERSION: "3.12.0" - unused, keeping it for now
+  BOTAN_REF: "45d6f286c320b2f2efd5373d195ec88c367e3071"
+  ARTIFACT_NAME: "botan-cli-3.12.0-windows-x86_64-static"
 
 jobs:
   build:
-    name: Botan Build
-    runs-on: ubuntu-latest
+    name: Windows x64 static build
+    runs-on: windows-latest
+    timeout-minutes: 30
+
     steps:
-      - name: Checkout botan
-        uses: actions/checkout@v4
+      - name: Checkout Botan
+        uses: actions/checkout@v6
         with:
           repository: randombit/botan
-          ref: 3.12.0
+          ref: ${{ env.BOTAN_REF }}
           path: botan
+          persist-credentials: false
 
-      - name: Install MinGW-w64
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mingw-w64
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
 
-      - name: configure
+      - name: Configure and build
+        shell: pwsh
+        working-directory: botan
         run: |
-          ./configure.py \                                       
-          --os=mingw \
-          --cpu=x86_64 \
-          --cc=gcc \
-          --cc-bin=x86_64-w64-mingw32-g++ \
-          --ar-command=x86_64-w64-mingw32-ar \
-          --prefix=$PWD/install-win-amd64 \
-          --with-build-dir=build-win-amd64
-          
-      - name: configure
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = (& $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath).Trim()
+
+          if (-not $vsPath) {
+              throw "Visual Studio with the x64 C++ toolchain was not found"
+          }
+
+          $devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
+          & $devShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+
+          cl
+          python --version
+          ninja --version
+
+          python configure.py `
+            --cc=msvc `
+            --os=windows `
+            --with-build-dir=build-static `
+            --build-targets=static,cli `
+            --msvc-runtime=MT `
+            --without-documentation `
+            --build-tool=ninja
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Botan configuration failed"
+          }
+
+          ninja -f build-static\build.ninja
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Botan build failed"
+          }
+
+      - name: Verify and package
+        shell: pwsh
+        working-directory: botan
         run: |
-          make -f build-win-amd64/Makefile
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = (& $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath).Trim()
+
+          $devShell = Join-Path $vsPath "Common7\Tools\Launch-VsDevShell.ps1"
+          & $devShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+
+          $exe = Resolve-Path "build-static\botan-cli.exe"
+          & $exe version
+
+          $dependencies = dumpbin /nologo /dependents $exe | Out-String
+          $dependencies
+
+          foreach ($forbidden in @("botan-3.dll", "VCRUNTIME", "MSVCP")) {
+              if ($dependencies -match [regex]::Escape($forbidden)) {
+                  throw "Unexpected dynamic dependency: $forbidden"
+              }
+          }
+
+          $dist = Join-Path $PWD "dist"
+          $staging = Join-Path $dist $env:ARTIFACT_NAME
+          $zip = Join-Path $dist "$($env:ARTIFACT_NAME).zip"
+
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          Copy-Item $exe (Join-Path $staging "botan-cli.exe")
+          Copy-Item "license.txt" (Join-Path $staging "license.txt")
+
+          Compress-Archive -Path "$staging\*" -DestinationPath $zip
+
+          $exeHash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          "$exeHash  botan-cli.exe" |
+            Set-Content "$dist\botan-cli.exe.sha256" -Encoding ascii
+
+          "$zipHash  $($env:ARTIFACT_NAME).zip" |
+            Set-Content "$zip.sha256" -Encoding ascii
+
+          Write-Host "Executable SHA-256: $exeHash"
+          Write-Host "Archive SHA-256:    $zipHash"
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            botan/dist/${{ env.ARTIFACT_NAME }}.zip
+            botan/dist/${{ env.ARTIFACT_NAME }}.zip.sha256
+            botan/dist/botan-cli.exe.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
