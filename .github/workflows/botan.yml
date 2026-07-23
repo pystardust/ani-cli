@@ -15,7 +15,7 @@ permissions:
 
 env:
   #BOTAN_VERSION: "3.12.0" - unused, keeping it for now
-  BOTAN_REF: "45d6f286c320b2f2efd5373d195ec88c367e3071"
+  BOTAN_REF: "45d6f286c320b2f2efd5373d195ec88c367e3071" #TODO explain
   ARTIFACT_NAME: "botan-cli-3.12.0-windows-x86_64-static"
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           repository: randombit/botan
           ref: ${{ env.BOTAN_REF }}
           path: botan
-          persist-credentials: false
+          persist-credentials: false #TODO explain
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -124,7 +124,7 @@ jobs:
           Write-Host "Archive SHA-256:    $zipHash"
 
       - name: Upload Windows build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7 #TODO explain
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: |
@@ -133,4 +133,4 @@ jobs:
             botan/dist/botan-cli.exe.sha256
           if-no-files-found: error
           compression-level: 0
-          retention-days: 30
+          retention-days: 30 #TODO explain
