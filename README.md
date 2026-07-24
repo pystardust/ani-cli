@@ -228,6 +228,26 @@ scoop bucket add extras
 scoop install fzf ffmpeg mpv
 ```
 
+Botan is required to decrypt video sources. Download [`botan-cli.exe`](https://github.com/pystardust/ani-cli/releases/download/v4.15/botan-cli.exe) and its [`SHA-256 checksum`](https://github.com/pystardust/ani-cli/releases/download/v4.15/botan-cli.exe.sha256) from the [v4.15 release](https://github.com/pystardust/ani-cli/releases/tag/v4.15). From the download directory, verify the executable in Git Bash:
+
+```sh
+cd ~/Downloads
+sha256sum -c botan-cli.exe.sha256
+```
+
+Move `botan-cli.exe` into Scoop's shims directory, which is already in your `Path`:
+
+```sh
+mv botan-cli.exe "$HOME/scoop/shims/"
+```
+
+Restart Windows Terminal, then verify the installation from the Git Bash profile:
+
+```sh
+which botan-cli
+botan-cli --version
+```
+
 Consider also installing `yt-dlp` and `aria2` for downloading to work.
 
 Restart Windows Terminal. Go to the Git Bash profile and update `ani-cli` with `ani-cli -U`. You will use this keep ani-cli up-to-date.
