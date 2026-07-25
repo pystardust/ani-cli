@@ -235,10 +235,14 @@ cd ~/Downloads
 sha256sum -c botan-cli.exe.sha256
 ```
 
-Move `botan-cli.exe` into Scoop's shims directory, which is already in your `Path`:
+Move botan-cli.exe into a directory that is already in your PATH (e.g., Scoop's shims folder, or Git's bin directory):
 
 ```sh
+# If using Scoop:
 mv botan-cli.exe "$HOME/scoop/shims/"
+
+# If using Git for Windows:
+mv botan-cli.exe "C:/Program Files/Git/bin/"
 ```
 
 Restart Windows Terminal, then verify the installation from the Git Bash profile:
