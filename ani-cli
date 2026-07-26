@@ -247,7 +247,7 @@ get_anidb_m3u8() {
     [ -z "$_embed_url" ] && _embed_url="$(printf '%s' "$_lang_json" | sed -nE 's|.*"embed_url":"([^"]*)".*|\1|p' | head -1)"
     _embed_url="$(printf '%s' "$_embed_url" | sed 's|\\/|/|g')"
     [ -z "$_embed_url" ] && return 1
-    _page="$(curl -sL "$_embed_url" -A "$agent" --max-time 10 | tr -d '\r')"
+    _page="$(curl -sL "$_embed_url" -A "$agent" --max-time 10)"
     printf '%s' "$_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -1
 }
 
@@ -260,7 +260,7 @@ get_episode_url() {
     if [ -n "$_anidb_id" ]; then
         _m3u8="$(get_anidb_m3u8 "$_anidb_id" "$ep_no")"
         if [ -n "$_m3u8" ]; then
-            _m3u8_content="$(curl -sL "$_m3u8" -A "$agent" --max-time 10 | tr -d '\r')"
+            _m3u8_content="$(curl -sL "$_m3u8" -A "$agent" --max-time 10)"
             if printf '%s' "$_m3u8_content" | grep -q "EXTM3U"; then
                 links="$(printf '%s' "$_m3u8_content" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; /EXT-X-I-FRAME/d' | sort -nr)"
                 [ -n "$links" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "anidb.app" 1>&2
@@ -595,6 +595,8 @@ done
 [ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
+
+printf "\033[1;34mUsing provider: anidb\033[0m\n" 1>&2
 
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl" "sed" "grep" || true
