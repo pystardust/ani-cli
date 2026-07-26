@@ -214,7 +214,7 @@ anidb_curl() {
     _retries=3
     _result=""
     while [ $_retries -gt 0 ]; do
-        _result="$(curl -sL "$@" 2>/dev/null)"
+        _result="$(curl -sL "$@" 2>/dev/null | tr -d '\r')"
         [ -n "$_result" ] && printf '%s' "$_result" && return 0
         _retries=$((_retries - 1))
         [ $_retries -gt 0 ] && sleep 1
@@ -237,7 +237,8 @@ episodes_list_anidb() {
 get_anidb_m3u8() {
     _anime_id="$1"
     _ep_no="$2"
-    _ep_json="$(anidb_curl "https://anidb.app/api/frontend/anime/${_anime_id}/episodes" -A "$agent" -H "Accept: application/json" --max-time 10)"
+    _ep_json="${3:-}"
+    [ -z "$_ep_json" ] && _ep_json="$(anidb_curl "https://anidb.app/api/frontend/anime/${_anime_id}/episodes" -A "$agent" -H "Accept: application/json" --max-time 10)"
     _ep_id="$(printf '%s' "$_ep_json" | sed -nE "s|.*\"id\":([0-9]+),\"number\":${_ep_no}[,}].*|\1|p" | head -1)"
     [ -z "$_ep_id" ] && return 1
     _lang_pref="jpn"
@@ -247,20 +248,21 @@ get_anidb_m3u8() {
     [ -z "$_embed_url" ] && _embed_url="$(printf '%s' "$_lang_json" | sed -nE 's|.*"embed_url":"([^"]*)".*|\1|p' | head -1)"
     _embed_url="$(printf '%s' "$_embed_url" | sed 's|\\/|/|g')"
     [ -z "$_embed_url" ] && return 1
-    _page="$(curl -sL "$_embed_url" -A "$agent" --max-time 10 | tr -d '\r')"
+    _page="$(anidb_curl "$_embed_url" -A "$agent" --max-time 10)"
     printf '%s' "$_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -1
 }
 
-# gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
+# gets m3u8 stream URL from anidb.app and selects quality
 get_episode_url() {
     links=""
 
     # try anidb.app
     _anidb_id="${id:-}"
     if [ -n "$_anidb_id" ]; then
-        _m3u8="$(get_anidb_m3u8 "$_anidb_id" "$ep_no")"
+        _ep_json="$(anidb_curl "https://anidb.app/api/frontend/anime/${_anidb_id}/episodes" -A "$agent" -H "Accept: application/json" --max-time 10)"
+        _m3u8="$(get_anidb_m3u8 "$_anidb_id" "$ep_no" "$_ep_json")"
         if [ -n "$_m3u8" ]; then
-            _m3u8_content="$(curl -sL "$_m3u8" -A "$agent" --max-time 10 | tr -d '\r')"
+            _m3u8_content="$(anidb_curl "$_m3u8" -A "$agent" --max-time 10)"
             if printf '%s' "$_m3u8_content" | grep -q "EXTM3U"; then
                 links="$(printf '%s' "$_m3u8_content" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|; /EXT-X-I-FRAME/d' | sort -nr)"
                 [ -n "$links" ] && printf "\033[1;32m%s\033[0m Links Fetched\n" "anidb.app" 1>&2
@@ -279,8 +281,8 @@ get_episode_url() {
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     query="$(printf "%s\n" "$*" | tr ' ' '+')"
-    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
-        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)".*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)".*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
+    curl --max-time 5 -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
+        data=$(curl --max-time 5 -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)".*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)".*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
         status="Ongoing"
         color="33"
         printf "%s\n" "$data"
@@ -664,6 +666,7 @@ case "$search" in
         query=$(printf "%s" "$query" | sed "s| |+|g")
         anime_list=$(search_anidb "$query")
         [ -z "$anime_list" ] && die "No results found!"
+        # check if -i index is a valid number, if so skip interactive selection
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && exit 1
