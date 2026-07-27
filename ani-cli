@@ -226,12 +226,60 @@ select_quality() {
     episode=$(printf "%s" "$result" | cut -d'>' -f2)
 }
 
+generate_epoch() {
+    now_ms=$(( $(date +%s) * 1000 ))
+    epoch=$(( now_ms / 259200000 ))
+    if [ $(( now_ms - epoch * 259200000 )) -lt 86400000 ] && [ "$epoch" -gt 0 ]; then
+        echo $(( epoch - 1 ))
+    else
+        echo "$epoch"
+    fi
+}
+
+generate_mask() {
+    tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT HUP INT TERM
+
+    cat >"$tmp" <<'EOF'
+10d13/213hI=
+XdTA6FaAQSo=
+KRCUT9lZh1o=
+Aj3ASCIDMnw=
+EOF
+
+    key_hex=""; block=0
+    while IFS= read -r b64; do
+        [ -n "$b64" ] || continue
+        byte=0
+        for embedded in $(printf '%s' "$b64" | base64 -d | od -An -tu1); do
+            index=$((block * 8 + byte))
+            c=$(printf '%s' "$allanime_build_id" | cut -c$(($((index % ${#allanime_build_id})) + 1)))
+            ascii=$(LC_CTYPE=C printf '%s' "$c" | od -An -tu1 | tr -d '[:space:]')
+            build_mask_byte=$((ascii ^ (((index * 17) + 31) & 255)))
+            tweak=$((((block * 41) + (byte * 7)) & 255))
+            value=$((embedded ^ build_mask_byte ^ tweak))
+            key_hex="${key_hex}$(printf '%02x' "$value")"
+            byte=$((byte + 1))
+        done
+        block=$((block + 1))
+    done <"$tmp"
+
+    printf '%s\n' "$key_hex"
+}
+
+generate_aa_boot() {
+    hmac_key_hex=$(
+        printf 'aa-boot:%s' "$allanime_build_id" |
+        openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary | od -An -tx1 -v |
+        tr -d ' \n'
+    ) || return 1
+    payload="${allanime_build_id}:mkissa:mkissa.to:${allanime_epoch}${allanime_lane:+:$allanime_lane}"
+    printf '%s' "$payload" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hmac_key_hex" | sed 's/^.*= //'
+}
+
 fetch_keys() {
     page="$(mktemp)"
     curl -s -A "$agent" "$allanime_refr" -o "$page" 2>/dev/null
 
-    allanime_epoch="$(sed -nE 's|.*"epoch":([0-9]+).*|\1|p' "$page")"
-    aa_part_b="$(sed -nE 's|.*"partB":"([^"]*)".*|\1|p' "$page")"
     app_url="$(grep -oE "${allanime_cdn}/entry/app\.[A-Za-z0-9_.-]+\.js" "$page")"
 
     _chunks="$(curl -s -A "$agent" "$app_url" | grep -oE '"[.][.]/chunks/[A-Za-z0-9_.-]+\.js"' | tr -d '"' | head -5)"
@@ -242,14 +290,22 @@ fetch_keys() {
     js="$(mktemp)"
     #shellcheck disable=SC2086
     curl -s --parallel -A "$agent" $urls >"$js" 2>/dev/null
-    aa_mask_hex=$(grep -oE '[0-9a-f]{64}' "$js")
+
+    allanime_build_id="$(sed -n 's/.*!=="string"?"\([0-9]\+\)".*/\1/p' "$js" | head -n1)"
+    allanime_lane="$(sed -n 's/.*const ..="\(k[0-9]\+\)".*/\1/p' "$js")"
     rm -f "$js" "$page"
-    part_b_hex=$(printf '%s' "$aa_part_b" | base64 -d | od -An -tx1 | tr -d ' \n')
+
+    allanime_epoch="$(generate_epoch)"
+    allanime_mask="$(generate_mask)"
+    allanime_aa_boot="$(generate_aa_boot)"
+
+    boot_resp="$(curl -s -A "$agent" -H "x-build-id: $allanime_build_id" -H "x-aa-boot: $allanime_aa_boot" -H "Referer: $allanime_refr" -H "Origin: $allanime_refr" "$allanime_api/client-crypto/v1/bootstrap?buildId=$allanime_build_id&k=$allanime_lane" 2>/dev/null)"
+    allanime_part_b=$(echo "$boot_resp" | sed -n 's/.*partB...\([^"]*\).*/\1/p' | base64 -d | od -An -tx1 | tr -d ' \n')
 
     i=1
     while [ "$i" -le 64 ]; do
-        m_byte="0x$(printf '%s' "$aa_mask_hex" | cut -c "$i"-$((i + 1)))"
-        p_byte="0x$(printf '%s' "$part_b_hex" | cut -c "$i"-$((i + 1)))"
+        m_byte="0x$(printf '%s' "$allanime_mask" | cut -c "$i"-$((i + 1)))"
+        p_byte="0x$(printf '%s' "$allanime_part_b" | cut -c "$i"-$((i + 1)))"
         res_dec=$((m_byte ^ p_byte))
         allanime_key="${allanime_key}$(printf '%02x' "$res_dec")"
         i=$((i + 2))
@@ -279,7 +335,7 @@ get_aa_req() {
     ts="$(($(date +%s) / 300 * 300 * 1000))"
 
     payload_iv="$allanime_epoch:$allanime_query_hash:$ts"
-    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"qh\":\"$allanime_query_hash\"}"
+    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"buildId\":\"$allanime_build_id\",\"qh\":\"$allanime_query_hash\",\"k\":\"$allanime_lane\"}"
 
     tmpdir="$(mktemp -d)"
     trap 'rm -rf "$tmpdir"' EXIT INT
@@ -309,9 +365,9 @@ get_aa_req() {
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"},\"k\":\"$allanime_lane\",\"aaReq\":\"$(get_aa_req)\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: $allanime_refr" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: $allanime_refr" -H "x-build-id: $allanime_build_id" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
     resp="$(process_tobeparsed "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
