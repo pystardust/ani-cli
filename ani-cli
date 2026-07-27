@@ -227,17 +227,18 @@ select_quality() {
 }
 
 generate_epoch() {
-    now_ms=$(( $(date +%s) * 1000 ))
-    epoch=$(( now_ms / 259200000 ))
-    if [ $(( now_ms - epoch * 259200000 )) -lt 86400000 ] && [ "$epoch" -gt 0 ]; then
-        echo $(( epoch - 1 ))
+    now_ms=$(($(date +%s) * 1000))
+    epoch=$((now_ms / 259200000))
+    if [ $((now_ms - epoch * 259200000)) -lt 86400000 ] && [ "$epoch" -gt 0 ]; then
+        echo $((epoch - 1))
     else
         echo "$epoch"
     fi
 }
 
 generate_mask() {
-    tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    tmp=$(mktemp)
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
 
     cat >"$tmp" <<'EOF'
 10d13/213hI=
@@ -246,7 +247,8 @@ KRCUT9lZh1o=
 Aj3ASCIDMnw=
 EOF
 
-    key_hex=""; block=0
+    key_hex=""
+    block=0
     while IFS= read -r b64; do
         [ -n "$b64" ] || continue
         byte=0
@@ -269,8 +271,8 @@ EOF
 generate_aa_boot() {
     hmac_key_hex=$(
         printf 'aa-boot:%s' "$allanime_build_id" |
-        openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary | od -An -tx1 -v |
-        tr -d ' \n'
+            openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary | od -An -tx1 -v |
+            tr -d ' \n'
     ) || return 1
     payload="${allanime_build_id}:mkissa:mkissa.to:${allanime_epoch}${allanime_lane:+:$allanime_lane}"
     printf '%s' "$payload" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hmac_key_hex" | sed 's/^.*= //'
