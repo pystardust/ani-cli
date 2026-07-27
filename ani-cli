@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version_number="4.15.0"
+version_number="4.15.1"
 
 # UI
 
