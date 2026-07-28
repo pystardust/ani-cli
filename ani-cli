@@ -269,10 +269,12 @@ EOF
 }
 
 generate_aa_boot() {
-    hmac_key=$(printf 'aa-boot:%s' "$allanime_build_id" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary)
-    hmac_key_hex=$(printf '%s' "$hmac_key" | od -An -tx1 -v | tr -d ' \n')
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' EXIT INT
     payload="${allanime_build_id}:mkissa:mkissa.to:${allanime_epoch}${allanime_lane:+:$allanime_lane}"
-    printf '%s' "$payload" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hmac_key_hex" | sed 's/^.*= //'
+    printf '%s' "$allanime_mask" | "$botan_exe" hex_dec - > "$tmpdir/key1.bin"
+    printf 'aa-boot:%s' "$allanime_build_id" | "$botan_exe" hmac --hash=SHA-256 "$tmpdir/key1.bin" | sed 's/ -//' | "$botan_exe" hex_dec - >"$tmpdir/key2.bin"
+    printf '%s' "$payload" | "$botan_exe" hmac --hash=SHA-256 "$tmpdir/key2.bin" | sed 's/ -//'
 }
 
 fetch_keys() {
