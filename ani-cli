@@ -17,20 +17,20 @@ menu() {
 
 # provide menu. format is either (ep_list) or (numbering \t anime_ids \t anime_name)
 nth() {
-    stdin=$(cat -)
-    [ -z "$stdin" ] && exit 1
-    line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
-    [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
+    _stdin=$(cat -)
+    [ -z "$_stdin" ] && exit 1
+    _line_count="$(printf "%s\n" "$_stdin" | wc -l | tr -d "[:space:]")"
+    [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f2,3 && return 0
     prompt="$1"
-    [ $# -ne 1 ] && multi_flag="$2"
-    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | menu "$prompt" "$multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
-    line_start=$(printf "%s" "$line" | head -n1)
-    line_end=$(printf "%s" "$line" | tail -n1)
-    [ -n "$line" ] || exit 1
-    if [ "$line_start" = "$line_end" ]; then
-        printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+    [ $# -ne 1 ] && _multi_flag="$2"
+    _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
+    _line_start=$(printf "%s" "$_line" | head -n1)
+    _line_end=$(printf "%s" "$_line" | tail -n1)
+    [ -n "$_line" ] || exit 1
+    if [ "$_line_start" = "$_line_end" ]; then
+        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f2,3 || exit 1
     else
-        printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+        printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || exit 1
     fi
 }
 
@@ -165,7 +165,7 @@ anidb_desc() {
     _page="$(curl -s "$(printf "$desc_api" "${_anime_link}")" -A "$agent" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
     mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p')"
     seasons="$(printf "%s" "$_page" | sed -n '/>Seasons</,/>Details</p' | sed -nE 's|.*anime/([^"]+-[0-9]+)"[^>]*title="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g")"
-    [ -n "$seasons" ] && seasons_option="\nseasons"
+    [ -n "$seasons" ] && seasons_option="\nchange_season"
 }
 
 # get the episodes list of the selected anime
@@ -213,6 +213,7 @@ get_video_link() {
     fi
 }
 
+# provide countdown for the next episode release both sub and dub
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     _query="$(printf "%s" "$*" | tr ' ' '+')"
@@ -291,7 +292,7 @@ download() {
 
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     [ -z "$video_link" ] && get_video_link
     # shellcheck disable=SC2086
     case "$player_function" in
@@ -301,7 +302,7 @@ play_episode() {
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
-        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
+        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 &
@@ -341,8 +342,8 @@ play() {
     [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
     [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
     [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
-    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
-    if [ "$line_count" != 1 ] || [ -n "$start" ]; then
+    _line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    if [ "$_line_count" != 1 ] || [ -n "$start" ]; then
         [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
         [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
         range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
@@ -402,7 +403,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 
-search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+source="${ANI_CLI_DEFAULT_SOURCE:-search}"
 branch="${ANI_CLI_BRANCH:-master}"
 
 while [ $# -gt 0 ]; do
@@ -435,7 +436,7 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
-        -c | --continue) search=history ;;
+        -c | --continue) source=history ;;
         -d | --download)
             player_function=download
             ;;
@@ -464,7 +465,7 @@ while [ $# -gt 0 ]; do
         --rofi) menu_program=rofi ;;
         --dmenu) menu_program=dmenu ;;
         --skip) skip_intro=1 ;;
-        -N | --nextep-countdown) search=nextep ;;
+        -N | --nextep-countdown) source=nextep ;;
         -U | --update)
             branch="${2:-$branch}"
             update_script
@@ -496,7 +497,7 @@ esac
 trap 'cleanup; exit 1' INT HUP
 
 # searching
-case "$search" in
+case "$source" in
     history)
         anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
@@ -519,7 +520,7 @@ case "$search" in
             [ -z "$query" ] && exit 1
         fi
         # for checking new releases by specifying anime name
-        [ "$search" = "nextep" ] && time_until_next_ep "$query"
+        [ "$source" = "nextep" ] && time_until_next_ep "$query"
 
         query=$(printf "%s" "$query" | sed "s| |+|g")
 
@@ -555,13 +556,12 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         replay) video_link="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
-        seasons)
+        change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
             [ -z "$new_anime" ] && die "Invalid/No Anime Selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f1 | grep -Eo '[0-9]+$')"
-            # not recomputing since ani-skip does not work atm so mal_id doesn't need to be refreshed
-            # anidb_desc "$(printf "%s" "$new_anime" | cut -f1)" || true
+            anidb_desc "$(printf "%s" "$new_anime" | cut -f1)" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
             ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
