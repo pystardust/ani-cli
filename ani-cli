@@ -112,15 +112,15 @@ version_info() {
 # Bookkeeping
 
 update_script() {
-    info "[branch:$branch] Checking for Update..\n"
+    info "[branch:$branch] Checking for Update.."
     update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
     printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
     update="$(printf "%s\n" "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
-        info "[branch:$branch] Script is up to date :)\n"
+        info "[branch:$branch] Script is up to date :)"
     else
         if printf "%s\n" "$update" | patch "$0" -; then
-            info "[branch:$branch] Script has been updated\n"
+            info "[branch:$branch] Script has been updated"
         else
             die "[branch:$branch] Can't update for some reason!"
         fi
@@ -269,7 +269,7 @@ process_hist_entry() {
 }
 
 update_history() {
-    if grep -q -- "$anime_id" "$histfile"; then
+    if grep -q -- "${anime_id}" "$histfile"; then
         # escape sed special chars in replacement: & and \ and delimiter |
         safe_title=$(printf "%s" "$anime_title" | sed 's|[&\|]|\\&|g')
         sed -E "s|^[^	]+	${anime_id}	[^	]+$|${ep_no}	${anime_id}	${safe_title}|" "$histfile" >"${histfile}.new"
@@ -337,22 +337,22 @@ play_episode() {
 }
 
 play() {
-    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
-    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
-    [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
-    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
+    _start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+    _end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
+    [ "$_start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset _start
+    [ -z "$_end" ] || [ "$_end" = "$_start" ] && unset _start _end
+    [ "$_end" = "-1" ] && _end=$(printf "%s" "$ep_list" | tail -n1)
     _line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
-    if [ "$_line_count" != 1 ] || [ -n "$start" ]; then
-        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
-        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
-        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
-        [ -z "$range" ] && die "Invalid range!"
-        for i in $range; do
+    if [ "$_line_count" != 1 ] || [ -n "$_start" ]; then
+        [ -z "$_start" ] && _start=$(printf "%s\n" "$ep_no" | head -n1)
+        [ -z "$_end" ] && _end=$(printf "%s\n" "$ep_no" | tail -n1)
+        _range=$(printf "%s\n" "$ep_list" | sed -nE "/^${_start}\$/,/^${_end}\$/p")
+        [ -z "$_range" ] && die "Invalid range!"
+        for i in $_range; do
             tput clear
             ep_no=$i
             info "Playing episode $ep_no..."
-            [ "$i" = "$end" ] && unset range
+            [ "$i" = "$_end" ] && unset _range
             play_episode
         done
     else
@@ -494,7 +494,7 @@ case "$player_function" in
 esac
 
 # idk where to put this, so I put it here...
-trap 'cleanup; exit 1' INT HUP
+trap 'cleanup; exit 1' INT HUP TERM
 
 # searching
 case "$source" in
@@ -534,7 +534,7 @@ case "$source" in
         anidb_desc "$(printf "%s" "$result" | cut -f1)" || true
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
-        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
+        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] 2>/dev/null && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
         [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
         ;;
@@ -568,7 +568,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
             [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
             ;;
         change_quality)
-            new_quality="$(printf "%s" "$links" | menu | cut -d">" -f1)"
+            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f1)"
             [ -z "$new_quality" ] && die "No quality selected"
             select_quality "$new_quality"
             ;;

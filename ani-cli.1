@@ -40,7 +40,7 @@ Set the video quality. Default quality is best.
 \fB\-s | --syncplay\fR
 Watch anime together with friends, using Syncplay (works with mpv only).
 .TP
-\fB\-U | --update\fR
+\fB\-U | --update\fR \fI\,<branch>\/\fR
 Fetch update from github.
 .TP
 \fB\-v | --vlc\fR
@@ -57,6 +57,9 @@ Play the dubbed version. Without this flag, it'll always play the subbed version
 .TP
 \fB\--rofi\fR
 Use rofi instead of fzf for the interactive menu
+.TP
+\fB\--dmenu\fR
+Use dmenu instead of fzf for the interactive menu
 .TP
 \fB\--skip\fR
 Use ani-skip to skip the intro of the episode (mpv only)
@@ -91,7 +94,7 @@ Sets the flags for the player ani-cli uses. Can be anything that the player supp
 Controls the frontend of ani-cli. Can be fzf, rofi, dmenu or any other program. Default is fzf.
 .TP
 \fBANI_CLI_MENU_FLAGS\fR
-Controls the flags for the frontend. Should contain the flag for prompt at last. Default is none
+Controls the flags for the frontend. Last flag must take prompt as argument. Default is none
 .TP
 \fBANI_CLI_LOG\fR
 Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Default is 1.
