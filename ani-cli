@@ -213,17 +213,54 @@ get_video_link() {
     fi
 }
 
-# TODO: Maybe needs a better source
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
-    query="$(printf "%s\n" "$*" | tr ' ' '+')"
-    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
-        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)".*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)".*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
-        status="Ongoing"
-        color="33"
-        printf "%s\n" "$data"
-        ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Finished" && color="32"
-        printf "Status:  \033[1;%sm%s\033[0m\n---\n" "$color" "$status"
+    _query="$(printf "%s" "$*" | tr ' ' '+')"
+    curl -s -G "$animeschedule/api/v3/anime" --data "q=${_query}" | sed 's|},{"id"|\n|g' | while read -r _entry; do
+        _route=$(printf "%s" "$_entry" | sed -nE 's|.*"route":"([^"]*)",.*|\1|p')
+
+        _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*"english":"([^"]*)".*|\1|p')
+        [ -z "$_eng_title" ] && _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*,"title":"([^"]*)".*|\1|p')
+        [ -z "$_eng_title" ] && _eng_title="N/A"
+        _jpn_title=$(printf '%s' "$_entry" | sed -nE 's|.*"romaji":"([^"]*)".*|\1|p')
+        [ -z "$_jpn_title" ] && _jpn_title="N/A"
+
+        _season=$(printf '%s' "$_entry" | sed -nE 's|.*"season":\{[^}]*"title":"([^"]*)".*|\1|p')
+        [ -z "$_season" ] && _season="TBA"
+
+        _status=$(printf '%s' "$_entry" | sed -nE 's|.*"status":"([^"]*)".*|\1|p')
+        [ -z "$_status" ] && _status="Unknown"
+
+        _total_eps=$(printf '%s' "$_entry" | sed -nE 's|.*"episodes":([0-9]+).*|\1|p')
+        [ -z "$_total_eps" ] || [ "$_total_eps" = "0" ] && _total_eps="TBA"
+
+        case "$_status" in
+            Ongoing) color="33" ;;
+            Upcoming) color="36" ;;
+            Finished) color="32" ;;
+            *) color="37" ;;
+        esac
+
+        printf "Eng: %s\n" "$_eng_title"
+        printf "Jpn: %s\n" "$_jpn_title"
+        printf "Season: %s\n" "$_season"
+        printf "Status: \033[1;%sm%s\033[0m\n" "$color" "$_status"
+        printf "Total Episodes: %s\n" "$_total_eps"
+
+        if [ "$_status" != "Finished" ]; then
+            page="$(curl -s "$animeschedule/anime/$_route")"
+
+            _latest_ep=$(printf "%s" "$page" | grep -oE 'leadingAiredEpisode="[0-9]+"' | head -n1 | grep -oE '[0-9]+')
+            _sub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
+            _dub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
+
+            [ "$_status" = "Ongoing" ] && [ -n "$_latest_ep" ] && printf "Current Episode: %s\n" "$_latest_ep"
+
+            [ -n "$_sub_countdown" ] && printf "Next Sub Release: \033[1;34m%s\033[0m\n" "$_sub_countdown" || printf "Next Sub Release: N/A\n"
+
+            [ -n "$_dub_countdown" ] && printf "Next Dub Release: \033[1;32m%s\033[0m\n" "$_dub_countdown" || printf "Next Dub Release: N/A\n"
+        fi
+        printf "\n"
     done
     exit 0
 }
@@ -525,7 +562,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         seasons)
-            new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")"
+            new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
             [ -z "$new_anime" ] && die "Invalid/No Anime Selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f1 | grep -Eo '[0-9]+$')"
