@@ -4,27 +4,24 @@ version_number="5.0.0"
 
 # UI
 
-external_menu() {
-    [ "$use_external_menu" = "1" ] && rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3"
-    [ "$use_external_menu" = "2" ] && dmenu -l 20 -p "$2"
-}
-
-launcher() {
-    [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
-    [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
-    [ "$use_external_menu" = "1" ] && external_menu "$1" "$2" "$external_menu_args"
-    [ "$use_external_menu" = "2" ] && external_menu "$1" "$2"
+# shellcheck disable=SC2086
+menu() {
+    case "$menu_program" in
+        fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
+        rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
+        dmenu) dmenu -p "$1" $3 ;;
+        *) "$menu_program" $3 "$1" ;;
+    esac
 }
 
 nth() {
     stdin=$(cat -)
-    [ -z "$stdin" ] && return 1
+    [ -z "$stdin" ] && die "Empty"
     line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
     [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
     prompt="$1"
-    multi_flag=""
-    [ $# -ne 1 ] && shift && multi_flag="$1"
-    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+    [ $# -ne 1 ] && multi_flag="$2"
+    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | menu "$prompt" "$multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
     line_start=$(printf "%s" "$line" | head -n1)
     line_end=$(printf "%s" "$line" | tail -n1)
     [ -n "$line" ] || exit 1
@@ -128,8 +125,8 @@ dep_ch() {
 
 dep_ch_failover() {
     [ -z "$1" ] && return 1
-    prog=$(printf "%s" "$1" | cut -d "," -f 1)
-    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
+    prog=$(printf "%s" "$1" | cut -d"," -f 1)
+    rest=$(printf "%s" "$1" | cut -s -d"," -f 2-)
     command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
     [ -e "$prog" ] && printf "%s" "$prog" && return 0
     dep_ch_failover "$rest"
@@ -181,7 +178,7 @@ select_quality() {
     esac
     [ -z "$_result" ] && printf "%s not found, defaulting to best\n" "$1" 1>&2 && _result=$(printf "%s" "$links" | head -n1)
 
-    video_link=$(printf "%s" "$_result" | cut -d'>' -f2)
+    video_link=$(printf "%s" "$_result" | cut -d">" -f2)
 }
 
 # gets embed url, collects direct links and selects one with desired quality into $episode
@@ -245,7 +242,7 @@ download() {
 
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
-    # [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$video_link" ] && get_video_link
     # shellcheck disable=SC2086
     # shellcheck disable=SC2154
@@ -287,8 +284,7 @@ play_episode() {
     replay="$video_link"
     unset video_link
     update_history
-    [ "$use_external_menu" = "1" ] && wait
-    [ "$use_external_menu" = "2" ] && wait
+    wait
 }
 
 play() {
@@ -332,7 +328,7 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 
-case "$(uname -a | cut -d " " -f 1,3-)" in
+case "$(uname -a | cut -d" " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc' ;; # mac OS
     # TODO out of band mpv and vlc
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                                                                       # Android OS (termux)
@@ -343,12 +339,13 @@ esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
-use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
-external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
+menu_program="${ANI_CLI_MENU:-fzf}"
+menu_extra_flags=$ANI_CLI_MENU_FLAGS
 
-[ -t 0 ] || (command -v rofi && use_external_menu=1)
-[ -t 0 ] || (command -v dmenu && use_external_menu=2)
+# not opening from a terminal
+[ -t 0 ] || (command -v rofi && menu_program=rofi)
+[ -t 0 ] || (command -v dmenu && menu_program=dmenu)
 
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
@@ -361,7 +358,7 @@ branch="${ANI_CLI_BRANCH:-master}"
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
-            case "$(uname -a | cut -d " " -f 1,3-)" in
+            case "$(uname -a | cut -d" " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
@@ -414,8 +411,8 @@ while [ $# -gt 0 ]; do
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
-        --rofi) use_external_menu=1 && dep_ch rofi ;;
-        --dmenu) use_external_menu=2 && dep_ch dmenu ;;
+        --rofi) menu_program=rofi ;;
+        --dmenu) menu_program=dmenu ;;
         --skip) skip_intro=1 ;;
         -N | --nextep-countdown) search=nextep ;;
         -U | --update)
@@ -427,29 +424,21 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
-[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
-[ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
+[ "$menu_program" = "fzf" ] && menu_multi_flag="-m"
+[ "$menu_program" = "rofi" ] && menu_multi_flag="-multi-select"
 
 printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
 dep_ch "curl"
 dep_ch "sed"
 dep_ch "grep"
-[ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
-external_helper=$(dep_ch_failover "fzf,rofi,dmenu") || die 'No menu found. Install fzf, rofi or dmenu'
-case "$external_helper" in
-    fzf) true ;;
-    rofi) [ "$use_external_menu" = "0" ] && use_external_menu=1 ;;
-    dmenu) use_external_menu=2 ;;
-    *) die 'No menu found. Install fzf, rofi or dmenu' ;;
-esac
+[ "$skip_intro" = 1 ] && dep_ch "ani-skip"
+dep_ch "$menu_program"
+
+
 case "$player_function" in
     debug) ;;
-    download)
-        dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found'
-        dep_ch "aria2c"
-        ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled.\nANI-CLI recommends Android MPV for full compatibility.\nAdd:\n include='/storage/emulated/0/mpv/mpv.config.mp4'\nto:\n MPV > Settings > Advanced > mpv.conf\nfor full functionality.\nIgnore, If Done.\n" ;;
+    download) dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found' ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     *) dep_ch "$player_function" ;;
 esac
@@ -473,12 +462,12 @@ case "$search" in
         printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | grep -q "(up to date)" && time_until_next_ep "$anime_title"
         ;;
     *)
-        if [ "$use_external_menu" = "0" ]; then
+        if [ "$menu_program" = "fzf" ]; then
             while [ -z "$query" ]; do
                 printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
             done
         else
-            [ -z "$query" ] && query=$(printf "" | external_menu "" "Search anime: " "$external_menu_args")
+            [ -z "$query" ] && query=$(: | menu "Search anime: " "" "$menu_extra_flags")
             [ -z "$query" ] && exit 1
         fi
         # for checking new releases by specifying anime name
@@ -489,13 +478,13 @@ case "$search" in
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid Selection"
-        anime_title=$(printf "%s" "$result" | cut -f2)
-        anime_id=$(printf "%s" "$result" | cut -f1)
-        episode_maps=$(anidb_episodes "$anime_id")
+        [ -z "$result" ] && die "Invalid/No Selection"
+        anime_title="$(printf "%s" "$result" | cut -f2)"
+        anime_id="$(printf "%s" "$result" | cut -f1)"
+        episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
-        [ -z "$ep_no" ] && die "Invalid Selection"
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+        [ -z "$ep_no" ] && die "Invalid/No Selection"
         ;;
 esac
 # [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${anime_title}}")"
@@ -514,9 +503,9 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) video_link="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-        select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag") ;;
+        select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_quality)
-            new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
+            new_quality="$(printf "%s" "$links" | menu | cut -d">" -f1)"
             select_quality "$new_quality"
             ;;
         *)
