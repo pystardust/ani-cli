@@ -2,10 +2,8 @@
 
 ## Pull Requests
 
-Before opening a pull request:
 - Appease the linter (run `shfmt -i 4 -ci -d -w ani-cli`)
 - Appease POSIX (run `shellcheck -s sh -o all -e 2250 ani-cli`)
-- Consider the implications of your change(s) on BSD, MacOS and Windows WSL (if applicable)
 - Bump the version
 - Adjust the Readme according to your changes (if applicable)
 - No extra dependencies unless absolutely necessary
