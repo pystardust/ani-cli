@@ -155,7 +155,7 @@ anidb_search() {
     _query="$1"
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$search_api" "${_query}")" -A "$agent" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
-    printf '%s' "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p'
+    printf '%s' "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g"
 }
 
 # extract mal_id and seasons metadata
@@ -164,7 +164,7 @@ anidb_desc() {
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$desc_api" "${_anime_link}")" -A "$agent" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
     mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p')"
-    seasons="$(printf "%s" "$_page" | sed -n '/>Seasons</,/>Details</p' | sed -nE 's|.*anime/([^"]+-[0-9]+)"[^>]*title="([^"]+)".*|\1\t\2|p')"
+    seasons="$(printf "%s" "$_page" | sed -n '/>Seasons</,/>Details</p' | sed -nE 's|.*anime/([^"]+-[0-9]+)"[^>]*title="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g")"
     [ -n "$seasons" ] && seasons_option="\nseasons"
 }
 
@@ -218,33 +218,29 @@ time_until_next_ep() {
     _query="$(printf "%s" "$*" | tr ' ' '+')"
     curl -s -G "$animeschedule/api/v3/anime" --data "q=${_query}" | sed 's|},{"id"|\n|g' | while read -r _entry; do
         _route=$(printf "%s" "$_entry" | sed -nE 's|.*"route":"([^"]*)",.*|\1|p')
-
         _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*"english":"([^"]*)".*|\1|p')
         [ -z "$_eng_title" ] && _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*,"title":"([^"]*)".*|\1|p')
         [ -z "$_eng_title" ] && _eng_title="N/A"
         _jpn_title=$(printf '%s' "$_entry" | sed -nE 's|.*"romaji":"([^"]*)".*|\1|p')
         [ -z "$_jpn_title" ] && _jpn_title="N/A"
-
         _season=$(printf '%s' "$_entry" | sed -nE 's|.*"season":\{[^}]*"title":"([^"]*)".*|\1|p')
         [ -z "$_season" ] && _season="TBA"
-
         _status=$(printf '%s' "$_entry" | sed -nE 's|.*"status":"([^"]*)".*|\1|p')
         [ -z "$_status" ] && _status="Unknown"
-
         _total_eps=$(printf '%s' "$_entry" | sed -nE 's|.*"episodes":([0-9]+).*|\1|p')
         [ -z "$_total_eps" ] || [ "$_total_eps" = "0" ] && _total_eps="TBA"
 
         case "$_status" in
-            Ongoing) color="33" ;;
-            Upcoming) color="36" ;;
-            Finished) color="32" ;;
-            *) color="37" ;;
+            Ongoing) _color="33" ;;
+            Upcoming) _color="36" ;;
+            Finished) _color="32" ;;
+            *) _color="37" ;;
         esac
 
         printf "Eng: %s\n" "$_eng_title"
         printf "Jpn: %s\n" "$_jpn_title"
         printf "Season: %s\n" "$_season"
-        printf "Status: \033[1;%sm%s\033[0m\n" "$color" "$_status"
+        printf "Status: \033[1;%sm%s\033[0m\n" "$_color" "$_status"
         printf "Total Episodes: %s\n" "$_total_eps"
 
         if [ "$_status" != "Finished" ]; then
@@ -255,9 +251,7 @@ time_until_next_ep() {
             _dub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
 
             [ "$_status" = "Ongoing" ] && [ -n "$_latest_ep" ] && printf "Current Episode: %s\n" "$_latest_ep"
-
             [ -n "$_sub_countdown" ] && printf "Next Sub Release: \033[1;34m%s\033[0m\n" "$_sub_countdown" || printf "Next Sub Release: N/A\n"
-
             [ -n "$_dub_countdown" ] && printf "Next Dub Release: \033[1;32m%s\033[0m\n" "$_dub_countdown" || printf "Next Dub Release: N/A\n"
         fi
         printf "\n"
