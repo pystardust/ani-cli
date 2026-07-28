@@ -114,7 +114,7 @@ version_info() {
 update_script() {
     info "[branch:$branch] Checking for Update.."
     update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
-    printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
+    printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid response."
     update="$(printf "%s\n" "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         info "[branch:$branch] Script is up to date :)"
@@ -184,6 +184,7 @@ anidb_m3u8() {
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" -H "Accept: application/json")"
     _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g')"
+    [ -z "$_embed" ] && exit 0
     _embed_page="$(curl -s "$_embed" -A "$agent")"
     _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
     curl -s -A "$agent" "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
@@ -204,7 +205,7 @@ select_quality() {
 # gets embed url, collects direct links and selects one with desired quality into $episode
 get_video_link() {
     links=$(anidb_m3u8 "$ep_no" "$mode")
-    [ -z "$links" ] && die "No Sources Found"
+    [ -z "$links" ] && die "No sources found for $mode!"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
         [ -z "$video_link" ] && die "Episode is released, but no valid sources!"
@@ -282,11 +283,13 @@ update_history() {
 
 # PLAYING
 
+# shellcheck disable=SC2086
+# $1 = video link, $2 = video name, $3 = extra flags
 download() {
     if command -v "yt-dlp" >/dev/null; then
-        yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+        yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4" $3
     else
-        ffmpeg -extension_picky 0 -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+        ffmpeg -extension_picky 0 -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" $3
     fi
 }
 
@@ -322,7 +325,7 @@ play_episode() {
             ;;
         *vlc*) nohup $player_function --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function "$video_link" $player_extra_flags -- --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" ;;
+        download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
         catt) nohup catt cast "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$video_link"
@@ -395,8 +398,10 @@ menu_program="${ANI_CLI_MENU:-fzf}"
 menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
 
 # not opening from a terminal
-[ -t 0 ] || (command -v rofi && menu_program=rofi)
-[ -t 0 ] || (command -v dmenu && menu_program=dmenu)
+if [ ! -t 0 ]; then
+    command -v dmenu >/dev/null && menu_program=dmenu
+    command -v rofi >/dev/null && menu_program=rofi
+fi
 
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
@@ -528,15 +533,15 @@ case "$source" in
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid/No Anime Selection"
+        [ -z "$result" ] && die "Invalid/no anime selection"
         anime_title="$(printf "%s" "$result" | cut -f2)"
         anime_id="$(printf "%s" "$result" | cut -f1 | grep -Eo '[0-9]+$')"
         anidb_desc "$(printf "%s" "$result" | cut -f1)" || true
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
-        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] 2>/dev/null && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
+        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] 2>/dev/null && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid episode selection"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-        [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
+        [ -z "$ep_no" ] && die "Invalid/no Episode selection"
         ;;
 esac
 
@@ -558,14 +563,14 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
-            [ -z "$new_anime" ] && die "Invalid/No Anime Selection"
+            [ -z "$new_anime" ] && die "Invalid/no anime selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f1 | grep -Eo '[0-9]+$')"
             anidb_desc "$(printf "%s" "$new_anime" | cut -f1)" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
             ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-            [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
+            [ -z "$ep_no" ] && die "Invalid/no episode selection"
             ;;
         change_quality)
             new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f1)"
