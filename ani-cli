@@ -241,10 +241,10 @@ generate_mask() {
     trap 'rm -f "$tmp"' EXIT HUP INT TERM
 
     cat >"$tmp" <<'EOF'
-10d13/213hI=
-XdTA6FaAQSo=
-KRCUT9lZh1o=
-Aj3ASCIDMnw=
+ywI+GGWyMFA=
+ww8pcwjGfeY=
+8gjPB7mDWzc=
+nkCM5RxmdTY=
 EOF
 
     key_hex=""
@@ -269,11 +269,8 @@ EOF
 }
 
 generate_aa_boot() {
-    hmac_key_hex=$(
-        printf 'aa-boot:%s' "$allanime_build_id" |
-            openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary | od -An -tx1 -v |
-            tr -d ' \n'
-    ) || return 1
+    hmac_key=$(printf 'aa-boot:%s' "$allanime_build_id" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$allanime_mask" -binary)
+    hmac_key_hex=$(printf '%s' "$hmac_key" | od -An -tx1 -v | tr -d ' \n')
     payload="${allanime_build_id}:mkissa:mkissa.to:${allanime_epoch}${allanime_lane:+:$allanime_lane}"
     printf '%s' "$payload" | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hmac_key_hex" | sed 's/^.*= //'
 }
