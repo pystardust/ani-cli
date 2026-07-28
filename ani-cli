@@ -5,6 +5,7 @@ version_number="5.0.0"
 # UI
 
 # shellcheck disable=SC2086
+# $1 = prompt, $2 = multi select flag (for fzf/rofi), $3 = extra flags by user
 menu() {
     case "$menu_program" in
         fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
@@ -14,6 +15,7 @@ menu() {
     esac
 }
 
+# provide menu. format is either (ep_list) or (numbering \t anime_ids \t anime_name)
 nth() {
     stdin=$(cat -)
     [ -z "$stdin" ] && die "Empty"
@@ -35,6 +37,14 @@ nth() {
 die() {
     printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
     exit 1
+}
+
+info() {
+    printf "\33[2K\r\033[1;34m%s\033[0m\n" "$*"
+}
+
+warn() {
+    printf "\33[2K\r\033[1;33m%s\033[0m\n" "$*" >&2
 }
 
 help_info() {
@@ -102,15 +112,15 @@ version_info() {
 # Bookkeeping
 
 update_script() {
-    printf "[branch:%s] Checking for Update..\n" "$branch"
+    info "[branch:$branch] Checking for Update..\n"
     update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
     printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
     update="$(printf "%s\n" "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
-        printf "[branch:%s] Script is up to date :)\n" "$branch"
+        info "[branch:$branch] Script is up to date :)\n"
     else
         if printf "%s\n" "$update" | patch "$0" -; then
-            printf "[branch:%s] Script has been updated\n" "$branch"
+            info "[branch:$branch] Script has been updated\n"
         else
             die "[branch:$branch] Can't update for some reason!"
         fi
@@ -123,6 +133,7 @@ dep_ch() {
     command -v "$1" >/dev/null || die "Program $1 not found. Please install it."
 }
 
+# checks for deps in order and returns the first available. format is "prog_a,prog_b,prog_c"
 dep_ch_failover() {
     [ -z "$1" ] && return 1
     prog=$(printf "%s" "$1" | cut -d"," -f 1)
@@ -175,7 +186,7 @@ select_quality() {
         worst) _result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
         *) _result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
-    [ -z "$_result" ] && printf "%s not found, defaulting to best\n" "$1" 1>&2 && _result=$(printf "%s" "$links" | head -n1)
+    [ -z "$_result" ] && warn "$1 not found, defaulting to best" && _result=$(printf "%s" "$links" | head -n1)
 
     video_link=$(printf "%s" "$_result" | cut -d">" -f2)
 }
@@ -192,6 +203,7 @@ get_video_link() {
     fi
 }
 
+# TODO: Maybe needs a better source
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     query="$(printf "%s\n" "$*" | tr ' ' '+')"
@@ -206,7 +218,7 @@ time_until_next_ep() {
     exit 0
 }
 
-# History
+# HISTORY
 
 process_hist_entry() {
     ep_list=$(anidb_episodes "$anime_id" | cut -f2)
@@ -237,24 +249,23 @@ download() {
 }
 
 play_episode() {
-    [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
+    [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
     [ -z "$video_link" ] && get_video_link
     # shellcheck disable=SC2086
-    # shellcheck disable=SC2154
     case "$player_function" in
         debug)
             printf "All links:\n%s\nSelected link:\n" "$links"
             printf "%s\n" "$video_link"
             ;;
-        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --tls-verify=no --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$video_link"
+                $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
             fi
@@ -262,14 +273,14 @@ play_episode() {
         *iina*)
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --no-stdin --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             fi
             ;;
-        *vlc*) nohup $player_function --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function "$video_link" -- --tls-verify=no --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$video_link" "${allanime_title}Episode ${ep_no}" ;;
+        *vlc*) nohup $player_function --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function "$video_link" -- --tls-verify=no --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" ;;
         catt) nohup catt cast "$video_link" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$video_link"
@@ -298,7 +309,7 @@ play() {
         for i in $range; do
             tput clear
             ep_no=$i
-            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            info "Playing episode $ep_no..."
             [ "$i" = "$end" ] && unset range
             play_episode
         done
@@ -314,7 +325,7 @@ play() {
 # setup
 base_api="https://anidb.app"
 search_api="${base_api}/browse?q=%s"
-search_api_alt="${base_api}/search/suggestions?q=%s"
+# search_api_alt="${base_api}/search/suggestions?q=%s"
 episodes_api="${base_api}/api/frontend/anime/%s/episodes"
 m3u8_api="${base_api}/api/frontend/episode/%s/languages"
 
@@ -337,7 +348,7 @@ no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 menu_program="${ANI_CLI_MENU:-fzf}"
-menu_extra_flags=$ANI_CLI_MENU_FLAGS
+menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
 
 # not opening from a terminal
 [ -t 0 ] || (command -v rofi && menu_program=rofi)
@@ -423,13 +434,12 @@ done
 [ "$menu_program" = "fzf" ] && menu_multi_flag="-m"
 [ "$menu_program" = "rofi" ] && menu_multi_flag="-multi-select"
 
-printf "\33[2K\r\033[1;34mChecking dependencies...\033[0m\n"
+info "Checking dependencies..."
 dep_ch "curl"
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
 dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
-
 
 case "$player_function" in
     debug) ;;
@@ -478,12 +488,12 @@ case "$search" in
         anime_id="$(printf "%s" "$result" | cut -f1)"
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
-        [ -n "$ep_no" ] && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
+        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
         [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
         ;;
 esac
-# [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${anime_title}}")"
+[ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${anime_title}")"
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
