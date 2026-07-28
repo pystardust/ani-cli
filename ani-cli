@@ -104,12 +104,12 @@ version_info() {
 update_script() {
     printf "[branch:%s] Checking for Update..\n" "$branch"
     update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
-    printf '%s' "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
-    update="$(printf '%s\n' "$update" | diff -u "$0" -)"
+    printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid Response."
+    update="$(printf "%s\n" "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "[branch:%s] Script is up to date :)\n" "$branch"
     else
-        if printf '%s\n' "$update" | patch "$0" -; then
+        if printf "%s\n" "$update" | patch "$0" -; then
             printf "[branch:%s] Script has been updated\n" "$branch"
         else
             die "[branch:$branch] Can't update for some reason!"
@@ -133,8 +133,7 @@ dep_ch_failover() {
 }
 
 cleanup() {
-    [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4"
-    printf "\033[0m"        # clears colors
+    tput sgr0               # clears colors
     rm -f "${histfile}.new" # remove temp logfile
 }
 
@@ -153,19 +152,19 @@ anidb_episodes() {
     _anime_id="$1"
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$episodes_api" "${_anime_id}")" -A "$agent")"
-    printf '%s' "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
+    printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
 }
 
 # extract the individual m3u8 links from response of embed urls
 anidb_m3u8() {
-    _ep_id=$(printf '%s' "$episode_maps" | sed -nE "s|^([0-9]+)\t${1}$|\1|p")
+    _ep_id=$(printf "%s" "$episode_maps" | sed -nE "s|^([0-9]+)\t${1}$|\1|p")
     _lang="jpn"
     [ "$2" = "dub" ] && _lang="eng"
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" -H "Accept: application/json")"
-    _embed="$(printf '%s' "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g')"
+    _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g')"
     _embed_page="$(curl -s "$_embed" -A "$agent")"
-    _m3u8_master="$(printf '%s' "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
+    _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
     curl -s -A "$agent" "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
 }
 
@@ -186,7 +185,7 @@ get_video_link() {
     links=$(anidb_m3u8 "$ep_no" "$mode")
     [ -z "$links" ] && die "No Sources Found"
     select_quality "$quality"
-    if printf "%s" "$ep_list" | grep -q " $ep_no$"; then
+    if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
         [ -z "$video_link" ] && die "Episode is released, but no valid sources!"
     else
         [ -z "$video_link" ] && die "Episode not released!"
@@ -210,22 +209,19 @@ time_until_next_ep() {
 # History
 
 process_hist_entry() {
-    ep_list=$(episodes_list "$id")
-    latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
-    anime_title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
+    ep_list=$(anidb_episodes "$anime_id" | cut -f2)
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$anime_title" "$ep_no"
-    [ -n "$ep_no" ] || printf "%s\t%s - episode %s (up to date)\n" "$id" "$anime_title" "$latest_ep"
+    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$anime_id" "$anime_title" "$ep_no"
 }
 
 update_history() {
-    if grep -q -- "$id" "$histfile"; then
+    if grep -q -- "$anime_id" "$histfile"; then
         # escape sed special chars in replacement: & and \ and delimiter |
-        safe_title=$(printf '%s' "$anime_title" | sed 's/[&\|]/\\&/g')
-        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${safe_title}|" "$histfile" >"${histfile}.new"
+        safe_title=$(printf "%s" "$anime_title" | sed 's|[&\|]|\\&|g')
+        sed -E "s|^[^	]+	${anime_id}	[^	]+$|${ep_no}	${anime_id}	${safe_title}|" "$histfile" >"${histfile}.new"
     else
         cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$anime_title" >>"${histfile}.new"
+        printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
 }
@@ -432,7 +428,7 @@ dep_ch "curl"
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
-dep_ch "$menu_program"
+dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
 
 
 case "$player_function" in
@@ -455,11 +451,10 @@ case "$search" in
         [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
         [ -z "$anime_id" ] && exit 1
-        anime_title=$(printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | sed 's/ - episode.*//')
-        ep_list=$(episodes_list "$anime_id")
-        ep_no=$(printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
-        anime_title="$(printf "%s" "$anime_title" | cut -d'(' -f1 | tr -d '[:punct:]')"
-        printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | grep -q "(up to date)" && time_until_next_ep "$anime_title"
+        anime_title=$(printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | sed 's| - episode.*||')
+        episode_maps="$(anidb_episodes "$anime_id")"
+        ep_list="$(printf "%s" "$episode_maps" | cut -f2)"
+        ep_no=$(printf "%s" "$anime_list" | grep "$anime_id" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
     *)
         if [ "$menu_program" = "fzf" ]; then
@@ -478,13 +473,14 @@ case "$search" in
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid/No Selection"
+        [ -z "$result" ] && die "Invalid/No Anime Selection"
         anime_title="$(printf "%s" "$result" | cut -f2)"
         anime_id="$(printf "%s" "$result" | cut -f1)"
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
+        [ -n "$ep_no" ] && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid Episode Selection"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-        [ -z "$ep_no" ] && die "Invalid/No Selection"
+        [ -z "$ep_no" ] && die "Invalid/No Episode Selection"
         ;;
 esac
 # [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${anime_title}}")"
