@@ -184,9 +184,9 @@ anidb_m3u8() {
     _lang="jpn"
     [ "$2" = "dub" ] && _lang="eng"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" -H "Accept: application/json")"
-    _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g')"
-    [ -z "$_embed" ] && exit 0
+    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent")"
+    _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n1)"
+    [ -z "$_embed" ] && exit 1
     _embed_page="$(curl -s "$_embed" -A "$agent")"
     _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
     curl -s -A "$agent" "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
@@ -267,7 +267,7 @@ process_hist_entry() {
 }
 
 update_history() {
-    if grep -q -- "${anime_id}" "$histfile"; then
+    if grep -q "	${anime_id}	" "$histfile"; then
         # escape sed special chars in replacement: & and \ and delimiter |
         safe_title=$(printf "%s" "$anime_title" | sed 's|[&\|]|\\&|g')
         sed -E "s|^[^	]+	${anime_id}	[^	]+$|${ep_no}	${anime_id}	${safe_title}|" "$histfile" >"${histfile}.new"
@@ -507,10 +507,10 @@ case "$source" in
         [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1 | grep -Eo '[0-9]+$')
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1 | grep -Eo '[0-9]+$')
         [ -z "$anime_id" ] && exit 1
-        anime_title=$(printf "%s" "$anime_list" | grep "$anime_id" | cut -f2 | sed 's| - episode.*||')
+        anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f2 | sed 's| - episode.*||')
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf "%s" "$episode_maps" | cut -f2)"
-        ep_no=$(printf "%s" "$anime_list" | grep "$anime_id" | sed -nE 's/.*- episode (.+)$/\1/p')
+        ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
     *)
         if [ "$menu_program" = "fzf" ]; then
