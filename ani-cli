@@ -227,33 +227,112 @@ select_quality() {
 }
 
 fetch_keys() {
-    page="$(mktemp)"
-    curl -s -A "$agent" "$allanime_refr" -o "$page" 2>/dev/null
+    # The source site derives its AES-256 key with an obfuscated, self-rotating
+    # "client-crypto" bootstrap handshake that cannot be reproduced in POSIX
+    # shell (the key material and the request-signing proof only exist after
+    # its JavaScript executes). We therefore run the site's *own* crypto in a
+    # JS runtime to obtain the key, epoch, build id and content lane. deno is
+    # preferred because it can be confined to the network with --allow-net;
+    # node is used as a fallback. See the aa_js_runtime dependency check.
+    keygen="$(mktemp)"
+    cat >"$keygen" <<'ANICLI_KEYGEN_JS'
+// ani-cli AllAnime client-crypto key deriver (runs under node >=20 or deno).
+// Args: <refr_url> <cdn_immutable_base>. Emits KEY/EPOCH/BUILDID/LANE lines.
+'use strict';
+var IS_DENO = typeof Deno !== 'undefined';
+var ARGV = IS_DENO ? Deno.args : process.argv.slice(2);
+var refr = ARGV[0], cdn = ARGV[1];
+var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0';
+var ENC = new TextEncoder();
+function OUT(s){ if (IS_DENO) Deno.stdout.writeSync(ENC.encode(s)); else process.stdout.write(s); }
+function EXIT(c){ if (IS_DENO) Deno.exit(c); else process.exit(c); }
+function die(m){ var e = 'aa-keygen: ' + m + '\n'; if (IS_DENO) Deno.stderr.writeSync(ENC.encode(e)); else process.stderr.write(e); EXIT(1); }
+async function get(url){
+  var r = await fetch(url, { headers: { 'User-Agent': UA, 'Referer': refr } });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+  return await r.text();
+}
+async function findCryptoChunk(){
+  var landing = await get(refr);
+  var re = new RegExp(cdn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '/entry/app\\.[A-Za-z0-9_.-]+\\.js');
+  var appUrl = (landing.match(re) || [])[0];
+  if (!appUrl) throw new Error('app.js not found on landing page');
+  var app = await get(appUrl);
+  var seen = {}, chunks = [], m, cr = /"[.][.]\/chunks\/([A-Za-z0-9_.-]+\.js)"/g;
+  while ((m = cr.exec(app))) { if (!seen[m[1]]) { seen[m[1]] = 1; chunks.push(m[1]); } }
+  for (var i = 0; i < chunks.length; i++) {
+    var js = await get(cdn + '/chunks/' + chunks[i]);
+    if (js.indexOf('client-crypto/v1/bootstrap') !== -1) return js;
+  }
+  throw new Error('crypto chunk not found (site structure changed)');
+}
+function loadModule(src){
+  var importNames = {}, m, ir = /import\{([^}]*)\}from"[^"]*";?/g;
+  while ((m = ir.exec(src))) {
+    var parts = m[1].split(',');
+    for (var i = 0; i < parts.length; i++) {
+      var seg = parts[i].trim(), as = / as (\w+)$/.exec(seg);
+      if (as) importNames[as[1]] = 1; else if (/^\w+$/.test(seg)) importNames[seg] = 1;
+    }
+  }
+  src = src.replace(/import\{[^}]*\}from"[^"]*";?/g, '')
+           .replace(/export\{[^}]*\};?\s*$/g, '')
+           .replace(/import\.meta/g, '({url:"x",env:{}})');
+  var importDecls = Object.keys(importNames).map(function(n){ return 'let ' + n + '=__mk();'; }).join('');
+  var host = new URL(refr).host, origin = new URL(refr).origin;
+  var store = '{_d:{},getItem(k){return this._d[k]??null},setItem(k,v){this._d[k]=String(v)},removeItem(k){delete this._d[k]},clear(){this._d={}},key(){return null},get length(){return 0}}';
+  var harness = '"use strict";\n'
+    + 'const __mk=()=>new Proxy(function(){return __mk()},{get(t,p){if(p===Symbol.iterator)return function*(){};if(p===\'then\')return undefined;return __mk()},apply(){return __mk()},construct(){return __mk()}});\n'
+    + 'const localStorage=(' + store + '),sessionStorage=(' + store + ');\n'
+    + 'const location={host:' + JSON.stringify(host) + ',hostname:' + JSON.stringify(host) + ',origin:' + JSON.stringify(origin) + ',href:' + JSON.stringify(refr + '/') + ',protocol:"https:",pathname:"/",search:""};\n'
+    + 'const navigator={userAgent:' + JSON.stringify(UA) + ',language:"en",languages:["en"]};\n'
+    + 'const document={currentScript:null,cookie:"",addEventListener(){},removeEventListener(){},createElement(){return{style:{},setAttribute(){},appendChild(){}}},documentElement:{style:{}},head:{appendChild(){}},body:{appendChild(){}},querySelector(){return null},getElementById(){return null}};\n'
+    + 'const window=new Proxy({location,navigator,document,localStorage,sessionStorage,addEventListener(){},removeEventListener(){},matchMedia(){return{matches:false,addEventListener(){}}},setTimeout,clearTimeout,setInterval,clearInterval,fetch:globalThis.fetch,crypto:globalThis.crypto,atob:globalThis.atob,btoa:globalThis.btoa},{get(t,p){return p in t?t[p]:__mk()}});\n'
+    + 'const self=window;\n'
+    + importDecls + '\n' + src + '\n'
+    + ';return { QS:(typeof QS!=="undefined"?QS:undefined), If:(typeof If!=="undefined"?If:undefined), Uh:(typeof Uh!=="undefined"?Uh:undefined), Bh:(typeof Bh!=="undefined"?Bh:undefined), sr:(typeof sr!=="undefined"?sr:undefined), getEpoch:()=>(typeof Zn!=="undefined"?Zn:null) };';
+  return new Function(harness)();
+}
+(async function(){
+  if (!refr || !cdn) die('usage: <refr_url> <cdn_immutable_base>');
+  var src; try { src = await findCryptoChunk(); } catch(e){ die(e.message); }
+  var M; try { M = loadModule(src); } catch(e){ die('module load failed: ' + e.message); }
+  if (typeof M.QS !== 'function') die('QS entrypoint missing (crypto logic changed)');
+  var lanes = [M.If, M.Uh, M.Bh].filter(Boolean), keyBytes = null, usedLane = null, lastErr = null;
+  for (var i = 0; i < lanes.length; i++) {
+    try { keyBytes = await M.QS(1, lanes[i]); if (keyBytes) { usedLane = lanes[i]; break; } }
+    catch(e){ lastErr = e; }
+  }
+  if (!keyBytes) die('bootstrap failed: ' + (lastErr && lastErr.message));
+  var hex = Array.from(new Uint8Array(keyBytes)).map(function(x){ return x.toString(16).padStart(2,'0'); }).join('');
+  if (hex.length !== 64) die('derived key wrong length: ' + hex.length);
+  var epoch = M.getEpoch();
+  if (epoch == null) die('epoch not resolved');
+  if (!M.sr) die('build id not resolved');
+  OUT('KEY=' + hex + '\nEPOCH=' + epoch + '\nBUILDID=' + M.sr + '\nLANE=' + usedLane + '\n');
+  EXIT(0);
+})().catch(function(e){ die('unexpected: ' + (e && e.message || e)); });
+ANICLI_KEYGEN_JS
 
-    allanime_epoch="$(sed -nE 's|.*"epoch":([0-9]+).*|\1|p' "$page")"
-    aa_part_b="$(sed -nE 's|.*"partB":"([^"]*)".*|\1|p' "$page")"
-    app_url="$(grep -oE "${allanime_cdn}/entry/app\.[A-Za-z0-9_.-]+\.js" "$page")"
+    case "$aa_js_runtime" in
+        *deno*) key_out="$("$aa_js_runtime" run --allow-net --no-prompt "$keygen" "$allanime_refr" "$allanime_cdn" 2>/dev/null)" ;;
+        *) key_out="$("$aa_js_runtime" "$keygen" "$allanime_refr" "$allanime_cdn" 2>/dev/null)" ;;
+    esac
+    rm -f "$keygen"
 
-    _chunks="$(curl -s -A "$agent" "$app_url" | grep -oE '"[.][.]/chunks/[A-Za-z0-9_.-]+\.js"' | tr -d '"' | head -5)"
-    for _chunk in $_chunks; do
-        urls="$urls ${allanime_cdn}/${_chunk#../}"
-    done
+    allanime_key="$(printf '%s\n' "$key_out" | sed -n 's/^KEY=//p')"
+    allanime_epoch="$(printf '%s\n' "$key_out" | sed -n 's/^EPOCH=//p')"
+    allanime_build_id="$(printf '%s\n' "$key_out" | sed -n 's/^BUILDID=//p')"
+    allanime_lane="$(printf '%s\n' "$key_out" | sed -n 's/^LANE=//p')"
 
-    js="$(mktemp)"
-    #shellcheck disable=SC2086
-    curl -s --parallel -A "$agent" $urls >"$js" 2>/dev/null
-    aa_mask_hex=$(grep -oE '[0-9a-f]{64}' "$js")
-    rm -f "$js" "$page"
-    part_b_hex=$(printf '%s' "$aa_part_b" | base64 -d | od -An -tx1 | tr -d ' \n')
-
-    i=1
-    while [ "$i" -le 64 ]; do
-        m_byte="0x$(printf '%s' "$aa_mask_hex" | cut -c "$i"-$((i + 1)))"
-        p_byte="0x$(printf '%s' "$part_b_hex" | cut -c "$i"-$((i + 1)))"
-        res_dec=$((m_byte ^ p_byte))
-        allanime_key="${allanime_key}$(printf '%02x' "$res_dec")"
-        i=$((i + 2))
-    done
+    # A missing/short key means the handshake failed; fail with a clear message
+    # instead of letting the encrypted API calls below produce cryptic errors.
+    case "$allanime_key" in
+        *[!0-9a-fA-F]* | "") die "Could not derive the source-site decryption key. The site may have changed or the JS runtime failed; update ani-cli or try again later." ;;
+    esac
+    [ "${#allanime_key}" -eq 64 ] || die "Derived key has an unexpected length. Update ani-cli or try again later."
+    { [ -n "$allanime_epoch" ] && [ -n "$allanime_build_id" ] && [ -n "$allanime_lane" ]; } ||
+        die "Incomplete key material from the source site. Update ani-cli or try again later."
 }
 
 process_tobeparsed() {
@@ -278,8 +357,8 @@ process_tobeparsed() {
 get_aa_req() {
     ts="$(($(date +%s) / 300 * 300 * 1000))"
 
-    payload_iv="$allanime_epoch:$allanime_query_hash:$ts"
-    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"qh\":\"$allanime_query_hash\"}"
+    payload_iv="$allanime_epoch:$allanime_build_id:$allanime_query_hash:$ts:$allanime_lane"
+    payload="{\"v\":1,\"ts\":$ts,\"epoch\":$allanime_epoch,\"buildId\":\"$allanime_build_id\",\"qh\":\"$allanime_query_hash\",\"k\":\"$allanime_lane\"}"
 
     tmpdir="$(mktemp -d)"
     trap 'rm -rf "$tmpdir"' EXIT INT
@@ -309,9 +388,9 @@ get_aa_req() {
 # gets embed urls, collects direct links into provider files, selects one with desired quality into $episode
 get_episode_url() {
     query_vars="{\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}"
-    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"aaReq\":\"$(get_aa_req)\"}"
+    query_ext="{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"$allanime_query_hash\"}, \"k\":\"$allanime_lane\", \"aaReq\":\"$(get_aa_req)\"}"
 
-    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: $allanime_refr" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
+    api_resp="$(curl -e "$allanime_refr" -sG -A "$agent" -H "Origin: $allanime_refr" -H "x-build-id: $allanime_build_id" "${allanime_api}/api" --data-urlencode "variables=${query_vars}" --data-urlencode "extensions=${query_ext}")"
 
     resp="$(process_tobeparsed "$api_resp" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')"
     # generate links into sequential files
@@ -498,6 +577,8 @@ allanime_api="https://api.mkissa.net"
 allanime_key=
 allanime_query_hash="f4662f4b7510b26795dd53ef824a0bf1740fbbc5d1273fab18222ac831bca8d0"
 allanime_epoch=
+allanime_build_id=
+allanime_lane=
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -609,6 +690,9 @@ dep_ch "sed"
 dep_ch "grep"
 botan_exe=$(dep_ch_failover "botan3,botan,botan-cli") || die 'Program "botan" not found.'
 botan_version=$("$botan_exe" --version | cut -c1)
+# The source site's key handshake runs only in JavaScript; fetch_keys executes
+# it via deno (preferred, sandboxed with --allow-net) or node (>=20) fallback.
+aa_js_runtime=$(dep_ch_failover "deno,node") || die 'No JS runtime found. ani-cli needs "deno" (recommended) or "node" >= 20 to derive the source-site keys.'
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip")
 external_helper=$(dep_ch_failover "fzf,rofi,dmenu") || die 'No menu found. Install fzf, rofi or dmenu'
 case "$external_helper" in
