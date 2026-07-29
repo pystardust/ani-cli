@@ -228,36 +228,30 @@ time_until_next_ep() {
         [ -z "$_eng_title" ] && _eng_title="N/A"
         _jpn_title=$(printf '%s' "$_entry" | sed -nE 's|.*"romaji":"([^"]*)".*|\1|p')
         [ -z "$_jpn_title" ] && _jpn_title="N/A"
-        _season=$(printf '%s' "$_entry" | sed -nE 's|.*"season":\{[^}]*"title":"([^"]*)".*|\1|p')
-        [ -z "$_season" ] && _season="TBA"
         _status=$(printf '%s' "$_entry" | sed -nE 's|.*"status":"([^"]*)".*|\1|p')
         [ -z "$_status" ] && _status="Unknown"
-        _total_eps=$(printf '%s' "$_entry" | sed -nE 's|.*"episodes":([0-9]+).*|\1|p')
-        [ -z "$_total_eps" ] || [ "$_total_eps" = "0" ] && _total_eps="TBA"
 
         case "$_status" in
             Ongoing) _color="33" ;;
-            Upcoming) _color="36" ;;
             Finished) _color="32" ;;
-            *) _color="37" ;;
+            *) _color="36" ;;
         esac
 
         printf "Eng: %s\n" "$_eng_title"
         printf "Jpn: %s\n" "$_jpn_title"
-        printf "Season: %s\n" "$_season"
         printf "Status: \033[1;%sm%s\033[0m\n" "$_color" "$_status"
-        printf "Total Episodes: %s\n" "$_total_eps"
 
         if [ "$_status" != "Finished" ]; then
             page="$(curl -s "$animeschedule/anime/$_route")"
-
-            _latest_ep=$(printf "%s" "$page" | grep -oE 'leadingAiredEpisode="[0-9]+"' | head -n1 | grep -oE '[0-9]+')
+            _sub_ep=$(printf "%s" "$page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
+            _dub_ep=$(printf "%s" "$page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
             _sub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
             _dub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
 
-            [ "$_status" = "Ongoing" ] && [ -n "$_latest_ep" ] && printf "Current Episode: %s\n" "$_latest_ep"
-            [ -n "$_sub_countdown" ] && printf "Next Sub Release: \033[1;34m%s\033[0m\n" "$_sub_countdown" || printf "Next Sub Release: N/A\n"
-            [ -n "$_dub_countdown" ] && printf "Next Dub Release: \033[1;32m%s\033[0m\n" "$_dub_countdown" || printf "Next Dub Release: N/A\n"
+            [ -n "$_sub_ep" ] && [ -n "$_sub_countdown" ] &&
+                printf "Next Sub Episode: Episode %s in \033[1;%sm%s\033[0m\n" "$_sub_ep" "$_color" "$_sub_countdown" || printf "Next Sub Episode: N/A\n"
+            [ -n "$_dub_ep" ] && [ -n "$_dub_countdown" ] &&
+                printf "Next Dub Episode: Episode %s in \033[1;%sm%s\033[0m\n" "$_dub_ep" "$_color" "$_dub_countdown" || printf "Next Dub Episode: N/A\n"
         fi
         printf "\n"
     done
@@ -300,6 +294,8 @@ play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     [ -z "$video_link" ] && get_video_link
+    # wait for previous player to close for ranges
+    wait
     # shellcheck disable=SC2086
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$video_link" ;;
@@ -312,7 +308,7 @@ play_episode() {
             else
                 $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags
                 mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
+                [ "$exit_after_play" = 1 ] && [ -z "$_range" ] && exit "$mpv_exitcode"
             fi
             ;;
         *iina*)
@@ -336,7 +332,7 @@ play_episode() {
     replay="$video_link"
     unset video_link
     update_history
-    wait
+    [ "$menu_program" != "fzf" ] && wait
 }
 
 play() {
@@ -359,6 +355,7 @@ play() {
             play_episode
         done
     else
+        printf "%s" "$ep_list" | grep -q "^$ep_no$" || die "Invalid episode!"
         play_episode
     fi
     # moves up to stored position and deletes to end
@@ -533,15 +530,14 @@ case "$source" in
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid/no anime selection"
+        [ -z "$result" ] && die "Invalid anime selection"
         anime_title="$(printf "%s" "$result" | cut -f2)"
         anime_id="$(printf "%s" "$result" | cut -f1 | grep -Eo '[0-9]+$')"
         anidb_desc "$(printf "%s" "$result" | cut -f1)" || true
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
-        [ -n "$ep_no" ] && [ "$ep_no" -ne -1 ] 2>/dev/null && printf "%s" "$ep_list" | grep -v -q "^$ep_no$" && die "Invalid episode selection"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-        [ -z "$ep_no" ] && die "Invalid/no Episode selection"
+        [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
 esac
 
@@ -563,14 +559,14 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
-            [ -z "$new_anime" ] && die "Invalid/no anime selection"
+            [ -z "$new_anime" ] && die "Invalid anime selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f1 | grep -Eo '[0-9]+$')"
             anidb_desc "$(printf "%s" "$new_anime" | cut -f1)" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
             ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-            [ -z "$ep_no" ] && die "Invalid/no episode selection"
+            [ -z "$ep_no" ] && die "Invalid episode selection"
             ;;
         change_quality)
             new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f1)"
