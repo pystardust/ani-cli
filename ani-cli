@@ -114,13 +114,15 @@ version_info() {
 update_script() {
     info "[branch:$branch] Checking for Update.."
     update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
+    new_version="$(printf "%s" "$update" | sed -nE 's|^version_number="([^"]+)"$|\1|p')"
+    [ -z "$new_version" ] && die "[branch:$branch] Invalid response."
     printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid response."
     update="$(printf "%s\n" "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
-        info "[branch:$branch] Script is up to date :)"
+        info "[branch:$branch] Script is up to date :) ($version_number)"
     else
         if printf "%s\n" "$update" | patch "$0" -; then
-            info "[branch:$branch] Script has been updated"
+            info "[branch:$branch] Updated: $version_number -> $new_version"
         else
             die "[branch:$branch] Can't update for some reason!"
         fi
@@ -206,6 +208,7 @@ select_quality() {
 get_video_link() {
     links=$(anidb_m3u8 "$ep_no" "$mode")
     [ -z "$links" ] && die "No sources found for $mode!"
+    info "anidb.app links fetched"
     select_quality "$quality"
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
         [ -z "$video_link" ] && die "Episode is released, but no valid sources!"
@@ -299,10 +302,7 @@ play_episode() {
     [ -z "$video_link" ] && get_video_link
     # shellcheck disable=SC2086
     case "$player_function" in
-        debug)
-            printf "All links:\n%s\nSelected link:\n" "$links"
-            printf "%s\n" "$video_link"
-            ;;
+        debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$video_link" ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
@@ -475,7 +475,7 @@ while [ $# -gt 0 ]; do
             branch="${2:-$branch}"
             update_script
             ;;
-        *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
+        *) query="$(printf "%s" "$query $1" | sed 's|^ ||;s| |+|g')" ;;
     esac
     shift
 done
@@ -527,7 +527,7 @@ case "$source" in
         # for checking new releases by specifying anime name
         [ "$source" = "nextep" ] && time_until_next_ep "$query"
 
-        query=$(printf "%s" "$query" | sed "s| |+|g")
+        query=$(printf "%s" "$query" | sed 's| |+|g')
 
         anime_list=$(anidb_search "$query")
         [ -z "$anime_list" ] && die "No results found!"
