@@ -270,7 +270,9 @@ cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
 ```
-note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
+For Downloads on iOS in iSH, omit the usual `-d` flag and instead select the Download option in VLC:
+<img width="1170" height="1177" alt="image" src="https://github.com/user-attachments/assets/da25884b-a53d-4888-bee1-4867a8216ddd" />
+
 </details>
 
 <details><summary><b>Steam Deck</b></summary>
