@@ -286,8 +286,7 @@ Make sure apk is updated using
 ```apk update; apk upgrade```
 then run this:
 ```sh
-apk add grep sed curl fzf git aria2 ncurses patch
-apk add ffmpeg
+apk add grep sed curl fzf git aria2 ncurses patch ffmpeg
 git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
