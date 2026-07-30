@@ -35,7 +35,6 @@
 *(these don't block a merge)*
 
 - [ ] `--skip` ani-skip works
-- [ ] `--skip-title` ani-skip title argument works
 - [ ] `--no-detach` no detach works
 - [ ] `--exit-after-play` auto exit after playing works
 - [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)

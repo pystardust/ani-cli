@@ -88,7 +88,7 @@ help_info() {
       --no-detach
         Don't detach the player (useful for in-terminal playback, mpv only)
       --exit-after-play
-        Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
+        Exit the player, and return the player exit code (useful for non interactive scenarios)
       -N, --nextep-countdown
         Display a countdown to the next episode
       -U, --update
@@ -154,17 +154,15 @@ cleanup() {
 
 # search the query and give results
 anidb_search() {
-    _query="$1"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$search_api" "${_query}")" -A "$agent" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
-    printf '%s' "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g"
+    _page="$(curl -s "$(printf "$search_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
+    printf '%s' "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g" -e 's|&quot;|"|g'
 }
 
 # extract mal_id and seasons metadata
 anidb_desc() {
-    _anime_link="$1"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$desc_api" "${_anime_link}")" -A "$agent" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
+    _page="$(curl -s "$(printf "$desc_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
     mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p')"
     seasons="$(printf "%s" "$_page" | sed -n '/>Seasons</,/>Details</p' | sed -nE 's|.*anime/([^"]+-[0-9]+)"[^>]*title="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g")"
     [ -n "$seasons" ] && seasons_option="\nchange_season"
@@ -172,9 +170,8 @@ anidb_desc() {
 
 # get the episodes list of the selected anime
 anidb_episodes() {
-    _anime_id="$1"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$episodes_api" "${_anime_id}")" -A "$agent")"
+    _page="$(curl -s "$(printf "$episodes_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
     printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
 }
 
@@ -184,12 +181,12 @@ anidb_m3u8() {
     _lang="jpn"
     [ "$2" = "dub" ] && _lang="eng"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent")"
+    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
     _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n1)"
     [ -z "$_embed" ] && exit 1
-    _embed_page="$(curl -s "$_embed" -A "$agent")"
+    _embed_page="$(curl -s "$_embed" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
     _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
-    curl -s -A "$agent" "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
+    curl -s -A "$agent" "${_m3u8_master}" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
 }
 
 # select the quality according to the setting
@@ -210,6 +207,7 @@ get_video_link() {
     [ -z "$links" ] && die "No sources found for $mode!"
     info "anidb.app links fetched"
     select_quality "$quality"
+    # should never trigger but just in case
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
         [ -z "$video_link" ] && die "Episode is released, but no valid sources!"
     else
@@ -242,16 +240,16 @@ time_until_next_ep() {
         printf "Status: \033[1;%sm%s\033[0m\n" "$_color" "$_status"
 
         if [ "$_status" != "Finished" ]; then
-            page="$(curl -s "$animeschedule/anime/$_route")"
-            _sub_ep=$(printf "%s" "$page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
-            _dub_ep=$(printf "%s" "$page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
-            _sub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
-            _dub_countdown=$(printf "%s" "$page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
+            _page="$(curl -s "$animeschedule/anime/$_route")"
+            _sub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
+            _dub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
+            _sub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
+            _dub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
 
             [ -n "$_sub_ep" ] && [ -n "$_sub_countdown" ] &&
-                printf "Next Sub Episode: Episode %s in \033[1;%sm%s\033[0m\n" "$_sub_ep" "$_color" "$_sub_countdown" || printf "Next Sub Episode: N/A\n"
+                printf "Next Sub: Episode %s in \033[1;%sm%s\033[0m\n" "$_sub_ep" "$_color" "$_sub_countdown" || printf "Next Sub: N/A\n"
             [ -n "$_dub_ep" ] && [ -n "$_dub_countdown" ] &&
-                printf "Next Dub Episode: Episode %s in \033[1;%sm%s\033[0m\n" "$_dub_ep" "$_color" "$_dub_countdown" || printf "Next Dub Episode: N/A\n"
+                printf "Next Dub: Episode %s in \033[1;%sm%s\033[0m\n" "$_dub_ep" "$_color" "$_dub_countdown" || printf "Next Dub: N/A\n"
         fi
         printf "\n"
     done
@@ -294,19 +292,19 @@ play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     [ -z "$video_link" ] && get_video_link
-    # wait for previous player to close for ranges
+    # wait for the previous player to close (in range selection)
     wait
     # shellcheck disable=SC2086
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$video_link" ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
-        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
+        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 &
+                nohup $player_function $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                $player_function $skip_flag --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags
+                $player_function $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$_range" ] && exit "$mpv_exitcode"
             fi
@@ -314,20 +312,20 @@ play_episode() {
         *iina*)
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --no-stdin --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 &
+                nohup $player_function $player_extra_flags --no-stdin --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 &
+                nohup $player_function $player_extra_flags --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             fi
             ;;
-        *vlc*) nohup $player_function --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function "$video_link" $player_extra_flags -- --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        *vlc*) nohup $player_function $player_extra_flags --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
-        catt) nohup catt cast "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
+        catt) nohup catt cast $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
         iSH)
             printf "\033]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\033]8;;\a\n" "$video_link"
             sleep 5
             ;;
-        *) nohup $player_function "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
+        *) nohup $player_function $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
     esac
     replay="$video_link"
     unset video_link
@@ -372,7 +370,10 @@ desc_api="${base_api}/anime/%s"
 episodes_api="${base_api}/api/frontend/anime/%s/episodes"
 m3u8_api="${base_api}/api/frontend/episode/%s/languages"
 
-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0"
+ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
+tls13_ciphers='TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256'
+agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
@@ -559,7 +560,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
-            [ -z "$new_anime" ] && die "Invalid anime selection"
+            [ -z "$new_anime" ] && die "Invalid season selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f1 | grep -Eo '[0-9]+$')"
             anidb_desc "$(printf "%s" "$new_anime" | cut -f1)" || true
