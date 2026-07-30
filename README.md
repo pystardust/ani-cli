@@ -284,7 +284,10 @@ Install iSH and VLC from the app store.
 
 Make sure apk is updated using
 ```apk update; apk upgrade```
-then run this:
+
+As of 2026-07-30, this doesn't work, so follow https://github.com/ish-app/ish/issues/2530 to fix it.
+
+Then run this:
 ```sh
 apk add grep sed curl fzf git aria2 ncurses patch ffmpeg
 git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
