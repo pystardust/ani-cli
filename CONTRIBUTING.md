@@ -2,7 +2,8 @@
 
 ## Pull Requests
 
-- Appease the linter
+- Appease the linter (run `shfmt -i 4 -ci -d -w ani-cli`)
+- Appease POSIX (run `shellcheck -s sh -o all -e 2250 ani-cli`)
 - Bump the version
 - Adjust the Readme according to your changes (if applicable)
 - No extra dependencies unless absolutely necessary
