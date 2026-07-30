@@ -37,7 +37,6 @@
 - [ ] `--skip` ani-skip works
 - [ ] `--no-detach` no detach works
 - [ ] `--exit-after-play` auto exit after playing works
-- [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
 
 ### Particular anime
 - [ ] The safe bet: One Piece
