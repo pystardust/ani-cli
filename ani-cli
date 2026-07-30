@@ -329,6 +329,7 @@ ANICLI_KEYGEN_JS
     # instead of letting the encrypted API calls below produce cryptic errors.
     case "$allanime_key" in
         *[!0-9a-fA-F]* | "") die "Could not derive the source-site decryption key. The site may have changed or the JS runtime failed; update ani-cli or try again later." ;;
+        *) ;;
     esac
     [ "${#allanime_key}" -eq 64 ] || die "Derived key has an unexpected length. Update ani-cli or try again later."
     { [ -n "$allanime_epoch" ] && [ -n "$allanime_build_id" ] && [ -n "$allanime_lane" ]; } ||
