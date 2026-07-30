@@ -324,7 +324,7 @@ play_episode() {
         download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
         catt) nohup catt cast "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
         iSH)
-            printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$video_link"
+            printf "\033]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\033]8;;\a\n" "$video_link"
             sleep 5
             ;;
         *) nohup $player_function "$video_link" $player_extra_flags >/dev/null 2>&1 & ;;
