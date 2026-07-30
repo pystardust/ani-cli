@@ -39,7 +39,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-freebsd)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch](#tier-2-support-windows-wsl-ios-steam-deck-freebsd-ubuntu-touch)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies)
@@ -247,14 +247,25 @@ When installing the media player on Windows, make sure that it is on the Windows
 Install iSH and VLC from the app store.
 
 Make sure apk is updated using
-```apk update; apk upgrade```
+```
+cat > /etc/apk/repositories <<'EOF'
+https://dl-cdn.alpinelinux.org/alpine/edge/main
+https://dl-cdn.alpinelinux.org/alpine/edge/community
+https://dl-cdn.alpinelinux.org/alpine/edge/testing
+EOF
 
-As of 2026-07-30, this doesn't work, so follow https://github.com/ish-app/ish/issues/2530 to fix it.
+apk update
+apk add --upgrade apk-tools
+apk upgrade --available
+```
+
+Further details: https://github.com/ish-app/ish/issues/2530
 
 Then run this:
 ```sh
-apk add grep sed curl fzf git ncurses patch ffmpeg
-git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
+apk add grep sed curl-impersonate bash fzf git ncurses patch ffmpeg
+ln -s /usr/bin/curl_safari260_ios /usr/bin/curl
+git clone --depth 1 --branch v5 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
