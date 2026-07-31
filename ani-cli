@@ -156,7 +156,8 @@ cleanup() {
 anidb_search() {
     #shellcheck disable=SC2059
     _page="$(curl -s "$(printf "$search_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
-    printf '%s' "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g" -e 's|&quot;|"|g'
+    printf "%s" "$_page" | grep -qi "Just a moment" && die "Blocked by cloudflare"
+    printf "%s" "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g" -e 's|&quot;|"|g'
 }
 
 # extract mal_id and seasons metadata
