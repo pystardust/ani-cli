@@ -43,10 +43,6 @@ info() {
     printf "\33[2K\r\033[1;34m%s\033[0m\n" "$*"
 }
 
-warn() {
-    printf "\33[2K\r\033[1;33m%s\033[0m\n" "$*" >&2
-}
-
 help_info() {
     printf "
     Usage:
@@ -202,7 +198,7 @@ select_quality() {
         worst) _result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
         *) _result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
-    [ -z "$_result" ] && warn "$1 not found, defaulting to best" && _result=$(printf "%s" "$links" | head -n1)
+    [ -z "$_result" ] && printf "\33[2K\r\033[1;33m%s\033[0m\n" "$1 not found, defaulting to best" >&2 && _result=$(printf "%s" "$links" | head -n1)
 
     video_link=$(printf "%s" "$_result" | cut -d">" -f2)
 }
