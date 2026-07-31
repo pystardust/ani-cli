@@ -403,7 +403,6 @@ case "$(uname -a | cut -d" " -f 1,3-)" in
         cipher_flag="--ciphers $ciphers --tls13-ciphers $tls13_ciphers"
         player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc'
         ;; # mac OS
-    # TODO out of band mpv and vlc
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;                                                                                                       # Android OS (termux)
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;                                                                                                   # Windows OS
     *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;                                                                                                                  # iOS (iSH)
