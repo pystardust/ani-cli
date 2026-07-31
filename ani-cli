@@ -290,7 +290,7 @@ download() {
 
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
-    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$canon_ep_no")"
     [ -z "$video_link" ] && get_video_link
     # wait for the previous player to close (in range selection)
     wait
@@ -348,12 +348,14 @@ play() {
         for i in $_range; do
             tput clear
             ep_no=$i
+            canon_ep_no="$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/=")"
             info "Playing episode $ep_no..."
             [ "$i" = "$_end" ] && unset _range
             play_episode
         done
     else
         printf "%s" "$ep_list" | grep -q "^$ep_no$" || die "Invalid episode!"
+        canon_ep_no="$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/=")"
         play_episode
     fi
     # moves up to stored position and deletes to end
