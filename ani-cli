@@ -10,7 +10,7 @@ menu() {
     case "$menu_program" in
         fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
         rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
-        dmenu) dmenu -p "$1" $3 ;;
+        dmenu) dmenu -l 20 -p "$1" $3 ;;
         *) "$menu_program" $3 "$1" ;;
     esac
 }
