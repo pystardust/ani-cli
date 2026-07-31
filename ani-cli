@@ -171,7 +171,7 @@ anidb_desc() {
 # get the episodes list of the selected anime
 anidb_episodes() {
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$episodes_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
+    _page="$(curl -s "$(printf "$episodes_api" "$1")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers")"
     printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
 }
 
@@ -181,10 +181,10 @@ anidb_m3u8() {
     _lang="jpn"
     [ "$2" = "dub" ] && _lang="eng"
     #shellcheck disable=SC2059
-    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
+    _page="$(curl -s "$(printf "$m3u8_api" "${_ep_id}")" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers")"
     _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n1)"
     [ -z "$_embed" ] && exit 1
-    _embed_page="$(curl -s "$_embed" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" )"
+    _embed_page="$(curl -s "$_embed" -A "$agent" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers")"
     _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
     curl -s -A "$agent" "${_m3u8_master}" --ciphers "$ciphers" --tls13-ciphers "$tls13_ciphers" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
 }
