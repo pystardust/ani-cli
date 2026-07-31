@@ -21,9 +21,9 @@ nth() {
     [ -z "$_stdin" ] && exit 1
     _line_count="$(printf "%s\n" "$_stdin" | wc -l | tr -d "[:space:]")"
     [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f2,3 && return 0
-    prompt="$1"
+    _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
-    _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
+    _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
     _line_start=$(printf "%s" "$_line" | head -n1)
     _line_end=$(printf "%s" "$_line" | tail -n1)
     [ -n "$_line" ] || exit 1
