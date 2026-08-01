@@ -52,11 +52,18 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 ## Fixing errors
 
 If you encounter `Blocked by cloudflare. Try installing curl-impersonate` then install `curl-impersonate` from your respective package manager.
-If it is not available, then download from their [github](https://github.com/lwthiker/curl-impersonate) by running the following commands.
+If it is not available, then download from their [github](https://github.com/lexiforest/curl-impersonate) by running the following commands.
 
+For Linux
 ```sh
-curl -LO "https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz"
-sudo tar xf curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz -C /usr/local/bin
+curl -LO "https://github.com/lexiforest/curl-impersonate/releases/download/v2.0.0/curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz"
+sudo tar xf curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz -C /usr/local/bin
+```
+
+For Windows
+```sh
+curl -LO "https://github.com/lexiforest/curl-impersonate/releases/download/v2.0.0/curl-impersonate-v2.0.0.x86_64-win32.tar.gz"
+tar xf curl-impersonate-v2.0.0.x86_64-win32.tar.gz -C ~/scoop/shims
 ```
 
 For any other breaking issue, then make sure you are on **latest version** by typing `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
