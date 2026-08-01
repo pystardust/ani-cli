@@ -120,7 +120,7 @@ update_script() {
         if printf "%s\n" "$update" | patch "$0" -; then
             info "[branch:$branch] Updated: $version_number -> $new_version"
         else
-            die "[branch:$branch] Can't update for some reason!"
+            die "[branch:$branch] Failed to update. Read the above line!"
         fi
     fi
     exit 0
@@ -150,14 +150,17 @@ cleanup() {
 
 #shellcheck disable=SC2086
 anidb_curl() {
-    curl -sL -A "$agent" --max-time 10 $cipher_flag "$@"
+    $curl_exe -sL -A "$agent" --max-time 10 $cipher_flag "$@"
 }
 
 # search the query and give results. format is (id \t name)
 anidb_search() {
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$search_api" "$1")" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
-    printf "%s" "$_page" | grep -qi "Just a moment" && die "Blocked by cloudflare"
+    if printf "%s" "$_page" | grep -qi "Just a moment"; then
+        [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
+        die "Blocked by cloudflare."
+    fi
     printf "%s" "$_page" | sed -nE 's|.*anime/([a-z0-9-]+-[0-9]+)".*alt="([^"]+)".*|\1\t\2|p' | sed -e "s|&#039;|'|g" -e 's|&quot;|"|g'
 }
 
@@ -205,7 +208,7 @@ select_quality() {
 
 # gets embed url, collects direct links and selects one with desired quality into $episode
 get_video_link() {
-    links=$(anidb_m3u8 "$ep_no" "$mode")
+    links=$(anidb_m3u8 "$ep_no" "$mode" | sort -g -r -s)
     [ -z "$links" ] && die "No sources found for $mode!"
     info "anidb.app links fetched"
     select_quality "$quality"
@@ -391,15 +394,20 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 
+curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl") || die "Program curl not found"
+
 case "$(uname -a | cut -d" " -f 1,3-)" in
     *Darwin*)
         cipher_flag="--ciphers $ciphers --tls13-ciphers $tls13_ciphers"
         player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc'
-        ;;
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;
-    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;;
+        ;;                                                            # mac OS
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
+    *ish*)
+        player_function="${ANI_CLI_PLAYER:-iSH}"
+        curl_exe=curl
+        ;;                                                                                                                                                              # iOS (iSH)
+    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
 player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
@@ -484,6 +492,7 @@ while [ $# -gt 0 ]; do
         --skip) skip_intro=1 ;;
         -N | --nextep-countdown) source=nextep ;;
         -U | --update)
+            dep_ch "patch"
             branch="${2:-$branch}"
             update_script
             ;;
@@ -496,7 +505,7 @@ done
 [ "$menu_program" = "rofi" ] && menu_multi_flag="-multi-select"
 
 info "Checking dependencies..."
-dep_ch "curl"
+dep_ch "$curl_exe"
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
