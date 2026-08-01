@@ -23,7 +23,7 @@ nth() {
     [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f 2,3 && return 0
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
-    _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
+    _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
     _line_start=$(printf "%s" "$_line" | head -n 1)
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
@@ -134,8 +134,8 @@ dep_ch() {
 # checks for deps in order and returns the first available. format is "prog_a,prog_b,prog_c"
 dep_ch_failover() {
     [ -z "$1" ] && return 1
-    prog=$(printf "%s" "$1" | cut -d"," -f 1)
-    rest=$(printf "%s" "$1" | cut -s -d"," -f 2-)
+    prog=$(printf "%s" "$1" | cut -d "," -f 1)
+    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
     command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
     [ -e "$prog" ] && printf "%s" "$prog" && return 0
     dep_ch_failover "$rest"
@@ -203,7 +203,7 @@ select_quality() {
     esac
     [ -z "$_result" ] && printf "\33[2K\r\033[1;33m%s\033[0m\n" "$1 not found, defaulting to best" >&2 && _result=$(printf "%s" "$links" | head -n 1)
 
-    video_link=$(printf "%s" "$_result" | cut -d">" -f 2)
+    video_link=$(printf "%s" "$_result" | cut -d ">" -f 2)
 }
 
 # gets embed url, collects direct links and selects one with desired quality into $episode
@@ -396,7 +396,7 @@ quality="${ANI_CLI_QUALITY:-best}"
 
 curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_ff117,curl") || die "Program curl not found"
 
-case "$(uname -a | cut -d" " -f 1,3-)" in
+case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*)
         cipher_flag="--ciphers $ciphers --tls13-ciphers $tls13_ciphers"
         player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc'
@@ -434,7 +434,7 @@ branch="${ANI_CLI_BRANCH:-master}"
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
-            case "$(uname -a | cut -d" " -f 1,3-)" in
+            case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
                 MINGW* | *WSL2*) player_function="vlc.exe" ;;
                 *ish*) player_function="iSH" ;;
@@ -594,7 +594,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
             [ -z "$ep_no" ] && die "Invalid episode selection"
             ;;
         change_quality)
-            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f 1)"
+            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d ">" -f 1)"
             [ -z "$new_quality" ] && die "No quality selected"
             select_quality "$new_quality"
             ;;
