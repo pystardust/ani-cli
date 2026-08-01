@@ -109,7 +109,7 @@ version_info() {
 
 update_script() {
     info "[branch:$branch] Checking for Update.."
-    update="$(curl --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
+    update="$($curl_exe --fail-with-body -sL -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/$branch/ani-cli")" || die "[branch:$branch] Connection error: $update"
     new_version="$(printf "%s" "$update" | sed -nE 's|^version_number="([^"]+)"$|\1|p')"
     [ -z "$new_version" ] && die "[branch:$branch] Invalid response."
     printf "%s" "$update" | grep -q "^version_number" || die "[branch:$branch] Invalid response."
@@ -224,7 +224,7 @@ get_video_link() {
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
     _query="$(printf "%s" "$*" | tr ' ' '+')"
-    curl -s -G "$animeschedule/api/v3/anime" --data "q=${_query}" | sed 's|},{"id"|\n|g' | while read -r _entry; do
+    $curl_exe -s -G "$animeschedule/api/v3/anime" --data "q=${_query}" | sed 's|},{"id"|\n|g' | while read -r _entry; do
         _route=$(printf "%s" "$_entry" | sed -nE 's|.*"route":"([^"]*)",.*|\1|p')
         _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*"english":"([^"]*)".*|\1|p')
         [ -z "$_eng_title" ] && _eng_title=$(printf '%s' "$_entry" | sed -nE 's|.*,"title":"([^"]*)".*|\1|p')
@@ -245,7 +245,7 @@ time_until_next_ep() {
         printf "Status: \033[1;%sm%s\033[0m\n" "$_color" "$_status"
 
         if [ "$_status" != "Finished" ]; then
-            _page="$(curl -s "$animeschedule/anime/$_route")"
+            _page="$($curl_exe -s "$animeschedule/anime/$_route")"
             _sub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
             _dub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
             _sub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
@@ -405,7 +405,7 @@ case "$(uname -a | cut -d" " -f 1,3-)" in
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*)
         player_function="${ANI_CLI_PLAYER:-iSH}"
-        curl_exe=curl
+        curl_exe=$(dep_ch_failover "curl_safari260_ios,curl")
         ;;                                                                                                                                                              # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
