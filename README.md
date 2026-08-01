@@ -265,7 +265,7 @@ Then run this:
 ```sh
 apk add grep sed curl-impersonate bash fzf git ncurses patch ffmpeg
 ln -s /usr/bin/curl_safari260_ios /usr/bin/curl
-git clone --depth 1 --branch v5 https://github.com/pystardust/ani-cli ~/.ani-cli
+git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
