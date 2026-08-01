@@ -18,7 +18,7 @@ menu() {
 # provide menu. input format is either (ep_list) or (number \t anime_id \t anime_name)
 nth() {
     _stdin=$(cat -)
-    [ -z "$_stdin" ] && exit 1
+    [ -z "$_stdin" ] && return 1
     _line_count="$(printf "%s\n" "$_stdin" | wc -l | tr -d "[:space:]")"
     [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f2,3 && return 0
     _prompt="$1"
@@ -26,11 +26,11 @@ nth() {
     _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
     _line_start=$(printf "%s" "$_line" | head -n1)
     _line_end=$(printf "%s" "$_line" | tail -n1)
-    [ -n "$_line" ] || exit 1
+    [ -n "$_line" ] || return 1
     if [ "$_line_start" = "$_line_end" ]; then
-        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f2,3 || return 1
     else
-        printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || exit 1
+        printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || return 1
     fi
 }
 
