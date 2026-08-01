@@ -405,7 +405,7 @@ case "$(uname -a | cut -d" " -f 1,3-)" in
     *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;; # Windows OS
     *ish*)
         player_function="${ANI_CLI_PLAYER:-iSH}"
-        curl_exe=$(dep_ch_failover "curl_safari260_ios,curl")
+        curl_exe=$(dep_ch_failover "curl_safari260_ios,$curl_exe")
         ;;                                                                                                                                                              # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
