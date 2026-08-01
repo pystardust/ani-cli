@@ -6,8 +6,6 @@ class AniCli < Formula
   license "GPL-3.0"
   head "https://github.com/pystardust/ani-cli.git", branch: "master"
 
-  depends_on "aria2"
-  depends_on "botan"
   depends_on "ffmpeg"
   depends_on "fzf"
   depends_on "grep"

@@ -35,14 +35,5 @@
 *(these don't block a merge)*
 
 - [ ] `--skip` ani-skip works
-- [ ] `--skip-title` ani-skip title argument works
 - [ ] `--no-detach` no detach works
 - [ ] `--exit-after-play` auto exit after playing works
-- [ ] all providers return links (not necessarily on a single anime, use debug mode to confirm)
-
-### Particular anime
-- [ ] The safe bet: One Piece
-- [ ] Episode 0: Saenai Heroine no Sodatekata ♭
-- [ ] Unicode: Saenai Heroine no Sodatekata ♭
-- [ ] Non-whole episodes: Tensei shitara slime datta ken (ep. 24.5, ep. 24.9)
-- [ ] The examples of the help text

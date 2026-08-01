@@ -1,4 +1,4 @@
-.TH "ANI-CLI" "1" "January 2023" "ani-cli" "User Commands"
+.TH "ANI-CLI" "1" "August 2026" "ani-cli" "User Commands"
 .SH NAME
 ani-cli \- watch anime from the commandline
 .SH SYNOPSIS
@@ -9,7 +9,7 @@ A shell script to browse and search anime from the command-line.
 .PD 0
 .P
 .PD
-This tool scrapes the site allanime.
+This tool scrapes the site anidb.
 .PD 0
 .P
 .PD
@@ -40,7 +40,7 @@ Set the video quality. Default quality is best.
 \fB\-s | --syncplay\fR
 Watch anime together with friends, using Syncplay (works with mpv only).
 .TP
-\fB\-U | --update\fR
+\fB\-U | --update\fR \fI\,<branch>\/\fR
 Fetch update from github.
 .TP
 \fB\-v | --vlc\fR
@@ -58,6 +58,9 @@ Play the dubbed version. Without this flag, it'll always play the subbed version
 \fB\--rofi\fR
 Use rofi instead of fzf for the interactive menu
 .TP
+\fB\--dmenu\fR
+Use dmenu instead of fzf for the interactive menu
+.TP
 \fB\--skip\fR
 Use ani-skip to skip the intro of the episode (mpv only)
 .TP
@@ -66,14 +69,14 @@ Don't detach the player (useful for in-terminal playback, mpv only)
 .TP
 \fB\--exit-after-play\fR
 Exit the player, and return the player exit code (useful for non interactive scenarios, mpv only)
-.TP
-\fB\--skip-title\fR \fI\,<title>\/\fR
-Specify the title to use for ani-skip
 .PP
 .SH
 ENVIRONMENT VARIABLES
 .PP
-ani-cli v4 uses environment variables to control unstable/untested and niche features in addition to everything that has an option. Command-line options take precedence over env vars. Note that these are all subject to change.
+ani-cli v5 uses environment variables to control unstable/untested and niche features in addition to everything that has an option. Command-line options take precedence over env vars. Note that these are all subject to change.
+.TP
+\fBANI_CLI_BRANCH\fR
+Controls the Branch upgdated to with the -U option. Default is master.
 .TP
 \fBANI_CLI_MODE\fR
 Controls the scraped media's mode, valid options are sub or dub. Default is sub.
@@ -82,22 +85,22 @@ Controls the scraped media's mode, valid options are sub or dub. Default is sub.
 Controls the directory where files are downloaded. Default is the current dir.
 .TP
 \fBANI_CLI_QUALITY\fR
-Controls the scraped media's quality, check allanime for valid options or set to worst/best. Default is best.
+Controls the scraped media's quality, check anidb for valid options or set to worst/best. Default is best.
 .TP
 \fBANI_CLI_PLAYER\fR
-Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), flatpak_mpv (for flatpak), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
+Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
 .TP
-\fBANI_CLI_EXTERNAL_MENU\fR
-Controls the frontend of ani-cli. Can be 0 (uses fzf) or 1 (uses rofi dmenu). Default is 0.
+\fBANI_CLI_PLAYER_FLAGS\fR
+Sets the flags for the player ani-cli uses. Can be anything that the player supports. Default is none
 .TP
-\fBANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW\fR
-Controls the way rofi displays the window. Can be 0 (no additional arguments passed to rofi) or 1 (the menu is displayed as a normal window, -normal-window argument is passed to rofi). Default is 0.
+\fBANI_CLI_MENU\fR
+Controls the frontend of ani-cli. Can be fzf, rofi, dmenu or any other program. Default is fzf.
 .TP
-\fBANI_CLI_LOG_EPISODE\fR
+\fBANI_CLI_MENU_FLAGS\fR
+Controls the flags for the frontend. Last flag must take prompt as argument. Default is none
+.TP
+\fBANI_CLI_LOG\fR
 Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Default is 1.
-.TP
-\fBANI_CLI_MULTI_SELECTION\fR
-Controls the multi flag for the chosen frontend. Default is -m for fzf and --multi-select for rofi dmenu.
 .TP
 \fBANI_CLI_HIST_DIR\fR
 Controls the directory ani-cli uses for storing history. A /ani-cli subfolder is created there for the histfile if doesn't exists. Default is $XDG_STATE_HOME if set, $HOME/.local/state if not.
@@ -109,10 +112,10 @@ Controls the default source. Valid is history (equivalent to -c), everything els
 Controls if ani-skip is used to skip intros (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
 \fBANI_CLI_NO_DETACH\fR
-Controls if mpv is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
+Controls if the player is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
-\fBANI_CLI_SKIP_TITLE\fR
-Overrides the anime title to query for skip times. Can be any string value. Default is empty, resolving to the anime title as given by ani-cli.
+\fBANI_CLI_EXIT_AFTER_PLAY\fR
+Controls if the menu comes up after the player is spawned, potentially useful in non-interactive scenarios or with ANI_CLI_NO_DETACH. Can be 0 (disabled) or 1 (enabled). Default is 0.
 .PP
 .SH EPISODE SELECTION
 .PP

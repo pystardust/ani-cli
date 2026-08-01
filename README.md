@@ -25,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://allmanga.to/">allmanga.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://anidb.app/">anidb.</a>
 </h3>
 
 <h1 align="center">
@@ -39,7 +39,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 - [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
-  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD](#tier-2-support-windows-wsl-ios-steam-deck-freebsd)
+  - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch](#tier-2-support-windows-wsl-ios-steam-deck-freebsd-ubuntu-touch)
   - [From Source](#installing-from-source)
 - [Uninstall](#uninstall)
 - [Dependencies](#dependencies)
@@ -153,18 +153,6 @@ pkg install termux-am
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
-**Important Note:** To get all providers working with android MPV, Please follow below steps:
-- Run this command and allow storage permissions:
-```sh
-termux-setup-storage
-```
-- Go to MPV > Settings > Advanced > mpv.conf
-- add this line:
-```txt
-include="/storage/emulated/0/mpv/mpv.config.mp4"
-```
-- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux. These permissions are asked by mpv if you click on the "file picker (legacy)" option.
-
 </details>
 
 ### Tier 2 Support: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch
@@ -228,31 +216,7 @@ scoop bucket add extras
 scoop install fzf ffmpeg mpv
 ```
 
-Botan is required to decrypt video sources. Download [`botan-cli.exe`](https://github.com/pystardust/ani-cli/releases/download/v4.15/botan-cli.exe) and its [`SHA-256 checksum`](https://github.com/pystardust/ani-cli/releases/download/v4.15/botan-cli.exe.sha256) from the [v4.15 release](https://github.com/pystardust/ani-cli/releases/tag/v4.15). From the download directory, verify the executable in Git Bash:
-
-```sh
-cd ~/Downloads
-sha256sum -c botan-cli.exe.sha256
-```
-
-Move botan-cli.exe into a directory that is already in your PATH (e.g., Scoop's shims folder, or Git's bin directory):
-
-```sh
-# If using Scoop:
-mv botan-cli.exe "$HOME/scoop/shims/"
-
-# If using Git for Windows:
-mv botan-cli.exe "C:/Program Files/Git/bin/"
-```
-
-Restart Windows Terminal, then verify the installation from the Git Bash profile:
-
-```sh
-which botan-cli
-botan-cli --version
-```
-
-Consider also installing `yt-dlp` and `aria2` for downloading to work.
+Consider also installing `yt-dlp` for downloading to work.
 
 Restart Windows Terminal. Go to the Git Bash profile and update `ani-cli` with `ani-cli -U`. You will use this keep ani-cli up-to-date.
 
@@ -283,17 +247,31 @@ When installing the media player on Windows, make sure that it is on the Windows
 Install iSH and VLC from the app store.
 
 Make sure apk is updated using
-```apk update; apk upgrade```
-then run this:
+```
+cat > /etc/apk/repositories <<'EOF'
+https://dl-cdn.alpinelinux.org/alpine/edge/main
+https://dl-cdn.alpinelinux.org/alpine/edge/community
+https://dl-cdn.alpinelinux.org/alpine/edge/testing
+EOF
+
+apk update
+apk add --upgrade apk-tools
+apk upgrade --available
+```
+
+Further details: https://github.com/ish-app/ish/issues/2530
+
+Then run this:
 ```sh
-apk add grep sed curl fzf git aria2 ncurses patch
-apk add ffmpeg
+apk add grep sed curl-impersonate bash fzf git ncurses patch ffmpeg
 git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
 ```
-note that downloading is going to be very slow. This is an iSH issue, not an ani-cli issue.
+For Downloads on iOS in iSH, omit the usual `-d` flag and instead select the Download option in VLC:
+<img width="1170" height="1177" alt="image" src="https://github.com/user-attachments/assets/da25884b-a53d-4888-bee1-4867a8216ddd" />
+
 </details>
 
 <details><summary><b>Steam Deck</b></summary>
@@ -309,12 +287,6 @@ note that downloading is going to be very slow. This is an iSH issue, not an ani
 
 git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 ~/.fzf/install
-
-mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
-chmod +x ~/.local/bin/aria2c
 
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o ~/.local/bin/yt-dlp
 chmod +x ~/.local/bin/yt-dlp
@@ -352,16 +324,6 @@ press enter("A" button on Steam Deck) on questions
 
 ```sh
 [ ! -d ~/.local/bin ] && mkdir ~/.local/bin && echo "export PATH=$HOME/.local/bin:\$PATH" >> ".$(echo $SHELL | sed -nE "s|.*/(.*)\$|\1|p")rc"
-```
-
-##### Install [aria2](https://github.com/aria2/aria2) (needed for download feature only):
-
-```sh
-mkdir ~/.aria2c
-curl -o ~/.aria2c/aria2-1.37.0.tar.bz2 https://github.com/dmesg00/aria2-static-builds/releases/download/v1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2
-tar xvf ~/.aria2c/aria2-1.37.0.tar.bz2 -C ~/.aria2c/
-cp ~/.aria2c/aria2-1.37.0-linux-gnu-64bit-build1/aria2c ~/.local/bin/
-chmod +x ~/.local/bin/aria2c
 ```
 
 ##### Install [yt-dlp](https://github.com/yt-dlp/yt-dlp) (needed for download feature only):
@@ -406,7 +368,7 @@ In Steam Desktop app:
 #### Copypaste script:
 
 ```sh
-sudo pkg install mpv fzf aria2 yt-dlp patch git
+sudo pkg install mpv fzf yt-dlp patch git
 git clone "https://github.com/pystardust/ani-cli.git"
 sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
@@ -417,7 +379,7 @@ rm -rf ani-cli
 ##### Install dependencies:
 
 ```sh
-sudo pkg install mpv fzf aria2 yt-dlp patch
+sudo pkg install mpv fzf yt-dlp patch
 ```
 
 ##### Install ani-cli:
@@ -524,9 +486,7 @@ rm -rf ~/.ani-cli
 ```
 optionally: remove dependencies:
 ```sh
-rm ~/.local/bin/aria2c
 rm ~/.local/bin/yt-dlp
-rm -rf "~/.aria2"
 rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 ```
@@ -536,7 +496,7 @@ rm -rf /usr/local/bin/ani-cli
 ```
 To uninstall other dependencies:
 ```
-apk del grep sed curl fzf git aria2 ffmpeg ncurses
+apk del grep sed curl fzf git ffmpeg ncurses
 ```
 
 </details>
@@ -548,11 +508,9 @@ apk del grep sed curl fzf git aria2 ffmpeg ncurses
 - curl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
-- aria2c - Download manager
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
-- botan (for decrypting encrypted video sources)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 
@@ -565,8 +523,6 @@ For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip
 Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
 
 **Warning:** For now, ani-skip does **not** seem to work under Windows.
-
-**Note:** It may be, that ani-skip won't know the anime you're trying to watch. Try using the `--skip-title <title>` command line argument. (It uses the [aniskip API](https://github.com/lexesjan/typescript-aniskip-extension/tree/main/src/api/aniskip-http-client) and you can contribute missing anime or ask for including it in the database on their [discord server](https://discord.com/invite/UqT55CbrbE)).
 
 ## FAQ
 <details>
