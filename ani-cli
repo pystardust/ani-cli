@@ -28,7 +28,7 @@ nth() {
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
     if [ "$_line_start" = "$_line_end" ]; then
-        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[:space:])' | cut -f 2,3 || return 1
+        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f 2,3 || return 1
     else
         printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || return 1
     fi
@@ -528,7 +528,7 @@ case "$source" in
         anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
-        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[:space:]//' | nth "Select anime: " | cut -f 1)
+        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
         [ -z "$anime_id" ] && exit 1
         anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
@@ -554,7 +554,7 @@ case "$source" in
         anime_list=$(anidb_search "$query")
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[:space:]//' | nth "Select anime: ")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && die "Invalid anime selection"
         anime_title="$(printf "%s" "$result" | cut -f 2)"
         anime_id="$(printf "%s" "$result" | cut -f 1)"
@@ -583,7 +583,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_season)
-            new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[:space:]//' | nth "Select season: ")"
+            new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
             [ -z "$new_anime" ] && die "Invalid season selection"
             anime_title="$(printf "%s" "$new_anime" | cut -f 2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f 1)"
