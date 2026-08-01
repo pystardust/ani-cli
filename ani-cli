@@ -24,8 +24,8 @@ nth() {
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
     _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
-    _line_start=$(printf "%s" "$_line" | head -n1)
-    _line_end=$(printf "%s" "$_line" | tail -n1)
+    _line_start=$(printf "%s" "$_line" | head -n 1)
+    _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
     if [ "$_line_start" = "$_line_end" ]; then
         printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f2,3 || return 1
@@ -187,21 +187,21 @@ anidb_m3u8() {
     [ "$2" = "dub" ] && _lang="eng"
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$m3u8_api" "${_ep_id}")")"
-    _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n1)"
+    _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n 1)"
     [ -z "$_embed" ] && exit 1
     _embed_page="$(anidb_curl "$_embed")"
-    _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n1)"
+    _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n 1)"
     anidb_curl "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
 }
 
 # select the quality according to the setting
 select_quality() {
     case "$1" in
-        best) _result=$(printf "%s" "$links" | head -n1) ;;
-        worst) _result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
+        best) _result=$(printf "%s" "$links" | head -n 1) ;;
+        worst) _result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n 1) ;;
         *) _result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
     esac
-    [ -z "$_result" ] && printf "\33[2K\r\033[1;33m%s\033[0m\n" "$1 not found, defaulting to best" >&2 && _result=$(printf "%s" "$links" | head -n1)
+    [ -z "$_result" ] && printf "\33[2K\r\033[1;33m%s\033[0m\n" "$1 not found, defaulting to best" >&2 && _result=$(printf "%s" "$links" | head -n 1)
 
     video_link=$(printf "%s" "$_result" | cut -d">" -f2)
 }
@@ -246,10 +246,10 @@ time_until_next_ep() {
 
         if [ "$_status" != "Finished" ]; then
             _page="$($curl_exe -s "$animeschedule/anime/$_route")"
-            _sub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
-            _dub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n1)
-            _sub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n1)
-            _dub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n1)
+            _sub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-subs"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n 1)
+            _dub_ep=$(printf "%s" "$_page" | sed -nE 's|.*release-time-type-dub"[^>]*><span class="release-time-episode-number">Episode ([0-9]+)</span>.*|\1|p' | head -n 1)
+            _sub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time" datetime="([^"]*)".*|\1|p' | head -n 1)
+            _dub_countdown=$(printf "%s" "$_page" | sed -nE 's|.*class="countdown-time countdown-time-dub" datetime="([^"]*)".*|\1|p' | head -n 1)
 
             [ -n "$_sub_ep" ] && [ -n "$_sub_countdown" ] &&
                 printf "Next Sub: Episode %s in \033[1;%sm%s\033[0m\n" "$_sub_ep" "$_color" "$_sub_countdown" || printf "Next Sub: N/A\n"
@@ -349,13 +349,13 @@ play_episode() {
 play() {
     _start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
     _end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-    [ "$_start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset _start
+    [ "$_start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n 1) && unset _start
     [ -z "$_end" ] || [ "$_end" = "$_start" ] && unset _start _end
-    [ "$_end" = "-1" ] && _end=$(printf "%s" "$ep_list" | tail -n1)
+    [ "$_end" = "-1" ] && _end=$(printf "%s" "$ep_list" | tail -n 1)
     _line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
     if [ "$_line_count" != 1 ] || [ -n "$_start" ]; then
-        [ -z "$_start" ] && _start=$(printf "%s\n" "$ep_no" | head -n1)
-        [ -z "$_end" ] && _end=$(printf "%s\n" "$ep_no" | tail -n1)
+        [ -z "$_start" ] && _start=$(printf "%s\n" "$ep_no" | head -n 1)
+        [ -z "$_end" ] && _end=$(printf "%s\n" "$ep_no" | tail -n 1)
         _range=$(printf "%s\n" "$ep_list" | sed -nE "/^${_start}\$/,/^${_end}\$/p")
         [ -z "$_range" ] && die "Invalid range!"
         for i in $_range; do
