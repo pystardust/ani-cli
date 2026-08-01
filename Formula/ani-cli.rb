@@ -1,8 +1,8 @@
 class AniCli < Formula
   desc "Cli tool to browse and play anime"
   homepage "https://github.com/pystardust/ani-cli"
-  url "https://github.com/pystardust/ani-cli/archive/refs/tags/v4.15.tar.gz"
-  sha256 "7ede3794978dc2eec87475e0ea96449a604a2589e940c1eab6bfbddb8529f973"
+  url "https://github.com/pystardust/ani-cli/archive/refs/tags/v5.0.tar.gz"
+  sha256 "e4703d2f563eee27ea16d92f8e77e3f8a1f07ba8b2433598c3a1ce642841c35c"
   license "GPL-3.0"
   head "https://github.com/pystardust/ani-cli.git", branch: "master"
 
