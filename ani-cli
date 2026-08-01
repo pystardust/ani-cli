@@ -505,7 +505,6 @@ done
 [ "$menu_program" = "rofi" ] && menu_multi_flag="-multi-select"
 
 info "Checking dependencies..."
-dep_ch "$curl_exe"
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
