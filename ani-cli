@@ -188,7 +188,7 @@ anidb_m3u8() {
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$m3u8_api" "${_ep_id}")")"
     _embed="$(printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*'"${_lang}"'.*embed_url":"([^"]+)".*|\1|p' | sed 's|\\/|/|g' | head -n 1)"
-    [ -z "$_embed" ] && exit 1
+    [ -z "$_embed" ] && return 1
     _embed_page="$(anidb_curl "$_embed")"
     _m3u8_master="$(printf "%s" "$_embed_page" | sed -nE "s|.*file: '([^']*)'.*|\1|p" | head -n 1)"
     anidb_curl "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
