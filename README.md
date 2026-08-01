@@ -51,8 +51,15 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Fixing errors
 
-If you encounter `No results found` (and are sure the prompt was correct) or any breaking issue, then make sure you are on **latest version** by typing
-`sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
+If you encounter `Blocked by cloudflare. Try installing curl-impersonate` then install `curl-impersonate` from your respective package manager.
+If it is not available, then download from their [github](https://github.com/lwthiker/curl-impersonate) by running the following commands.
+
+```sh
+curl -LO "https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz"
+sudo tar xf curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz -C /usr/local/bin
+```
+
+For any other breaking issue, then make sure you are on **latest version** by typing `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
 If after this the issue persists then open an issue.
 
 ## Install
