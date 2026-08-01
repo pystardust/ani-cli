@@ -20,15 +20,15 @@ nth() {
     _stdin=$(cat -)
     [ -z "$_stdin" ] && return 1
     _line_count="$(printf "%s\n" "$_stdin" | wc -l | tr -d "[:space:]")"
-    [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f2,3 && return 0
+    [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f 2,3 && return 0
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
-    _line=$(printf "%s" "$_stdin" | cut -f1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
+    _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d" " -f 1)
     _line_start=$(printf "%s" "$_line" | head -n 1)
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
     if [ "$_line_start" = "$_line_end" ]; then
-        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f2,3 || return 1
+        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f 2,3 || return 1
     else
         printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || return 1
     fi
@@ -203,7 +203,7 @@ select_quality() {
     esac
     [ -z "$_result" ] && printf "\33[2K\r\033[1;33m%s\033[0m\n" "$1 not found, defaulting to best" >&2 && _result=$(printf "%s" "$links" | head -n 1)
 
-    video_link=$(printf "%s" "$_result" | cut -d">" -f2)
+    video_link=$(printf "%s" "$_result" | cut -d">" -f 2)
 }
 
 # gets embed url, collects direct links and selects one with desired quality into $episode
@@ -275,7 +275,7 @@ backup_old_hist() {
 }
 
 process_hist_entry() {
-    ep_list=$(anidb_episodes "$anime_id" | cut -f2)
+    ep_list=$(anidb_episodes "$anime_id" | cut -f 2)
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$anime_id" "$anime_title" "$ep_no"
 }
@@ -528,13 +528,13 @@ case "$source" in
         anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
-        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
-        [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
+        [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
         [ -z "$anime_id" ] && exit 1
-        anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f2 | sed 's| - episode.*||')
+        anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
         anidb_desc "$anime_id" || true
         episode_maps="$(anidb_episodes "$anime_id")"
-        ep_list="$(printf "%s" "$episode_maps" | cut -f2)"
+        ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
         ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
     *)
@@ -556,11 +556,11 @@ case "$source" in
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && die "Invalid anime selection"
-        anime_title="$(printf "%s" "$result" | cut -f2)"
-        anime_id="$(printf "%s" "$result" | cut -f1)"
+        anime_title="$(printf "%s" "$result" | cut -f 2)"
+        anime_id="$(printf "%s" "$result" | cut -f 1)"
         anidb_desc "$anime_id" || true
         episode_maps="$(anidb_episodes "$anime_id")"
-        ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
+        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
         [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
@@ -585,16 +585,16 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
             [ -z "$new_anime" ] && die "Invalid season selection"
-            anime_title="$(printf "%s" "$new_anime" | cut -f2)"
-            anime_id="$(printf "%s" "$new_anime" | cut -f1)"
+            anime_title="$(printf "%s" "$new_anime" | cut -f 2)"
+            anime_id="$(printf "%s" "$new_anime" | cut -f 1)"
             anidb_desc "$anime_id" || true
             episode_maps="$(anidb_episodes "$anime_id")"
-            ep_list="$(printf '%s' "$episode_maps" | cut -f2)"
+            ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
             ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
             [ -z "$ep_no" ] && die "Invalid episode selection"
             ;;
         change_quality)
-            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f1)"
+            new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d">" -f 1)"
             [ -z "$new_quality" ] && die "No quality selected"
             select_quality "$new_quality"
             ;;
