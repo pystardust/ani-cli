@@ -1,4 +1,4 @@
-.TH "ANI-CLI" "1" "July 2026" "ani-cli" "User Commands"
+.TH "ANI-CLI" "1" "August 2026" "ani-cli" "User Commands"
 .SH NAME
 ani-cli \- watch anime from the commandline
 .SH SYNOPSIS
@@ -75,6 +75,9 @@ ENVIRONMENT VARIABLES
 .PP
 ani-cli v5 uses environment variables to control unstable/untested and niche features in addition to everything that has an option. Command-line options take precedence over env vars. Note that these are all subject to change.
 .TP
+\fBANI_CLI_BRANCH\fR
+Controls the Branch upgdated to with the -U option. Default is master.
+.TP
 \fBANI_CLI_MODE\fR
 Controls the scraped media's mode, valid options are sub or dub. Default is sub.
 .TP
@@ -85,7 +88,7 @@ Controls the directory where files are downloaded. Default is the current dir.
 Controls the scraped media's quality, check anidb for valid options or set to worst/best. Default is best.
 .TP
 \fBANI_CLI_PLAYER\fR
-Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), flatpak_mpv (for flatpak), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
+Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
 .TP
 \fBANI_CLI_PLAYER_FLAGS\fR
 Sets the flags for the player ani-cli uses. Can be anything that the player supports. Default is none
@@ -109,7 +112,10 @@ Controls the default source. Valid is history (equivalent to -c), everything els
 Controls if ani-skip is used to skip intros (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
 \fBANI_CLI_NO_DETACH\fR
-Controls if mpv is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. (works with mpv only). Can be 0 (disabled) or 1 (enabled). Default is 0.
+Controls if the player is detached from the main process for playback, which can be useful for use with terminal renderers such as kitty. Can be 0 (disabled) or 1 (enabled). Default is 0.
+.TP
+\fBANI_CLI_EXIT_AFTER_PLAY\fR
+Controls if the menu comes up after the player is spawned, potentially useful in non-interactive scenarios or with ANI_CLI_NO_DETACH. Can be 0 (disabled) or 1 (enabled). Default is 0.
 .PP
 .SH EPISODE SELECTION
 .PP
