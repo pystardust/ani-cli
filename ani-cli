@@ -312,7 +312,7 @@ play_episode() {
         debug) printf "All links:\n%s\nSelected link:\n%s\n" "$links" "$video_link" ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
-        "$HOME"/.local/share/flatpak/app/io.mpv/Mpv/) flatpak run io.mpv.Mpv $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        *flatpak*mpv*) flatpak run io.mpv.Mpv $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
@@ -407,7 +407,7 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
         player_function="${ANI_CLI_PLAYER:-iSH}"
         curl_exe=$(dep_ch_failover "curl_safari260_ios,$curl_exe")
         ;;                                                                                                                                                              # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
+    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,/var/lib/flatpak/app/io.mpv.Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
 player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
