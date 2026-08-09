@@ -83,8 +83,10 @@ jobs:
                 incrementing the patch number (the third, z component) by 1
                 from the base value — regardless of how large the rest of the
                 diff is, do not judge whether it should be a minor or major
-                bump instead. Post this as an inline ```suggestion``` on the
-                version_number line so it's committable in one click.
+                bump instead. The version_number line itself is unchanged, so
+                it isn't part of the diff and can't be anchored with an
+                inline/suggestion comment — raise it in the top-level
+                `gh pr comment` instead, stating the exact line to change.
               - If version_number already increased in any way, leave it
                 alone.
 
