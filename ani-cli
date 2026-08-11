@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.0.1"
+version_number="5.0.2"
 
 # UI
 
@@ -407,7 +407,7 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
         player_function="${ANI_CLI_PLAYER:-iSH}"
         curl_exe=$(dep_ch_failover "curl_safari260_ios,$curl_exe")
         ;;                                                                                                                                                                                               # iOS (iSH)
-    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv/Mpv/,/var/lib/flatpak/app/io.mpv.Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
+    *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv.Mpv/,/var/lib/flatpak/app/io.mpv.Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
 
 player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
