@@ -55,49 +55,48 @@ jobs:
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
+  
+            Review this shell script change. ani-cli is POSIX-sh: no bashisms,
+            no awk, no wget. Base version at ./ani-cli, PR version at
+            pr-head/ani-cli. Only post comments, never edit files.
+  
+            Gather first: `gh pr diff`, plus, if ani-cli changed, verbatim
+  
+                shellcheck -s sh -o all -e 2250 pr-head/ani-cli
+                shfmt -i 4 -ci -d pr-head/ani-cli
+  
+            Then produce exactly two things, in this order.
+  
+            1. One top-level `gh pr comment`, always, even when both linters
+            are clean. The only place prose belongs. What the change does,
+            whether the approach holds up, any logic, portability or security
+            concern the linters cannot see, plus the version verdict below.
+            Under 150 words, no headings, no recap of the inline comments.
+            Never mention your own tooling, environment or limitations in any
+            comment. If the linter output is missing, review the diff and say
+            nothing about it.
+  
+            2. One inline comment per linter finding, prose-free. The body is
+            one line plus a ```suggestion fence holding the minimal fix,
+            nothing else. For shellcheck that line is a markdown link to
+            https://www.shellcheck.net/wiki/SC0000 titled with the code; for
+            shfmt it is the literal `shfmt -i 4 -ci`, including the backticks.
+            The fence replaces exactly the lines you anchor to, closing braces
+            included, so count both before posting. Never post a comment
+            correcting an earlier one; drop the fence if unsure.
+  
+            Version verdict: if ani-cli changed and `version_number="X.Y.Z"` is
+            unchanged or lower than base, say so and give the base patch number
+            incremented by one. Never judge minor or major. If it already
+            increased, say nothing.
 
-            Review this shell script change. ani-cli is POSIX-sh, no bashisms,
-            no awk, no wget.
-
-            The PR's version of the script is checked out read-only at
-            pr-head/ani-cli. If it changed, run these two commands verbatim
-            (they are exactly what CI enforces) and use their output to drive
-            part of your review:
-
-              shellcheck -s sh -o all -e 2250 pr-head/ani-cli
-              shfmt -i 4 -ci -d pr-head/ani-cli
-
-            For every issue either tool reports, post an inline review
-            comment on the exact line via the inline-comment tool, with the
-            corrected code inside a ```suggestion fence so the author can
-            commit it with one click. Keep each suggestion to the minimal
-            diff needed to satisfy the tool — don't rewrite unrelated lines,
-            and don't invent style changes the tools didn't flag.
-
-            Also check the version bump. The base branch's ani-cli is at
-            ./ani-cli (workspace root); the PR's is at pr-head/ani-cli. Compare
-            the `version_number="X.Y.Z"` line between the two:
-              - If ani-cli wasn't changed by the PR, skip this check.
-              - If it was changed but version_number is identical to base (or
-                lower), the bump is missing. Suggest fixing it by always
-                incrementing the patch number (the third, z component) by 1
-                from the base value — regardless of how large the rest of the
-                diff is, do not judge whether it should be a minor or major
-                bump instead. The version_number line itself is unchanged, so
-                it isn't part of the diff and can't be anchored with an
-                inline/suggestion comment — raise it in the top-level
-                `gh pr comment` instead, stating the exact line to change.
-              - If version_number already increased in any way, leave it
-                alone.
-
-            For anything beyond those two tools (logic bugs, portability,
-            security), use gh pr diff for context and comment normally.
-
-            Use `gh pr comment` for top-level feedback. Only post GitHub
-            comments — never edit files directly.
-
+          # Re: effort.
+          # Low seems to produce low quality top level comments, but is sufficient for the linter suggestions
+          # High had a tendency to overthink in earlier prompt iterations, but could be tried again later
+          # At the current brevity of the toplevel review, Medium seems to yield the best results at an acceptable latency.
+          # Model should stay Opus. Opus 5 Low is preferable to Sonnet 5 Max for code review.
           claude_args: |
             --model claude-opus-5
-            --effort high
+            --effort medium
             --add-dir pr-head
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(shellcheck:*),Bash(shfmt:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,mcp__github__add_issue_comment,mcp__github_comment__update_claude_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(shellcheck:*),Bash(shfmt:*)"
