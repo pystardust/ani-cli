@@ -515,7 +515,6 @@ case "$player_function" in
     download) dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found' ;;
     android*) printf "\33[2K\rChecking of players on Android is disabled.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
-    *flatpak*mpv*) dep_ch "flatpak" ;;
     *) dep_ch "$player_function" ;;
 esac
 
