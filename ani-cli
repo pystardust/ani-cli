@@ -295,10 +295,10 @@ update_history() {
 # PLAYING
 
 # shellcheck disable=SC2086
-# $1 = video link, $2 = video name, $3 = extra flags
+# $1 = video link, $2 = video name
 download() {
-    command -v "yt-dlp" >/dev/null && yt-dlp "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4" $3 && return 0
-    ffmpeg -extension_picky 0 -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" $3
+    command -v "yt-dlp" >/dev/null && yt-dlp "$1" $player_extra_flags --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4" && return 0
+    ffmpeg $player_extra_flags -extension_picky 0 -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
 }
 
 play_episode() {
@@ -332,7 +332,7 @@ play_episode() {
             ;;
         *vlc*) nohup $player_function $player_extra_flags --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" "$player_extra_flags" ;;
+        download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" ;;
         catt) nohup catt cast $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
         iSH)
             printf "\033]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\033]8;;\a\n" "$video_link"
