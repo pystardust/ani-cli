@@ -1,6 +1,101 @@
 #!/bin/sh
 
-version_number="5.0.2"
+version_number="5.1.0"
+
+# CONFIG & NETWORK DEFAULTS (Because the network is a chaotic nightmare of TLS handshakes)
+
+base_api="https://anidb.app"
+search_api="${base_api}/browse?q=%s"
+# search_api_alt="${base_api}/search/suggestions?q=%s"
+desc_api="${base_api}/anime/%s"
+episodes_api="${base_api}/api/frontend/anime/%s/episodes"
+m3u8_api="${base_api}/api/frontend/episode/%s/languages"
+
+ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
+tls13_ciphers='TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256'
+agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+# checks for deps in order and returns the first available. format is "prog_a,prog_b,prog_c"
+dep_ch_failover() {
+    [ -z "$1" ] && return 1
+    prog=$(printf "%s" "$1" | cut -d "," -f 1)
+    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
+    command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
+    [ -e "$prog" ] && printf "%s" "$prog" && return 0
+    dep_ch_failover "$rest"
+}
+
+curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_ff117,curl") || curl_exe="curl"
+
+# SCRAPING HELPERS (Bypassing Cloudflare because my job applications are getting rejected anyway)
+
+# shellcheck disable=SC2086
+anidb_curl() {
+    $curl_exe -sL -A "$agent" --max-time 10 $cipher_flag "$@"
+}
+
+# PREVIEW ENGINE (Microsecond caching so fzf doesn't choke on my ADHD scrolling)
+
+preview_anime() {
+    _id="$1"
+    [ -z "$_id" ] && exit 0
+    _cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli/preview"
+    [ ! -d "$_cache_dir" ] && mkdir -p "$_cache_dir"
+    _cache_txt="$_cache_dir/${_id}.txt"
+
+    if [ -s "$_cache_txt" ]; then
+        cat "$_cache_txt"
+        exit 0
+    fi
+
+    # shellcheck disable=SC2059
+    _page="$(anidb_curl "$(printf "$desc_api" "$_id")")"
+    _title="$(printf "%s" "$_page" | sed -nE 's|.*<title>([^<]+)</title>.*|\1|p' | sed 's| - AniDB.*||; s|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
+    [ -z "$_title" ] && _title="$_id"
+
+    _img="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:image" content="([^"]+)".*|\1|p' | head -n 1)"
+    _desc="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:description" content="([^"]+)".*|\1|p' | sed 's|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
+    [ -z "$_desc" ] && _desc="$(printf "%s" "$_page" | sed -nE 's|.*<meta name="description" content="([^"]+)".*|\1|p' | sed 's|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
+    [ -z "$_desc" ] && _desc="No description available."
+
+    _mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p' | head -n 1)"
+
+    {
+        if [ "$thumbnail_preview" = 1 ] && [ -n "$_img" ]; then
+            _img_file="$_cache_dir/${_id}.jpg"
+            if [ ! -s "$_img_file" ]; then
+                $curl_exe -sL -A "$agent" --max-time 5 "$_img" -o "$_img_file" 2>/dev/null || true
+            fi
+            if [ -s "$_img_file" ]; then
+                if command -v chafa >/dev/null 2>&1; then
+                    chafa --size=38x18 "$_img_file" 2>/dev/null || true
+                elif command -v catimg >/dev/null 2>&1; then
+                    catimg -w 76 -H 18 "$_img_file" 2>/dev/null || true
+                fi
+            fi
+        fi
+
+        printf "\033[1;36m%s\033[0m\n" "$_title"
+        [ -n "$_mal_id" ] && printf "\033[1;33mMyAnimeList ID:\033[0m %s\n" "$_mal_id"
+        printf "\n\033[1;32mSynopsis:\033[0m\n"
+        if command -v fold >/dev/null 2>&1; then
+            printf "%s\n" "$_desc" | fold -s -w 50
+        elif command -v fmt >/dev/null 2>&1; then
+            printf "%s\n" "$_desc" | fmt -w 50
+        else
+            printf "%s\n" "$_desc"
+        fi
+    } >"$_cache_txt"
+
+    cat "$_cache_txt"
+    exit 0
+}
+
+# FAST PATH FOR INTERNAL FZF PREVIEW HELPER
+if [ "$1" = "--preview-anime" ]; then
+    thumbnail_preview="${ANI_CLI_THUMBNAILS:-1}"
+    preview_anime "$2"
+fi
 
 # UI
 
@@ -15,6 +110,7 @@ menu() {
     esac
 }
 
+# shellcheck disable=SC2086
 # provide menu. input format is either (ep_list) or (number \t anime_id \t anime_name)
 nth() {
     _stdin=$(cat -)
@@ -23,7 +119,11 @@ nth() {
     [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f 2,3 && return 0
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
-    _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
+    if [ "$menu_program" = "fzf" ] && [ "$preview_enabled" = 1 ] && printf "%s\n" "$_stdin" | head -n 1 | grep -q '	'; then
+        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$0\" --preview-anime {2}" --preview-window "right:50%:wrap" | cut -f 1)
+    else
+        _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
+    fi
     _line_start=$(printf "%s" "$_line" | head -n 1)
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
@@ -65,6 +165,8 @@ help_info() {
         Select nth entry
       -q, --quality
         Specify the video quality
+      -t, --trending
+        Browse seasonal and trending anime
       -v, --vlc
         Use VLC to play the video
       -V, --version
@@ -81,6 +183,10 @@ help_info() {
         Use dmenu instead of fzf for the interactive menu
       --skip
         Use ani-skip to skip the intro of the episode (mpv only)
+      --no-preview
+        Disable interactive preview pane in fzf
+      --no-thumb
+        Disable thumbnail image rendering in preview
       --no-detach
         Don't detach the player (useful for in-terminal playback, mpv only)
       --exit-after-play
@@ -131,27 +237,12 @@ dep_ch() {
     command -v "$1" >/dev/null || die "Program $1 not found. Please install it."
 }
 
-# checks for deps in order and returns the first available. format is "prog_a,prog_b,prog_c"
-dep_ch_failover() {
-    [ -z "$1" ] && return 1
-    prog=$(printf "%s" "$1" | cut -d "," -f 1)
-    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
-    command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
-    [ -e "$prog" ] && printf "%s" "$prog" && return 0
-    dep_ch_failover "$rest"
-}
-
 cleanup() {
     tput sgr0               # clears colors
     rm -f "${histfile}.new" # remove temp logfile
 }
 
 # SCRAPING
-
-#shellcheck disable=SC2086
-anidb_curl() {
-    $curl_exe -sL -A "$agent" --max-time 10 $cipher_flag "$@"
-}
 
 # search the query and give results. format is (id \t name)
 anidb_search() {
@@ -375,26 +466,65 @@ play() {
     [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
 
+# TRENDING & DASHBOARD
+
+trending_anime() {
+    info "Fetching trending / seasonal anime..."
+    _page="$($curl_exe -s "https://animeschedule.net/api/v3/anime")"
+    _list="$(printf "%s" "$_page" | sed 's|},{"id"|\n|g' | sed -nE 's|.*"title":"([^"]+)".*|\1|p' | head -n 30)"
+    [ -z "$_list" ] && die "Failed to fetch trending anime!"
+    _selected="$(printf "%s\n" "$_list" | menu "Select Trending Anime: " "" "$menu_extra_flags")"
+    [ -z "$_selected" ] && exit 0
+    query="$_selected"
+}
+
+home_menu() {
+    _has_hist=0
+    [ -s "$histfile" ] && _has_hist=1
+
+    _options="1. Search Anime"
+    [ "$_has_hist" = 1 ] && _options="${_options}
+2. Continue Watching"
+    _options="${_options}
+3. Seasonal & Trending Anime
+4. Release Countdown (-N)
+5. Clear History
+6. Exit"
+
+    _choice=$(printf "%s\n" "$_options" | menu "ani-cli > " "" "$menu_extra_flags" | cut -d "." -f 1 | tr -d "[:space:]")
+    case "$_choice" in
+        1)
+            # Proceed to search prompt
+            ;;
+        2)
+            source=history
+            ;;
+        3)
+            source=trending
+            ;;
+        4)
+            source=nextep
+            ;;
+        5)
+            : >"$histfile"
+            info "History deleted."
+            exit 0
+            ;;
+        6 | *)
+            exit 0
+            ;;
+    esac
+}
+
 # MAIN
-
-# setup
-base_api="https://anidb.app"
-search_api="${base_api}/browse?q=%s"
-# search_api_alt="${base_api}/search/suggestions?q=%s"
-desc_api="${base_api}/anime/%s"
-episodes_api="${base_api}/api/frontend/anime/%s/episodes"
-m3u8_api="${base_api}/api/frontend/episode/%s/languages"
-
-ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
-tls13_ciphers='TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256'
-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
-
-curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_ff117,curl") || die "Program curl not found"
+preview_enabled="${ANI_CLI_PREVIEW:-1}"
+thumbnail_preview="${ANI_CLI_THUMBNAILS:-1}"
+home_dashboard="${ANI_CLI_HOME:-1}"
 
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*)
@@ -484,6 +614,12 @@ while [ $# -gt 0 ]; do
             ep_no="$2"
             shift
             ;;
+        -t | --trending) source=trending ;;
+        --no-preview) preview_enabled=0 ;;
+        --no-thumb) thumbnail_preview=0 ;;
+        --preview-anime)
+            preview_anime "$2"
+            ;;
         --dub) mode="dub" ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
@@ -508,7 +644,7 @@ info "Checking dependencies..."
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
-dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
+dep_ch "$menu_program"
 
 case "$player_function" in
     debug) ;;
@@ -521,6 +657,11 @@ esac
 
 # idk where to put this, so I put it here...
 trap 'cleanup; exit 1' INT HUP TERM
+
+# home dashboard on zero arguments
+if [ -z "$query" ] && [ "$source" = "search" ] && [ "$home_dashboard" = 1 ] && [ -t 0 ]; then
+    home_menu
+fi
 
 # searching
 case "$source" in
@@ -537,6 +678,22 @@ case "$source" in
         episode_maps="$(anidb_episodes "$anime_id")"
         ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
         ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
+        ;;
+    trending)
+        trending_anime
+        query=$(printf "%s" "$query" | sed 's| |+|g')
+        anime_list=$(anidb_search "$query")
+        [ -z "$anime_list" ] && die "No results found!"
+        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+        [ -z "$result" ] && die "Invalid anime selection"
+        anime_title="$(printf "%s" "$result" | cut -f 2)"
+        anime_id="$(printf "%s" "$result" | cut -f 1)"
+        anidb_desc "$anime_id" || true
+        episode_maps="$(anidb_episodes "$anime_id")"
+        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+        [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
     *)
         if [ "$menu_program" = "fzf" ]; then

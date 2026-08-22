@@ -518,6 +518,7 @@ apk del grep sed curl fzf git ffmpeg ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
+- chafa / catimg (optional, for inline terminal thumbnail preview)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 
