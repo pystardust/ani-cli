@@ -50,38 +50,53 @@ preview_anime() {
 
     # shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$desc_api" "$_id")")"
-    _title="$(printf "%s" "$_page" | sed -nE 's|.*<title>([^<]+)</title>.*|\1|p' | sed 's| - AniDB.*||; s|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
+    _title="$(printf "%s" "$_page" | sed -nE 's|.*<h1[^>]*>([^<]+)</h1>.*|\1|p' | head -n 1)"
+    [ -z "$_title" ] && _title="$(printf "%s" "$_page" | sed -nE 's|.*<title>([^<]+)</title>.*|\1|p' | sed 's| - AniDB.*||; s|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
     [ -z "$_title" ] && _title="$_id"
 
-    _img="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:image" content="([^"]+)".*|\1|p' | head -n 1)"
-    _desc="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:description" content="([^"]+)".*|\1|p' | sed 's|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
+    _img="$(printf "%s" "$_page" | sed -nE 's|.*src="([^"]*/poster/[^"]+)".*|\1|p' | head -n 1)"
+    [ -z "$_img" ] && _img="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:image" content="([^"]+)".*|\1|p' | head -n 1)"
+
+    _mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p' | head -n 1)"
+    _score="$(printf "%s" "$_page" | sed -nE 's|.*<svg.*class=".*text-yellow-400".*<\/svg>([0-9.]+)<.*|\1|p' | head -n 1)"
+    _status="$(printf "%s" "$_page" | sed -nE 's|.*href="/browse\?status=[^"]*"[^>]*>([^<]+)<.*|\1|p' | head -n 1)"
+    _type="$(printf "%s" "$_page" | sed -nE 's|.*href="/browse\?type=[^"]*"[^>]*>([^<]+)<.*|\1|p' | head -n 1)"
+    _genres="$(printf "%s" "$_page" | sed -n '/<div class="flex flex-wrap gap-1.5 mb-4">/,/<\/div>/p' | sed -nE 's|.*>([^<]+)</a>.*|\1|p' | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
+
+    _desc="$(printf "%s" "$_page" | sed -n '/>Synopsis</,/\/p>/p' | sed -nE 's|.*<p class="text-sm text-faint leading-relaxed">(.*)</p>.*|\1|p' | sed 's|<br><br>|\n\n|g; s|<br>|\n|g; s|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g')"
+    [ -z "$_desc" ] && _desc="$(printf "%s" "$_page" | sed -nE 's|.*<meta property="og:description" content="([^"]+)".*|\1|p' | sed 's|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
     [ -z "$_desc" ] && _desc="$(printf "%s" "$_page" | sed -nE 's|.*<meta name="description" content="([^"]+)".*|\1|p' | sed 's|&#039;|'\''|g; s|&quot;|"|g; s|&amp;|\&|g' | head -n 1)"
     [ -z "$_desc" ] && _desc="No description available."
 
-    _mal_id="$(printf "%s" "$_page" | sed -nE 's|.*https://myanimelist.net/anime/([0-9]+)/.*|\1|p' | head -n 1)"
+    _img_viewer=$(dep_ch_failover "chafa,chafa.exe,catimg,catimg.exe")
 
     {
-        if [ "$thumbnail_preview" = 1 ] && [ -n "$_img" ]; then
+        if [ "$thumbnail_preview" = 1 ] && [ -n "$_img" ] && [ -n "$_img_viewer" ]; then
             _img_file="$_cache_dir/${_id}.jpg"
             if [ ! -s "$_img_file" ]; then
                 $curl_exe -sL -A "$agent" --max-time 5 "$_img" -o "$_img_file" 2>/dev/null || true
             fi
             if [ -s "$_img_file" ]; then
-                if command -v chafa >/dev/null 2>&1; then
-                    chafa --size=38x18 "$_img_file" 2>/dev/null || true
-                elif command -v catimg >/dev/null 2>&1; then
-                    catimg -w 76 -H 18 "$_img_file" 2>/dev/null || true
-                fi
+                case "$_img_viewer" in
+                    *chafa*) "$_img_viewer" --size=36x18 "$_img_file" 2>/dev/null || true ;;
+                    *catimg*) "$_img_viewer" -w 72 -H 18 "$_img_file" 2>/dev/null || true ;;
+                    *) ;;
+                esac
             fi
         fi
 
         printf "\033[1;36m%s\033[0m\n" "$_title"
-        [ -n "$_mal_id" ] && printf "\033[1;33mMyAnimeList ID:\033[0m %s\n" "$_mal_id"
+        [ -n "$_score" ] && printf "\033[1;33mScore:\033[0m %s  " "$_score"
+        [ -n "$_status" ] && printf "\033[1;35mStatus:\033[0m %s  " "$_status"
+        [ -n "$_type" ] && printf "\033[1;34mType:\033[0m %s" "$_type"
+        [ -n "$_score" ] || [ -n "$_status" ] || [ -n "$_type" ] && printf "\n"
+        [ -n "$_genres" ] && printf "\033[1;37mGenres:\033[0m %s\n" "$_genres"
+        [ -n "$_mal_id" ] && printf "\033[1;30mMAL ID: %s\033[0m\n" "$_mal_id"
         printf "\n\033[1;32mSynopsis:\033[0m\n"
         if command -v fold >/dev/null 2>&1; then
-            printf "%s\n" "$_desc" | fold -s -w 50
+            printf "%s\n" "$_desc" | fold -s -w 55
         elif command -v fmt >/dev/null 2>&1; then
-            printf "%s\n" "$_desc" | fmt -w 50
+            printf "%s\n" "$_desc" | fmt -w 55
         else
             printf "%s\n" "$_desc"
         fi
@@ -103,7 +118,7 @@ fi
 # $1 = prompt, $2 = multi select flag (for fzf/rofi), $3 = extra flags by user
 menu() {
     case "$menu_program" in
-        fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
+        fzf) fzf --reverse --cycle --prompt "$1" --height=60% --layout=reverse --border $2 $3 ;;
         rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
         dmenu) dmenu -l 20 -p "$1" $3 ;;
         *) "$menu_program" $3 "$1" ;;
@@ -120,7 +135,7 @@ nth() {
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
     if [ "$menu_program" = "fzf" ] && [ "$preview_enabled" = 1 ] && printf "%s\n" "$_stdin" | head -n 1 | grep -q '	'; then
-        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$0\" --preview-anime {2}" --preview-window "right:50%:wrap" | cut -f 1)
+        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --height=80% --layout=reverse --border --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$0\" --preview-anime {2}" --preview-window "right:55%:wrap" | cut -f 1)
     else
         _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
     fi
@@ -349,7 +364,9 @@ time_until_next_ep() {
         fi
         printf "\n"
     done
-    exit 0
+    # DON'T exit 0 here. We are not a god. We return like a normal function
+    # so the caller can decide whether to loop back or crawl into a corner and cry.
+    return 0
 }
 
 # HISTORY
@@ -474,7 +491,7 @@ trending_anime() {
     _list="$(printf "%s" "$_page" | sed 's|},{"id"|\n|g' | sed -nE 's|.*"title":"([^"]+)".*|\1|p' | head -n 30)"
     [ -z "$_list" ] && die "Failed to fetch trending anime!"
     _selected="$(printf "%s\n" "$_list" | menu "Select Trending Anime: " "" "$menu_extra_flags")"
-    [ -z "$_selected" ] && exit 0
+    [ -z "$_selected" ] && return 1
     query="$_selected"
 }
 
@@ -494,7 +511,8 @@ home_menu() {
     _choice=$(printf "%s\n" "$_options" | menu "ani-cli > " "" "$menu_extra_flags" | cut -d "." -f 1 | tr -d "[:space:]")
     case "$_choice" in
         1)
-            # Proceed to search prompt
+            source=search
+            unset query
             ;;
         2)
             source=history
@@ -658,71 +676,120 @@ esac
 # idk where to put this, so I put it here...
 trap 'cleanup; exit 1' INT HUP TERM
 
-# home dashboard on zero arguments
-if [ -z "$query" ] && [ "$source" = "search" ] && [ "$home_dashboard" = 1 ] && [ -t 0 ]; then
-    home_menu
-fi
+while true; do
+    # home dashboard on zero arguments
+    if [ -z "$query" ] && [ "$source" = "search" ] && [ "$home_dashboard" = 1 ] && [ -t 0 ]; then
+        home_menu
+    fi
 
-# searching
-case "$source" in
-    history)
-        backup_old_hist
-        anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
-        wait
-        [ -z "$anime_list" ] && die "No unwatched series in history!"
-        [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
-        [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
-        [ -z "$anime_id" ] && exit 1
-        anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
-        anidb_desc "$anime_id" || true
-        episode_maps="$(anidb_episodes "$anime_id")"
-        ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
-        ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
-        ;;
-    trending)
-        trending_anime
-        query=$(printf "%s" "$query" | sed 's| |+|g')
-        anime_list=$(anidb_search "$query")
-        [ -z "$anime_list" ] && die "No results found!"
-        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid anime selection"
-        anime_title="$(printf "%s" "$result" | cut -f 2)"
-        anime_id="$(printf "%s" "$result" | cut -f 1)"
-        anidb_desc "$anime_id" || true
-        episode_maps="$(anidb_episodes "$anime_id")"
-        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-        [ -z "$ep_no" ] && die "Invalid episode selection"
-        ;;
-    *)
-        if [ "$menu_program" = "fzf" ]; then
-            while [ -z "$query" ]; do
-                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
-            done
-        else
-            [ -z "$query" ] && query=$(: | menu "Search anime: " "" "$menu_extra_flags")
-            [ -z "$query" ] && exit 1
-        fi
-        # for checking new releases by specifying anime name
-        [ "$source" = "nextep" ] && time_until_next_ep "$query"
+    # searching
+    case "$source" in
+        history)
+            backup_old_hist
+            anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
+            wait
+            if [ -z "$anime_list" ]; then
+                info "No unwatched series in history!"
+                source="search"
+                continue
+            fi
+            [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
+            [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
+            if [ -z "$anime_id" ]; then
+                source="search"
+                continue
+            fi
+            anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
+            anidb_desc "$anime_id" || true
+            episode_maps="$(anidb_episodes "$anime_id")"
+            ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
+            ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
+            ;;
+        trending)
+            trending_anime || {
+                source="search"
+                continue
+            }
+            query=$(printf "%s" "$query" | sed 's| |+|g')
+            anime_list=$(anidb_search "$query")
+            if [ -z "$anime_list" ]; then
+                info "No results found!"
+                unset query
+                source="search"
+                continue
+            fi
+            [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+            [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+            if [ -z "$result" ]; then
+                unset query index
+                source="search"
+                continue
+            fi
+            anime_title="$(printf "%s" "$result" | cut -f 2)"
+            anime_id="$(printf "%s" "$result" | cut -f 1)"
+            anidb_desc "$anime_id" || true
+            episode_maps="$(anidb_episodes "$anime_id")"
+            ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+            [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+            if [ -z "$ep_no" ]; then
+                unset query index
+                source="search"
+                continue
+            fi
+            ;;
+        *)
+            if [ -z "$query" ]; then
+                if [ "$menu_program" = "fzf" ]; then
+                    printf "\33[2K\r\033[1;36mSearch anime (ESC/Enter to back): \033[0m" && read -r query
+                else
+                    query=$(: | menu "Search anime: " "" "$menu_extra_flags")
+                fi
+                if [ -z "$query" ]; then
+                    source="search"
+                    continue
+                fi
+            fi
+            # for checking new releases by specifying anime name
+            # after showing the countdown, reset and go back. we don't select anime here.
+            if [ "$source" = "nextep" ]; then
+                time_until_next_ep "$query"
+                printf "\033[1;33mPress Enter to go back...\033[0m" && read -r _
+                unset query
+                source="search"
+                continue
+            fi
 
-        query=$(printf "%s" "$query" | sed 's| |+|g')
+            _clean_query=$(printf "%s" "$query" | sed 's| |+|g')
 
-        anime_list=$(anidb_search "$query")
-        [ -z "$anime_list" ] && die "No results found!"
-        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
-        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
-        [ -z "$result" ] && die "Invalid anime selection"
-        anime_title="$(printf "%s" "$result" | cut -f 2)"
-        anime_id="$(printf "%s" "$result" | cut -f 1)"
-        anidb_desc "$anime_id" || true
-        episode_maps="$(anidb_episodes "$anime_id")"
-        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-        [ -z "$ep_no" ] && die "Invalid episode selection"
-        ;;
-esac
+            anime_list=$(anidb_search "$_clean_query")
+            if [ -z "$anime_list" ]; then
+                info "No results found for $query!"
+                unset query
+                source="search"
+                continue
+            fi
+            [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+            [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+            if [ -z "$result" ]; then
+                unset query index
+                source="search"
+                continue
+            fi
+            anime_title="$(printf "%s" "$result" | cut -f 2)"
+            anime_id="$(printf "%s" "$result" | cut -f 1)"
+            anidb_desc "$anime_id" || true
+            episode_maps="$(anidb_episodes "$anime_id")"
+            ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+            [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
+            if [ -z "$ep_no" ]; then
+                unset query index
+                source="search"
+                continue
+            fi
+            ;;
+    esac
+    break
+done
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el
