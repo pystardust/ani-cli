@@ -609,7 +609,12 @@ home_menu() {
     case "$_choice" in
         1)
             source=search
-            unset query
+            if [ "$menu_program" = "fzf" ]; then
+                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
+            else
+                query=$(: | menu "Search anime: " "" "$menu_extra_flags")
+            fi
+            [ -z "$query" ] && return 0
             ;;
         2)
             source=history
@@ -619,13 +624,20 @@ home_menu() {
             ;;
         4)
             source=nextep
+            if [ "$menu_program" = "fzf" ]; then
+                printf "\33[2K\r\033[1;36mCountdown anime: \033[0m" && read -r query
+            else
+                query=$(: | menu "Countdown anime: " "" "$menu_extra_flags")
+            fi
+            [ -z "$query" ] && return 0
             ;;
         5)
             : >"$histfile"
             info "History deleted."
-            exit 0
+            return 0
             ;;
         6 | *)
+            cleanup
             exit 0
             ;;
     esac
