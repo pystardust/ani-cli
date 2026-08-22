@@ -153,8 +153,8 @@ _img_viewer="\$(command -v chafa || command -v chafa.exe || command -v catimg ||
     [ ! -s "\$_img_file" ] && \$curl_exe -sL -A "\$agent" --max-time 5 "\$_img" -o "\$_img_file" 2>/dev/null || true
     if [ -s "\$_img_file" ]; then
       case "\$_img_viewer" in
-        *chafa*)  "\$_img_viewer" --size=36x18 "\$_img_file" 2>/dev/null || true ;;
-        *catimg*) "\$_img_viewer" -w 72 -H 18 "\$_img_file" 2>/dev/null || true ;;
+        *chafa*)  "\$_img_viewer" --size=28x12 --colors=256 "\$_img_file" 2>/dev/null || true ;;
+        *catimg*) "\$_img_viewer" -w 56 -H 12 "\$_img_file" 2>/dev/null || true ;;
         *) ;;
       esac
     fi
@@ -208,7 +208,7 @@ nth() {
         # Use tiny standalone helper instead of forking full $0 — prevents Win32 error 299
         # (cygheap read copy failed) on MSYS2/Git Bash which can't reliably fork large processes
         _preview_helper="$(_write_preview_helper)"
-        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --height=80% --layout=reverse --border --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$_preview_helper\" {2}" --preview-window "right:25%:wrap:border-left" --bind 'focus:refresh-preview' | cut -f 1)
+        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --height=80% --layout=reverse --border --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$_preview_helper\" {2}" --preview-window "right:40%:wrap:border-left" --bind 'focus:refresh-preview' | cut -f 1)
     else
         _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
     fi
@@ -352,23 +352,11 @@ anidb_desc() {
     [ -n "$seasons" ] && seasons_option="\nchange_season"
 }
 
-# get the episodes list of the selected anime. format is (ep_id \t ep_no) for internal use.
-# also exported as ep_no \t ep_id \t ep_title for display — see anidb_episode_display()
+# get the episodes list of the selected anime. format is (id \t ep_no)
 anidb_episodes() {
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$episodes_api" "${1##*-}")")"
     printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
-}
-
-# Get episodes formatted for fzf display: ep_no - ep_title (plain, no tabs so no preview fires)
-anidb_episode_display() {
-    #shellcheck disable=SC2059
-    _page="$(anidb_curl "$(printf "$episodes_api" "${1##*-}")")"
-    # Try to pull title from JSON. Falls back to just number if field absent.
-    printf "%s" "$_page" | sed 's|},{|}\n{|g' |
-        sed -nE 's|.*"number":([0-9]+).*"title":"([^"]+)".*|\1 - \2|p; \
-                 t; \
-                 s|.*"number":([0-9]+).*|\1|p'
 }
 
 # extract the individual m3u8 links from response of embed urls
@@ -837,7 +825,7 @@ while true; do
             anidb_desc "$anime_id" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-            [ -z "$ep_no" ] && ep_no=$(anidb_episode_display "$anime_id" | menu "Select episode: " "$menu_multi_flag" "$menu_extra_flags" | sed -nE 's|^([0-9.]+).*|\1|p')
+            [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
             if [ -z "$ep_no" ]; then
                 unset query index
                 source="search"
@@ -887,7 +875,7 @@ while true; do
             anidb_desc "$anime_id" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-            [ -z "$ep_no" ] && ep_no=$(anidb_episode_display "$anime_id" | menu "Select episode: " "$menu_multi_flag" "$menu_extra_flags" | sed -nE 's|^([0-9.]+).*|\1|p')
+            [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
             if [ -z "$ep_no" ]; then
                 unset query index
                 source="search"
@@ -913,7 +901,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) video_link="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
-        select) ep_no=$(anidb_episode_display "$anime_id" | menu "Select episode: " "$menu_multi_flag" "$menu_extra_flags" | sed -nE 's|^([0-9.]+).*|\1|p') ;;
+        select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
         change_season)
             new_anime="$(printf "%s" "$seasons" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
             [ -z "$new_anime" ] && die "Invalid season selection"
@@ -922,7 +910,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
             anidb_desc "$anime_id" || true
             episode_maps="$(anidb_episodes "$anime_id")"
             ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-            ep_no=$(anidb_episode_display "$anime_id" | menu "Select episode: " "$menu_multi_flag" "$menu_extra_flags" | sed -nE 's|^([0-9.]+).*|\1|p')
+            ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
             [ -z "$ep_no" ] && die "Invalid episode selection"
             ;;
         change_quality)
