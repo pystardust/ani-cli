@@ -80,8 +80,11 @@ preview_anime() {
             fi
             if [ -s "$_img_file" ]; then
                 case "$_img_viewer" in
-                    *chafa*) "$_img_viewer" --format=symbols --size=22x8 --colors=256 "$_img_file" 2>/dev/null || true ;;
-                    *catimg*) "$_img_viewer" -w 44 -H 8 "$_img_file" 2>/dev/null || true ;;
+                    *chafa*)
+                        # shellcheck disable=SC2086
+                        "$_img_viewer" ${ANI_CLI_CHAFA_ARGS:---format=symbols --symbols=vhalf --size=28x12 --colors=256 --color-space=din99d --dither=ordered} "$_img_file" 2>/dev/null || true
+                        ;;
+                    *catimg*) "$_img_viewer" -w 56 -H 12 "$_img_file" 2>/dev/null || true ;;
                     *) ;;
                 esac
             fi
@@ -155,8 +158,12 @@ _img_viewer="\$(command -v chafa || command -v chafa.exe || which chafa || which
     [ ! -s "\$_img_file" ] && \$curl_exe -sL -A "\$agent" --max-time 5 "\$_img" -o "\$_img_file" 2>/dev/null || true
     if [ -s "\$_img_file" ]; then
       case "\$_img_viewer" in
-        *chafa*)  "\$_img_viewer" --format=symbols --size=22x8 --colors=256 "\$_img_file" 2>/dev/null || true ;;
-        *catimg*) "\$_img_viewer" -w 44 -H 8 "\$_img_file" 2>/dev/null || true ;;
+        *chafa*)
+          _chafa_cmd="\$_img_viewer \${ANI_CLI_CHAFA_ARGS:---format=symbols --symbols=vhalf --size=28x12 --colors=256 --color-space=din99d --dither=ordered}"
+          # shellcheck disable=SC2086
+          \$_chafa_cmd "\$_img_file" 2>/dev/null || true
+          ;;
+        *catimg*) "\$_img_viewer" -w 56 -H 12 "\$_img_file" 2>/dev/null || true ;;
         *) ;;
       esac
     fi
