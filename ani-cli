@@ -134,19 +134,21 @@ _cache_txt="\$_cache_dir/\${_id}.txt"
 [ -s "\$_cache_txt" ] && exec cat "\$_cache_txt"
 # shellcheck disable=SC2059
 _page="\$(\$curl_exe -sL -A "\$agent" --max-time 10 \$cipher_flag "\$(printf "\$desc_api" "\$_id")")"
-_title="\$(printf '%s' "\$_page" | sed -nE 's|.*<h1[^>]*>([^<]+)</h1>.*|\\1|p' | head -n 1)"
-[ -z "\$_title" ] && _title="\$(printf '%s' "\$_page" | sed -nE 's|.*<title>([^<]+)</title>.*|\\1|p' | sed 's| - AniDB.*||' | head -n 1)"
+_title="\$(printf '%s' "\$_page" | sed -nE 's|.*<meta property="og:title" content="([^"]+)".*|\\1|p' | sed 's| [—-] AniDB.*||' | head -n 1)"
+[ -z "\$_title" ] && _title="\$(printf '%s' "\$_page" | sed -nE 's|.*<h1[^>]*>([^<]+)</h1>.*|\\1|p' | head -n 1)"
+[ -z "\$_title" ] && _title="\$(printf '%s' "\$_page" | sed -nE 's|.*<title>([^<]+)</title>.*|\\1|p' | sed 's| [—-] AniDB.*||; s| - AniDB.*||' | head -n 1)"
 [ -z "\$_title" ] && _title="\$_id"
-_img="\$(printf '%s' "\$_page" | sed -nE 's|.*src="([^"]*/poster/[^"]+)".*|\\1|p' | head -n 1)"
+_img="\$(printf '%s' "\$_page" | sed -nE 's|.*<meta property="og:image" content="([^"]+)".*|\\1|p' | head -n 1)"
+[ -z "\$_img" ] && _img="\$(printf '%s' "\$_page" | sed -nE 's|.*src="([^"]*/poster/[^"]+)".*|\\1|p' | head -n 1)"
 _mal_id="\$(printf '%s' "\$_page" | sed -nE 's|.*myanimelist.net/anime/([0-9]+)/.*|\\1|p' | head -n 1)"
 _score="\$(printf '%s' "\$_page" | sed -nE 's|.*text-yellow-400".*<\/svg>([0-9.]+)<.*|\\1|p' | head -n 1)"
 _status="\$(printf '%s' "\$_page" | sed -nE 's|.*browse\?status=[^"]*"[^>]*>([^<]+)<.*|\\1|p' | head -n 1)"
 _type="\$(printf '%s' "\$_page" | sed -nE 's|.*browse\?type=[^"]*"[^>]*>([^<]+)<.*|\\1|p' | head -n 1)"
 _genres="\$(printf '%s' "\$_page" | sed -n '/<div class="flex flex-wrap gap-1.5 mb-4">/,/<\/div>/p' | sed -nE 's|.*>([^<]+)<\/a>.*|\\1|p' | tr '\n' ',' | sed 's/,\$//')"
 _desc="\$(printf '%s' "\$_page" | sed -n '/>Synopsis</,/\/p>/p' | sed -nE 's|.*<p class="text-sm text-faint leading-relaxed">(.*)<\/p>.*|\\1|p' | sed 's|<br><br>|\n\n|g; s|<br>|\n|g; s|&#039;|'"'"'|g; s|&amp;|\&|g')"
-[ -z "\$_desc" ] && _desc="\$(printf '%s' "\$_page" | sed -nE 's|.*og:description" content="([^"]+)".*|\\1|p' | head -n 1)"
+[ -z "\$_desc" ] && _desc="\$(printf '%s' "\$_page" | sed -nE 's|.*og:description" content="([^"]+)".*|\\1|p' | sed 's|&#039;|'"'"'|g; s|&amp;|\&|g' | head -n 1)"
 [ -z "\$_desc" ] && _desc="No description available."
-_img_viewer="\$(command -v chafa || command -v chafa.exe || command -v catimg || command -v catimg.exe || true)"
+_img_viewer="\$(command -v chafa || command -v chafa.exe || which chafa || which chafa.exe || true)"
 {
   if [ "\$thumbnail_preview" = 1 ] && [ -n "\$_img" ] && [ -n "\$_img_viewer" ]; then
     _img_file="\$_cache_dir/\${_id}.jpg"
@@ -210,7 +212,7 @@ nth() {
         # (cygheap read copy failed) on MSYS2/Git Bash which can't reliably fork large processes
         _preview_helper="$(_write_preview_helper)"
         _preview_win="${ANI_CLI_PREVIEW_WINDOW:-right:40%:wrap:border-left}"
-        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --height=85% --layout=reverse --border --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$_preview_helper\" {2}" --preview-window "$_preview_win" --bind 'focus:refresh-preview,ctrl-d:preview-page-down,ctrl-u:preview-page-up,ctrl-f:preview-page-down,ctrl-b:preview-page-up' | cut -f 1)
+        _line=$(printf "%s\n" "$_stdin" | fzf --reverse --cycle --prompt "$_prompt" --height=85% --layout=reverse --border --delimiter='\t' --with-nth=1,3 $_multi_flag $menu_extra_flags --preview "\"$_preview_helper\" {2}" --preview-window "$_preview_win" --bind 'load:refresh-preview,focus:refresh-preview,ctrl-d:preview-page-down,ctrl-u:preview-page-up,ctrl-f:preview-page-down,ctrl-b:preview-page-up' | cut -f 1)
     else
         _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
     fi
