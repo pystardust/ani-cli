@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.0.3"
+version_number="5.0.4"
 
 # UI
 
@@ -157,6 +157,7 @@ anidb_curl() {
 anidb_search() {
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$search_api" "$1")" | tr '\n' ' ' | sed 's|<a href|\n<a href|g')"
+    [ -z "$_page" ] && die "Connection error: no response from $base_api"
     if printf "%s" "$_page" | grep -qi "Just a moment"; then
         [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
         die "Blocked by cloudflare."
@@ -177,6 +178,7 @@ anidb_desc() {
 anidb_episodes() {
     #shellcheck disable=SC2059
     _page="$(anidb_curl "$(printf "$episodes_api" "${1##*-}")")"
+    [ -z "$_page" ] && die "Connection error: no response from $base_api"
     printf "%s" "$_page" | sed 's|},{|}\n{|g' | sed -nE 's|.*"id":([0-9]+).*"number":([0-9]+).*|\1\t\2|p'
 }
 
@@ -535,7 +537,7 @@ case "$source" in
         [ -z "$anime_id" ] && exit 1
         anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
         anidb_desc "$anime_id" || true
-        episode_maps="$(anidb_episodes "$anime_id")"
+        episode_maps="$(anidb_episodes "$anime_id")" || exit 1
         ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
         ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
@@ -553,7 +555,7 @@ case "$source" in
 
         query=$(printf "%s" "$query" | sed 's| |+|g')
 
-        anime_list=$(anidb_search "$query")
+        anime_list=$(anidb_search "$query") || exit 1
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
@@ -561,7 +563,7 @@ case "$source" in
         anime_title="$(printf "%s" "$result" | cut -f 2)"
         anime_id="$(printf "%s" "$result" | cut -f 1)"
         anidb_desc "$anime_id" || true
-        episode_maps="$(anidb_episodes "$anime_id")"
+        episode_maps="$(anidb_episodes "$anime_id")" || exit 1
         ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
         [ -z "$ep_no" ] && die "Invalid episode selection"
@@ -590,7 +592,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect$seasons_option\nchange_qualit
             anime_title="$(printf "%s" "$new_anime" | cut -f 2)"
             anime_id="$(printf "%s" "$new_anime" | cut -f 1)"
             anidb_desc "$anime_id" || true
-            episode_maps="$(anidb_episodes "$anime_id")"
+            episode_maps="$(anidb_episodes "$anime_id")" || exit 1
             ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
             ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
             [ -z "$ep_no" ] && die "Invalid episode selection"
