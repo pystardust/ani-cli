@@ -194,6 +194,12 @@ anidb_m3u8() {
     anidb_curl "${_m3u8_master}" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d'
 }
 
+# get the poster URL to display for the notification
+anidb_poster_url() {
+	_page="$(anidb_curl "$(printf "$desc_api" "$1")")"
+	printf "%s" "$_page" | sed -nE 's|.*<meta property="og:image" content="([^"]+)".*|\1|p' | head -n 1
+}
+
 # select the quality according to the setting
 select_quality() {
     case "$1" in
@@ -292,6 +298,22 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
+# NOTIFICATIONS
+
+# $1 = anime name, $2 = anime id
+notify_playing() {
+	command -v "notify-send" >/dev/null 2>&1 || return 0
+
+	_poster="/tmp/ani-cli-$2.jpg"
+
+	if [ ! -f "$_poster" ]; then
+		_poster_url="$(anidb_poster_url "$2")"
+		[ -n "$_poster_url" ] && anidb_curl "$_poster_url" > "$_poster"
+	fi
+
+	notify-send -u low --icon "$_poster" "Now playing" "$1"
+}
+
 # PLAYING
 
 # shellcheck disable=SC2086
@@ -314,6 +336,7 @@ play_episode() {
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         *flatpak*mpv*) flatpak run io.mpv.Mpv $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
+			notify_playing "${anime_title} Episode ${ep_no}" "$anime_id"
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
