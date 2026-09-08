@@ -209,8 +209,8 @@ hianime_m3u8() {
     _ep_id=$(printf "%s" "$episode_maps" | sed -nE "s|^([0-9]+)\t${1}$|\1|p")
     #shellcheck disable=SC2059
     _servers="$(hianime_curl "$(printf "$servers_api" "$_ep_id")" | sed 's|\\"|"|g; s|server-item|\nserver-item|g')"
-    # only the HD-1 embed (zokoanime) is understood by deobfuscate_blob
-    _hash="$(printf "%s\n" "$_servers" | sed -nE 's|.*data-type="'"$2"'".*data-server-name="HD-1".*data-hash="([^"]*)".*|\1|p' | head -n 1)"
+    # only the zokoanime embed is understood by deobfuscate_blob, the other servers use different players
+    _hash="$(printf "%s\n" "$_servers" | sed -nE 's|.*data-type="'"$2"'".*data-server-name="ZokoAnime".*data-hash="([^"]*)".*|\1|p' | head -n 1)"
     _embed="$(b64_decode "$_hash")"
     [ -z "$_embed" ] && return 1
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
