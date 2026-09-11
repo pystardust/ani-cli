@@ -142,6 +142,7 @@ dep_ch_failover() {
 }
 
 cleanup() {
+    [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4" 2>/dev/null
     tput sgr0               # clears colors
     rm -f "${histfile}.new" # remove temp logfile
 }
@@ -336,6 +337,17 @@ download() {
     ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4" $3
 }
 
+# mpv-android takes no options from the intent, so they go through a file the user includes in mpv.conf
+# shellcheck disable=SC2086
+android_mpv() {
+    _conf_dir="/storage/emulated/0/mpv"
+    if [ -w "${_conf_dir%/mpv}" ]; then
+        [ -d "$_conf_dir" ] || mkdir "$_conf_dir"
+        printf "referrer=%s\n%s\n" "$refr" "${sub_link:+sub-file=$sub_link}" >"$_conf_dir/mpv.config.mp4"
+    fi
+    nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 &
+}
+
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
     [ -z "$video_link" ] && get_video_link
@@ -345,7 +357,7 @@ play_episode() {
     # shellcheck disable=SC2086
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\nSubtitles:\n%s\n" "$links" "$video_link" "$sub_link" ;;
-        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
+        android_mpv) android_mpv ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
         *flatpak*mpv*) flatpak run io.mpv.Mpv --referrer="$refr" ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
@@ -546,7 +558,7 @@ dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
 case "$player_function" in
     debug) ;;
     download) dep_ch_failover "yt-dlp,ffmpeg" >/dev/null || die 'Neither yt-dlp nor ffmpeg found' ;;
-    android*) printf "\33[2K\rChecking of players on Android is disabled.\n" ;;
+    android*) printf "\33[2K\rChecking of players on Android is disabled.\nmpv needs include=\"/storage/emulated/0/mpv/mpv.config.mp4\" in its mpv.conf, see the readme.\n" ;;
     *iSH*) printf "\33[2K\rChecking of players on iOS is disabled\n" ;;
     *flatpak*mpv*) dep_ch "flatpak" ;;
     *) dep_ch "$player_function" ;;
