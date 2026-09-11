@@ -3,10 +3,10 @@
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 <a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
 <a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
-<a href="#Android"><img src="https://img.shields.io/badge/os-android-brightgreen">
 <a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
-<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-yellow">
+<a href="#Android"><img src="https://img.shields.io/badge/os-android-yellow">
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
+<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red">
 <br>
 <p align=center>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
@@ -25,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://anidb.app/">anidb.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://hianime.at/">hianime.</a>
 </h3>
 
 <h1 align="center">
@@ -159,6 +159,20 @@ pkg install termux-am
 ```
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
+
+**Important Note:** The streams only play with the right referrer, which mpv on Android has to read from a config file:
+- Run this command and allow storage permissions:
+```sh
+termux-setup-storage
+```
+- Go to MPV > Settings > Advanced > mpv.conf
+- add this line:
+```txt
+include="/storage/emulated/0/mpv/mpv.config.mp4"
+```
+- Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux. These permissions are asked by mpv if you click on the "file picker (legacy)" option.
+
+VLC on Android cannot be given the referrer, so it does not play the current provider.
 
 </details>
 
@@ -534,7 +548,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 ## FAQ
 <details>
 	
-* Can I change subtitle language or turn them off? - No, the subtitles are baked into the video.
+* Can I change subtitle language or turn them off? - Subtitles are a separate english track handed to the player, so you can toggle them there (mpv: press `v`). Other languages are not offered.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
 * Can I change media source? - No (unless you can scrape that source yourself).

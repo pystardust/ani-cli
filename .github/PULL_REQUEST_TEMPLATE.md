@@ -37,3 +37,12 @@
 - [ ] `--skip` ani-skip works
 - [ ] `--no-detach` no detach works
 - [ ] `--exit-after-play` auto exit after playing works
+
+## Copy Pasta
+
+```
+./ani-cli -V
+./ani-cli -S 1 -e 1 -d flcl
+./ani-cli -S 1 -e 1 -q worst -v flcl
+./ani-cli -c -s --dub
+```
