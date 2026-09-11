@@ -609,24 +609,12 @@ tput sc
 play
 [ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
 
-while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_season\nchange_quality\nquit" | nth "Playing episode $ep_no of $anime_title... "); do
+while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth "Playing episode $ep_no of $anime_title... "); do
     case "$cmd" in
         next) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
         replay) video_link="$replay" ;;
         previous) ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
         select) ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag") ;;
-        change_season)
-            # hianime has no season list, related entries are found by searching the title
-            _query=$(printf "%s" "$anime_title" | sed 's| |+|g; s|&|%26|g; s|#|%23|g')
-            new_anime="$(hianime_search "$_query" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select season: ")"
-            [ -z "$new_anime" ] && die "Invalid season selection"
-            anime_title="$(printf "%s" "$new_anime" | cut -f 2)"
-            anime_id="$(printf "%s" "$new_anime" | cut -f 1)"
-            episode_maps="$(hianime_episodes "$anime_id")" || exit 1
-            ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
-            ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
-            [ -z "$ep_no" ] && die "Invalid episode selection"
-            ;;
         change_quality)
             new_quality="$(printf "%s" "$links" | menu "Select Quality: " "" "$menu_extra_flags" | cut -d ">" -f 1)"
             [ -z "$new_quality" ] && die "No quality selected"
