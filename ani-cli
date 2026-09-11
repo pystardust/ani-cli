@@ -151,14 +151,27 @@ cleanup() {
 
 #shellcheck disable=SC2086
 hianime_curl() {
-    _response="$($curl_exe -sL -A "$agent" --max-time 10 $cipher_flag -w ' %{http_code}' "$@")" ||
-        die "Connection error: could not fetch $1 (curl exit $?)"
+    _curl_status=0
+    _response="$($curl_exe -sL -A "$agent" --max-time 10 $cipher_flag \
+        -w ' %{http_code}' "$@")" || _curl_status=$?
+
     _http_code=${_response##* }
     _response=${_response% *}
+
+    if [ "$_curl_status" -ne 0 ]; then
+        case "$_http_code" in
+            [1-5][0-9][0-9]) _detail="HTTP $_http_code" ;;
+            *) _detail="no HTTP response" ;;
+        esac
+        die "Connection error: could not fetch $1 ($_detail; curl exit $_curl_status)"
+    fi
+
     case "$_http_code" in
         2??) ;;
-        *) printf "%s" "$_response" | grep -qi "Just a moment" || die "Request failed: HTTP $_http_code from $1" ;;
+        *) printf "%s" "$_response" | grep -qi "Just a moment" ||
+            die "Request failed: HTTP $_http_code from $1" ;;
     esac
+
     printf "%s" "$_response"
 }
 
