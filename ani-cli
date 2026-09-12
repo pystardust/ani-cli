@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.1"
+version_number="5.1.2"
 
 # UI
 
