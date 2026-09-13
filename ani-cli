@@ -149,10 +149,9 @@ cleanup() {
 
 # SCRAPING
 
-# prints $1 followed by a newline, like printf "%s\n" would.
-# the search page and long episode lists exceed 128KiB, and on shells without a builtin printf
-# (mksh, the /bin/sh of android) such an argument to the external printf fails with
-# "Argument list too long". a here-document is written by the shell itself and has no such limit.
+# prints $1 like printf "%s\n" would. mksh (the sh of android) has no builtin printf, and the
+# external one fails with "Argument list too long" for pages over 128KiB. a here-document
+# is written by the shell itself and has no such limit.
 print_page() {
     cat <<EOF
 $1
