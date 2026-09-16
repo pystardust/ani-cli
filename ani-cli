@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.4"
+version_number="5.1.5"
 
 # UI
 
@@ -63,6 +63,8 @@ help_info() {
         Use Syncplay to watch with friends
       -S, --select-nth
         Select nth entry
+      --exact
+        Only accept a case-insensitive exact title match
       -q, --quality
         Specify the video quality
       -v, --vlc
@@ -488,6 +490,7 @@ histfile="$hist_dir/ani-hsts"
 
 source="${ANI_CLI_DEFAULT_SOURCE:-search}"
 branch="${ANI_CLI_BRANCH:-master}"
+exact_match=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -519,6 +522,7 @@ while [ $# -gt 0 ]; do
             index="$2"
             shift
             ;;
+        --exact) exact_match=1 ;;
         -c | --continue) source=history ;;
         -d | --download)
             player_function=download
@@ -607,9 +611,13 @@ case "$source" in
         # for checking new releases by specifying anime name
         [ "$source" = "nextep" ] && time_until_next_ep "$query"
 
+        search_query="$query"
         query=$(printf "%s" "$query" | sed 's| |+|g')
 
         anime_list=$(hianime_search "$query") || exit 1
+        if [ "$exact_match" -eq 1 ]; then
+            anime_list=$(printf "%s\n" "$anime_list" | awk -F '\t' -v title="$search_query" 'tolower($2) == tolower(title)')
+        fi
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
