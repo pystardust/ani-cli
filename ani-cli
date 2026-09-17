@@ -147,7 +147,16 @@ cleanup() {
     rm -f "${histfile}.new" # remove temp logfile
 }
 
-# SCRAPING
+SCRAPING
+
+# prints $1 like printf "%s\n" would. mksh (the sh of android) has no builtin printf, and the
+# external one fails with "Argument list too long" for pages over 128KiB. a here-document
+# is written by the shell itself and has no such limit.
+print_page() {
+    cat <<EOF
+$1
+EOF
+}
 
 #shellcheck disable=SC2086
 hianime_curl() {
@@ -168,11 +177,11 @@ hianime_curl() {
 
     case "$_http_code" in
         2??) ;;
-        *) printf "%s" "$_response" | grep -qi "Just a moment" ||
+        *) print_page "$_response" | grep -qi "Just a moment" ||
             die "Request failed: HTTP $_http_code from $1" ;;
     esac
 
-    printf "%s" "$_response"
+    print_page "$_response"
 }
 
 # GNU, BSD and openssl spell base64 decoding differently
@@ -199,12 +208,12 @@ deobfuscate_blob() (
 hianime_search() {
     #shellcheck disable=SC2059
     _page="$(hianime_curl "$(printf "$search_api" "$1")")" || return 1
-    if printf "%s" "$_page" | grep -qi "<title>Just a moment"; then
+    if print_page "$_page" | grep -qi "<title>Just a moment"; then
         [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
         die "Blocked by cloudflare."
     fi
     # the top 10 sidebar repeats the result markup, cut it off before flattening the page
-    printf "%s" "$_page" | sed '/id="main-sidebar"/,$d' | tr '\n' ' ' | sed 's|<div class="film-detail">|\n<div class="film-detail">|g' |
+    print_page "$_page" | sed '/id="main-sidebar"/,$d' | tr '\n' ' ' | sed 's|<div class="film-detail">|\n<div class="film-detail">|g' |
         sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*|\1\t\2|p' |
         sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g"
 }
@@ -214,7 +223,7 @@ hianime_episodes() {
     #shellcheck disable=SC2059
     _page="$(hianime_curl "$(printf "$episodes_api" "${1##*-}")")" || return 1
     # ids from the v5.0 provider have the same shape, so check the slug in the episode links too
-    printf "%s" "$_page" | sed 's|\\||g; s|ep-item|\nep-item|g' |
+    print_page "$_page" | sed 's|\\||g; s|ep-item|\nep-item|g' |
         sed -nE "s|.*data-number=\"([^\"]*)\".*data-id=\"([0-9]+)\".*/watch/${1}[?]ep=.*|\\2\\t\\1|p"
 }
 
