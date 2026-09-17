@@ -350,7 +350,7 @@ update_history() {
     mv "${histfile}.new" "$histfile"
 }
 
-#  PLAYING
+# PLAYING
 
 # shellcheck disable=SC2086
 # $1 = video link, $2 = video name, $3 = extra flags
