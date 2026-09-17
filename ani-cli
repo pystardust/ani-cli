@@ -1,4 +1,4 @@
-#!/bin/sh
+7 #!/bin/sh
 
 version_number="5.1.4"
 
@@ -147,7 +147,7 @@ cleanup() {
     rm -f "${histfile}.new" # remove temp logfile
 }
 
-SCRAPING
+# SCRAPING
 
 # prints $1 like printf "%s\n" would. mksh (the sh of android) has no builtin printf, and the
 # external one fails with "Argument list too long" for pages over 128KiB. a here-document
