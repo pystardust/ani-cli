@@ -1,4 +1,4 @@
-7 #!/bin/sh
+#!/data/data/com.termux/files/usr/bin/bash
 
 version_number="5.1.4"
 
