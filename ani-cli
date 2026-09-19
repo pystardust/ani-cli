@@ -352,7 +352,7 @@ android_mpv() {
     _conf_dir="/storage/emulated/0/mpv"
     if [ -w "${_conf_dir%/mpv}" ]; then
         [ -d "$_conf_dir" ] || mkdir "$_conf_dir"
-        printf "referrer=%s\n%s\n" "$refr" "${sub_link:+sub-file=$sub_link}" >"$_conf_dir/mpv.config.mp4"
+        printf "referrer=%s\ncache-secs=120\n%s\n" "$refr" "${sub_link:+sub-file=$sub_link}" >"$_conf_dir/mpv.config.mp4"
     fi
     nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 &
 }
@@ -363,17 +363,19 @@ play_episode() {
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     # wait for the previous player to close (in range selection)
     wait
+    # the stream host blocks an ip that pulls over 100 uncached segments in 10 seconds, and players skip what they cannot get.
+    # mpv reads ahead as fast as it can, so its cache is capped at 2 minutes
     # shellcheck disable=SC2086
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\nSubtitles:\n%s\n" "$links" "$video_link" "$sub_link" ;;
         android_mpv) android_mpv ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
-        *flatpak*mpv*) flatpak run io.mpv.Mpv --referrer="$refr" ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        *flatpak*mpv*) flatpak run io.mpv.Mpv --referrer="$refr" --cache-secs=120 ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function --referrer="$refr" ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --referrer="$refr" --cache-secs=120 ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                $player_function --referrer="$refr" ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
+                $player_function --referrer="$refr" --cache-secs=120 ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$_range" ] && exit "$mpv_exitcode"
             fi
@@ -383,13 +385,13 @@ play_episode() {
             _sub_iina="$(printf "%s" "$sub_link" | sed 's|:|\\:|g')"
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
-                nohup $player_function --mpv-referrer="$refr" ${_sub_iina:+--mpv-sub-files="$_sub_iina"} $player_extra_flags --no-stdin --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --mpv-referrer="$refr" --mpv-cache-secs=120 ${_sub_iina:+--mpv-sub-files="$_sub_iina"} $player_extra_flags --no-stdin --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                nohup $player_function --mpv-referrer="$refr" ${_sub_iina:+--mpv-sub-files="$_sub_iina"} $player_extra_flags --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --mpv-referrer="$refr" --mpv-cache-secs=120 ${_sub_iina:+--mpv-sub-files="$_sub_iina"} $player_extra_flags --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             fi
             ;;
         *vlc*) nohup $player_function --http-referrer="$refr" $player_extra_flags --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" ${sub_link:+:input-slave="$sub_link"} >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- $skip_flag --referrer="$refr" ${sub_link:+--sub-file="$sub_link"} --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- $skip_flag --referrer="$refr" --cache-secs=120 ${sub_link:+--sub-file="$sub_link"} --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
         catt) nohup catt cast $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
         iSH)
