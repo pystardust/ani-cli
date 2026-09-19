@@ -343,7 +343,8 @@ download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
     [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$download_dir/$_name.vtt"
     command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$_name.mp4" $3 && return 0
-    ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$_name.mp4" $3
+    # ffmpeg skips the segments the stream host refuses when pulled at full speed, 10 times playback speed stays under its limit
+    ffmpeg -extension_picky 0 -referer "$refr" -readrate 10 -loglevel error -stats -i "$1" -c copy "$download_dir/$_name.mp4" $3
 }
 
 # mpv-android takes no options from the intent, so they go through a file the user includes in mpv.conf
