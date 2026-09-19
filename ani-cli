@@ -150,7 +150,7 @@ cleanup() {
 # SCRAPING
 
 #shellcheck disable=SC2086
-hianime_curl() {
+animekai_curl() {
     _curl_status=0
     _response="$($curl_exe -sL -A "$agent" --max-time 10 $cipher_flag \
         -w ' %{http_code}' "$@")" || _curl_status=$?
@@ -196,23 +196,22 @@ deobfuscate_blob() (
 )
 
 # search the query and give results. format is (id \t name)
-hianime_search() {
+animekai_search() {
     #shellcheck disable=SC2059
-    _page="$(hianime_curl "$(printf "$search_api" "$1")")" || return 1
+    _page="$(animekai_curl "$(printf "$search_api" "$1")")" || return 1
     if printf "%s" "$_page" | grep -qi "<title>Just a moment"; then
         [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
         die "Blocked by cloudflare."
     fi
-    # the top 10 sidebar repeats the result markup, cut it off before flattening the page
-    printf "%s" "$_page" | sed '/id="main-sidebar"/,$d' | tr '\n' ' ' | sed 's|<div class="film-detail">|\n<div class="film-detail">|g' |
-        sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*|\1\t\2|p' |
+    printf "%s" "$_page" | tr '\n' ' ' | sed 's|<div class="aitem">|\n<div class="aitem">|g' |
+        sed -nE 's|.*<a class="title" href="[^"]*/watch/([^"/]*)"[[:space:]]*title="([^"]*)".*|\1\t\2|p' |
         sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g"
 }
 
 # get the episodes list of the selected anime. format is (id \t ep_no)
 hianime_episodes() {
     #shellcheck disable=SC2059
-    _page="$(hianime_curl "$(printf "$episodes_api" "${1##*-}")")" || return 1
+    _page="$(animekai_curl "$(printf "$episodes_api" "${1##*-}")")" || return 1
     # ids from the v5.0 provider have the same shape, so check the slug in the episode links too
     printf "%s" "$_page" | sed 's|\\||g; s|ep-item|\nep-item|g' |
         sed -nE "s|.*data-number=\"([^\"]*)\".*data-id=\"([0-9]+)\".*/watch/${1}[?]ep=.*|\\2\\t\\1|p"
@@ -222,7 +221,7 @@ hianime_episodes() {
 hianime_m3u8() {
     _ep_id=$(printf "%s" "$episode_maps" | sed -nE "s|^([0-9]+)\t${1}$|\1|p")
     #shellcheck disable=SC2059
-    _servers="$(hianime_curl "$(printf "$servers_api" "$_ep_id")" | sed 's|\\"|"|g; s|server-item|\nserver-item|g')"
+    _servers="$(animekai_curl "$(printf "$servers_api" "$_ep_id")" | sed 's|\\"|"|g; s|server-item|\nserver-item|g')"
     # only the zokoanime embed is understood by deobfuscate_blob, the other servers use different players
     _hash="$(printf "%s\n" "$_servers" | sed -nE 's|.*data-type="'"$2"'".*data-server-name="ZokoAnime".*data-hash="([^"]*)".*|\1|p' | head -n 1)"
     _embed="$(b64_decode "$_hash")"
@@ -230,14 +229,14 @@ hianime_m3u8() {
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
     refr="$(printf "%s" "$_embed" | sed -E 's|^(https?://[^/]*).*|\1/|')"
     mal_id="$(printf "%s" "$_embed" | sed -nE 's|.*/mal/([0-9]+)/.*|\1|p')"
-    _blob="$(hianime_curl "$_embed" | sed -nE 's|.*window\.__P="([^"]*)".*|\1|p')"
+    _blob="$(animekai_curl "$_embed" | sed -nE 's|.*window\.__P="([^"]*)".*|\1|p')"
     [ -z "$_blob" ] && return 1
     _json="$(deobfuscate_blob "$_blob")"
     _m3u8_master="$(printf "%s" "$_json" | sed -nE 's|.*"src":"([^"]*\.m3u8[^"]*)".*|\1|p')"
     [ -z "$_m3u8_master" ] && return 1
     sub_link="$(printf "%s" "$_json" | sed 's|.*"subtitles":\[||; s|}\].*||; s|},{|}\n{|g' | grep -m 1 '"default":true' | sed -nE 's|.*"src":"([^"]*)".*|\1|p')"
     # quality variants are relative to the master playlist
-    links="$(hianime_curl "$_m3u8_master" -e "$refr" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sed "\|>https*://|!s|>|>${_m3u8_master%/*}/|" | sort -g -r -s)"
+    links="$(animekai_curl "$_m3u8_master" -e "$refr" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sed "\|>https*://|!s|>|>${_m3u8_master%/*}/|" | sort -g -r -s)"
     [ -n "$links" ]
 }
 
@@ -439,8 +438,9 @@ play() {
 # MAIN
 
 # setup
-base_api="https://hianime.at"
-search_api="${base_api}/search?keyword=%s"
+base_api="https://animekai.be"
+# the site has no relevance order, most viewed puts the main series before its movies and specials
+search_api="${base_api}/browse?keyword=%s&sort=most_viewed"
 episodes_api="${base_api}/api/theme/episode/list/%s"
 servers_api="${base_api}/api/theme/episode/servers?episodeId=%s"
 ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
@@ -609,7 +609,7 @@ case "$source" in
 
         query=$(printf "%s" "$query" | sed 's| |+|g')
 
-        anime_list=$(hianime_search "$query") || exit 1
+        anime_list=$(animekai_search "$query") || exit 1
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
