@@ -175,25 +175,19 @@ animekai_curl() {
     printf "%s" "$_response"
 }
 
-# GNU, BSD and openssl spell base64 decoding differently
-b64_decode() {
-    printf "%s\n" "$1" | base64 -d 2>/dev/null || printf "%s\n" "$1" | base64 -D 2>/dev/null || printf "%s\n" "$1" | openssl base64 -d -A 2>/dev/null
+# the embed ships its playlist as base64url(aes-256-cbc(json)), this prints the json.
+# key and iv are the trustAesKey and trustAesIv defaults in the embed's newclient.min.js, the player zero pads the key to 32 bytes.
+decrypt_blob() {
+    _key="$(printf "%s" 'i?LMTAx0Q6,:}50U' | od -v -An -tx1 | tr -d ' \n')"
+    _iv="$(printf "%s" "W0;27ToaUpl_P%'c" | od -v -An -tx1 | tr -d ' \n')"
+    # openssl insists on the padding that base64url leaves out
+    case "$((${#1} % 4))" in
+        2) _pad="==" ;;
+        3) _pad="=" ;;
+        *) _pad="" ;;
+    esac
+    printf "%s%s" "$1" "$_pad" | tr '_-' '/+' | openssl enc -d -aes-256-cbc -a -A -K "${_key}00000000000000000000000000000000" -iv "$_iv" 2>/dev/null
 }
-
-# the embed page ships its config as base64(json XOR "otaku-embed-v1"), this prints the json.
-# runs in a subshell so the key bytes can live in the positional parameters and rotate with shift.
-deobfuscate_blob() (
-    _bytes="$(b64_decode "$1" | od -v -An -tu1)"
-    set -- 111 116 97 107 117 45 101 109 98 101 100 45 118 49
-    _output=""
-    for _byte in $_bytes; do
-        _char=$((_byte ^ $1))
-        _output="${_output}\\0$((_char / 64))$(((_char / 8) % 8))$((_char % 8))"
-        set -- "$@" "$1"
-        shift
-    done
-    printf "%b" "$_output"
-)
 
 # search the query and give results. format is (id \t name)
 animekai_search() {
@@ -225,12 +219,15 @@ animekai_m3u8() {
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
     refr="$(printf "%s" "$_embed" | sed -E 's|^(https?://[^/]*).*|\1/|')"
     mal_id="$(printf "%s" "$_embed" | sed -nE 's|.*/mal/([0-9]+)/.*|\1|p')"
-    _blob="$(animekai_curl "$_embed" | sed -nE 's|.*window\.__P="([^"]*)".*|\1|p')"
+    # the embed page only loads with a referer, and its sources endpoint only answers ajax requests
+    _id="$(animekai_curl "$_embed" -e "$base_api/" | sed -nE 's|.*data-id="([0-9]+)".*|\1|p' | head -n 1)"
+    [ -z "$_id" ] && return 1
+    _json="$(animekai_curl "${refr}stream/getSources?id=${_id}" -H "X-Requested-With: XMLHttpRequest" | sed 's|\\/|/|g')"
+    _blob="$(printf "%s" "$_json" | sed -nE 's|.*"enc":"([^"]*)".*|\1|p')"
     [ -z "$_blob" ] && return 1
-    _json="$(deobfuscate_blob "$_blob")"
-    _m3u8_master="$(printf "%s" "$_json" | sed -nE 's|.*"src":"([^"]*\.m3u8[^"]*)".*|\1|p')"
+    _m3u8_master="$(decrypt_blob "$_blob" | sed -nE 's|\\/|/|g; s|.*"file":"([^"]*\.m3u8[^"]*)".*|\1|p')"
     [ -z "$_m3u8_master" ] && return 1
-    sub_link="$(printf "%s" "$_json" | sed 's|.*"subtitles":\[||; s|}\].*||; s|},{|}\n{|g' | grep -m 1 '"default":true' | sed -nE 's|.*"src":"([^"]*)".*|\1|p')"
+    sub_link="$(printf "%s" "$_json" | sed 's|.*"tracks":\[||; s|}\].*||; s|},{|}\n{|g' | grep -m 1 '"default":true' | sed -nE 's|.*"file":"([^"]*)".*|\1|p')"
     # quality variants are relative to the master playlist
     links="$(animekai_curl "$_m3u8_master" -e "$refr" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sed "\|>https*://|!s|>|>${_m3u8_master%/*}/|" | sort -g -r -s)"
     [ -n "$links" ]
@@ -251,7 +248,7 @@ select_quality() {
 # gets embed url, collects direct links and selects one with desired quality into $episode
 get_video_link() {
     animekai_m3u8 "$ep_no" "$mode" || die "No sources found for $mode!"
-    info "hianime.at links fetched"
+    info "animekai.be links fetched"
     select_quality "$quality"
     # should never trigger but just in case
     if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
@@ -561,6 +558,7 @@ done
 info "Checking dependencies..."
 dep_ch "sed"
 dep_ch "grep"
+dep_ch "openssl"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
 dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
 
