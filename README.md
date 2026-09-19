@@ -25,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://hianime.at/">hianime.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://animekai.be/">animekai.</a>
 </h3>
 
 <h1 align="center">
