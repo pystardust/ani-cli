@@ -197,9 +197,25 @@ animekai_search() {
         [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
         die "Blocked by cloudflare."
     fi
-    printf "%s" "$_page" | tr '\n' ' ' | sed 's|<div class="aitem">|\n<div class="aitem">|g' |
+    _results="$(printf "%s" "$_page" | tr '\n' ' ' | sed 's|<div class="aitem">|\n<div class="aitem">|g' |
         sed -nE 's|.*<a class="title" href="[^"]*/watch/([^"/]*)"[[:space:]]*title="([^"]*)".*|\1\t\2|p' |
-        sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g"
+        sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g")"
+    # the site only finds a query as one literal phrase, so "cyberpunk edgerunners" misses "Cyberpunk: Edgerunners".
+    # a phrase without results is retried with its longest word, keeping the results that contain all the others.
+    _words="$(printf "%s" "$1" | tr '+' ' ')"
+    if [ -z "$_results" ] && [ "$_words" != "$1" ]; then
+        _longest=""
+        #shellcheck disable=SC2086
+        for _word in $_words; do
+            [ "${#_word}" -gt "${#_longest}" ] && _longest="$_word"
+        done
+        _results="$(animekai_search "$_longest")" || return 1
+        #shellcheck disable=SC2086
+        for _word in $_words; do
+            _results="$(printf "%s" "$_results" | grep -iF -- "$_word")"
+        done
+    fi
+    printf "%s" "$_results"
 }
 
 # get the episodes of the selected anime that are out in the current mode, one number per line
