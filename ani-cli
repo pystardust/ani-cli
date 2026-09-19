@@ -222,6 +222,8 @@ animekai_search() {
 animekai_episodes() {
     #shellcheck disable=SC2059
     _page="$(animekai_curl "$(printf "$episodes_api" "$1")")" || return 1
+    # an empty list is fine for a mode the anime does not have, a page without any episode means the markup changed
+    printf "%s" "$_page" | grep -Eq '[[:space:]]num="[0-9]' || die "No episode list on the watch page of $1, the site may have changed"
     printf "%s" "$_page" | tr '\n' ' ' | sed 's|<li>|\n<li>|g' |
         sed -nE 's|.*<a href="[^"]*/watch/'"$1"'/ep-[^"]*"[[:space:]]*num="([^"]*)"[^>]*data-'"$mode"'="1".*|\1|p'
 }
@@ -237,16 +239,16 @@ animekai_m3u8() {
     mal_id="$(printf "%s" "$_embed" | sed -nE 's|.*/mal/([0-9]+)/.*|\1|p')"
     # the embed page only loads with a referer, and its sources endpoint only answers ajax requests
     _id="$(animekai_curl "$_embed" -e "$base_api/" | sed -nE 's|.*data-id="([0-9]+)".*|\1|p' | head -n 1)"
-    [ -z "$_id" ] && return 1
+    [ -z "$_id" ] && die "No player id on the embed page: $_embed"
     _json="$(animekai_curl "${refr}stream/getSources?id=${_id}" -H "X-Requested-With: XMLHttpRequest" | sed 's|\\/|/|g')"
     _blob="$(printf "%s" "$_json" | sed -nE 's|.*"enc":"([^"]*)".*|\1|p')"
-    [ -z "$_blob" ] && return 1
+    [ -z "$_blob" ] && die "No encrypted playlist in the embed's sources: ${refr}stream/getSources?id=${_id}"
     _m3u8_master="$(decrypt_blob "$_blob" | sed -nE 's|\\/|/|g; s|.*"file":"([^"]*\.m3u8[^"]*)".*|\1|p')"
-    [ -z "$_m3u8_master" ] && return 1
+    [ -z "$_m3u8_master" ] && die "Could not decrypt the embed's playlist, its key may have changed"
     sub_link="$(printf "%s" "$_json" | sed 's|.*"tracks":\[||; s|}\].*||; s|},{|}\n{|g' | grep -m 1 '"default":true' | sed -nE 's|.*"file":"([^"]*)".*|\1|p')"
     # quality variants are relative to the master playlist
     links="$(animekai_curl "$_m3u8_master" -e "$refr" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' | sed "\|>https*://|!s|>|>${_m3u8_master%/*}/|" | sort -g -r -s)"
-    [ -n "$links" ]
+    [ -n "$links" ] || die "No quality variants in the playlist: $_m3u8_master"
 }
 
 # select the quality according to the setting
