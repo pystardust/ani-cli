@@ -208,23 +208,19 @@ animekai_search() {
         sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g"
 }
 
-# get the episodes list of the selected anime. format is (id \t ep_no)
-hianime_episodes() {
+# get the episodes of the selected anime that are out in the current mode, one number per line
+animekai_episodes() {
     #shellcheck disable=SC2059
-    _page="$(animekai_curl "$(printf "$episodes_api" "${1##*-}")")" || return 1
-    # ids from the v5.0 provider have the same shape, so check the slug in the episode links too
-    printf "%s" "$_page" | sed 's|\\||g; s|ep-item|\nep-item|g' |
-        sed -nE "s|.*data-number=\"([^\"]*)\".*data-id=\"([0-9]+)\".*/watch/${1}[?]ep=.*|\\2\\t\\1|p"
+    _page="$(animekai_curl "$(printf "$episodes_api" "$1")")" || return 1
+    printf "%s" "$_page" | tr '\n' ' ' | sed 's|<li>|\n<li>|g' |
+        sed -nE 's|.*<a href="[^"]*/watch/'"$1"'/ep-[^"]*"[[:space:]]*num="([^"]*)"[^>]*data-'"$mode"'="1".*|\1|p'
 }
 
 # resolves episode $1 in mode $2 (sub/dub): sets links (quality >url per line), sub_link, mal_id and refr
-hianime_m3u8() {
-    _ep_id=$(printf "%s" "$episode_maps" | sed -nE "s|^([0-9]+)\t${1}$|\1|p")
+animekai_m3u8() {
+    # every server of an episode points to the same embed, so the first one of the mode will do
     #shellcheck disable=SC2059
-    _servers="$(animekai_curl "$(printf "$servers_api" "$_ep_id")" | sed 's|\\"|"|g; s|server-item|\nserver-item|g')"
-    # only the zokoanime embed is understood by deobfuscate_blob, the other servers use different players
-    _hash="$(printf "%s\n" "$_servers" | sed -nE 's|.*data-type="'"$2"'".*data-server-name="ZokoAnime".*data-hash="([^"]*)".*|\1|p' | head -n 1)"
-    _embed="$(b64_decode "$_hash")"
+    _embed="$(animekai_curl "$(printf "$servers_api" "$anime_id" "$1")" | sed 's|\\/|/|g' | sed -nE 's|.*"'"$2"'":\[\{[^}]*"source_url":"([^"]*)".*|\1|p')"
     [ -z "$_embed" ] && return 1
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
     refr="$(printf "%s" "$_embed" | sed -E 's|^(https?://[^/]*).*|\1/|')"
@@ -254,7 +250,7 @@ select_quality() {
 
 # gets embed url, collects direct links and selects one with desired quality into $episode
 get_video_link() {
-    hianime_m3u8 "$ep_no" "$mode" || die "No sources found for $mode!"
+    animekai_m3u8 "$ep_no" "$mode" || die "No sources found for $mode!"
     info "hianime.at links fetched"
     select_quality "$quality"
     # should never trigger but just in case
@@ -321,7 +317,7 @@ backup_old_hist() {
 }
 
 process_hist_entry() {
-    ep_list=$(hianime_episodes "$anime_id" | cut -f 2)
+    ep_list=$(animekai_episodes "$anime_id")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$anime_id" "$anime_title" "$ep_no"
 }
@@ -441,8 +437,8 @@ play() {
 base_api="https://animekai.be"
 # the site has no relevance order, most viewed puts the main series before its movies and specials
 search_api="${base_api}/browse?keyword=%s&sort=most_viewed"
-episodes_api="${base_api}/api/theme/episode/list/%s"
-servers_api="${base_api}/api/theme/episode/servers?episodeId=%s"
+episodes_api="${base_api}/watch/%s"
+servers_api="${base_api}/watch/%s/ep/%s/sources"
 ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
 tls13_ciphers='TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256'
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -591,8 +587,7 @@ case "$source" in
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
         [ -z "$anime_id" ] && exit 1
         anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
-        episode_maps="$(hianime_episodes "$anime_id")" || exit 1
-        ep_list="$(printf "%s" "$episode_maps" | cut -f 2)"
+        ep_list="$(animekai_episodes "$anime_id")" || exit 1
         ep_no=$(printf "%s" "$anime_list" | grep "^$anime_id	" | sed -nE 's/.*- episode (.+)$/\1/p')
         ;;
     *)
@@ -616,8 +611,7 @@ case "$source" in
         [ -z "$result" ] && die "Invalid anime selection"
         anime_title="$(printf "%s" "$result" | cut -f 2)"
         anime_id="$(printf "%s" "$result" | cut -f 1)"
-        episode_maps="$(hianime_episodes "$anime_id")" || exit 1
-        ep_list="$(printf '%s' "$episode_maps" | cut -f 2)"
+        ep_list="$(animekai_episodes "$anime_id")" || exit 1
         [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$menu_multi_flag")
         [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
