@@ -301,18 +301,6 @@ time_until_next_ep() {
 
 # HISTORY
 
-backup_old_hist() {
-    backupfile="${histfile}.v4"
-    : >"${histfile}.new"
-    while IFS="	" read -r ep_no anime_id anime_title; do
-        case "$anime_id" in
-            *-*) printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"${histfile}.new" ;;
-            *) printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"$backupfile" ;;
-        esac
-    done <"$histfile"
-    mv "${histfile}.new" "$histfile"
-}
-
 process_hist_entry() {
     ep_list=$(animekai_episodes "$anime_id")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
@@ -476,7 +464,8 @@ fi
 
 hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
-histfile="$hist_dir/ani-hsts"
+# ids only mean something to the provider they came from, so this one keeps a history of its own
+histfile="$hist_dir/ani-hsts-animekai"
 [ ! -f "$histfile" ] && : >"$histfile"
 
 source="${ANI_CLI_DEFAULT_SOURCE:-search}"
@@ -577,7 +566,6 @@ trap 'cleanup; exit 1' INT HUP TERM
 # searching
 case "$source" in
     history)
-        backup_old_hist
         anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
