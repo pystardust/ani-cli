@@ -258,7 +258,7 @@ hianime_info() {
         sed -nE 's|.*item-head">([^<:]*):</span>(.*)|\1\t\2|p' | sed 's|<[^>]*>| |g; s/  */ /g; s/ *, */, /g; s/ *,* *$//; s/\t /\t/' | decode_entities)"
     [ -n "$_rating" ] && _items="$(printf "%s\nRating\t%s" "$_items" "$_rating")"
     _seasons="$(printf "%s" "$_page" | sed 's|class="os-item|\n&|g' | sed '1d; s|</a>.*||' |
-        sed -nE 's|^class="os-item ?(active)?"[^>]*>.*<div class="title">([^<]*)</div>.*|\2 \1|p' | sed 's| active$| (this)|; s| $||' | tr '\n' ',' | sed 's|,$||; s|,|, |g')"
+        sed -nE 's|^class="os-item ?(active)?"[^>]*>.*<div class="title">([^<]*)</div>.*|\2 \1|p' | sed 's| active$| (this)|; s| $||' | tr '\n' ',' | sed 's|,$||; s|,|, |g' | decode_entities)"
     [ -n "$_seasons" ] && _items="$(printf "%s\nSeasons\t%s" "$_items" "$_seasons")"
     printf "\033[1m%s\033[0m\n\n" "$_title"
     printf "%s\n" "$_items" | grep -v "^Overview" | while IFS="	" read -r _key _value; do
