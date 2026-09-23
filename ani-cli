@@ -8,7 +8,7 @@ version_number="5.2.0"
 # $1 = prompt, $2 = multi select flag (for fzf/rofi), $3 = extra flags by user
 menu() {
     case "$menu_program" in
-        fzf) fzf --reverse --cycle --prompt "$1" --delimiter '\t' --with-nth 1,4,3 --tabstop 4 $2 $3 ;;
+        fzf) fzf --reverse --cycle --prompt "$1" --delimiter '\t' --with-nth 1,4,3 --tabstop 4 ${menu_preview:+--preview "$menu_preview" --preview-window "$preview_window"} $2 $3 ;;
         rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
         dmenu) dmenu -l 20 -p "$1" $3 ;;
         *) "$menu_program" $3 "$1" ;;
@@ -93,6 +93,8 @@ help_info() {
         Exit the player, and return the player exit code (useful for non interactive scenarios)
       -N, --nextep-countdown
         Display a countdown to the next episode
+      --info
+        Show the details of an anime id, this is what the preview pane displays
       -U, --update
         Update the script
     Some example usages:
@@ -201,6 +203,11 @@ deobfuscate_blob() (
     printf "%b" "$_output"
 )
 
+# turns the html entities the site uses for titles and descriptions back into characters
+decode_entities() {
+    sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e 's|&lt;|<|g' -e 's|&gt;|>|g' -e "s|&amp;|\&|g"
+}
+
 # appends the first group of the regex $1 as a new tab separated column, "-" when the line has no match
 tab_column() {
     sed -E -e "s|^(.*$1.*)\$|\\1\\t\\2|" -e t -e 's|$|\t-|'
@@ -220,12 +227,45 @@ hianime_search() {
         tab_column '<span class="fdi-item">([A-Za-z]+)' | tab_column 'tick-eps">[[:space:]]*([0-9]+)' |
         tab_column 'tick-sub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' | tab_column 'tick-dub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' |
         sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*\t([A-Za-z-]+\t[0-9-]+\t[0-9-]+\t[0-9-]+)$|\1\t\2\t\3|p' |
-        sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e 's|&lt;|<|g' -e 's|&gt;|>|g' -e "s|&amp;|\&|g" |
+        decode_entities |
         while IFS="	" read -r _id _title _type _eps _sub _dub; do
             case "$_type" in MOVIE) _type=Movie ;; SPECIAL) _type=Special ;; MUSIC) _type=Music ;; *) ;; esac
             [ "$_eps" = "-" ] && _eps="?"
             printf "%s\t%s\t%-7s %4s ep  sub %-4s dub %-4s  \n" "$_id" "$_title" "$_type" "$_eps" "$_sub" "$_dub"
         done
+}
+
+# prints what follows the first occurrence of $1 on a single line
+after_first() {
+    sed "s|$1|\\
+|" | sed -n '2p'
+}
+
+# print the details of the anime with id $1, this is what the preview pane shows
+hianime_info() {
+    case "$1" in
+        "" | *[!A-Za-z0-9._-]*) die "Invalid anime id: $1" ;;
+        *) ;;
+    esac
+    _page="$(hianime_curl "$base_api/$1" 2>/dev/null)" || {
+        printf "No details available\n"
+        exit 1
+    }
+    _page="$(printf "%s" "$_page" | tr '\n\t' '  ' | sed 's/  */ /g')"
+    _title="$(printf "%s" "$_page" | after_first '<h2 class="film-name' | sed -nE 's|^[^>]*> *([^<]*[^< ]) *<.*|\1|p' | decode_entities)"
+    _rating="$(printf "%s" "$_page" | after_first 'tick-pg">' | sed 's| *<.*||')"
+    # the anisc-info block lists the facts, one item each. an item ends at its first closing div, links become comma separated
+    _items="$(printf "%s" "$_page" | after_first '<div class="anisc-info">' | sed 's|<div class="item |\
+<div class="item |g' | sed 's|</div>.*||; s|</a>|,|g' |
+        sed -nE 's|.*item-head">([^<:]*):</span>(.*)|\1\t\2|p' | sed 's|<[^>]*>| |g; s/  */ /g; s/ *, */, /g; s/ *,* *$//; s/\t /\t/' | decode_entities)"
+    [ -n "$_rating" ] && _items="$(printf "%s\nRating\t%s" "$_items" "$_rating")"
+    printf "\033[1m%s\033[0m\n\n" "$_title"
+    printf "%s\n" "$_items" | grep -v "^Overview" | while IFS="	" read -r _key _value; do
+        [ -n "$_key" ] && printf "\033[1;34m%-10s\033[0m %s\n" "$_key" "$_value"
+    done
+    printf "%s\n" "$_items" | sed -n 's|^Overview\t|\
+|p'
+    exit 0
 }
 
 # get the episodes list of the selected anime. format is (id \t ep_no)
@@ -493,6 +533,9 @@ exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 menu_program="${ANI_CLI_MENU:-fzf}"
 menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
+# the preview pane runs this script again with --info for the highlighted anime
+script_path="$(command -v "$0" || printf "%s" "$0")"
+preview_window="right:40%:wrap"
 
 # not opening from a terminal
 if [ ! -t 0 ]; then
@@ -568,6 +611,10 @@ while [ $# -gt 0 ]; do
         --dmenu) menu_program=dmenu ;;
         --skip) skip_intro=1 ;;
         -N | --nextep-countdown) source=nextep ;;
+        --info)
+            [ $# -lt 2 ] && die "missing argument!"
+            hianime_info "$2"
+            ;;
         -U | --update)
             dep_ch "patch"
             branch="${2:-$branch}"
@@ -606,7 +653,9 @@ case "$source" in
         anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
+        menu_preview="sh '$script_path' --info {2}"
         [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
+        unset menu_preview
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
         [ -z "$anime_id" ] && exit 1
         anime_title=$(printf "%s" "$anime_list" | grep "^$anime_id	" | cut -f 2 | sed 's| - episode.*||')
@@ -631,7 +680,9 @@ case "$source" in
         anime_list=$(hianime_search "$query") || exit 1
         [ -z "$anime_list" ] && die "No results found!"
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        menu_preview="sh '$script_path' --info {2}"
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
+        unset menu_preview
         [ -z "$result" ] && die "Invalid anime selection"
         anime_title="$(printf "%s" "$result" | cut -f 2)"
         anime_id="$(printf "%s" "$result" | cut -f 1)"
