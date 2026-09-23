@@ -237,8 +237,7 @@ hianime_search() {
 
 # prints what follows the first occurrence of $1 on a single line
 after_first() {
-    sed "s|$1|\\
-|" | sed -n '2p'
+    sed "s|$1|\\n|" | sed -n '2p'
 }
 
 # print the details of the anime with id $1, this is what the preview pane shows
@@ -255,16 +254,17 @@ hianime_info() {
     _title="$(printf "%s" "$_page" | after_first '<h2 class="film-name' | sed -nE 's|^[^>]*> *([^<]*[^< ]) *<.*|\1|p' | decode_entities)"
     _rating="$(printf "%s" "$_page" | after_first 'tick-pg">' | sed 's| *<.*||')"
     # the anisc-info block lists the facts, one item each. an item ends at its first closing div, links become comma separated
-    _items="$(printf "%s" "$_page" | after_first '<div class="anisc-info">' | sed 's|<div class="item |\
-<div class="item |g' | sed 's|</div>.*||; s|</a>|,|g' |
+    _items="$(printf "%s" "$_page" | after_first '<div class="anisc-info">' | sed 's|<div class="item |\n<div class="item |g' | sed 's|</div>.*||; s|</a>|,|g' |
         sed -nE 's|.*item-head">([^<:]*):</span>(.*)|\1\t\2|p' | sed 's|<[^>]*>| |g; s/  */ /g; s/ *, */, /g; s/ *,* *$//; s/\t /\t/' | decode_entities)"
     [ -n "$_rating" ] && _items="$(printf "%s\nRating\t%s" "$_items" "$_rating")"
+    _seasons="$(printf "%s" "$_page" | sed 's|class="os-item|\n&|g' | sed '1d; s|</a>.*||' |
+        sed -nE 's|^class="os-item ?(active)?"[^>]*>.*<div class="title">([^<]*)</div>.*|\2 \1|p' | sed 's| active$| (this)|; s| $||' | tr '\n' ',' | sed 's|,$||; s|,|, |g')"
+    [ -n "$_seasons" ] && _items="$(printf "%s\nSeasons\t%s" "$_items" "$_seasons")"
     printf "\033[1m%s\033[0m\n\n" "$_title"
     printf "%s\n" "$_items" | grep -v "^Overview" | while IFS="	" read -r _key _value; do
         [ -n "$_key" ] && printf "\033[1;34m%-10s\033[0m %s\n" "$_key" "$_value"
     done
-    printf "%s\n" "$_items" | sed -n 's|^Overview\t|\
-|p'
+    printf "%s\n" "$_items" | sed -n 's|^Overview\t|\n|p'
     exit 0
 }
 
