@@ -557,6 +557,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * How can I download? - Use `-d`, it will download into your working directory.
 * Can i change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
 * How can I bulk download? - `Use -d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
+* What do the columns in the search results mean? - Type, number of episodes (`?` when unreleased or still airing) and how many episodes have subtitles and a dub (`-` when none).
 
 **Note:** All features are documented in `ani-cli --help`.
 
