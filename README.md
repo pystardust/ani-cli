@@ -557,6 +557,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * How can I download? - Use `-d`, it will download into your working directory.
 * Can i change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
 * How can I bulk download? - `Use -d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
+* Do I have to type the full name? - No, the search prompt shows what the site finds while you type (fzf 0.25 or newer), pick a result with Enter. Type a name on the command line (`ani-cli dandadan`) to skip the prompt.
 * What do the columns in the search results mean? - The type (TV, Movie, OVA, ONA, Special), the number of episodes (`?` while a show is unreleased or still airing) and how many episodes have subtitles and a dub (`-` when there are none).
 * What is the pane next to the search results? - The details of the highlighted anime (Japanese name, aired dates, status, score, genres, studios, rating, seasons, synopsis). It exists with fzf only, moves below the list on narrow terminals and can be turned off with `export ANI_CLI_MENU_FLAGS="--no-preview"`.
 

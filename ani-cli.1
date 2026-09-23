@@ -17,7 +17,7 @@ This tool scrapes the site hianime.
 .PD 0
 .P
 .PD
-Search results list the type, the number of episodes and how many of them have subtitles and a dub next to every title. With fzf, a preview pane shows the details of the highlighted anime.
+Search results list the type, the number of episodes and how many of them have subtitles and a dub next to every title. With fzf (0.25 or newer), the search prompt shows the results while typing and a preview pane shows the details of the highlighted anime.
 .SH OPTIONS
 .TP
 \fB\-e | --episode | -r | --range\fR \fI\,<episode>\/\fR
@@ -58,6 +58,9 @@ Prints a countdown to the next episode as the last episode in the list. If in hi
 .TP
 \fB\--info\fR \fI\,<id>\/\fR
 Print the details of an anime id: title, Japanese name, aired dates, status, score, genres, studios, rating, seasons and synopsis. The fzf preview pane uses this.
+.TP
+\fB\--search\fR \fI\,<query>\/\fR
+Print what the site finds for a query, one line per anime: number, id, title and details. The search prompt reloads this while typing.
 .TP
 \fB\--dub\fR
 Play the dubbed version. Without this flag, it'll always play the subbed version.
