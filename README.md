@@ -25,7 +25,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://hianime.at/">hianime.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://animekai.be/">animekai.</a>
 </h3>
 
 <h1 align="center">
@@ -160,6 +160,11 @@ pkg install termux-am
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
+**Note:** The `openssl` CLI utility is in the `openssl-tool` package on Termux, not `openssl`. Install it with:
+```sh
+pkg install openssl-tool
+```
+
 **Important Note:** The streams only play with the right referrer, which mpv on Android has to read from a config file:
 - Run this command and allow storage permissions:
 ```sh
@@ -284,7 +289,7 @@ Further details: https://github.com/ish-app/ish/issues/2530
 
 Then run this:
 ```sh
-apk add grep sed curl-impersonate bash fzf git ncurses patch ffmpeg
+apk add grep sed curl-impersonate bash fzf git ncurses patch ffmpeg openssl
 git clone --depth 1 https://github.com/pystardust/ani-cli ~/.ani-cli
 cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
@@ -532,6 +537,7 @@ apk del grep sed curl fzf git ffmpeg ncurses
 - yt-dlp - m3u8 Downloader
 - ffmpeg - m3u8 Downloader (fallback)
 - fzf - User interface
+- openssl (for decrypting encrypted video sources; on Termux, the CLI is in the `openssl-tool` package)
 - ani-skip (optional, for auto-skipping anime intros)
 - patch - Self updating
 
