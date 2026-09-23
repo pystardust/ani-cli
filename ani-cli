@@ -533,9 +533,11 @@ exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
 menu_program="${ANI_CLI_MENU:-fzf}"
 menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
-# the preview pane runs this script again with --info for the highlighted anime
+# the preview pane runs this script again with --info for the highlighted anime, it goes below the list on narrow terminals
 script_path="$(command -v "$0" || printf "%s" "$0")"
 preview_window="right:40%:wrap"
+_cols="$(tput cols 2>/dev/null)"
+[ "${_cols:-100}" -lt 100 ] 2>/dev/null && preview_window="down:40%:wrap"
 
 # not opening from a terminal
 if [ ! -t 0 ]; then
