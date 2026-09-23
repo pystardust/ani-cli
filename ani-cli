@@ -228,7 +228,7 @@ hianime_search() {
         tab_column 'tick-sub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' | tab_column 'tick-dub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' |
         sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*\t([A-Za-z-]+\t[0-9-]+\t[0-9-]+\t[0-9-]+)$|\1\t\2\t\3|p' |
         decode_entities |
-        while IFS="	" read -r _id _title _type _eps _sub _dub; do
+        while IFS="	" read -r _id _title _type _eps _sub _dub || [ -n "$_id" ]; do
             case "$_type" in MOVIE) _type=Movie ;; SPECIAL) _type=Special ;; MUSIC) _type=Music ;; *) ;; esac
             [ "$_eps" = "-" ] && _eps="?"
             printf "%s\t%s\t%-7s %4s ep  sub %-4s dub %-4s  \n" "$_id" "$_title" "$_type" "$_eps" "$_sub" "$_dub"
