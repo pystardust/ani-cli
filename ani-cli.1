@@ -1,4 +1,4 @@
-.TH "ANI-CLI" "1" "August 2026" "ani-cli" "User Commands"
+.TH "ANI-CLI" "1" "September 2026" "ani-cli" "User Commands"
 .SH NAME
 ani-cli \- watch anime from the commandline
 .SH SYNOPSIS
@@ -14,6 +14,10 @@ This tool scrapes the site hianime.
 .P
 .PD
 \f[B]ani-cli\f[R] without options defaults to iina on macOS, flatpak mpv on Steamdeck, mpv apk on android, vlc on iOS and mpv media player everywhere else.
+.PD 0
+.P
+.PD
+Search results list the type, the number of episodes and how many of them have subtitles and a dub next to every title. With fzf, a preview pane shows the details of the highlighted anime.
 .SH OPTIONS
 .TP
 \fB\-e | --episode | -r | --range\fR \fI\,<episode>\/\fR
@@ -51,6 +55,9 @@ Selects nth entry.
 .TP
 \fB\-N | --nextep-countdown\fR
 Prints a countdown to the next episode as the last episode in the list. If in history is after the current episode.
+.TP
+\fB\--info\fR \fI\,<id>\/\fR
+Print the details of an anime id: title, Japanese name, aired dates, status, score, genres, studios, rating, seasons and synopsis. The fzf preview pane uses this.
 .TP
 \fB\--dub\fR
 Play the dubbed version. Without this flag, it'll always play the subbed version.
@@ -97,7 +104,7 @@ Sets the flags for the player ani-cli uses. Can be anything that the player supp
 Controls the frontend of ani-cli. Can be fzf, rofi, dmenu or any other program. Default is fzf.
 .TP
 \fBANI_CLI_MENU_FLAGS\fR
-Controls the flags for the frontend. Last flag must take prompt as argument. Default is none
+Controls the flags for the frontend. Last flag must take prompt as argument. With fzf, --no-preview hides the details pane. Default is none
 .TP
 \fBANI_CLI_LOG\fR
 Controls the logging feature for playback. Can be 1(logs) or 0(doesn't log). Default is 1.
