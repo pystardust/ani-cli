@@ -13,7 +13,7 @@ grep -q '^# MAIN$' ani-cli || {
 eval "$(sed -n '1,/^# MAIN$/p' ani-cli)"
 
 # no network: every request returns the fixture named in $fixture
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 hianime_curl() {
     cat "tests/fixtures/$fixture"
 }
