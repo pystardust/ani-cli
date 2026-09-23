@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.4"
+version_number="5.2.0"
 
 # UI
 
@@ -8,14 +8,14 @@ version_number="5.1.4"
 # $1 = prompt, $2 = multi select flag (for fzf/rofi), $3 = extra flags by user
 menu() {
     case "$menu_program" in
-        fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
+        fzf) fzf --reverse --cycle --prompt "$1" --delimiter '\t' --with-nth 1,4,3 --tabstop 4 $2 $3 ;;
         rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
         dmenu) dmenu -l 20 -p "$1" $3 ;;
         *) "$menu_program" $3 "$1" ;;
     esac
 }
 
-# provide menu. input format is either (ep_list) or (number \t anime_id \t anime_name)
+# provide menu. input format is either (ep_list) or (number \t anime_id \t anime_name [\t details])
 nth() {
     _stdin=$(cat -)
     [ -z "$_stdin" ] && return 1
@@ -23,7 +23,13 @@ nth() {
     [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f 2,3 && return 0
     _prompt="$1"
     [ $# -ne 1 ] && _multi_flag="$2"
-    _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
+    if [ "$menu_program" = "fzf" ]; then
+        # fzf gets the raw lines, it hides the id and reorders the columns itself (see menu)
+        _line=$(printf "%s" "$_stdin" | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -f 1)
+    else
+        # other menus get plain text: number, details (if any), then the name. literal tabs, BSD sed has no \t in brackets
+        _line=$(printf "%s" "$_stdin" | sed -E 's|^([^	]*)	[^	]*	([^	]*)	([^	]*)$|\1 \3 \2|' | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
+    fi
     _line_start=$(printf "%s" "$_line" | head -n 1)
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
@@ -195,7 +201,12 @@ deobfuscate_blob() (
     printf "%b" "$_output"
 )
 
-# search the query and give results. format is (id \t name)
+# appends the first group of the regex $1 as a new tab separated column, "-" when the line has no match
+tab_column() {
+    sed -E -e "s|^(.*$1.*)\$|\\1\\t\\2|" -e t -e 's|$|\t-|'
+}
+
+# search the query and give results. format is (id \t name \t details)
 hianime_search() {
     #shellcheck disable=SC2059
     _page="$(hianime_curl "$(printf "$search_api" "$1")")" || return 1
@@ -204,9 +215,17 @@ hianime_search() {
         die "Blocked by cloudflare."
     fi
     # the top 10 sidebar repeats the result markup, cut it off before flattening the page
-    printf "%s" "$_page" | sed '/id="main-sidebar"/,$d' | tr '\n' ' ' | sed 's|<div class="film-detail">|\n<div class="film-detail">|g' |
-        sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*|\1\t\2|p' |
-        sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e "s|&amp;|\&|g"
+    # one line per result: the poster ticks (episode counts) come first, then the film-detail with id, title and type
+    printf "%s" "$_page" | sed '/id="main-sidebar"/,$d' | tr '\n\t' '  ' | sed 's|<div class="flw-item|\n<div class="flw-item|g' |
+        tab_column '<span class="fdi-item">([A-Za-z]+)' | tab_column 'tick-eps">[[:space:]]*([0-9]+)' |
+        tab_column 'tick-sub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' | tab_column 'tick-dub">[[:space:]]*<i[^>]*></i>[[:space:]]*([0-9]+)' |
+        sed -nE 's|.*<h3 class="film-name">[[:space:]]*<a href="[^"]*/([^"/]*)"[[:space:]]*title="([^"]*)".*\t([A-Za-z-]+\t[0-9-]+\t[0-9-]+\t[0-9-]+)$|\1\t\2\t\3|p' |
+        sed -e "s|&#039;|'|g" -e 's|&quot;|"|g' -e 's|&lt;|<|g' -e 's|&gt;|>|g' -e "s|&amp;|\&|g" |
+        while IFS="	" read -r _id _title _type _eps _sub _dub; do
+            case "$_type" in MOVIE) _type=Movie ;; SPECIAL) _type=Special ;; MUSIC) _type=Music ;; *) ;; esac
+            [ "$_eps" = "-" ] && _eps="?"
+            printf "%s\t%s\t%-7s %4s ep  sub %-4s dub %-4s  \n" "$_id" "$_title" "$_type" "$_eps" "$_sub" "$_dub"
+        done
 }
 
 # get the episodes list of the selected anime. format is (id \t ep_no)
