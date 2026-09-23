@@ -6,6 +6,7 @@ on:
   pull_request:
     paths-ignore:
       - "ani-cli"
+      - "tests/**"
 jobs:
   sh-checker:
     name: Shellcheck + Shfmt
@@ -19,6 +20,11 @@ jobs:
       - run: 'echo "Not required: did not modify ani-cli"'
   version-bump:
     name: Version Bump
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify ani-cli"'
+  parse-tests:
+    name: Parsing Tests
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify ani-cli"'

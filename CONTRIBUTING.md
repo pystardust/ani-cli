@@ -4,6 +4,7 @@
 
 - Appease the linter (run `shfmt -i 4 -ci -d -w ani-cli`)
 - Appease POSIX (run `shellcheck -s sh -o all -e 2250 ani-cli`)
+- Run the offline parsing tests (`sh tests/parse.sh`) and update `tests/` when you change the scraping
 - Bump the version
 - Adjust the Readme according to your changes (if applicable)
 - No extra dependencies unless absolutely necessary

@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - "ani-cli"
+      - "tests/**"
 
 jobs:
   sh-checker:
@@ -44,3 +45,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: verify that noone added wget
       run: '! grep wget "./ani-cli"'
+
+  parse-tests:
+    name: Parsing Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: run the offline parsing tests
+      run: sh tests/parse.sh

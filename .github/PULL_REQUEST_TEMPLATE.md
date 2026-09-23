@@ -14,6 +14,7 @@
 
 - [ ] any anime playing
 - [ ] bumped version
+- [ ] `sh tests/parse.sh` passes
 ---
 - [ ] next, prev, replay and select work
 - [ ] `-c` history and continue work
