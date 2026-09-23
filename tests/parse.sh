@@ -51,4 +51,26 @@ else
     failed=1
 fi
 
+# the search prompt reloads its list while typing only with an fzf that can do it
+# shellcheck disable=SC2317,SC2329
+fzf() {
+    printf '%s (test)\n' "$fzf_version"
+}
+for fzf_version in 0.9.0 0.19.1 0.24.0; do
+    if fzf_reloads; then
+        printf 'FAIL fzf %s must not use live search\n' "$fzf_version"
+        failed=1
+    else
+        printf 'ok   fzf %s keeps the plain prompt\n' "$fzf_version"
+    fi
+done
+for fzf_version in 0.25.0 0.44.1 1.0.0; do
+    if fzf_reloads; then
+        printf 'ok   fzf %s searches while typing\n' "$fzf_version"
+    else
+        printf 'FAIL fzf %s must use live search\n' "$fzf_version"
+        failed=1
+    fi
+done
+
 exit "$failed"
