@@ -627,7 +627,8 @@ case "$player_function" in
 esac
 
 # idk where to put this, so I put it here...
-trap 'cleanup; exit 1' INT HUP TERM
+trap 'exit 1' INT HUP TERM
+trap cleanup EXIT
 
 # searching
 case "$source" in
@@ -692,10 +693,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
             [ -z "$new_quality" ] && die "No quality selected"
             select_quality "$new_quality"
             ;;
-        *)
-            cleanup
-            exit 0
-            ;;
+        *) exit 0 ;;
     esac
     [ -z "$ep_no" ] && die "Out of range"
     play
