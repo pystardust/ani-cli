@@ -377,7 +377,7 @@ serve_playlist() {
     case "$_playlist" in "#EXTM3U"*) ;; *) die "The stream host sent no playlist" ;; esac
     _body="$(printf "%s\n" "$_playlist" | while IFS= read -r _line; do
         case "$_line" in
-            "#"* | http*) printf "%s\n" "$_line" ;;
+            "#"* | "" | *://*) printf "%s\n" "$_line" ;;
             *) printf "%s/%s\n" "${video_link%/*}" "$_line" ;;
         esac
     done)"
