@@ -509,7 +509,8 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
     *ish*)
         player_function="${ANI_CLI_PLAYER:-iSH}"
         curl_exe=$(dep_ch_failover "curl_safari260_ios,$curl_exe")
-        command -v fzf >/dev/null || ANI_CLI_MENU="${ANI_CLI_MENU:-plain}"
+        # fzf tends to crash in iSH, so it is optional there
+        command -v fzf >/dev/null || menu_program=plain
         ;;                                                                                                                                                                                               # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv.Mpv/,/var/lib/flatpak/app/io.mpv.Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
@@ -518,7 +519,7 @@ player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
-menu_program="${ANI_CLI_MENU:-fzf}"
+menu_program="${ANI_CLI_MENU:-${menu_program:-fzf}}"
 menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
 
 # not opening from a terminal
