@@ -374,6 +374,7 @@ serve_playlist() {
         )
     fi
     _playlist="$(hianime_curl "$video_link" -e "$refr")" || die "Could not fetch the playlist"
+    case "$_playlist" in "#EXTM3U"*) ;; *) die "The stream host sent no playlist" ;; esac
     _body="$(printf "%s\n" "$_playlist" | while IFS= read -r _line; do
         case "$_line" in
             "#"* | http*) printf "%s\n" "$_line" ;;
@@ -382,6 +383,7 @@ serve_playlist() {
     done)"
     _length=$(printf "%s\n" "$_body" | wc -c | tr -d "[:space:]")
     printf 'HTTP/1.0 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s\n' "$_length" "$_body" >"$serve_file"
+    $curl_exe -sf --max-time 5 "http://127.0.0.1:$serve_port/ani.m3u8" >/dev/null || die "Port $serve_port is taken, VLC cannot get the playlist"
     _sub_param="$(printf "%s" "$sub_link" | sed 's|%|%25|g; s|:|%3A|g; s|/|%2F|g; s|?|%3F|g; s|&|%26|g; s|=|%3D|g')"
     vlc_url="vlc-x-callback://x-callback-url/stream?url=http%3A%2F%2F127.0.0.1%3A${serve_port}%2Fani.m3u8${_sub_param:+&sub=$_sub_param}"
 }
