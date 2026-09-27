@@ -524,7 +524,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 serve_file="$hist_dir/vlc-playlist"
-serve_port=8384
+serve_port=17420
 
 source="${ANI_CLI_DEFAULT_SOURCE:-search}"
 branch="${ANI_CLI_BRANCH:-master}"
