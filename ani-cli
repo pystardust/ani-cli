@@ -155,9 +155,9 @@ dep_ch_failover() {
 
 cleanup() {
     [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4" 2>/dev/null
-    [ "$player_function" = "iSH" ] && stop_serving
-    tput sgr0               # clears colors
-    rm -f "${histfile}.new" # remove temp logfile
+    [ -n "$serve_pid" ] && kill "$serve_pid" 2>/dev/null
+    tput sgr0                             # clears colors
+    rm -f "${histfile}.new" "$serve_file" # remove temp files
 }
 
 # SCRAPING
@@ -363,34 +363,25 @@ download() {
     ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$_name.mp4" $3
 }
 
-# ends the playlist server of the previous episode
-stop_serving() {
-    _pid=$(cat "$serve_dir/pid" 2>/dev/null)
-    [ -n "$_pid" ] && kill "$_pid" 2>/dev/null
-    rm -f "$serve_dir/pid"
-}
-
 # vlc on ios gets a bare url and cannot send the referer the video host wants for the playlist. so the playlist is
 # fetched here, its segment names turned into full urls and served to vlc from a local port, the segments need no referer
 serve_playlist() {
-    mkdir -p "$serve_dir"
-    stop_serving
+    # one server per run, it hands out whatever the file holds when vlc asks. busybox nc is the one iSH has
+    if [ -z "$serve_pid" ] || ! kill -0 "$serve_pid" 2>/dev/null; then
+        serve_pid=$(
+            busybox nc -ll -s 127.0.0.1 -p "$serve_port" -e cat "$serve_file" </dev/null >/dev/null 2>&1 &
+            printf "%s" "$!"
+        )
+    fi
     _playlist="$(hianime_curl "$video_link" -e "$refr")" || die "Could not fetch the playlist"
-    printf "%s\n" "$_playlist" | while IFS= read -r _line; do
+    _body="$(printf "%s\n" "$_playlist" | while IFS= read -r _line; do
         case "$_line" in
             "#"* | http*) printf "%s\n" "$_line" ;;
             *) printf "%s/%s\n" "${video_link%/*}" "$_line" ;;
         esac
-    done >"$serve_dir/body"
-    _length=$(wc -c <"$serve_dir/body")
-    {
-        printf 'HTTP/1.0 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: %s\r\nConnection: close\r\n\r\n' "$((_length))"
-        cat "$serve_dir/body"
-    } >"$serve_dir/response"
-    (
-        nc -ll -p "$serve_port" -e cat "$serve_dir/response" </dev/null >/dev/null 2>&1 &
-        printf "%s" "$!" >"$serve_dir/pid"
-    )
+    done)"
+    _length=$(printf "%s\n" "$_body" | wc -c | tr -d "[:space:]")
+    printf 'HTTP/1.0 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s\n' "$_length" "$_body" >"$serve_file"
     _sub_param="$(printf "%s" "$sub_link" | sed 's|%|%25|g; s|:|%3A|g; s|/|%2F|g; s|?|%3F|g; s|&|%26|g; s|=|%3D|g')"
     vlc_url="vlc-x-callback://x-callback-url/stream?url=http%3A%2F%2F127.0.0.1%3A${serve_port}%2Fani.m3u8${_sub_param:+&sub=$_sub_param}"
 }
@@ -532,7 +523,7 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
-serve_dir="$hist_dir/vlc"
+serve_file="$hist_dir/vlc-playlist"
 serve_port=8384
 
 source="${ANI_CLI_DEFAULT_SOURCE:-search}"
