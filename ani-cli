@@ -300,18 +300,37 @@ hianime_m3u8() {
 
         [ -z "$_m3u8_master" ] && return 1
 
-        # ani-cli currently exposes the English subtitle track.
-        sub_link="$(printf "%s" "$_src_json" |
-            sed 's|},{|}\n{|g' |
-            grep -E -m 1 '"label"[[:space:]]*:[[:space:]]*"English"' |
-            sed -nE 's|.*"file"[[:space:]]*:[[:space:]]*"([^"]*)".*|\1|p')"
+        # MegaPlay returns subtitle tracks separately from the encrypted video source.
+        # Prefer English, then the provider's default caption, then any caption.
+        sub_link="$(
+            printf "%s" "$_src_json" |
+                tr -d '\n' |
+                grep -Eo '\{[^{}]*"label"[[:space:]]*:[[:space:]]*"English"[^{}]*\}' |
+                head -n 1 |
+                sed -nE 's|.*"file"[[:space:]]*:[[:space:]]*"([^"]+)".*|\1|p' |
+                sed 's|\\/|/|g'
+        )"
 
-        # Fall back to the first caption track if there is no English label.
         if [ -z "$sub_link" ]; then
-            sub_link="$(printf "%s" "$_src_json" |
-                sed 's|},{|}\n{|g' |
-                grep -E -m 1 '"kind"[[:space:]]*:[[:space:]]*"captions"' |
-                sed -nE 's|.*"file"[[:space:]]*:[[:space:]]*"([^"]*)".*|\1|p')"
+            sub_link="$(
+                printf "%s" "$_src_json" |
+                    tr -d '\n' |
+                    grep -Eo '\{[^{}]*"default"[[:space:]]*:[[:space:]]*true[^{}]*\}' |
+                    grep -E -m 1 '"kind"[[:space:]]*:[[:space:]]*"(captions|subtitles)"' |
+                    sed -nE 's|.*"file"[[:space:]]*:[[:space:]]*"([^"]+)".*|\1|p' |
+                    sed 's|\\/|/|g'
+            )"
+        fi
+
+        if [ -z "$sub_link" ]; then
+            sub_link="$(
+                printf "%s" "$_src_json" |
+                    tr -d '\n' |
+                    grep -Eo '\{[^{}]*"kind"[[:space:]]*:[[:space:]]*"(captions|subtitles)"[^{}]*\}' |
+                    head -n 1 |
+                    sed -nE 's|.*"file"[[:space:]]*:[[:space:]]*"([^"]+)".*|\1|p' |
+                    sed 's|\\/|/|g'
+            )"
         fi
 
         refr="https://megaplay.buzz/"
