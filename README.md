@@ -527,6 +527,7 @@ apk del grep sed curl fzf git ffmpeg ncurses
 - grep
 - sed
 - curl
+- openssl
 - mpv - Video Player
 - iina - mpv replacement for MacOS
 - yt-dlp - m3u8 Downloader
