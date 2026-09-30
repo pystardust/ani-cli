@@ -290,8 +290,11 @@ cp ~/.ani-cli/ani-cli /usr/local/bin/ani-cli
 chmod +x /usr/local/bin/ani-cli
 rm -rf ~/.ani-cli
 ```
-For Downloads on iOS in iSH, omit the usual `-d` flag and instead select the Download option in VLC:
-<img width="1170" height="1177" alt="image" src="https://github.com/user-attachments/assets/da25884b-a53d-4888-bee1-4867a8216ddd" />
+ani-cli prints a link, tap it and VLC starts playing with the subtitles. VLC cannot send the referer the stream host wants, so ani-cli hands VLC the playlist over a local port (127.0.0.1:17420) and frees the port again when it exits.
+
+fzf tends to crash inside iSH. Without fzf installed ani-cli uses a plain menu: type the number or the word of a line and press enter. `ANI_CLI_MENU=plain` selects that menu explicitly.
+
+`-d` downloads the episode with ffmpeg into the current directory, which is slow inside iSH.
 
 </details>
 

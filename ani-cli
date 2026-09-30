@@ -1,8 +1,24 @@
 #!/bin/sh
 
-version_number="5.1.4"
+version_number="5.1.5"
 
 # UI
+
+# a menu made of read alone, for terminals where fzf cannot run. the list is shown and the leading number
+# or word of a line picks it, an empty list asks for free text
+plain_menu() {
+    _lines=$(cat -)
+    [ -n "$_lines" ] && printf "%s\n" "$_lines" >/dev/tty
+    printf "\033[1;36m%s\033[0m" "$1" >/dev/tty
+    read -r _choice </dev/tty
+    [ -z "$_lines" ] && printf "%s\n" "$_choice" && return 0
+    printf "%s\n" "$_lines" | while IFS= read -r _line; do
+        case "$_line" in
+            "$_choice" | "$_choice "*) printf "%s\n" "$_line" && break ;;
+            *) ;;
+        esac
+    done
+}
 
 # shellcheck disable=SC2086
 # $1 = prompt, $2 = multi select flag (for fzf/rofi), $3 = extra flags by user
@@ -11,6 +27,7 @@ menu() {
         fzf) fzf --reverse --cycle --prompt "$1" $2 $3 ;;
         rofi) rofi -sort -dmenu -i -p "$1" $2 $3 ;;
         dmenu) dmenu -l 20 -p "$1" $3 ;;
+        plain) plain_menu "$1" ;;
         *) "$menu_program" $3 "$1" ;;
     esac
 }
@@ -143,8 +160,9 @@ dep_ch_failover() {
 
 cleanup() {
     [ "$player_function" = "android_mpv" ] && : >"/storage/emulated/0/mpv/mpv.config.mp4" 2>/dev/null
-    tput sgr0               # clears colors
-    rm -f "${histfile}.new" # remove temp logfile
+    [ -n "$serve_pid" ] && kill "$serve_pid" 2>/dev/null
+    tput sgr0                             # clears colors
+    rm -f "${histfile}.new" "$serve_file" # remove temp files
 }
 
 # SCRAPING
@@ -350,6 +368,32 @@ download() {
     ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$_name.mp4" $3
 }
 
+# vlc on ios gets a bare url and cannot send the referer the video host wants for the playlist. so the playlist is
+# fetched here, its segment names turned into full urls and served to vlc from a local port, the segments need no referer
+serve_playlist() {
+    # one server per run, it hands out whatever the file holds when vlc asks. busybox nc is the one iSH has
+    if [ -z "$serve_pid" ] || ! kill -0 "$serve_pid" 2>/dev/null; then
+        serve_pid=$(
+            busybox nc -ll -s 127.0.0.1 -p "$serve_port" -e cat "$serve_file" </dev/null >/dev/null 2>&1 &
+            printf "%s" "$!"
+        )
+    fi
+    _playlist="$(hianime_curl "$video_link" -e "$refr")" || die "Could not fetch the playlist"
+    case "$_playlist" in "#EXTM3U"*) ;; *) die "The stream host sent no playlist" ;; esac
+    _body="$(printf "%s\n" "$_playlist" | while IFS= read -r _line; do
+        case "$_line" in
+            "#"* | "" | *://*) printf "%s\n" "$_line" ;;
+            *) printf "%s/%s\n" "${video_link%/*}" "$_line" ;;
+        esac
+    done)"
+    _length=$(printf "%s\n" "$_body" | wc -c | tr -d "[:space:]")
+    printf 'HTTP/1.0 200 OK\r\nContent-Type: application/vnd.apple.mpegurl\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s\n' "$_length" "$_body" >"$serve_file"
+    $curl_exe -sf --max-time 5 "http://127.0.0.1:$serve_port/ani.m3u8" >/dev/null || die "Port $serve_port is taken, VLC cannot get the playlist"
+    # vlc decodes the parameters only when the :// is encoded too, and & # and spaces would cut the link
+    _sub_param="$(printf "%s" "$sub_link" | sed 's|%|%25|g; s|:|%3A|g; s|/|%2F|g; s|?|%3F|g; s|&|%26|g; s|=|%3D|g; s|#|%23|g; s| |%20|g')"
+    vlc_url="vlc-x-callback://x-callback-url/stream?url=http%3A%2F%2F127.0.0.1%3A${serve_port}%2Fani.m3u8${_sub_param:+&sub=$_sub_param}"
+}
+
 # mpv-android takes no options from the intent, so they go through a file the user includes in mpv.conf
 # shellcheck disable=SC2086
 android_mpv() {
@@ -397,7 +441,8 @@ play_episode() {
         download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
         catt) nohup catt cast $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
         iSH)
-            printf "\033]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\033]8;;\a\n" "$video_link"
+            serve_playlist
+            printf "\033]8;;%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\033]8;;\a\n" "$vlc_url"
             sleep 5
             ;;
         *) nohup $player_function $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
@@ -464,6 +509,8 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
     *ish*)
         player_function="${ANI_CLI_PLAYER:-iSH}"
         curl_exe=$(dep_ch_failover "curl_safari260_ios,$curl_exe")
+        # fzf tends to crash in iSH, so it is optional there
+        command -v fzf >/dev/null || menu_program=plain
         ;;                                                                                                                                                                                               # iOS (iSH)
     *) player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "mpv,$HOME/.local/share/flatpak/app/io.mpv.Mpv/,/var/lib/flatpak/app/io.mpv.Mpv/,vlc")}" || die 'No player found. Looked for mpv and vlc' ;; # Linux OS
 esac
@@ -472,7 +519,7 @@ player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
-menu_program="${ANI_CLI_MENU:-fzf}"
+menu_program="${ANI_CLI_MENU:-${menu_program:-fzf}}"
 menu_extra_flags="${ANI_CLI_MENU_FLAGS:-""}"
 
 # not opening from a terminal
@@ -485,6 +532,8 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 [ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
+serve_file="$hist_dir/vlc-playlist"
+serve_port=17420
 
 source="${ANI_CLI_DEFAULT_SOURCE:-search}"
 branch="${ANI_CLI_BRANCH:-master}"
@@ -566,7 +615,7 @@ info "Checking dependencies..."
 dep_ch "sed"
 dep_ch "grep"
 [ "$skip_intro" = 1 ] && dep_ch "ani-skip"
-dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
+[ "$menu_program" = "plain" ] || dep_ch "$menu_program" # TODO: use dep_ch_failover to iterate through options
 
 case "$player_function" in
     debug) ;;
@@ -578,7 +627,8 @@ case "$player_function" in
 esac
 
 # idk where to put this, so I put it here...
-trap 'cleanup; exit 1' INT HUP TERM
+trap 'exit 1' INT HUP TERM
+trap cleanup EXIT
 
 # searching
 case "$source" in
@@ -643,10 +693,7 @@ while cmd=$(printf "next\nreplay\nprevious\nselect\nchange_quality\nquit" | nth 
             [ -z "$new_quality" ] && die "No quality selected"
             select_quality "$new_quality"
             ;;
-        *)
-            cleanup
-            exit 0
-            ;;
+        *) exit 0 ;;
     esac
     [ -z "$ep_no" ] && die "Out of range"
     play
