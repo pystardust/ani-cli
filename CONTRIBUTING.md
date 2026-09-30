@@ -17,12 +17,16 @@
 
 ### AI Policy
 
+- AI is not allowed to write code comments
+- Do not AI generate PR descriptions, it's insulting.
+  Write one human sentence, or even leave it blank instead.
+- Low effort PRs will be closed, especially ones violating the PR description and code comment rule.
+- Add the AI model as a coauthor
 - Using LLMs as a better search engine is okay
 - Using LLMs to remember syntax and idioms is okay
 - Using LLMs to verify posix compliance is okay
 - Opening fully AI generated PRs is not okay
 - Be cautious that LLMs tend to be overly verbose, while the ani-cli codebase prefers brevity
-- Low effort PRs will be closed
 
 Add these two urls into the context, however you do that with your LLM of choice:
 - https://github.com/pystardust/ani-cli/blob/master/.github/workflows/ani-cli.yml
