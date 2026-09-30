@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.2.0"
+version_number="5.2.1"
 
 # UI
 
@@ -237,6 +237,17 @@ animekai_m3u8() {
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
     refr="$(printf "%s" "$_embed" | sed -E 's|^(https?://[^/]*).*|\1/|')"
     mal_id="$(printf "%s" "$_embed" | sed -nE 's|.*/mal/([0-9]+)/.*|\1|p')"
+    # Current 1Anime embeds expose the direct MP4 source.
+    case "$_embed" in
+        https://my.1anime.site/*)
+            _direct="$(animekai_curl "$_embed" -e "$base_api/" | grep -oE '<source src="[^"]+"' | head -n 1 | cut -d'"' -f2)"
+            [ -z "$_direct" ] && die "No direct video source on the 1Anime embed: $_embed"
+            links="9999>$_direct"
+            sub_link=""
+            return 0
+            ;;
+        *) ;;
+    esac
     # the embed page only loads with a referer, and its sources endpoint only answers ajax requests
     _id="$(animekai_curl "$_embed" -e "$base_api/" | sed -nE 's|.*data-id="([0-9]+)".*|\1|p' | head -n 1)"
     [ -z "$_id" ] && die "No player id on the embed page: $_embed"
