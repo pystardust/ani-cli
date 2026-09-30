@@ -237,20 +237,21 @@ animekai_m3u8() {
     # the stream host wants the embed site as referer, and the embed url carries the mal id for ani-skip
     refr="$(printf "%s" "$_embed" | sed -E 's|^(https?://[^/]*).*|\1/|')"
     mal_id="$(printf "%s" "$_embed" | sed -nE 's|.*/mal/([0-9]+)/.*|\1|p')"
-    # Current 1Anime embeds expose the direct MP4 source.
-    case "$_embed" in
-        https://my.1anime.site/*)
-            _direct="$(animekai_curl "$_embed" -e "$base_api/" | grep -oE '<source src="[^"]+"' | head -n 1 | cut -d'"' -f2)"
-            [ -z "$_direct" ] && die "No direct video source on the 1Anime embed: $_embed"
-            links="9999>$_direct"
-            sub_link=""
-            return 0
-            ;;
-        *) ;;
-    esac
-    # the embed page only loads with a referer, and its sources endpoint only answers ajax requests
-    _id="$(animekai_curl "$_embed" -e "$base_api/" | sed -nE 's|.*data-id="([0-9]+)".*|\1|p' | head -n 1)"
-    [ -z "$_id" ] && die "No player id on the embed page: $_embed"
+    # the embed page only loads with a referer
+    _page="$(animekai_curl "$_embed" -e "$base_api/")"
+    _id="$(printf "%s" "$_page" | sed -nE 's|.*data-id="([0-9]+)".*|\1|p' | head -n 1)"
+    if [ -z "$_id" ]; then
+        # an embed without a player id (my.1anime.site) plays one mp4 straight from its source tag: no playlist, no subtitle track
+        _direct="$(printf "%s" "$_page" | sed -nE 's|.*<source src="([^"]*)".*|\1|p' | head -n 1)"
+        [ -z "$_direct" ] && die "No player id and no video source on the embed page: $_embed"
+        # its url carries no mal id either, the watch page links to the anime's MAL entry
+        #shellcheck disable=SC2059
+        [ "$skip_intro" = 1 ] && mal_id="$(animekai_curl "$(printf "$episodes_api" "$anime_id")" | sed -nE 's|.*myanimelist\.net/anime/([0-9]+).*|\1|p' | head -n 1)"
+        links="9999>$_direct"
+        sub_link=""
+        return 0
+    fi
+    # the sources endpoint only answers ajax requests
     _json="$(animekai_curl "${refr}stream/getSources?id=${_id}" -H "X-Requested-With: XMLHttpRequest" | sed 's|\\/|/|g')"
     _blob="$(printf "%s" "$_json" | sed -nE 's|.*"enc":"([^"]*)".*|\1|p')"
     [ -z "$_blob" ] && die "No encrypted playlist in the embed's sources: ${refr}stream/getSources?id=${_id}"
