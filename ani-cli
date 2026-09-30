@@ -75,8 +75,6 @@ help_info() {
         Specify the number of episodes to watch
       --dub
         Play dubbed version
-      --exact
-        Only match anime titles that are an exact match for the query (case-insensitive)
       --rofi
         Use rofi instead of fzf for the interactive menu
       --dmenu
@@ -453,7 +451,7 @@ mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
-exact_match=0
+exact_match="${ANI_CLI_EXACT:-0}"
 
 curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_ff117,curl") || die "Program curl not found"
 
@@ -546,7 +544,6 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         --dub) mode="dub" ;;
-        --exact) exact_match=1 ;;
         --no-detach) no_detach=1 ;;
         --exit-after-play) exit_after_play=1 && no_detach=1 ;;
         --rofi) menu_program=rofi ;;

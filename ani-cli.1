@@ -55,9 +55,6 @@ Prints a countdown to the next episode as the last episode in the list. If in hi
 \fB\--dub\fR
 Play the dubbed version. Without this flag, it'll always play the subbed version.
 .TP
-\fB\--exact\fR
-Only match anime titles that are an exact match for the query (case-insensitive).
-.TP
 \fB\--rofi\fR
 Use rofi instead of fzf for the interactive menu
 .TP
@@ -89,6 +86,9 @@ Controls the directory where files are downloaded. Default is the current dir.
 .TP
 \fBANI_CLI_QUALITY\fR
 Controls the scraped media's quality, a resolution such as 1080, or worst/best. Default is best.
+.TP
+\fBANI_CLI_EXACT\fR
+Controls whether only anime titles that exactly match the query are selected (case-insensitive). Can be 0 (disabled) or 1 (enabled). Default is 0.
 .TP
 \fBANI_CLI_PLAYER\fR
 Sets the player ani-cli uses. Can be debug (print links), download (equivalent to -d), android_mpv (apk and am start), android_vlc (apk and am start), catt (for streaming to tv), or any player that can play urls. For defaults see working without arguments.
