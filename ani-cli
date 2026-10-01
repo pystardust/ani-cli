@@ -608,15 +608,15 @@ case "$source" in
         # for checking new releases by specifying anime name
         [ "$source" = "nextep" ] && time_until_next_ep "$query"
 
-        user_query="$query"
+        user_query="$(printf "%s" "$query" | tr '+' ' ')"
         query=$(printf "%s" "$query" | sed 's| |+|g')
 
         anime_list=$(hianime_search "$query") || exit 1
         [ -z "$anime_list" ] && die "No results found!"
         if [ "$exact_match" = 1 ]; then
-            _query_norm="$(printf "%s" "$user_query" | tr '[:upper:]' '[:lower:]')"
+            _query_norm="$(printf "%s" "$user_query" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]' ' ' | sed 's/^ *//;s/ *$//')"
             anime_list="$(printf "%s\n" "$anime_list" | while IFS="$(printf '\t')" read -r _id _title; do
-                _title_norm="$(printf "%s" "$_title" | tr '[:upper:]' '[:lower:]')"
+                _title_norm="$(printf "%s" "$_title" | tr '[:upper:]' '[:lower:]' | tr -s '[:space:]' ' ' | sed 's/^ *//;s/ *$//')"
                 [ "$_title_norm" = "$_query_norm" ] && printf "%s\t%s\n" "$_id" "$_title"
             done)"
             [ -z "$anime_list" ] && die "No exact match found for '$user_query'!"
