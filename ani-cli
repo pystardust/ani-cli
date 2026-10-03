@@ -358,7 +358,7 @@ android_mpv() {
         [ -d "$_conf_dir" ] || mkdir "$_conf_dir"
         printf "referrer=%s\n%s\n" "$refr" "${sub_link:+sub-file=$sub_link}" >"$_conf_dir/mpv.config.mp4"
     fi
-    nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 &
+    nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n xyz.mpv.rex/.ui.player.PlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 &
 }
 
 play_episode() {
