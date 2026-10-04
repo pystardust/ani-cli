@@ -57,7 +57,7 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Install
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=5.1)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.15)](https://repology.org/project/ani-cli/versions)
 
 ### Tier 1 Support: Linux, Mac, Android
 
