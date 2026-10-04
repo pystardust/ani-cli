@@ -8,6 +8,9 @@
 <a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
 <a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red">
 <br>
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg"></a>
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg"></a>
+<br>
 <p align=center>
 <a href="https://discord.gg/aqu7GpqVmR"><img src="https://invidget.switchblade.xyz/aqu7GpqVmR"></a>
 <a href="matrix.md"><img src="/.assets/matrix-logo.svg" height=110></a>
@@ -58,6 +61,11 @@ If it is not available, then download from their [github](https://github.com/lwt
 curl -LO "https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz"
 sudo tar xf curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz -C /usr/local/bin
 ```
+
+For other network errors, check the current status by clicking on these badges:
+
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg"></a>
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg"></a>
 
 For any other breaking issue, then make sure you are on **latest version** by typing `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
 If after this the issue persists then open an issue.

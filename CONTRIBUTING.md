@@ -12,7 +12,7 @@
 ### Coding Tips
 
 - Keep it brief. Your likelihood of being merged is inversely proportional to your change size.
-- Use && and || over if-else constructs whereever appropriate
+- Use && and || over if-else constructs wherever appropriate. [This video explains why.](https://www.youtube.com/watch?v=p0KKBmfiVl0)
 - Keep posix compliance and cross platform portability in mind
 
 ### AI Policy
@@ -24,11 +24,12 @@
 - Add the AI model as a coauthor
 - Using LLMs as a better search engine is okay
 - Using LLMs to remember syntax and idioms is okay
-- Using LLMs to verify posix compliance is okay
+- Using LLMs to refactor into posix compliance is okay
 - Opening fully AI generated PRs is not okay
+- A carefully steered and reviewed agentic PR does not constitute fully AI generated, see low effort.
 - Be cautious that LLMs tend to be overly verbose, while the ani-cli codebase prefers brevity
 
-Add these two urls into the context, however you do that with your LLM of choice:
+Load these two files/urls into the context, however you do that with your LLM of choice:
 - https://github.com/pystardust/ani-cli/blob/master/.github/workflows/ani-cli.yml
 - https://github.com/pystardust/ani-cli/blob/master/CONTRIBUTING.md
 
