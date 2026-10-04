@@ -482,11 +482,14 @@ If after this the issue persists then open an issue.
 If you have a problem, please update ani-cli to the latest version with `ani-cli -U`. If you still have a problem, please read further.
 
 - Stuck in "Search anime:". This shouldn't happen if you are using the Windows Terminal + Bash setup described above. It happens if you are using the Git Bash terminal (i.e., the mintty terminal). This is a problem between fzf and mintty, which should be resolved in future versions of fzf. For the time being, either use the Windows Terminal setup described above or, if you are dead-set on using the mintty terminal, run `export MSYS=enable_pcon` before running ani-cli.
+---
 - "No such file or directory" or WSL-related errors: This shouldn't happen if you are using the Windows Terminal + Bash setup described above. This happens if you run ani-cli in powershell or cmd. This is due WSL's bash.exe being called instead of Git for Windows' bash.exe in `%USERPROFILE%\scoop\shims\ani-cli.cmd`. If you must use powershell or cmd, edit the `%USERPROFILE%\scoop\shims\ani-cli.cmd` file. In File Explorer, go to the `C:\Users\USERNAME\scoop\shims` directory and open the `ani-cli.cmd` file with notepad. Next:
     - If you installed git with scoop, replace `@bash` with `@"%GIT_INSTALL_ROOT%\bin\bash.exe"`, or
     - If you installed git by other means, replace `@bash` with `@"C:\Program Files\Git\bin\bash.exe"`.
 This should be fixed if the ani-cli scoop manifest gets updated in [this PR](https://github.com/ScoopInstaller/Extras/pull/13342).
+---
 - curl can cause issues. ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`. If you run into issues, try installing a newer one with scoop.
+---
 - "Connection error: ... (no HTTP response; curl exit 43)": this is a known bug in curl `8.8.0` ([curl/curl#13845](https://github.com/curl/curl/issues/13845)) where `--write-out`, which ani-cli uses to read the HTTP status code, crashes with error 43 on the Schannel (Windows) and SecureTransport (macOS) SSL backends. It was fixed in curl `8.9.0`. This is why `curl https://hianime.at` on its own works fine while ani-cli's own request fails.
 
   On Windows this usually means Git Bash, which always runs the curl bundled inside Git for Windows, since Git's own folder comes first on the PATH. Installing or updating curl on its own (e.g. `scoop install curl`) has no effect, because that copy never gets used. Update Git instead, which bundles a newer curl:
@@ -496,6 +499,7 @@ This should be fixed if the ani-cli scoop manifest gets updated in [this PR](htt
   Then, inside Git Bash, confirm with `command -v curl; curl --version; git --version` that `curl` resolves to a path under Git's own install and reports `8.9.0` or later (`8.8.0`, bundled with Git for Windows 2.45 and some CI images, is the broken version). `8.17.0` and `8.19.0` have both been tested and confirmed working. If `bash` stops being found afterwards, re-add `%USERPROFILE%\scoop\apps\git\current\bin` to your PATH.
 
   **Note:** currently posted as a comment on [#1922](https://github.com/pystardust/ani-cli/issues/1922) rather than merged here, but it's held up against two independent curl versions above the `8.9.0` fix threshold. Drop the older `7.83.1`/`7.86.0` bullet above once this is confirmed as a full replacement, since they're likely the same underlying bug at different ani-cli/curl version pairings.
+---
 - If you installed mpv with scoop, your mpv configuration will get read from `C:\Users\USERNAME\scoop\apps\mpv\current\portable_config`. See [the mpv documentation](https://mpv.io/manual/stable/) regarding `portable_config` for more details.
 
 ## FAQ
