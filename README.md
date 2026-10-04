@@ -1,12 +1,12 @@
 <p align=center>
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
-<a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
-<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
-<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
-<a href="#Android"><img src="https://img.shields.io/badge/os-android-yellow">
-<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
-<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red">
+<a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen"></a>
+<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen"></a>
+<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen"></a>
+<a href="#Android"><img src="https://img.shields.io/badge/os-android-yellow"></a>
+<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow"></a>
+<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red"></a>
 <br>
 <a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg"></a>
 <a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg"></a>
@@ -39,25 +39,40 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Table of Contents
 
-- [Troubleshooting](#troubleshooting)
-  - [Blocked by Cloudflare](#blocked-by-cloudflare)
-  - [Any other breaking issue](#any-other-breaking-issue)
-  - [Windows: Known Problems and Solutions](#windows-known-problems-and-solutions)
+- [Fixing errors](#fixing-errors)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
   - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch](#tier-2-support-windows-wsl-ios-steam-deck-freebsd-ubuntu-touch)
   - [From Source](#installing-from-source)
+- [Uninstall](#uninstall)
 - [Dependencies](#dependencies)
   - [Ani-Skip](#ani-skip)
 - [FAQ](#faq)
-- [Uninstall](#uninstall)
 - [Homies](#homies)
 - [Contribution Guidelines](./CONTRIBUTING.md)
 - [Disclaimer](./disclaimer.md)
 
+## Fixing errors
+
+If you encounter `Blocked by cloudflare. Try installing curl-impersonate` then install `curl-impersonate` from your respective package manager.
+If it is not available, then download from their [github](https://github.com/lwthiker/curl-impersonate) by running the following commands.
+
+```sh
+curl -LO "https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz"
+sudo tar xf curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz -C /usr/local/bin
+```
+
+For other network errors, check the current status by clicking on these badges:
+
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg"></a>
+<a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg"></a>
+
+For any other breaking issue, then make sure you are on **latest version** by typing `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
+If after this the issue persists then open an issue.
+
 ## Install
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.15)](https://repology.org/project/ani-cli/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ani-cli.svg?minversion=4.14)](https://repology.org/project/ani-cli/versions)
 
 ### Tier 1 Support: Linux, Mac, Android
 
@@ -232,11 +247,21 @@ scoop install fzf ffmpeg mpv
 
 Consider also installing `yt-dlp` for downloading to work.
 
-Restart Windows Terminal. Go to the Git Bash profile and update `ani-cli` with `ani-cli -U`. You will use this to keep ani-cli up-to-date.
+Restart Windows Terminal. Go to the Git Bash profile and update `ani-cli` with `ani-cli -U`. You will use this keep ani-cli up-to-date.
 
 Now you can use ani-cli. Read the output of `ani-cli -h` for more help.
 
-If you run into problems, see [Windows: Known Problems and Solutions](#windows-known-problems-and-solutions).
+#### Windows: Known Problems and Solutions
+
+If you have a problem, please update ani-cli to the latest version with `ani-cli -U`. If you still have a problem, please read further.
+
+- Stuck in "Search anime:". This shouldn't happen if you are using the Windows Terminal + Bash setup described above. It happens if you are using the Git Bash terminal (i.e., the mintty terminal). This is a problem between fzf and mintty, which should be resolved in future versions of fzf. For the time being, either use the Windows Terminal setup described above or, if you are dead-set on using the mintty terminal, run `export MSYS=enable_pcon` before running ani-cli.
+- "No such file or directory" or WSL-related errors: This shouldn't happen if you are using the Window Terminal + Bash setup described above. This happens if you run ani-cli in powershell or cmd. This is due WSL's bash.exe being called instead of Git for Windows' bash.exe in `%USERPROFILE%\scoop\shims\ani-cli.cmd`. If you must use powershell or cmd, edit the `%USERPROFILE%\scoop\shims\ani-cli.cmd` file. In File Explorer, go to the `C:\Users\USERNAME\scoop\shims` directory and open the `ani-cli.cmd` file with notepad. Next:
+    - If you installed git with scoop, replace `@bash` with `@"%GIT_INSTALL_ROOT%\bin\bash.exe"`, or
+    - If you installed git by other means, replace `@bash` with `@"C:\Program Files\Git\bin\bash.exe"`.
+This should be fixed if the ani-cli scoop manifest gets updated in [this PR](https://github.com/ScoopInstaller/Extras/pull/13342).
+- curl can cause issues. ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`. If you run into issues, try installing a newer one with scoop.
+- If you installed mpv with scoop, your mpv configuration will get read from `C:\Users\USERNAME\scoop\apps\mpv\current\portable_config`. See [the mpv documentation](https://mpv.io/manual/stable/) regarding `portable_config` for more details.
 
 </details><details><summary><b>WSL</b></summary>
 
@@ -431,102 +456,6 @@ sudo cp ani-cli/ani-cli /usr/local/bin
 rm -rf ani-cli
 ```
 
-## Dependencies
-
-The required list is what the script itself needs; optional dependencies are only needed for the matching flag or feature.
-
-**Required**
-
-- POSIX `sh` and the standard tools it uses: `sed`, `grep`, `cut`, `tr`, `head`, `tail`, `wc` (coreutils or busybox)
-- `curl`
-- `fzf` (default menu, can be replaced by `rofi` or `dmenu`)
-- `tput` (ncurses)
-- A video player: `mpv` (recommended), `iina` (MacOS) or `vlc`
-
-**Optional**
-
-| Feature | Needs |
-|---|---|
-| Downloading (`-d`) | `yt-dlp`, or `ffmpeg` as a fallback |
-| Self-update (`-U`) | `patch` |
-| Skipping intros (`--skip`) | [`ani-skip`](#ani-skip) (mpv only) |
-| Watching with friends (`-s`, `--syncplay`) | `syncplay`
-| Other menus (`--rofi`, `--dmenu`) | `rofi` or `dmenu` |
-| Cloudflare blocks | `curl-impersonate` (see [Troubleshooting](#blocked-by-cloudflare)) |
-
-### Ani-Skip
-
-Ani-skip is a script to automatically skip anime opening sequences, making it easier to watch your favorite shows without having to manually skip the intros each time (from the original [README](https://github.com/synacktraa/ani-skip/tree/master#a-script-to-automatically-skip-anime-opening-sequences-making-it-easier-to-watch-your-favorite-shows-without-having-to-manually-skip-the-intros-each-time)).
-
-For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip).
-
-Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
-
-**Warning:** For now, ani-skip does **not** seem to work under Windows.
-
-## Troubleshooting
-
-### Blocked by Cloudflare
-
-If you encounter `Blocked by cloudflare. Try installing curl-impersonate` then install `curl-impersonate` from your respective package manager.
-If it is not available, then download from their [github](https://github.com/lexiforest/curl-impersonate/releases/tag/v2.0.0) by running the following commands.
-
-```sh
-curl -LO "https://github.com/lexiforest/curl-impersonate/releases/download/v2.0.0/curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz"
-sudo tar xf curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz -C /usr/local/bin
-```
-
-### Any other breaking issue
-
-For other network errors, check the current status by clicking on these badges:
-
-[![](https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg)](https://stats.coolans.dev/endpoints/website_ani-cli) [![](https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg)](https://stats.coolans.dev/endpoints/website_ani-cli)
-
-For any other breaking issue, make sure you are on **latest version** by typing `sudo ani-cli -U` to update on Linux, Mac and Android. On Windows, run `ani-cli -U`.
-If after this the issue persists then open an issue.
-
-### Windows: Known Problems and Solutions
-
-If you have a problem, please update ani-cli to the latest version with `ani-cli -U`. If you still have a problem, please read further.
-
-- Stuck in "Search anime:". This shouldn't happen if you are using the Windows Terminal + Bash setup described above. It happens if you are using the Git Bash terminal (i.e., the mintty terminal). This is a problem between fzf and mintty, which should be resolved in future versions of fzf. For the time being, either use the Windows Terminal setup described above or, if you are dead-set on using the mintty terminal, run `export MSYS=enable_pcon` before running ani-cli.
----
-- "No such file or directory" or WSL-related errors: This shouldn't happen if you are using the Windows Terminal + Bash setup described above. This happens if you run ani-cli in powershell or cmd. This is due WSL's bash.exe being called instead of Git for Windows' bash.exe in `%USERPROFILE%\scoop\shims\ani-cli.cmd`. If you must use powershell or cmd, edit the `%USERPROFILE%\scoop\shims\ani-cli.cmd` file. In File Explorer, go to the `C:\Users\USERNAME\scoop\shims` directory and open the `ani-cli.cmd` file with notepad. Next:
-    - If you installed git with scoop, replace `@bash` with `@"%GIT_INSTALL_ROOT%\bin\bash.exe"`, or
-    - If you installed git by other means, replace `@bash` with `@"C:\Program Files\Git\bin\bash.exe"`.
-This should be fixed if the ani-cli scoop manifest gets updated in [this PR](https://github.com/ScoopInstaller/Extras/pull/13342).
----
-- curl can cause issues. ani-cli has been tested unsuccessfully with curl `7.83.1` and successfully with `7.86.0`. If you run into issues, try installing a newer one with scoop.
----
-- "Connection error: ... (no HTTP response; curl exit 43)": this is a known bug in curl `8.8.0` ([curl/curl#13845](https://github.com/curl/curl/issues/13845)) where `--write-out`, which ani-cli uses to read the HTTP status code, crashes with error 43 on the Schannel (Windows) and SecureTransport (macOS) SSL backends. It was fixed in curl `8.9.0`. This is why `curl https://hianime.at` on its own works fine while ani-cli's own request fails.
-
-  On Windows this usually means Git Bash, which always runs the curl bundled inside Git for Windows, since Git's own folder comes first on the PATH. Installing or updating curl on its own (e.g. `scoop install curl`) has no effect, because that copy never gets used. Update Git instead, which bundles a newer curl:
-    - If you installed Git with scoop: `scoop update git`
-    - If you installed Git with the official installer or winget: `winget upgrade Git.Git`
-
-  Then, inside Git Bash, confirm with `command -v curl; curl --version; git --version` that `curl` resolves to a path under Git's own install and reports `8.9.0` or later (`8.8.0`, bundled with Git for Windows 2.45 and some CI images, is the broken version). `8.17.0` and `8.19.0` have both been tested and confirmed working. If `bash` stops being found afterwards, re-add `%USERPROFILE%\scoop\apps\git\current\bin` to your PATH.
-
-  **Note:** currently posted as a comment on [#1922](https://github.com/pystardust/ani-cli/issues/1922) rather than merged here, but it's held up against two independent curl versions above the `8.9.0` fix threshold. Drop the older `7.83.1`/`7.86.0` bullet above once this is confirmed as a full replacement, since they're likely the same underlying bug at different ani-cli/curl version pairings.
----
-- If you installed mpv with scoop, your mpv configuration will get read from `C:\Users\USERNAME\scoop\apps\mpv\current\portable_config`. See [the mpv documentation](https://mpv.io/manual/stable/) regarding `portable_config` for more details.
-
-## FAQ
-<details>
-
-* Can I change subtitle language or turn them off? - Subtitles are a separate english track handed to the player, so you can toggle them there (mpv: press `v`). Other languages are not offered.
-* Can I watch dub? - Yes, use `--dub`.
-* Can I change dub language? - No.
-* Can I change media source? - No (unless you can scrape that source yourself).
-* Can I use vlc? - Yes, use `--vlc` or `export ANI_CLI_PLAYER=vlc`.
-* Can I adjust resolution? - Yes, use `-q resolution`, for example `ani-cli -q 1080`.
-* How can I download? - Use `-d`, it will download into your working directory.
-* Can I change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
-* How can I bulk download? - Use `-d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
-
-**Note:** All features are documented in `ani-cli --help`.
-
-</details>
-
 ## Uninstall
 
 <details>
@@ -534,6 +463,8 @@ This should be fixed if the ani-cli scoop manifest gets updated in [this PR](htt
 * apt:
 ```sh
 sudo apt remove ani-cli
+# to remove the repository from apt
+sudo rm -f /etc/apt/trusted.gpg.d/ani-cli.asc /etc/apt/sources.list.d/ani-cli-debian.list
 ```
 * dnf:
 ```sh
@@ -579,13 +510,13 @@ rm "$PREFIX/bin/ani-cli"
 ```
 * Steam Deck
 ```sh
-rm ~/.local/bin/ani-cli
+rm "~/.local/bin/ani-cli"
 rm -rf ~/.ani-cli
 ```
 optionally: remove dependencies:
 ```sh
 rm ~/.local/bin/yt-dlp
-rm -rf ~/.fzf
+rm -rf "~/.fzf"
 flatpak uninstall io.mpv.Mpv
 ```
 * iOS
@@ -594,8 +525,58 @@ rm -rf /usr/local/bin/ani-cli
 ```
 To uninstall other dependencies:
 ```
-apk del grep sed curl-impersonate bash fzf git ncurses patch ffmpeg
+apk del grep sed curl fzf git ffmpeg ncurses
 ```
+
+</details>
+
+## Dependencies
+
+The required list is what the script itself needs; optional dependencies are only needed for the matching flag or feature.
+
+**Required**
+
+- POSIX `sh` and the standard tools it uses: `sed`, `grep`, `cut`, `tr`, `head`, `tail`, `wc` (coreutils or busybox)
+- `curl`
+- `fzf` (default menu, can be replaced by `rofi` or `dmenu`)
+- `tput` (ncurses)
+- A video player: `mpv` (recommended), `iina` (MacOS) or `vlc`
+
+**Optional**
+
+| Feature | Needs |
+|---|---|
+| Downloading (`-d`) | `yt-dlp`, or `ffmpeg` as a fallback |
+| Self-update (`-U`) | `patch` |
+| Skipping intros (`--skip`) | [`ani-skip`](#ani-skip) (mpv only) |
+| Watching with friends (`-s`, `--syncplay`) | `syncplay` |
+| Other menus (`--rofi`, `--dmenu`) | `rofi` or `dmenu` |
+| Cloudflare blocks | `curl-impersonate` (see [Troubleshooting](#blocked-by-cloudflare)) |
+
+### Ani-Skip
+
+Ani-skip is a script to automatically skip anime opening sequences, making it easier to watch your favorite shows without having to manually skip the intros each time (from the original [README](https://github.com/synacktraa/ani-skip/tree/master#a-script-to-automatically-skip-anime-opening-sequences-making-it-easier-to-watch-your-favorite-shows-without-having-to-manually-skip-the-intros-each-time)).
+
+For install instructions visit [ani-skip](https://github.com/synacktraa/ani-skip).
+
+Ani-skip uses the external lua script function of mpv and as such – for now – only works with mpv.
+
+**Warning:** For now, ani-skip does **not** seem to work under Windows.
+
+## FAQ
+<details>
+	
+* Can I change subtitle language or turn them off? - Subtitles are a separate english track handed to the player, so you can toggle them there (mpv: press `v`). Other languages are not offered.
+* Can I watch dub? - Yes, use `--dub`.
+* Can I change dub language? - No.
+* Can I change media source? - No (unless you can scrape that source yourself).
+* Can I use vlc? - Yes, use `--vlc` or `export ANI_CLI_PLAYER=vlc`.
+* Can I adjust resolution? - Yes, use `-q resolution`, for example `ani-cli -q 1080`.
+* How can I download? - Use `-d`, it will download into your working directory.
+* Can i change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
+* How can I bulk download? - `Use -d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
+
+**Note:** All features are documented in `ani-cli --help`.
 
 </details>
 
