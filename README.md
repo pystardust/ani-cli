@@ -450,6 +450,7 @@ The required list is what the script itself needs; optional dependencies are onl
 | Downloading (`-d`) | `yt-dlp`, or `ffmpeg` as a fallback |
 | Self-update (`-U`) | `patch` |
 | Skipping intros (`--skip`) | [`ani-skip`](#ani-skip) (mpv only) |
+| Watching with friends (`-s`, `--syncplay`) | `syncplay`
 | Other menus (`--rofi`, `--dmenu`) | `rofi` or `dmenu` |
 | Cloudflare blocks | `curl-impersonate` (see [Troubleshooting](#blocked-by-cloudflare)) |
 
@@ -468,11 +469,11 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 ### Blocked by Cloudflare
 
 If you encounter `Blocked by cloudflare. Try installing curl-impersonate` then install `curl-impersonate` from your respective package manager.
-If it is not available, then download from their [github](https://github.com/lwthiker/curl-impersonate) by running the following commands.
+If it is not available, then download from their [github](https://github.com/lexiforest/curl-impersonate/releases/tag/v2.0.0) by running the following commands.
 
 ```sh
-curl -LO "https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz"
-sudo tar xf curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz -C /usr/local/bin
+curl -LO "https://github.com/lexiforest/curl-impersonate/releases/download/v2.0.0/curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz"
+sudo tar xf curl-impersonate-v2.0.0.x86_64-linux-gnu.tar.gz -C /usr/local/bin
 ```
 
 ### Any other breaking issue
