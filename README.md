@@ -1,12 +1,12 @@
 <p align=center>
 <br>
 <a href="http://makeapullrequest.com"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
-<a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
-<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen">
-<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
-<a href="#Android"><img src="https://img.shields.io/badge/os-android-yellow">
-<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow">
-<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red">
+<a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen"></a>
+<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-brightgreen"></a>
+<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen"></a>
+<a href="#Android"><img src="https://img.shields.io/badge/os-android-yellow"></a>
+<a href="#Steam-deck"><img src="https://img.shields.io/badge/os-steamdeck-yellow"></a>
+<a href="#iOS"><img src="https://img.shields.io/badge/os-ios-red"></a>
 <br>
 <a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/health/badge.svg"></a>
 <a href="https://stats.coolans.dev/endpoints/website_ani-cli"><img src="https://stats.coolans.dev/api/v1/endpoints/website_ani-cli/uptimes/7d/badge.svg"></a>
@@ -532,16 +532,26 @@ apk del grep sed curl fzf git ffmpeg ncurses
 
 ## Dependencies
 
-- grep
-- sed
-- curl
-- mpv - Video Player
-- iina - mpv replacement for MacOS
-- yt-dlp - m3u8 Downloader
-- ffmpeg - m3u8 Downloader (fallback)
-- fzf - User interface
-- ani-skip (optional, for auto-skipping anime intros)
-- patch - Self updating
+The required list is what the script itself needs; optional dependencies are only needed for the matching flag or feature.
+
+**Required**
+
+- POSIX `sh` and the standard tools it uses: `sed`, `grep`, `cut`, `tr`, `head`, `tail`, `wc` (coreutils or busybox)
+- `curl`
+- `fzf` (default menu, can be replaced by `rofi` or `dmenu`)
+- `tput` (ncurses)
+- A video player: `mpv` (recommended), `iina` (MacOS) or `vlc`
+
+**Optional**
+
+| Feature | Needs |
+|---|---|
+| Downloading (`-d`) | `yt-dlp`, or `ffmpeg` as a fallback |
+| Self-update (`-U`) | `patch` |
+| Skipping intros (`--skip`) | [`ani-skip`](#ani-skip) (mpv only) |
+| Watching with friends (`-s`, `--syncplay`) | `syncplay` |
+| Other menus (`--rofi`, `--dmenu`) | `rofi` or `dmenu` |
+| Cloudflare blocks | `curl-impersonate` (see [Troubleshooting](#blocked-by-cloudflare)) |
 
 ### Ani-Skip
 
