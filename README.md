@@ -39,16 +39,16 @@ A cli to browse and watch anime (alone AND with friends). This tool scrapes the 
 
 ## Table of Contents
 
+- [Troubleshooting](#troubleshooting)
+  - [Blocked by Cloudflare](#blocked-by-cloudflare)
+  - [Any other breaking issue](#any-other-breaking-issue)
+  - [Windows: Known Problems and Solutions](#windows-known-problems-and-solutions)
 - [Install](#install)
   - [Tier 1: Linux, Mac, Android](#tier-1-support-linux-mac-android)
   - [Tier 2: Windows, WSL, iOS, Steam Deck, FreeBSD, Ubuntu Touch](#tier-2-support-windows-wsl-ios-steam-deck-freebsd-ubuntu-touch)
   - [From Source](#installing-from-source)
 - [Dependencies](#dependencies)
   - [Ani-Skip](#ani-skip)
-- [Troubleshooting](#troubleshooting)
-  - [Blocked by Cloudflare](#blocked-by-cloudflare)
-  - [Any other breaking issue](#any-other-breaking-issue)
-  - [Windows: Known Problems and Solutions](#windows-known-problems-and-solutions)
 - [FAQ](#faq)
 - [Uninstall](#uninstall)
 - [Homies](#homies)
