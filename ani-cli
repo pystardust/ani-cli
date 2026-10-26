@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.6"
+version_number="5.1.7"
 
 # UI
 
@@ -348,7 +348,7 @@ update_history() {
 download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
     [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$download_dir/$_name.vtt"
-    [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$_name.mp4" $3 && return 0
+    [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -P "home:$download_dir" -P "temp:$tmp_dir" -o "$_name.mp4" $3 && return 0
     ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3
 }
 
@@ -452,6 +452,7 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
+tmp_dir="${ANI_CLI_TMP_DIR:-${TMPDIR:-/tmp}/ani-cli}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 exact_match="${ANI_CLI_EXACT:-0}"
