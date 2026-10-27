@@ -126,6 +126,14 @@ update_script() {
     exit 0
 }
 
+# prefer a tmpfs-backed directory so fragments don't wear the disk
+default_tmp_dir() {
+    for _dir in "$XDG_RUNTIME_DIR" /dev/shm "${TMPDIR:-/tmp}"; do
+        [ -d "$_dir" ] && [ -w "$_dir" ] && printf "%s/ani-cli" "$_dir" && return 0
+    done
+    return 1
+}
+
 # checks if dependencies are present
 dep_ch() {
     command -v "$1" >/dev/null || die "Program $1 not found. Please install it."
@@ -452,7 +460,7 @@ agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 
 mode="${ANI_CLI_MODE:-sub}"
 download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
-tmp_dir="${ANI_CLI_TMP_DIR:-${TMPDIR:-/tmp}/ani-cli}"
+tmp_dir="${ANI_CLI_TMP_DIR:-$(default_tmp_dir)}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 exact_match="${ANI_CLI_EXACT:-0}"
