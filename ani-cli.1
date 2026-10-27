@@ -85,7 +85,7 @@ Controls the scraped media's mode, valid options are sub or dub. Default is sub.
 Controls the directory where files are downloaded. Default is the current dir.
 .TP
 \fBANI_CLI_TMP_DIR\fR
-Controls the directory where frag files are downloaded. Default is the ~/tmp/ani-cli/ dir.
+Controls the directory where yt-dlp keeps temporary files (fragments) while downloading. Default is an ani-cli subfolder in $XDG_RUNTIME_DIR, /dev/shm or $TMPDIR (first writable), so a tmpfs is used where available. Needs enough space for one episode.
 .TP
 \fBANI_CLI_QUALITY\fR
 Controls the scraped media's quality, a resolution such as 1080, or worst/best. Default is best.
