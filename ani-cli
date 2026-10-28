@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.6"
+version_number="5.1.7"
 
 # UI
 
@@ -349,7 +349,14 @@ download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
     [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$download_dir/$_name.vtt"
     [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$_name.mp4" $3 && return 0
-    ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3
+    _height="$(printf "%s\n" "$links" | grep -m 1 -F ">$1" | sed -nE 's|^([0-9]+)p.*|\1|p')"
+    for _ in 1 2 3; do
+        _coded="$(ffprobe -v error -extension_picky 0 -referer "$refr" -select_streams v:0 -show_entries stream=codec_name,height -of csv=p=0 "$1" 2>/dev/null | head -n 1 | sed -nE 's|^h264,([0-9]+)$|\1|p')"
+        [ -n "$_coded" ] && break
+    done
+    _crop=""
+    [ -n "$_height" ] && [ "${_coded:-0}" -gt "$_height" ] && _crop=$((_coded - _height))
+    ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy ${_crop:+-bsf:v h264_metadata=crop_bottom=$_crop} "$download_dir/$_name.mp4" $3
 }
 
 # mpv-android takes no options from the intent, so they go through a file the user includes in mpv.conf
