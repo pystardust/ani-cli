@@ -133,7 +133,8 @@ default_tmp_dir() {
         [ -d "$_base" ] && [ -w "$_base" ] || continue
         _dir="$_base/ani-cli-$_uid"
         [ -d "$_dir" ] || mkdir -m 700 "$_dir" 2>/dev/null
-        [ -n "$(find "$_dir" -prune -user "$_uid" 2>/dev/null)" ] && [ -w "$_dir" ] && printf "%s" "$_dir" && return 0
+        _owner="$(find "$_dir" -prune -user "$_uid" 2>/dev/null)"
+        [ -n "$_owner" ] && [ -w "$_dir" ] && printf "%s" "$_dir" && return 0
     done
     printf "ani-cli: no writable tmp dir found\n" >&2
     printf "%s" "$download_dir"
