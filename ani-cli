@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.5"
+version_number="5.1.6"
 
 # UI
 
@@ -134,11 +134,10 @@ dep_ch() {
 # checks for deps in order and returns the first available. format is "prog_a,prog_b,prog_c"
 dep_ch_failover() {
     [ -z "$1" ] && return 1
-    prog=$(printf "%s" "$1" | cut -d "," -f 1)
-    rest=$(printf "%s" "$1" | cut -s -d "," -f 2-)
+    prog=${1%%,*}
     command -v "$prog" >/dev/null 2>&1 && printf "%s" "$prog" && return 0
     [ -e "$prog" ] && printf "%s" "$prog" && return 0
-    dep_ch_failover "$rest"
+    [ "$1" != "$prog" ] && dep_ch_failover "${1#*,}"
 }
 
 cleanup() {
@@ -188,9 +187,12 @@ deobfuscate_blob() (
     _output=""
     for _byte in $_bytes; do
         _char=$((_byte ^ $1))
-        _output="${_output}\\0$((_char / 64))$(((_char / 8) % 8))$((_char % 8))"
-        set -- "$@" "$1"
+        _output="${_output}\\0$((_char + 2 * (_char / 8) + 20 * (_char / 64)))"
         shift
+        if [ "$#" -eq 0 ]; then
+            printf "%b" "$_output" && _output="" || return
+            set -- 111 116 97 107 117 45 101 109 98 101 100 45 118 49
+        fi
     done
     printf "%b" "$_output"
 )
