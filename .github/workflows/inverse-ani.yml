@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: 'echo "Not required: did not modify ani-cli"'
+  check-sed:
+    name: Sed Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "Not required: did not modify ani-cli"'
   check-exec:
     name: Executable Bit
     runs-on: ubuntu-latest
