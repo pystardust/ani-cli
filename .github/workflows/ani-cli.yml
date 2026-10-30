@@ -20,7 +20,22 @@ jobs:
         SHFMT_OPTS: -i 4 -ci -d
       with:
         sh_checker_exclude: "_ani-cli-bash _ani-cli-zsh"
-      
+
+  check-sed:
+    name: Sed Syntax
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v7
+      with:
+        go-version: '1.27.1'
+        cache: false
+    - name: Install shell-lsp
+      run: go install github.com/stubbedev/shell-lsp@v0.5.14
+    - name: Check embedded sed syntax
+      run: shell-lsp check --norc -s sh --include=SL3002 ani-cli
+
   check-exec:
     name: Executable Bit
     runs-on: ubuntu-latest
