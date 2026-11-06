@@ -151,6 +151,9 @@ brew install ani-cli && brew install --cask iina
 ```
 *Why iina and not mpv? Drop-in replacement for mpv for MacOS. Integrates well with OSX UI. Excellent support for M1. Open Source.*
 
+Alternatively, a [MacPorts](https://www.macports.org/) package is available.
+Install it with `sudo port install ani-cli`.
+
 </details><details><summary><b>Android</b></summary>
 
 Install termux [(Guide)](https://termux.com/)

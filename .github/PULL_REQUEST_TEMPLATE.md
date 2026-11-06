@@ -1,5 +1,7 @@
 # Pull Request Template
 
+[Contributing guidelines](https://github.com/pystardust/ani-cli/blob/master/CONTRIBUTING.md) · [CI workflows](https://github.com/pystardust/ani-cli/tree/master/.github/workflows)
+
 ## Type of change
 
 - [ ] Bug fix
@@ -9,6 +11,23 @@
 ## Description
 
 *ramble here*
+
+*Which flags, players or platforms does this affect?*
+
+*Use the fixes keyword to link an issue if this directly resolves one.*
+
+Fixes #xyz
+
+### Verification
+
+*Explain briefly how we can verify your results. \
+Specific anime are the most valuable for bug fixes. \
+Quick example invocation is most valuable for features. \
+No need to restate documentation updates*
+
+e.g. `./ani-cli -d -q 720 cyberpunk 2 -e 1 && mpv cyber*`
+
+*(prepend the ./ since during development, we work within the repo)*
 
 ## Checklist
 
