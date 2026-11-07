@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.6"
+version_number="5.1.7"
 
 # UI
 
@@ -369,6 +369,7 @@ play_episode() {
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     # wait for the previous player to close (in range selection)
     wait
+    player_extra_flags="$player_extra_flags $first_play_flags"
     # shellcheck disable=SC2086
     case "$player_function" in
         debug) printf "All links:\n%s\nSelected link:\n%s\nAudio:\n%s\nSubtitles:\n%s\n" "$links" "$video_link" "$audio_link" "$sub_link" ;;
@@ -405,6 +406,7 @@ play_episode() {
             ;;
         *) nohup $player_function $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
     esac
+    player_extra_flags="${player_extra_flags% "$first_play_flags"}" && unset first_play_flags
     replay="$video_link"
     unset video_link
     update_history
@@ -473,6 +475,7 @@ case "$(uname -a | cut -d " " -f 1,3-)" in
 esac
 
 player_extra_flags="${ANI_CLI_PLAYER_FLAGS:-""}"
+first_play_flags="${ANI_CLI_FIRST_PLAY_FLAGS:-""}"
 no_detach="${ANI_CLI_NO_DETACH:-0}"
 exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
 skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
