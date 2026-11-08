@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version_number="5.1.7"
+version_number="5.1.8"
 
 # UI
 
@@ -346,12 +346,42 @@ update_history() {
 # PLAYING
 
 # shellcheck disable=SC2086
+# $1 = video link, $2 = output path, $3 = extra flags
+fetch_media() {
+    [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$2" $3 && return 0
+    ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy "$2" $3
+}
+
+# $1 = media file, $2 = vtt file, $3 = output path
+mux_subs() {
+    ffmpeg -loglevel error -stats -i "$1" -i "$2" \
+        -map 0:v -map 0:a? -map 1:0 \
+        -c:v copy -c:a copy -c:s mov_text \
+        -metadata:s:s:0 language=eng -disposition:s:0 default \
+        "$3"
+}
+
+# shellcheck disable=SC2086
 # $1 = video link, $2 = video name, $3 = extra flags
 download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
-    [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$download_dir/$_name.vtt"
-    [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$_name.mp4" $3 && return 0
-    ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3
+    # TODO: change _out and _vtt folders to tmp folders, right now it writes on disk.
+    _out="$download_dir/$_name.mp4"
+    _vtt="$download_dir/$_name.vtt"
+    [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$_vtt"
+
+    if [ "$embed_subs" = 1 ] && [ -n "$sub_link" ] && [ -s "$_vtt" ] && command -v ffmpeg >/dev/null; then
+        _raw="$download_dir/$_name.tmp.mp4"
+        fetch_media "$1" "$_raw" "$3" || return 1
+        if mux_subs "$_raw" "$_vtt" "$_out"; then
+            rm -f "$_raw" "$_vtt"
+        else
+            mv "$_raw" "$_out"
+            info "Subtitle embedding failed, kept $_name.vtt next to the video"
+        fi
+    else
+        fetch_media "$1" "$_out" "$3"
+    fi
 }
 
 # mpv-android takes no options from the intent, so they go through a file the user includes in mpv.conf
@@ -457,6 +487,7 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 exact_match="${ANI_CLI_EXACT:-0}"
+embed_subs="${ANI_CLI_EMBED_SUBS:-1}"
 
 curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_ff117,curl") || die "Program curl not found"
 
