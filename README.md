@@ -567,7 +567,6 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 * Can I adjust resolution? - Yes, use `-q resolution`, for example `ani-cli -q 1080`.
 * How can I download? - Use `-d`, it will download into your working directory.
 * Can i change download folder? - Yes, set the `ANI_CLI_DOWNLOAD_DIR` to your desired location.
-* Can I keep download fragments off my disk? - Yes, set `ANI_CLI_TMP_DIR` to an absolute tmpfs path, for example `export ANI_CLI_TMP_DIR=/dev/shm`. yt-dlp keeps the temporary fragments there and moves the finished episode into the download folder. Relative paths are resolved against the download folder.
 * How can I bulk download? - `Use -d -e firstepisode-lastepisode`, for example `ani-cli onepiece -d -e 1-1000`.
 
 **Note:** All features are documented in `ani-cli --help`.
