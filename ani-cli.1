@@ -85,7 +85,7 @@ Controls the scraped media's mode, valid options are sub or dub. Default is sub.
 Controls the directory where files are downloaded. Default is the current dir.
 .TP
 \fBANI_CLI_TMP_DIR\fR
-Controls the directory where yt-dlp keeps temporary fragments while downloading. Default is the download directory. Set it to a tmpfs path such as /dev/shm to reduce disk writes. Needs enough space for one episode.
+Controls the directory where yt-dlp keeps temporary fragments while downloading. Default is the download directory. Relative paths are resolved against the download directory, not the current dir; use an absolute path to put fragments elsewhere. Set it to a tmpfs path such as /dev/shm to reduce disk writes. Needs enough space for one episode. Only used when downloading with yt-dlp.
 .TP
 \fBANI_CLI_QUALITY\fR
 Controls the scraped media's quality, a resolution such as 1080, or worst/best. Default is best.
