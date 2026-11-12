@@ -7,10 +7,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from .api.routes import router
+from . import obs
+from .config import settings
 from .errors import AniError
 
 
 def create_app() -> FastAPI:
+    obs.configure(settings.log_level)
     app = FastAPI(title="ani-api", version="0.1.0",
                   description="Independent streaming API over replaceable source adapters.")
 

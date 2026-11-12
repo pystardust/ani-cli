@@ -38,12 +38,18 @@ class Settings:
 
     # validation
     probe_budget: int = _int("ANI_API_PROBE_BUDGET", 3)      # variants probed per request
-    deny_ttl: int = _int("ANI_API_DENY_TTL", 21600)          # remember blocked objects 6h
+    # Cached-403 denylist. Observed recovery: the same dub variant returned 403 at
+    # 21:25 and served 206 again at 21:44, so the base window is short and escalates
+    # for objects that keep failing (30m -> 1h -> 2h -> 4h).
+    deny_ttl: int = _int("ANI_API_DENY_TTL", 1800)
+    deny_ttl_max: int = _int("ANI_API_DENY_TTL_MAX", 14400)
     reextract_min_age: int = _int("ANI_API_REEXTRACT_MIN_AGE", 600)
     segment_probe_bytes: int = 1024
 
     # limits
     rate_limit_per_minute: int = _int("ANI_API_RATE_LIMIT", 60)
+    log_level: str = os.environ.get("ANI_API_LOG_LEVEL", "INFO")
+    prober_out: str = os.environ.get("ANI_API_PROBER_OUT", "observations.jsonl")
 
 
 settings = Settings()

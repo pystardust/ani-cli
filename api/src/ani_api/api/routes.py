@@ -6,7 +6,9 @@ import uuid
 from urllib.parse import urljoin
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Request
+from pathlib import Path as FsPath
+
+from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from ..adapters.hianime import HianimeAdapter
@@ -18,6 +20,8 @@ from ..http_client import LoopClient
 from ..models import AnimeDetail, AnimeRef, EpisodeRef, ServerRef, StreamResponse
 from ..services.security import assert_allowed_host, enforce_rate_limit, require_access, sign_payload, verify_token
 from ..services.streams import StreamService
+from .. import obs
+from ..workers.lifetime_prober import curve, read_rows
 
 router = APIRouter()
 
@@ -84,14 +88,14 @@ async def anime_episodes(anime_id: str, _: None = Depends(require_access)) -> li
 
 
 @router.get("/v1/episodes/{episode_id}/servers", response_model=list[ServerRef])
-async def episode_servers(episode_id: str, audio: str = Query("sub", pattern="^(sub|dub)$"),
+async def episode_servers(episode_id: str = Path(pattern=r"^[0-9]{1,12}$"), audio: str = Query("sub", pattern="^(sub|dub)$"),
                           _: None = Depends(require_access)) -> list[ServerRef]:
     return await _metadata.servers(episode_id, audio)  # type: ignore[arg-type]
 
 
 @router.get("/v1/streams/{episode_id}", response_model=StreamResponse,
             summary="Resolve an episode and prove the first segment serves")
-async def resolve_stream(request: Request, episode_id: str,
+async def resolve_stream(request: Request, episode_id: str = Path(pattern=r"^[0-9]{1,12}$"),
                          audio: str = Query("sub", pattern="^(sub|dub)$"),
                          quality: str = Query("best"),
                          anime_id: str = Query("", description="optional, echoed back"),
@@ -100,6 +104,23 @@ async def resolve_stream(request: Request, episode_id: str,
     await enforce_rate_limit(request)
     return await _service.resolve(episode_id=episode_id, audio=audio, quality=quality,
                                   request_id=rid(request), anime_id=anime_id, refresh=refresh)
+
+
+@router.get("/metrics", response_class=PlainTextResponse, summary="Prometheus text exposition")
+async def metrics(_: None = Depends(require_access)) -> PlainTextResponse:
+    return PlainTextResponse(obs.render(), media_type="text/plain; version=0.0.4")
+
+
+@router.get("/v1/admin/providers", summary="Circuit breaker state per provider")
+async def providers(_: None = Depends(require_access)) -> dict:
+    return {name: await br.snapshot() for name, br in _service.breakers.items()}
+
+
+@router.get("/v1/admin/lifetime", summary="Measured URL lifetime curve")
+async def lifetime(_: None = Depends(require_access)) -> dict:
+    rows = read_rows(FsPath(settings.prober_out))
+    return {"observations": curve(rows),
+            "note": "checkpoints report 'pending' until a real observation lands in the window"}
 
 
 @router.get("/v1/stream/{token}/master.m3u8", response_class=PlainTextResponse)

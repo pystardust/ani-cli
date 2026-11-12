@@ -1,0 +1,11 @@
+[
+  {"label": "solo_s1e1_1080_sub", "referer": "https://zokoanime.video/",
+   "master": "https://hls.dramahot.top/p/scxqicy/f5zaqap7hn/bjodxwju4n/98ri2ajbgpcva6/master.m3u8",
+   "extracted_at": "2026-11-12T20:47:10Z"},
+  {"label": "solo_s1e1_1080_dub", "referer": "https://zokoanime.video/",
+   "master": "https://hls.dramahot.top/p/scxqicy/f5zaqap7hn/bjodxwju4n/0vg550fh5tlb13/master.m3u8",
+   "extracted_at": "2026-11-12T20:48:32Z"},
+  {"label": "aot_s1e1_1080_sub", "referer": "https://zokoanime.video/",
+   "master": "https://hls.dramahot.top/p/scxqicy/me0srwfivs/ibe6onw2kd/sr5zlp1810dncn/master.m3u8",
+   "extracted_at": "2026-11-12T20:54:00Z"}
+]
