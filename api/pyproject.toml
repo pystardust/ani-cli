@@ -1,0 +1,14 @@
+[project]
+name = "ani-api"
+version = "0.1.0"
+description = "Independent streaming API over replaceable source adapters"
+requires-python = ">=3.11"
+dependencies = ["fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.29"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23"]
+redis = ["redis>=5"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["network: hits real providers"]
