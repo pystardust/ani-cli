@@ -28,7 +28,7 @@
 </p>
 
 <h3 align="center">
-A cli to browse and watch anime (alone AND with friends). This tool scrapes the site <a href="https://hianime.at/">hianime.</a>
+A cli to browse and watch anime (alone AND with friends). This tool scrapes <a href="https://miruro.cx/">Miruro</a> for anime and streaming links.
 </h3>
 
 <h1 align="center">
@@ -171,7 +171,7 @@ pkg install termux-am
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
-**Important Note:** The streams only play with the right referrer, which mpv on Android has to read from a config file:
+ani-cli tries streams that do not need a referrer first. If playback falls back to a stream that needs one, mpv on Android must read it from a config file:
 - Run this command and allow storage permissions:
 ```sh
 termux-setup-storage
@@ -183,7 +183,7 @@ include="/storage/emulated/0/mpv/mpv.config.mp4"
 ```
 - Make sure to have storage (photos and videos on newer android) permission allowed to both MPV and termux. These permissions are asked by mpv if you click on the "file picker (legacy)" option.
 
-VLC on Android cannot be given the referrer, so it does not play the current provider.
+Some streams that require a referrer may not work in players that cannot pass one, including VLC on Android.
 
 </details>
 
