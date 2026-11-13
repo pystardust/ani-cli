@@ -183,12 +183,13 @@ m3u8_parse() {
 }
 
 # fetch a URL with the browser headers miruro expects, printing the body
+# HTTP errors are kept as in the old hianime_curl helper:
+#   Connection error: could not fetch <url> (HTTP 404; curl exit 22)
+#   Request failed: HTTP 503 from <url>
 miruro_fetch() {
-    _mf_status=0
     #shellcheck disable=SC2086
-    _mf_response="$($curl_exe -sL --compressed -A "$agent" --connect-timeout 8 --max-time 15 \
-        $cipher_flag -w ' %{http_code}' "$@" 2>/dev/null)" || _mf_status=$?
-
+    _mf_status=0
+    _mf_response="$($curl_exe -sL --compressed -A "$agent" --connect-timeout 8 --max-time 15 "$cipher_flag" "$@" 2>/dev/null)" || _mf_status=$?
     _mf_http=${_mf_response##* }
     _mf_body=${_mf_response% *}
 
@@ -307,18 +308,26 @@ miruro_watch() {
 }
 
 miruro_search() {
-    _mm_page="$(miruro_fetch --get --data-urlencode "q=$1" "$miruro_base/search/__data.json")" || return 1
+    _mm_query="$(printf '%s' "$1" | sed -e 's| |%20|g' -e 's|&|%26|g' -e 's|=|%3D|g' -e 's|?|%3F|g' -e 's|#|%23|g')"
+    _mm_page="$(miruro_fetch "$miruro_base/search/__data.json?q=$_mm_query")" || return 1
+    [ -n "$_mm_page" ] || return 1
     _mm_slots="$(miruro_tmp search)" || return 1
     printf '%s' "$_mm_page" | slot_load "$_mm_slots"
+    _mm_count="$(printf '%s' "$_mm_page" | slot_lines "$_mm_slots")"
+    case "$_mm_count" in
+        '' | 0 | *[!0-9]*) return 1 ;;
+        *) ;;
+    esac
     _mm_root="$(slot_at 0 "$_mm_slots")"
-    _mm_items="$(slot_at_ref "$_mm_root" items "$_mm_slots")"
-    [ -n "$_mm_items" ] || return 1
-    for _mm_ref in $(slot_list "$_mm_items"); do
-        _mm_item="$(slot_at "$_mm_ref" "$_mm_slots")"
-        _mm_id="$(slot_get_ref "$_mm_item" id "$_mm_slots")"
-        [ -n "$_mm_id" ] || continue
-        _mm_title="$(slot_title "$_mm_item" "$_mm_slots" "${2:-}")" || continue
-        printf '%s\t%s\n' "$_mm_id" "$_mm_title"
+    _mm_items="$(slot_follow "$_mm_root" "$_mm_slots" items)" || return 1
+    for _mm_idref in $(slot_list "$_mm_items"); do
+        _mm_item="$(slot_at "$_mm_idref" "$_mm_slots")"
+        _mm_ext="$(slot_follow "$_mm_item" "$_mm_slots" external_ids)" || continue
+        _mm_al="$(miruro_ext_pick "$_mm_ext" "$_mm_slots" anilist)" || continue
+        _mm_show="$(slot_follow "$_mm_item" "$_mm_slots" id | slot_value)" || continue
+        [ -z "$_mm_show" ] && continue
+        _mm_mal="$(miruro_ext_pick "$_mm_ext" "$_mm_slots" mal)"
+        miruro_map_write "$_mm_al" "$_mm_show" "" "$_mm_mal"
     done
 }
 
