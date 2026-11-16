@@ -171,7 +171,7 @@ pkg install termux-am
 
 For players you can use the apk (playstore/fdroid) versions of mpv and vlc. Note that these cannot be checked from termux so a warning is generated when checking dependencies.
 
-ani-cli tries streams that do not need a referrer first. If playback falls back to a stream that needs one, mpv on Android must read it from a config file:
+Some streams need a referrer. If the selected stream needs one, mpv on Android must read it from a config file:
 - Run this command and allow storage permissions:
 ```sh
 termux-setup-storage
