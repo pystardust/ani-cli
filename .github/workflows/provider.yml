@@ -1,0 +1,62 @@
+name: 'provider check'
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  stream:
+    name: ${{ matrix.args }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - args: frieren
+            subs: 1
+          - args: --dub spy x family
+            subs: 0
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y fzf
+    - name: Fake player that checks the stream
+      run: |
+        mkdir -p "$RUNNER_TEMP/bin"
+        cat >"$RUNNER_TEMP/bin/check-mpv" <<'EOF'
+        #!/bin/sh
+        for a; do
+            case "$a" in
+                --referrer=*) refr="${a#*=}" ;;
+                --sub-file=*) sub="${a#*=}" ;;
+                --audio-file=*) audio="${a#*=}" ;;
+                --*) ;;
+                *) video="$a" ;;
+            esac
+        done
+        get() { curl -sfL -A "Mozilla/5.0" -e "$refr" --max-time 20 "$@"; }
+        fail() { printf "FAIL: %s\n" "$1" && exit 1; }
+        printf "video: %s\nreferrer: %s\nsubtitles: %s\n" "$video" "$refr" "${sub:-none}"
+        playlist="$(get "$video")" || fail "playlist not reachable"
+        printf "%s" "$playlist" | grep -q "^#EXTM3U" || fail "playlist is not HLS"
+        seg="$(printf "%s\n" "$playlist" | sed '/^#/d; /^$/d' | head -n 1)"
+        case "$seg" in http*) ;; /*) seg="$(printf "%s" "$video" | sed -E 's|^(https?://[^/]*).*|\1|')$seg" ;; *) seg="${video%/*}/$seg" ;; esac
+        bytes="$(get -r 0-65535 "$seg" | wc -c)"
+        [ "$bytes" -gt 1000 ] || fail "video segment empty"
+        [ -n "$audio" ] && { get -r 0-1023 "$audio" >/dev/null || fail "audio track not reachable"; }
+        [ "$NEED_SUBS" = 1 ] && { get "$sub" | head -c 200 | grep -q "WEBVTT" || fail "subtitles missing"; }
+        printf "PASS\n"
+        EOF
+        chmod +x "$RUNNER_TEMP/bin/check-mpv"
+    - name: Search, pick episode 1 and play it
+      env:
+        ANI_CLI_PLAYER: check-mpv
+        NEED_SUBS: ${{ matrix.subs }}
+        XDG_STATE_HOME: ${{ runner.temp }}/state
+      run: |
+        export PATH="$RUNNER_TEMP/bin:$PATH"
+        for try in 1 2 3; do
+            ./ani-cli --exit-after-play -S 1 -e 1 ${{ matrix.args }} </dev/null && exit 0
+            sleep 60
+        done
+        exit 1
