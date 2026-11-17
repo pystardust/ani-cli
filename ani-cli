@@ -151,7 +151,7 @@ cleanup() {
 #shellcheck disable=SC2086
 miruro_curl() {
     _curl_status=0
-    _response="$($curl_exe -sL -A "$agent" --max-time 10 $cipher_flag \
+    _response="$($curl_exe -sL -A "$agent" --max-time 10 \
         -w ' %{http_code}' "$@")" || _curl_status=$?
 
     _http_code=${_response##* }
@@ -230,7 +230,6 @@ miruro_media() {
     origin=""
     hls=""
     _me_links=""
-    _me_found=""
     mal_id="${anime_id##*:}"
     _me_show="${anime_id#*:}"
     _me_show="${_me_show%%:*}"
@@ -272,17 +271,16 @@ miruro_media() {
                             links="default >$_me_url"
                             ;;
                     esac
+                    _me_sig="$_me_refr|$_me_origin|$_me_hls"
                     if [ -z "$_me_links" ]; then
                         refr="${_me_refr:-$_me_origin}"
                         origin="$_me_origin"
-                        _me_refr0="$_me_refr"
-                        _me_origin0="$_me_origin"
-                        _me_hls0="$_me_hls"
+                        _me_sig0="$_me_sig"
                         [ "$_me_kind" = ssub ] &&
                             sub_link="$(printf "%s" "$_me_prov" | sed 's/.*subtitles:\[//; s/\],thumbnails:.*//' |
                                 sed 's/},{language:"/}\n{language:"/g' | head -n 1 |
                                 sed -nE 's/.*file:"([^"]+)".*/\1/p')"
-                    elif [ "$_me_refr" != "$_me_refr0" ] || [ "$_me_origin" != "$_me_origin0" ] || [ "$_me_hls" != "$_me_hls0" ]; then
+                    elif [ "$_me_sig" != "$_me_sig0" ]; then
                         continue
                     fi
                     _me_name="$(printf "%s" "$_me_srv" | sed -nE 's/^\{server:"([^"]+)".*/\1/p')"
@@ -408,7 +406,7 @@ update_history() {
 # $1 = video link, $2 = video name, $3 = extra flags
 download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
-    [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 $cipher_flag "$sub_link" -o "$download_dir/$_name.vtt"
+    [ -n "$sub_link" ] && $curl_exe -sL -A "$agent" -e "$refr" --max-time 10 "$sub_link" -o "$download_dir/$_name.vtt"
     [ -z "$audio_link" ] && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -P "$download_dir" -P "temp:$tmp_dir" -o "$_name.mp4" $3 && return 0
     ffmpeg -extension_picky 0 -referer "$refr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3
 }
@@ -510,8 +508,6 @@ play() {
 
 # setup
 miruro_base="https://miruro.cx"
-ciphers='ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
-tls13_ciphers='TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256'
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 mode="${ANI_CLI_MODE:-sub}"
@@ -525,7 +521,6 @@ curl_exe=$(dep_ch_failover "curl_firefox135,curl_chrome136,curl_chrome116,curl_f
 
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*)
-        cipher_flag="--ciphers $ciphers --tls13-ciphers $tls13_ciphers"
         player_function="${ANI_CLI_PLAYER:-$(dep_ch_failover "iina,/Applications/IINA.app/Contents/MacOS/iina-cli,mpv,vlc")}" || die 'No player found. Looked for iina, mpv and vlc'
         ;;                                                            # mac OS
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;     # Android OS (termux)
