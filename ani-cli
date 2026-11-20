@@ -214,44 +214,73 @@ miruro_m3u8() {
     [ -n "$links" ] || links="default >$2"
 }
 
-miruro_sources() {
-    sed 's/{provider:"/\n{provider:"/g' | grep '^{provider:"' | while IFS= read -r _so_prov; do
-        _so_sub="$(printf "%s" "$_so_prov" | grep -o 'subtitles:\[[^]]*\]' | grep -o 'file:"[^"]*"' | head -n 1 | cut -d '"' -f 2)"
-        printf "%s" "$_so_prov" | sed 's/{server:"/\n{server:"/g' | grep '^{server:"' | while IFS= read -r _so_srv; do
-            _so_name="$(printf "%s" "$_so_srv" | cut -d '"' -f 2)"
-            _so_refr="$(printf "%s" "$_so_srv" | sed -nE 's/.*Referer:"([^"]*)".*/\1/p')"
-            _so_origin="$(printf "%s" "$_so_srv" | sed -nE 's/.*Origin:"([^"]*)".*/\1/p')"
-            printf "%s" "$_so_srv" | grep -o 'streams:\[[^]]*\]' | head -n 1 | sed 's/{url:"/\n{url:"/g' | grep '^{url:"' | while IFS= read -r _so_stream; do
-                _so_url="$(printf "%s" "$_so_stream" | cut -d '"' -f 2)"
-                case "$(printf "%s" "$_so_stream" | sed -nE 's/.*format:"([^"]+)".*/\1/p')" in
-                    *hls*)
-                        _so_list="$(miruro_curl "$_so_url" ${_so_refr:+-H "Referer: $_so_refr"} ${_so_origin:+-H "Origin: $_so_origin"} 2>/dev/null)" || continue
-                        miruro_m3u8 "$_so_list" "$_so_url" || continue
-                        _so_hls=1
-                        ;;
-                    *)
-                        links="$(printf "%s" "$_so_stream" | sed -nE 's/.*quality:"([^"]+)".*/\1/p')"
-                        links="${links:-default} >$_so_url" _m3u8_audio="" _so_hls=""
-                        ;;
-                esac
-                printf "%s\n" "$links" | while IFS= read -r _so_line; do
-                    printf '%s %s %s|%s|%s|%s|%s|%s\n' "${_so_line%% *}" "$_so_name" "${_so_line#* }" "$_so_refr" "$_so_origin" "$_so_hls" "$_m3u8_audio" "$_so_sub"
-                done
-            done
-        done
-    done
-}
-
 miruro_media() {
+    _me_links=""
     mal_id="${anime_id##*:}"
     _me_show="${anime_id#*:}"
-    _me_page="$(miruro_curl "$miruro_base/watch/${_me_show%%:*}/x?ep=$1")" || return 1
-    _me_tracks="$(printf "%s" "$_me_page" | grep 'tracks:\[' | sed 's/.*tracks:\[//; s/\],config:.*//; s/{track:"/\n{track:"/g')"
-    for _me_kind in "s$2" "$2"; do
-        links="$(printf "%s" "$_me_tracks" | grep -m 1 -F "{track:\"$_me_kind\"" | miruro_sources | sed -n '/|$/!p;/|$/H;$!d;x;s/^\n//;/./p' | sort -g -r -s)"
-        [ -n "$links" ] && return
+    _me_show="${_me_show%%:*}"
+    _me_page="$(miruro_curl "$miruro_base/watch/$_me_show/x?ep=$1")" || return 1
+    _me_tracks="$(printf "%s" "$_me_page" | grep 'tracks:\[' |
+        sed 's/.*tracks:\[//; s/\],config:.*//')"
+    case "$2" in
+        dub) _me_wanted="dub" ;;
+        *) _me_wanted="ssub sub" ;;
+    esac
+    for _me_kind in $_me_wanted; do
+        _me_track="$(printf "%s" "$_me_tracks" | sed 's/{track:"/\n{track:"/g' |
+            grep -m 1 -F "{track:\"$_me_kind\"")"
+        [ -n "$_me_track" ] || continue
+        _me_provs="$(printf "%s" "$_me_track" | sed 's/{provider:"/\n{provider:"/g' |
+            grep '^{provider:"')"
+        while IFS= read -r _me_prov; do
+            _me_sub="$(printf "%s" "$_me_prov" | grep -o 'subtitles:\[[^]]*\]' | grep -m 1 'file:"' |
+                grep -o 'file:"[^"]*"' | head -n 1 | cut -d '"' -f 2)"
+            _me_servers="$(printf "%s" "$_me_prov" | sed 's/{server:"/\n{server:"/g' |
+                grep '^{server:"')"
+            while IFS= read -r _me_srv; do
+                _me_name="$(printf "%s" "$_me_srv" | sed -nE 's/^\{server:"([^"]+)".*/\1/p')"
+                [ -n "$_me_name" ] || continue
+                _me_refr="$(printf "%s" "$_me_srv" | sed -nE 's/.*Referer:"([^"]*)".*/\1/p')"
+                _me_origin="$(printf "%s" "$_me_srv" | sed -nE 's/.*Origin:"([^"]*)".*/\1/p')"
+                _me_streams="$(printf "%s" "$_me_srv" | grep -o 'streams:\[[^]]*\]' | head -n 1 |
+                    sed 's/^streams:\[//; s/\]$//; s/},{url:"/}\n{url:"/g' | grep '^{url:"')"
+                while IFS= read -r _me_stream; do
+                    _me_url="$(printf "%s" "$_me_stream" | sed -nE 's/.*url:"([^"]+)".*/\1/p')"
+                    [ -n "$_me_url" ] || continue
+                    case "$(printf "%s" "$_me_stream" | sed -nE 's/.*format:"([^"]+)".*/\1/p')" in
+                        *hls*)
+                            set -- "$_me_url"
+                            [ -n "$_me_refr" ] && set -- -H "Referer: $_me_refr" "$@"
+                            [ -n "$_me_origin" ] && set -- -H "Origin: $_me_origin" "$@"
+                            _me_playlist="$(miruro_curl "$@" 2>/dev/null)" || continue
+                            miruro_m3u8 "$_me_playlist" "$_me_url" || continue
+                            _me_hls=1
+                            ;;
+                        *)
+                            _me_q="$(printf "%s" "$_me_stream" | sed -nE 's/.*quality:"([^"]+)".*/\1/p')"
+                            links="${_me_q:-default} >${_me_url}"
+                            _m3u8_audio=""
+                            _me_hls=0
+                            ;;
+                    esac
+                    _me_now="$(printf "%s\n" "$links" | while IFS= read -r _me_line; do
+                        printf '%s %s %s|%s|%s|%s|%s|%s\n' "${_me_line%% *}" "$_me_name" \
+                            "${_me_line#* }" "$_me_refr" "$_me_origin" "$_me_hls" "$_m3u8_audio" "$_me_sub"
+                    done)"
+                    _me_links="$(printf "%s\n%s\n" "$_me_links" "$_me_now" | sed '/^$/d')"
+                done <<EOF
+$_me_streams
+EOF
+            done <<EOF
+$_me_servers
+EOF
+        done <<EOF
+$_me_provs
+EOF
+        [ -n "$_me_links" ] && break
     done
-    return 1
+    [ -n "$_me_links" ] || return 1
+    links="$(printf "%s\n" "$_me_links" | sort -g -r -s)"
 }
 
 # select the quality according to the setting
