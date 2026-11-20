@@ -18,20 +18,19 @@ menu() {
 # provide menu. input format is either (ep_list) or (number \t anime_id \t anime_name)
 nth() {
     _stdin=$(cat -)
-    _tab="$(printf '\t')"
     [ -z "$_stdin" ] && return 1
     _line_count="$(printf "%s\n" "$_stdin" | wc -l | tr -d "[:space:]")"
-    [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | sed "s/^[^$_tab]*$_tab//" && return 0
+    [ "$_line_count" -eq 1 ] && printf "%s" "$_stdin" | cut -f 2,3 && return 0
     _prompt="$1"
-    _multi_flag="$2"
+    [ $# -ne 1 ] && _multi_flag="$2"
     _line=$(printf "%s" "$_stdin" | cut -f 1,3 | tr '\t' ' ' | menu "$_prompt" "$_multi_flag" "$menu_extra_flags" | cut -d " " -f 1)
     _line_start=$(printf "%s" "$_line" | head -n 1)
     _line_end=$(printf "%s" "$_line" | tail -n 1)
     [ -n "$_line" ] || return 1
     if [ "$_line_start" = "$_line_end" ]; then
-        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | sed "s/^[^$_tab]*$_tab//" || return 1
+        printf "%s" "$_stdin" | grep -E '^'"${_line}"'($|[[:space:]])' | cut -f 2,3 || return 1
     else
-        printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' | sed "s/^[^$_tab]*$_tab//" || return 1
+        printf "%s" "$_stdin" | sed -n '/^'"${_line_start}"'$/,/^'"${_line_end}$"'/p' || return 1
     fi
 }
 
@@ -491,12 +490,11 @@ play_episode() {
 }
 
 play() {
-    [ "$ep_no" = 0 ] && ep_no=$(printf "%s" "$ep_list" | head -n 1)
     _start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
     _end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-    [ "$_start" = "-1" ] && _start=$(printf "%s" "$ep_list" | tail -n 1) && [ "$_end" = "-1" ] && ep_no="$_start" && unset _start
-    [ "$_start" = "0" ] && _start=$(printf "%s" "$ep_list" | head -n 1)
+    [ "$_start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n 1) && unset _start
     [ -z "$_end" ] || [ "$_end" = "$_start" ] && unset _start _end
+    [ "$_start" = "0" ] && _start=$(printf "%s" "$ep_list" | head -n 1)
     [ "$_end" = "-1" ] && _end=$(printf "%s" "$ep_list" | tail -n 1)
     _line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
     if [ "$_line_count" != 1 ] || [ -n "$_start" ]; then
@@ -663,7 +661,7 @@ trap 'cleanup; exit 1' INT HUP TERM
 case "$source" in
     history)
         backup_old_hist
-        anime_list=$(while IFS="$(printf '\t')" read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
+        anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
         wait
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
