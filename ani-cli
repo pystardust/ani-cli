@@ -175,22 +175,13 @@ miruro_curl() {
 }
 
 miruro_search() {
-    _se_query="$(printf "%s" "$1" | tr '+' ' ')"
-    _se_page="$(miruro_curl "$miruro_base/search" --get --data-urlencode "q=$_se_query")" || return 1
-    printf "%s" "$_se_page" | grep 'items:\[' |
-        sed 's/.*items:\[//; s/\],entityItems:.*//' | sed 's/},{id:"/}\n{id:"/g' |
-        while IFS= read -r _se_item; do
-            _se_show="$(printf "%s" "$_se_item" | sed -nE 's/^\{id:"([^"]+)".*/\1/p')"
-            _se_ext="$(printf "%s" "$_se_item" | sed -E 's/.*external_ids:\{//; s/\},title:.*//')"
-            _se_al="$(printf "%s" "$_se_ext" | sed -nE 's/.*anilist:\["([^"]+)"\].*/\1/p')"
-            _se_mal="$(printf "%s" "$_se_ext" | sed -nE 's/.*mal:\["([^"]+)"\].*/\1/p')"
-            _se_title="$(printf "%s" "$_se_item" | sed -E 's/.*title:\{//; s/\},format:.*//' |
-                sed -nE 's/.*english:"([^"]*)".*/\1/p')"
-            [ -n "$_se_title" ] || _se_title="$(printf "%s" "$_se_item" | sed -E 's/.*title:\{//; s/\},format:.*//' |
-                sed -nE 's/.*romaji:"([^"]*)".*/\1/p')"
-            [ -n "$_se_show" ] && [ -n "$_se_al" ] || continue
-            printf "%s:%s:%s\t%s\n" "$_se_al" "$_se_show" "$_se_mal" "$_se_title"
-        done
+    _se_page="$(miruro_curl "$miruro_base/search" --get --data-urlencode "q=$1")" || return 1
+    printf "%s" "$_se_page" | grep 'items:\[' | sed 's/.*items:\[//; s/\],entityItems:.*//; s/},{id:"/}\n{id:"/g' |
+        sed -nE 's/^\{id:"([^"]+)".*external_ids:\{(.*)\},title:\{(.*)\},format:.*/\1:\n\2\n\3/
+            s/^(.*\n.*\n).*english:"([^"]+)".*/\1\2/
+            s/^(.*\n.*\n).*romaji:"([^"]*)".*/\1\2/
+            s/^(.*)\n(.*mal:\["([^"]+)"\].*\n)/\1\3\n\2/
+            s/^(.*)\n.*anilist:\["([^"]+)"\].*\n(.*)$/\2:\1\t\3/p'
 }
 
 miruro_episodes() {
