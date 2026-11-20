@@ -189,7 +189,7 @@ miruro_episodes() {
     _ep_show="${_ep_show%%:*}"
     _ep_page="$(miruro_curl "$miruro_base/watch/$_ep_show/x?ep=1")" || return 1
     printf "%s" "$_ep_page" | grep -oE '[,{;]number:[0-9]+([.][0-9]+)?|[.]number=[0-9]+([.][0-9]+)?' |
-        sed 's/^[,{;]number://; s/^[.]number=//' | sort -nu
+        sed 's/^[,{;]number://; s/^[.]number=//' | LC_ALL=C sort -nu
 }
 
 miruro_m3u8() {
