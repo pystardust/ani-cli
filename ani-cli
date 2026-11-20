@@ -151,7 +151,7 @@ cleanup() {
 #shellcheck disable=SC2086
 miruro_curl() {
     _curl_status=0
-    _response="$($curl_exe -sL -A "$agent" --max-time 20 \
+    _response="$($curl_exe -sL -A "$agent" --max-time 10 \
         -w ' %{http_code}' "$@")" || _curl_status=$?
 
     _http_code=${_response##* }
