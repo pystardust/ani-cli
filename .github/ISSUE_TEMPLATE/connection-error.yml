@@ -1,0 +1,106 @@
+name: Connection error / Request failed
+description: Report a connection error or failed HTTP request.
+labels: ["priority 2: medium", "type: bug", "category: url"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Try updating with `ani-cli -U` and retry before reporting.
+        If updating fails, mention it in the optional description.
+
+  # Base Metadata like the regular bug template. Required.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `ani-cli -V`.
+      placeholder: "5.1.8"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "Windows 11 / Linux Mint 22 / Android 14 (Termux)"
+    validations:
+      required: true
+  - type: input
+    id: shell
+    attributes:
+      label: Shell
+      placeholder: "bash / zsh / fish"
+    validations:
+      required: true
+  - type: input
+    id: anime
+    attributes:
+      label: Failing anime
+      description: Enter `n/a` if the error occurs before selecting an anime.
+      placeholder: "FLCL"
+    validations:
+      required: true
+
+  # HTTP Code and Curl Exit. Required.
+  - type: input
+    id: curl-exit-code
+    attributes:
+      label: Curl Exit Code
+      description: Copy the curl exit code from the error. For `Request failed` without a curl exit code, enter `0`.
+      placeholder: "60"
+    validations:
+      required: true
+  - type: input
+    id: http-status
+    attributes:
+      label: HTTP Status
+      description: Copy the status number, or enter `n/a` if there was no HTTP response.
+      placeholder: "403 / n/a"
+    validations:
+      required: true
+
+  # URL is annoying to copy, so not mandatory
+  - type: input
+    id: url
+    attributes:
+      label: Failing URL
+      description: Copy the URL from the error output.
+  - type: dropdown
+    id: browser-reachability
+    attributes:
+      label: Reachability in Browser
+      description: Can you open the provider website in a browser on the same device and network?
+      options: ["Yes", "No"]
+
+  # VPN et. al. I wonder if we ever get a Tor issue.
+  - type: dropdown
+    id: vpn-proxy
+    attributes:
+      label: VPN/Proxy
+      description: Was a VPN or Proxy enabled when the error occurred?
+      options: ["VPN", "Proxy", "Tor", "I2P", "No"]
+  - type: input
+    id: country-region
+    attributes:
+      label: Country/Region
+      description: If using a VPN/Proxy, include its exit country too.
+      placeholder: "Germany / VPN exit: Netherlands"
+
+  # Curl Details
+  - type: dropdown
+    id: curl-impersonate
+    attributes:
+      label: Curl Impersonate
+      description: Is curl-impersonate installed for ani-cli?
+      options: ["Yes", "No"]
+  - type: textarea
+    id: curl-version
+    attributes:
+      label: Curl Version
+      description: Copy the full output of `curl --version`
+
+  # Freeform description, discouraged because usually adds no value beyond the metadata
+  - type: textarea
+    id: description
+    attributes:
+      label: Description (optional)
+      description: The fields above are usually enough. Leave this blank unless there's something else we should know.
