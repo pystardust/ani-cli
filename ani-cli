@@ -201,7 +201,7 @@ miruro_m3u8() {
     [ -z "$_m3u8_audio" ] && _m3u8_audio="$(printf "%s\n" "$_m3u8_list" | grep -m 1 '^#EXT-X-MEDIA:.*TYPE=AUDIO')"
     _m3u8_audio="$(printf "%s" "$_m3u8_audio" | sed -nE 's/.*URI="([^"]*)".*/>\1/p' | sed "$_m3u8_abs" | cut -c 2-)"
     links="$(printf "%s\n" "$_m3u8_list" | sed -nE '/^#EXT-X-STREAM-INF:/{s/.*RESOLUTION=[0-9]+x([0-9]+).*/\1p/;s/^#.*/default/;N;s/\n([^#[:space:]])/ >\1/p;}' |
-        sed "$_m3u8_abs" | sort -g -r -s)"
+        sed "$_m3u8_abs" | sort -n -r -s)"
     [ -n "$links" ] || links="default >$2"
 }
 
@@ -271,7 +271,7 @@ EOF
         [ -n "$_me_links" ] && break
     done
     [ -n "$_me_links" ] || return 1
-    links="$(printf "%s\n" "$_me_links" | sort -g -r -s)"
+    links="$(printf "%s\n" "$_me_links" | sort -n -r -s)"
 }
 
 # select the quality according to the setting
