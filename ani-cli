@@ -202,43 +202,16 @@ miruro_episodes() {
 }
 
 miruro_m3u8() {
-    case "$1" in
-        *#EXTM3U*) ;;
-        *) return 1 ;;
-    esac
-    _m3u8_origin="$(printf "%s" "$2" | sed -E 's|^(https?://[^/]+).*|\1|')"
+    [ "${1#*#EXTM3U}" != "$1" ] || return 1
+    _m3u8_list="$(printf "%s\n" "$1" | tr -d '\r')"
     _m3u8_base="${2%%\?*}"
-    _m3u8_base="${_m3u8_base%/*}"
-    _m3u8_audio="$(printf "%s\n" "$1" | tr -d '\r' | grep '^#EXT-X-MEDIA:.*TYPE=AUDIO' |
-        grep -m 1 'DEFAULT=YES')"
-    [ -z "$_m3u8_audio" ] && _m3u8_audio="$(printf "%s\n" "$1" | tr -d '\r' | grep -m 1 '^#EXT-X-MEDIA:.*TYPE=AUDIO')"
-    _m3u8_audio="$(printf "%s" "$_m3u8_audio" | sed -nE 's/.*URI="([^"]*)".*/\1/p')"
-    case "$_m3u8_audio" in
-        "") ;;
-        http*) ;;
-        //*) _m3u8_audio="https:${_m3u8_audio}" ;;
-        /*) _m3u8_audio="${_m3u8_origin}${_m3u8_audio}" ;;
-        *) _m3u8_audio="${_m3u8_base}/${_m3u8_audio}" ;;
-    esac
-    case "$1" in
-        *#EXT-X-STREAM-INF*)
-            links="$(printf "%s\n" "$1" | tr -d '\r' | sed -nE '
-/^#EXT-X-STREAM-INF:/ {
-    s/.*RESOLUTION=[0-9]+x([0-9]+).*/\1p/
-    t label
-    s/.*/default/
-    :label
-    h
-    n
-    /^[[:space:]]*$/d
-    /^#/d
-    G
-    s|^(.*)\n(.*)$|\2 >\1|p
-}' | sed 's|>//|>https://|' | sed "s|>/|>${_m3u8_origin}/|" | sed "\|>https*://|!s|>|>${_m3u8_base}/|" | sort -g -r -s)"
-            ;;
-        *) links="default >$2" ;;
-    esac
-    [ -n "$links" ]
+    _m3u8_abs="s|>//|>https://|; s|>/|>$(printf "%s" "$2" | cut -d / -f 1-3)/|; \|>https*://|!s|>|>${_m3u8_base%/*}/|"
+    _m3u8_audio="$(printf "%s\n" "$_m3u8_list" | grep '^#EXT-X-MEDIA:.*TYPE=AUDIO' | grep -m 1 'DEFAULT=YES')"
+    [ -z "$_m3u8_audio" ] && _m3u8_audio="$(printf "%s\n" "$_m3u8_list" | grep -m 1 '^#EXT-X-MEDIA:.*TYPE=AUDIO')"
+    _m3u8_audio="$(printf "%s" "$_m3u8_audio" | sed -nE 's/.*URI="([^"]*)".*/>\1/p' | sed "$_m3u8_abs" | cut -c 2-)"
+    links="$(printf "%s\n" "$_m3u8_list" | sed -nE '/^#EXT-X-STREAM-INF:/{s/.*RESOLUTION=[0-9]+x([0-9]+).*/\1p/;s/^#.*/default/;N;s/\n([^#[:space:]])/ >\1/p;}' |
+        sed "$_m3u8_abs" | sort -g -r -s)"
+    [ -n "$links" ] || links="default >$2"
 }
 
 miruro_media() {
