@@ -165,10 +165,13 @@ miruro_curl() {
         die "Connection error: could not fetch $1 ($_detail; curl exit $_curl_status)"
     fi
 
+    if printf "%s" "$_response" | grep -qi "<title>Just a moment"; then
+        [ "$curl_exe" = "curl" ] && die "Blocked by cloudflare. Try installing curl-impersonate"
+        die "Blocked by cloudflare."
+    fi
     case "$_http_code" in
         2??) ;;
-        *) printf "%s" "$_response" | grep -qi "Just a moment" ||
-            die "Request failed: HTTP $_http_code from $1" ;;
+        *) die "Request failed: HTTP $_http_code from $1" ;;
     esac
 
     printf "%s" "$_response"
