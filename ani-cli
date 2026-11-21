@@ -227,6 +227,7 @@ miruro_media() {
                         [ -n "$_me_name" ] || continue
                         _me_refr=$(printf "%s\n" "$_me_srv" | sed -nE 's/.*Referer:"([^"]*)".*/\1/p')
                         _me_origin=$(printf "%s\n" "$_me_srv" | sed -nE 's/.*Origin:"([^"]*)".*/\1/p')
+                        [ -n "$_me_origin" ] || _me_origin=$(printf "%s" "$_me_refr" | sed -nE 's|^(https?://[^/]+).*|\1|p')
                         printf "%s\n" "$_me_srv" | grep -o 'streams:\[[^]]*\]' | head -n 1 |
                             sed 's/^streams:\[//; s/\]$//; s/},{url:"/}\n{url:"/g' | grep '^{url:"' |
                             while IFS= read -r _me_stream; do
@@ -448,6 +449,7 @@ play() {
         [ -z "$_end" ] && _end=$(printf "%s\n" "$ep_no" | tail -n 1)
         _range=$(printf "%s\n" "$ep_list" | sed -nE "/^${_start}\$/,/^${_end}\$/p")
         [ -z "$_range" ] && die "Invalid range!"
+        [ "$(printf "%s\n" "$_range" | tail -n 1 || true)" = "$_end" ] || die "Invalid range: episode $_end not found!"
         for i in $_range; do
             tput clear
             ep_no=$i
@@ -620,7 +622,7 @@ case "$source" in
     *)
         if [ "$menu_program" = "fzf" ]; then
             while [ -z "$query" ]; do
-                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query
+                printf "\33[2K\r\033[1;36mSearch anime: \033[0m" && read -r query || [ -n "$query" ] || exit 1
             done
         else
             [ -z "$query" ] && query=$(: | menu "Search anime: " "" "$menu_extra_flags")
