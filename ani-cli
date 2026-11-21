@@ -219,8 +219,8 @@ miruro_media() {
         _me_links=$(printf "%s\n" "$_me_tracks" | grep -m 1 -F "{track:\"$_me_kind\"" |
             sed 's/{provider:"/\n{provider:"/g' | grep '^{provider:"' |
             while IFS= read -r _me_prov; do
-                _me_sub=$(printf "%s\n" "$_me_prov" | grep -o 'subtitles:\[[^]]*\]' | grep -m 1 'file:"' |
-                    grep -o 'file:"[^"]*"' | head -n 1 | cut -d '"' -f 2)
+                _me_sub=$(printf "%s\n" "$_me_prov" | sed 's/} *, *{/}\n{/g' |
+                    grep -E 'language:"en(-[^"]+|g)?"|language:"[Ee]nglish"|label:"[Ee]nglish' | sed -n '1h;/[,{]default:true[,}]/h;$!d;x;s/.*file:"\([^"]*\)".*/\1/p')
                 printf "%s\n" "$_me_prov" | sed 's/{server:"/\n{server:"/g' | grep '^{server:"' |
                     while IFS= read -r _me_srv; do
                         _me_name=$(printf "%s\n" "$_me_srv" | cut -d '"' -f 2)
