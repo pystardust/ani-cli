@@ -212,6 +212,7 @@ miruro_media() {
     mal_id="${anime_id##*:}"
     _me_show="${anime_id#*:}"
     _me_page=$(miruro_curl "$miruro_base/watch/${_me_show%%:*}/x?ep=$1") || return 1
+    _me_hoisted=$(printf "%s\n" "$_me_page" | grep -m 1 'tracks:\[' | sed 's/tracks:\[.*//')
     _me_tracks=$(printf "%s\n" "$_me_page" | grep 'tracks:\[' | sed 's/.*tracks:\[//; s/\],config:.*//; s/{track:"/\n{track:"/g')
     _me_wanted="ssub sub"
     [ "$2" = "dub" ] && _me_wanted="dub"
@@ -221,6 +222,11 @@ miruro_media() {
             while IFS= read -r _me_prov; do
                 _me_sub=$(printf "%s\n" "$_me_prov" | sed 's/} *, *{/}\n{/g' |
                     grep -E 'language:"en(-[^"]+|g)?"|language:"[Ee]nglish"|label:"[Ee]nglish' | sed -n '1h;/[,{]default:true[,}]/h;$!d;x;s/.*file:"\([^"]*\)".*/\1/p')
+                if [ -z "$_me_sub" ]; then
+                    _me_var=$(printf "%s\n" "$_me_prov" | sed -n 's/.*subtitles:\([a-z]\)[,}].*/\1/p' | head -n 1)
+                    [ -n "$_me_var" ] && _me_sub=$(printf "%s\n" "$_me_hoisted" | grep -o "$_me_var"'\[[0-9]*\]={language:"en[^;]*' |
+                        sed -n '1h;/[,{]default:true[,}]/h;$!d;x;s/.*file:"\([^"]*\)".*/\1/p')
+                fi
                 printf "%s\n" "$_me_prov" | sed 's/{server:"/\n{server:"/g' | grep '^{server:"' |
                     while IFS= read -r _me_srv; do
                         _me_name=$(printf "%s\n" "$_me_srv" | cut -d '"' -f 2)
@@ -330,34 +336,34 @@ time_until_next_ep() {
 
 # HISTORY
 
-backup_old_hist() {
-    backupfile="${histfile}.v4"
-    : >"${histfile}.new"
-    while IFS="	" read -r ep_no anime_id anime_title; do
-        case "$anime_id" in
-            *:*) printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"${histfile}.new" ;;
-            *) printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"$backupfile" ;;
-        esac
-    done <"$histfile"
-    mv "${histfile}.new" "$histfile"
-}
-
 process_hist_entry() {
-    ep_list=$(miruro_episodes "$anime_id")
-    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$anime_id" "$anime_title" "$ep_no"
+    _ep_rx=$(printf '%s' "$ep_no" | sed 's|[.]|\\.|g')
+    _al="${anime_id#al:}"
+    _al="${_al%%:*}"
+    # history keys on AniList only, so re-resolve the provider id each run
+    _res="$(miruro_search "$anime_title")" || return 1
+    _addr="$(printf "%s\n" "$_res" | grep -m 1 "^$_al:" | cut -f 1)"
+    [ -n "$_addr" ] || {
+        printf "History: '%s' unresolved, skipping.\n" "$anime_title" >&2
+        return 1
+    }
+    _eps="$(miruro_episodes "$_addr")" || return 1
+    _next="$(printf "%s\n" "$_eps" | sed -n "/^$_ep_rx$/{n;p;}")"
+    [ -n "$_next" ] && printf "%s\t%s - episode %s\n" "$_addr" "$anime_title" "$_next"
 }
 
 update_history() {
-    if grep -q "	${anime_id}	" "$histfile"; then
-        # escape sed special chars in replacement: & and \ and delimiter |
-        safe_title=$(printf "%s" "$anime_title" | sed 's|[&\|]|\\&|g')
-        sed -E "s|^[^	]+	${anime_id}	[^	]+$|${ep_no}	${anime_id}	${safe_title}|" "$histfile" >"${histfile}.new"
-    else
-        cp "$histfile" "${histfile}.new"
-        printf "%s\t%s\t%s\n" "$ep_no" "$anime_id" "$anime_title" >>"${histfile}.new"
-    fi
-    mv "${histfile}.new" "$histfile"
+    _al="${anime_id#al:}"
+    _al="${_al%%:*}"
+    _title=$(printf '%s' "$anime_title" | tr '\n\r' '  ')
+    while IFS="$(printf '\t')" read -r e i t _ || [ -n "$e" ]; do
+        [ -n "$e" ] || continue
+        i="${i#al:}"
+        i="${i%%:*}" # normalize legacy provider ids down to AniList
+        [ "$i" = "$_al" ] && continue
+        printf '%s\tal:%s\t%s\n' "$e" "$i" "$t"
+    done <"$histfile" >"${histfile}.new"
+    printf "%s\tal:%s\t%s\n" "$ep_no" "$_al" "$_title" >>"${histfile}.new" && mv "${histfile}.new" "$histfile"
 }
 
 # PLAYING
@@ -608,9 +614,9 @@ trap 'cleanup; exit 1' INT HUP TERM
 # searching
 case "$source" in
     history)
-        backup_old_hist
-        anime_list=$(while read -r ep_no anime_id anime_title; do process_hist_entry & done <"$histfile")
-        wait
+        anime_list=$(while IFS="$(printf '\t')" read -r ep_no anime_id anime_title _ || [ -n "$ep_no" ]; do
+            process_hist_entry &
+        done <"$histfile")
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && anime_id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f 1)
         [ -z "${index##*[!0-9]*}" ] || anime_id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f 1)
