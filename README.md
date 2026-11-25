@@ -560,6 +560,7 @@ Ani-skip uses the external lua script function of mpv and as such â€“ for now â€
 <details>
 	
 * Can I change subtitle language or turn them off? - Subtitles are a separate english track handed to the player, so you can toggle them there (mpv: press `v`). Other languages are not offered.
+* Can I use Spanish subtitles? - If the `opencode` CLI is installed and configured, ani-cli offers Spanish subtitles after you select episodes. It can translate for playback or prepare multiple episodes first. Translations are cached under `$XDG_CACHE_HOME/ani-cli/subtitles` (or `~/.cache/ani-cli/subtitles`) and reused on later plays. OpenCode must have a working provider/model configured.
 * Can I watch dub? - Yes, use `--dub`.
 * Can I change dub language? - No.
 * Can I change media source? - No (unless you can scrape that source yourself).

@@ -270,6 +270,46 @@ get_video_link() {
     fi
 }
 
+# Translate an episode's default subtitle to Spanish and cache it per anime/episode.
+translated_subtitle() {
+    _cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli/subtitles"
+    _translated="$_cache_dir/${anime_id}-${1}-es.vtt"
+    mkdir -p "$_cache_dir" || return 1
+    [ -s "$_translated" ] && { printf "%s" "$_translated"; return 0; }
+    [ -n "$sub_link" ] || return 1
+    _source="${TMPDIR:-/tmp}/ani-cli-subtitle-$$.vtt"
+    _result="${_translated}.tmp.$$"
+    if ! $curl_exe -fsSL -A "$agent" -e "$refr" --max-time 30 $cipher_flag "$sub_link" -o "$_source"; then
+        rm -f "$_source" "$_result"
+        printf "Could not download the source subtitle for episode %s.\n" "$1" >&2
+        return 1
+    fi
+    if ! opencode run "Translate every subtitle cue into Spanish. Preserve all WebVTT structure, timestamps, cue identifiers, and formatting. Return only a complete valid WebVTT file, beginning with WEBVTT. Do not add markdown fences or explanations." --file "$_source" >"$_result"; then
+        rm -f "$_source"
+        printf "OpenCode failed. Its output was saved to %s\n" "$_result" >&2
+        return 1
+    fi
+    rm -f "$_source"
+    # Remove accidental markdown fences, then reject incomplete or non-WebVTT output.
+    sed '1{/^```/d}; ${/^```/d}' "$_result" >"${_result}.clean" && mv "${_result}.clean" "$_result"
+    if ! head -n 1 "$_result" | grep -q '^WEBVTT'; then
+        printf "OpenCode did not return WebVTT for episode %s. Its response was saved to %s\n" "$1" "$_result" >&2
+        return 1
+    fi
+    mv "$_result" "$_translated" || { rm -f "$_result"; return 1; }
+    printf "%s" "$_translated"
+}
+
+prepare_translation() {
+    _prepare_ep="$1"
+    _cached="${XDG_CACHE_HOME:-$HOME/.cache}/ani-cli/subtitles/${anime_id}-${_prepare_ep}-es.vtt"
+    [ -s "$_cached" ] && { info "Spanish subtitles already prepared for episode $_prepare_ep"; return 0; }
+    info "Preparing Spanish subtitles for episode $_prepare_ep..."
+    hianime_m3u8 "$_prepare_ep" "$mode" || { info "Could not find episode $_prepare_ep sources"; return 1; }
+    _translated_file="$(translated_subtitle "$_prepare_ep")" || { info "Translation failed for episode $_prepare_ep"; return 1; }
+    info "Spanish subtitles ready: $_translated_file"
+}
+
 # provide countdown for the next episode release both sub and dub
 time_until_next_ep() {
     animeschedule="https://animeschedule.net"
@@ -360,7 +400,7 @@ android_mpv() {
     _conf_dir="/storage/emulated/0/mpv"
     if [ -w "${_conf_dir%/mpv}" ]; then
         [ -d "$_conf_dir" ] || mkdir "$_conf_dir"
-        printf "referrer=%s\n%s\n%s\n" "$refr" "${sub_link:+sub-file=$sub_link}" "${audio_link:+audio-file=$audio_link}" >"$_conf_dir/mpv.config.mp4"
+        printf "referrer=%s\n%s\n%s\n" "$refr" "${play_sub_link:+sub-file=$play_sub_link}" "${audio_link:+audio-file=$audio_link}" >"$_conf_dir/mpv.config.mp4"
     fi
     nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n is.xyz.mpv/.MPVActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 &
 }
@@ -368,27 +408,31 @@ android_mpv() {
 play_episode() {
     [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${anime_title} ${ep_no}"
     [ -z "$video_link" ] && get_video_link
+    play_sub_link="$sub_link"
+    if [ "$spanish_subtitles" = 1 ]; then
+        play_sub_link="$(translated_subtitle "$ep_no")" || die "Could not translate subtitles for episode $ep_no"
+    fi
     [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -i "$mal_id" -e "$ep_no")"
     # wait for the previous player to close (in range selection)
     wait
     # shellcheck disable=SC2086
     case "$player_function" in
-        debug) printf "All links:\n%s\nSelected link:\n%s\nAudio:\n%s\nSubtitles:\n%s\n" "$links" "$video_link" "$audio_link" "$sub_link" ;;
+        debug) printf "All links:\n%s\nSelected link:\n%s\nAudio:\n%s\nSubtitles:\n%s\n" "$links" "$video_link" "$audio_link" "$play_sub_link" ;;
         android_mpv) android_mpv ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_link" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${anime_title} Episode ${ep_no}" $player_extra_flags >/dev/null 2>&1 & ;;
-        *flatpak*mpv*) flatpak run io.mpv.Mpv --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
+        *flatpak*mpv*) flatpak run io.mpv.Mpv --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${play_sub_link:+--sub-file="$play_sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 & ;;
         *mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup $player_function --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
+                nohup $player_function --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${play_sub_link:+--sub-file="$play_sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             else
-                $player_function --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${sub_link:+--sub-file="$sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
+                $player_function --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${play_sub_link:+--sub-file="$play_sub_link"} $skip_flag $player_extra_flags --force-media-title="${anime_title} Episode ${ep_no}" "$video_link"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && [ -z "$_range" ] && exit "$mpv_exitcode"
             fi
             ;;
         *iina*)
             # mpv splits sub-files on ':', so the url has to be escaped for iina
-            _sub_iina="$(printf "%s" "$sub_link" | sed 's|:|\\:|g')"
+            _sub_iina="$(printf "%s" "$play_sub_link" | sed 's|:|\\:|g')"
             _audio_iina="$(printf "%s" "$audio_link" | sed 's|:|\\:|g')"
             if pgrep -f "IINA" >/dev/null 2>&1; then
                 # omit --keep-running when an IINA instance exists to prevent hanging
@@ -397,8 +441,8 @@ play_episode() {
                 nohup $player_function --mpv-referrer="$refr" ${_audio_iina:+--mpv-audio-files="$_audio_iina"} ${_sub_iina:+--mpv-sub-files="$_sub_iina"} $player_extra_flags --no-stdin --keep-running --mpv-force-media-title="${anime_title} Episode ${ep_no}" "$video_link" >/dev/null 2>&1 &
             fi
             ;;
-        *vlc*) nohup $player_function --http-referrer="$refr" $player_extra_flags --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" :input-slave="${audio_link:+$audio_link#}$sub_link" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- $skip_flag --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${sub_link:+--sub-file="$sub_link"} --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        *vlc*) nohup $player_function --http-referrer="$refr" $player_extra_flags --play-and-exit --meta-title="${anime_title} Episode ${ep_no}" "$video_link" :input-slave="${audio_link:+$audio_link#}$play_sub_link" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function $player_extra_flags "$video_link" -- $skip_flag --referrer="$refr" ${audio_link:+--audio-file="$audio_link"} ${play_sub_link:+--sub-file="$play_sub_link"} --force-media-title="${anime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
         download) "$player_function" "$video_link" "${anime_title} Episode ${ep_no}" $player_extra_flags ;;
         catt) nohup catt cast $player_extra_flags "$video_link" >/dev/null 2>&1 & ;;
         iSH)
@@ -638,6 +682,26 @@ case "$source" in
         [ -z "$ep_no" ] && die "Invalid episode selection"
         ;;
 esac
+
+# OpenCode is optional. When present, let the user choose Spanish subtitles or
+# prepare a batch in advance; the translated files are reused from cache.
+spanish_subtitles=0
+if command -v opencode >/dev/null 2>&1 && [ "$player_function" != "download" ]; then
+    subtitle_action="$(printf '%s\n' 'Play with original subtitles' 'Play with Spanish subtitles' 'Prepare Spanish subtitles for episodes' | menu 'Subtitle option: ' '' "$menu_extra_flags")"
+    case "$subtitle_action" in
+        'Play with Spanish subtitles') spanish_subtitles=1 ;;
+        'Prepare Spanish subtitles for episodes')
+            _prepare_selection="$(printf '%s\n' "$ep_list" | menu 'Select episodes to prepare: ' "$menu_multi_flag" "$menu_extra_flags")"
+            [ -n "$_prepare_selection" ] || die "No episodes selected"
+            for _prepare_ep in $_prepare_selection; do
+                prepare_translation "$_prepare_ep" || exit 1
+            done
+            exit 0
+            ;;
+        'Play with original subtitles') ;;
+        *) die "No subtitle option selected" ;;
+    esac
+fi
 
 # moves the cursor up one line and clears that line
 tput cuu1 && tput el

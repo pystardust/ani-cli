@@ -74,6 +74,8 @@ Exit the player, and return the player exit code (useful for non interactive sce
 ENVIRONMENT VARIABLES
 .PP
 ani-cli v5 uses environment variables to control unstable/untested and niche features in addition to everything that has an option. Command-line options take precedence over env vars. Note that these are all subject to change.
+.PP
+If the OpenCode CLI is installed and configured, ani-cli offers playback with Spanish subtitles and batch subtitle preparation after episode selection. Translated subtitles are cached under $XDG_CACHE_HOME/ani-cli/subtitles, or ~/.cache/ani-cli/subtitles when XDG_CACHE_HOME is unset.
 .TP
 \fBANI_CLI_BRANCH\fR
 Controls the Branch upgdated to with the -U option. Default is master.
