@@ -372,14 +372,18 @@ update_history() {
 # $1 = video link, $2 = video name, $3 = extra flags
 download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
-    [ -n "$sub_link" ] && $curl_exe -fsSL -A "$agent" -e "$refr" ${origin:+-H "Origin: $origin"} --max-time 10 "$sub_link" -o "$download_dir/$_name.vtt"
+    _vtt="$tmp_dir/$_name.vtt" _subbed="$tmp_dir/$_name.subbed.mp4"
+    [ -n "$sub_link" ] && $curl_exe -fsSL -A "$agent" -e "$refr" ${origin:+-H "Origin: $origin"} --max-time 10 "$sub_link" -o "$_vtt"
     _origin_hdr="${origin:+Origin: $origin}"
     _extpicky=""
     [ "$hls" = 1 ] && _extpicky="-extension_picky 0"
     { { [ -z "$audio_link" ] || ! command -v "ffmpeg" >/dev/null; } && command -v "yt-dlp" >/dev/null && yt-dlp --referer "$refr" ${origin:+--add-header "Origin: $origin"} "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -P "$download_dir" -P "temp:$tmp_dir" -o "$_name.mp4" $3; } ||
-        ffmpeg $_extpicky -referer "$refr" -headers "$_origin_hdr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -headers "$_origin_hdr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3 || return 1
-    _vtt="$download_dir/$_name.vtt" _subbed="$tmp_dir/$_name.subbed.mp4"
+        ffmpeg $_extpicky -referer "$refr" -headers "$_origin_hdr" -loglevel error -stats -i "$1" ${audio_link:+-extension_picky 0 -referer "$refr" -headers "$_origin_hdr" -i "$audio_link"} -c copy "$download_dir/$_name.mp4" $3 || {
+        rm -f "$_vtt"
+        return 1
+    }
     [ -f "$_vtt" ] && command -v "ffmpeg" >/dev/null && ffmpeg -y -loglevel error -i "$download_dir/$_name.mp4" -i "$_vtt" -map 0 -map 1 -c copy -c:s mov_text "$_subbed" && mv "$_subbed" "$download_dir/$_name.mp4" && rm "$_vtt"
+    [ -f "$_vtt" ] && mv "$_vtt" "$download_dir/$_name.vtt"
     rm -f "$_subbed"
 }
 
