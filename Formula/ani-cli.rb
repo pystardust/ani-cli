@@ -1,8 +1,8 @@
 class AniCli < Formula
   desc "Cli tool to browse and play anime"
   homepage "https://github.com/pystardust/ani-cli"
-  url "https://github.com/pystardust/ani-cli/archive/refs/tags/v5.1.tar.gz"
-  sha256 "f7aa33b547b36ddb7e00ac23216b09ee08212161936d3b9e247bcce95fd2e041"
+  url "https://github.com/pystardust/ani-cli/archive/refs/tags/v5.2.tar.gz"
+  sha256 "af2e3102d661d2eab0606f98f3b30c9e1a63d8e38adcaf5de6d3c0b191c9bd91"
   license "GPL-3.0"
   head "https://github.com/pystardust/ani-cli.git", branch: "master"
 
@@ -18,10 +18,12 @@ class AniCli < Formula
   end
 
   def caveats
-    <<~EOS
-      On macOS you can install IINA player instead of mpv for better experience:
-        brew install --cask iina
-    EOS
+    on_macos do
+      <<~EOS
+        On macOS you can install IINA player instead of mpv for better experience:
+          brew install --cask iina
+      EOS
+    end
   end
 
   test do
