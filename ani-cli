@@ -382,7 +382,7 @@ download() {
         rm -f "$_vtt"
         return 1
     }
-    [ -f "$_vtt" ] && command -v "ffmpeg" >/dev/null && ffmpeg -y -loglevel error -i "$download_dir/$_name.mp4" -i "$_vtt" -map 0 -map 1 -c copy -c:s mov_text "$_subbed" && mv "$_subbed" "$download_dir/$_name.mp4" && rm "$_vtt"
+    [ -f "$_vtt" ] && command -v "ffmpeg" >/dev/null && ffmpeg -y -loglevel error -i "$download_dir/$_name.mp4" -i "$_vtt" -map 0 -map -0:s -map 1 -c copy -c:s mov_text "$_subbed" && mv "$_subbed" "$download_dir/$_name.mp4" && rm "$_vtt"
     [ -f "$_vtt" ] && mv "$_vtt" "$download_dir/$_name.vtt"
     rm -f "$_subbed"
 }
