@@ -373,7 +373,7 @@ update_history() {
 download() {
     _name="$(printf "%s" "$2" | tr '<>:"/\\|?*' '_')"
     _vtt="$tmp_dir/$_name.vtt" _subbed="$tmp_dir/$_name.subbed.mp4"
-    [ -n "$sub_link" ] && $curl_exe -fsSL -A "$agent" -e "$refr" ${origin:+-H "Origin: $origin"} --max-time 10 "$sub_link" -o "$_vtt"
+    { [ -n "$sub_link" ] && $curl_exe -fsSL -A "$agent" -e "$refr" ${origin:+-H "Origin: $origin"} --max-time 10 "$sub_link" -o "$_vtt"; } || rm -f "$_vtt"
     _origin_hdr="${origin:+Origin: $origin}"
     _extpicky=""
     [ "$hls" = 1 ] && _extpicky="-extension_picky 0"
